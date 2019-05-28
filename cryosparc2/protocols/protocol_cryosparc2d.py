@@ -35,7 +35,7 @@ from pyworkflow.protocol.params import (PointerParam, BooleanParam, FloatParam,
                                         IntParam, Positive, StringParam)
 from pyworkflow.utils import importFromPlugin
 
-relionPlugin = importFromPlugin("relion", "Plugin")
+relionPlugin = importFromPlugin("relion.convert", doRaise=True)
 
 
 class ProtCryo2D(ProtClassify2D):
@@ -87,9 +87,13 @@ class ProtCryo2D(ProtClassify2D):
         If the input particles comes from Relion, just link the file. 
         """
         imgSet = self.inputParticles.get()
-        relionPlugin.writeSetOfParticles(imgSet, self._getFileName('input_particles'), outputDir=self._getExtraPath(), fillMagnification=True)
+        relionPlugin.writeSetOfParticles(imgSet,
+                                         self._getFileName('input_particles'),
+                                         outputDir=self._getExtraPath(),
+                                         fillMagnification=True)
 
-        self._program = os.path.join(os.environ['CRYOSPARC_DIR'], 'cryosparc2_master/bin/cryosparcm cli')    
+        self._program = os.path.join(os.environ['CRYOSPARC_DIR'],
+                                     'cryosparc2_master/bin/cryosparcm cli')
         self._user = os.environ['CRYOSPARC_USER']
         self._ssd = os.environ['CRYOSSD_DIR']
         print("Importing Particles")
@@ -113,9 +117,6 @@ class ProtCryo2D(ProtClassify2D):
         while commands.getstatusoutput(self._program + " \'get_job_status(\""+self.a[-1].split()[-1]+"\", \""+self.d[-1].split()[-1]+"\")\'")[-1].split()[-1] != 'completed':
             commands.getstatusoutput(self._program + " \'wait_job_complete(\""+self.a[-1].split()[-1]+"\", \""+self.d[-1].split()[-1]+"\")\'")
 
-
-
-    
     def createOutputStep(self):
         self._program2 = os.path.join(os.environ['PYEM_DIR'], 'csparc2star.py')
         

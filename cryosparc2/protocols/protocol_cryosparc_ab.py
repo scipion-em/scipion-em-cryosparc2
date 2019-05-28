@@ -34,10 +34,11 @@ from pyworkflow.em.data import Volume
 from pyworkflow.em.protocol import ProtInitialVolume
 from pyworkflow.utils import importFromPlugin
 
-relionPlugin = importFromPlugin("relion", "Plugin")
+relionPlugin = importFromPlugin("relion.convert", doRaise=True)
 
 import os
 import commands
+
 
 class ProtCryoSparcInitialModel(ProtInitialVolume):
     """    
@@ -46,8 +47,7 @@ class ProtCryoSparcInitialModel(ProtInitialVolume):
     """
     _label = 'CryoSparc 3D initial model'
 
-
-    #--------------------------- DEFINE param functions --------------------------------------------   
+    # --------------------------- DEFINE param functions ----------------------
     def _defineFileNames(self):
         """ Centralize how files are called within the protocol. """
         myDict = {
@@ -78,9 +78,13 @@ class ProtCryoSparcInitialModel(ProtInitialVolume):
         If the input particles comes from Relion, just link the file. 
         """
         imgSet = self.inputParticles.get()
-        relionPlugin.writeSetOfParticles(imgSet, self._getFileName('input_particles'), outputDir=self._getExtraPath(), fillMagnification=True)
+        relionPlugin.writeSetOfParticles(imgSet,
+                                         self._getFileName('input_particles'),
+                                         outputDir=self._getExtraPath(),
+                                         fillMagnification=True)
 
-        self._program = os.path.join(os.environ['CRYOSPARC_DIR'], 'cryosparc2_master/bin/cryosparcm cli')    
+        self._program = os.path.join(os.environ['CRYOSPARC_DIR'],
+                                     'cryosparc2_master/bin/cryosparcm cli')
         self._user = os.environ['CRYOSPARC_USER']
         self._ssd = os.environ['CRYOSSD_DIR']
         print("Importing Particles")
@@ -103,9 +107,6 @@ class ProtCryoSparcInitialModel(ProtInitialVolume):
         while commands.getstatusoutput(self._program + " \'get_job_status(\""+self.a[-1].split()[-1]+"\", \""+self.d[-1].split()[-1]+"\")\'")[-1].split()[-1] != 'completed':
             commands.getstatusoutput(self._program + " \'wait_job_complete(\""+self.a[-1].split()[-1]+"\", \""+self.d[-1].split()[-1]+"\")\'")
 
-
-
-    
     def createOutputStep(self):
         self._program2 = os.path.join(os.environ['PYEM_DIR'], 'csparc2star.py')
         self.runJob(self._program2, self._ssd+'/'+self.a[-1].split()[-1]+'/'+self.d[-1].split()[-1]+"/cryosparc_"+self.a[-1].split()[-1]+"_"+self.d[-1].split()[-1]+"_class_00_final_particles.cs"+" "+self._getFileName('out_particles'), numberOfMpi=1)
@@ -128,7 +129,6 @@ class ProtCryoSparcInitialModel(ProtInitialVolume):
         self._defineOutputs(outputParticles=outImgSet)
         self._defineTransformRelation(self.inputParticles, outImgSet)
     
-    
     # --------------------------- INFO functions -------------------------------
     def _validate(self):
         """ Should be overriden in subclasses to 
@@ -137,18 +137,17 @@ class ProtCryoSparcInitialModel(ProtInitialVolume):
         validateMsgs = []
         return validateMsgs
 
-
-    #--------------------------- UTILS functions --------------------------------------------
+    # --------------------------- UTILS functions ---------------------------
 
     def _fillDataFromIter(self, imgSet):
         outImgsFn = self._getFileName('out_particles')
         imgSet.setAlignmentProj()
         imgSet.copyItems(self.inputParticles.get(),
                          updateItemCallback=self._createItemMatrix,
-                         itemDataIterator=md.iterRows(outImgsFn, sortByLabel=md.RLN_IMAGE_ID))
+                         itemDataIterator=md.iterRows(outImgsFn,
+                                                      sortByLabel=md.RLN_IMAGE_ID))
 
     def _createItemMatrix(self, item, row):
-        from pyworkflow.em.packages.relion.convert import createItemMatrix
         from pyworkflow.em import ALIGN_PROJ
 
-        createItemMatrix(item, row, align=ALIGN_PROJ)
+        relionPlugin.createItemMatrix(item, row, align=ALIGN_PROJ)

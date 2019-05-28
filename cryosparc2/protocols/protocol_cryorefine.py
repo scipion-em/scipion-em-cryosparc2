@@ -34,7 +34,7 @@ from pyworkflow.em.protocol import ProtRefine3D
 from pyworkflow.em import ALIGN_PROJ
 from pyworkflow.utils import importFromPlugin
 
-relionPlugin = importFromPlugin("relion", "Plugin")
+relionPlugin = importFromPlugin("relion.convert", doRaise=True)
 
 import os
 import commands
@@ -91,10 +91,13 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
         """
         imgSet = self.inputParticles.get()
         # Create links to binary files and write the relion .star file
-        relionPlugin.writeSetOfParticles(imgSet, self._getFileName('input_particles'), outputDir=self._getExtraPath(), fillMagnification=True)
+        relionPlugin.writeSetOfParticles(imgSet,
+                                         self._getFileName('input_particles'),
+                                         outputDir=self._getExtraPath(),
+                                         fillMagnification=True)
 
-
-        self._program = os.path.join(os.environ['CRYOSPARC_DIR'], 'cryosparc2_master/bin/cryosparcm cli')
+        self._program = os.path.join(os.environ['CRYOSPARC_DIR'],
+                                     'cryosparc2_master/bin/cryosparcm cli')
         self._user = os.environ['CRYOSPARC_USER']
         self._ssd = os.environ['CRYOSSD_DIR']
         print("Importing Particles")
@@ -200,10 +203,12 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
         imgSet.setAlignmentProj()
         imgSet.copyItems(self.inputParticles.get(),
                          updateItemCallback=self._createItemMatrix,
-                         itemDataIterator=md.iterRows(outImgsFn, sortByLabel=md.RLN_IMAGE_ID))
+                         itemDataIterator=md.iterRows(outImgsFn,
+                                                      sortByLabel=md.RLN_IMAGE_ID))
 
     def _createItemMatrix(self, particle, row):
         relionPlugin.createItemMatrix(particle, row, align=ALIGN_PROJ)
-        relionPlugin.setRelionAttributes(particle, row, md.RLN_PARTICLE_RANDOM_SUBSET)
+        relionPlugin.setRelionAttributes(particle, row,
+                                         md.RLN_PARTICLE_RANDOM_SUBSET)
 
 
