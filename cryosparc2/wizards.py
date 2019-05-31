@@ -24,45 +24,29 @@
 # *  e-mail address 'scipion@cnb.csic.es'
 # *
 # **************************************************************************
-
-import os
-import pyworkflow.em
-from pyworkflow.utils import Environ
-from constants import *
+from pyworkflow.em.wizard import *
+from protocols import ProtCryo2D
 
 
-_references = ['Punjani2017', 'Brubaker2017']
-_logo = 'cryosparc2_logo.png'
+# Suggested number of images per class
+IMAGES_PER_CLASS = 200
 
 
-class Plugin(pyworkflow.em.Plugin):
-    _homeVar = CRYOSPARC_HOME
+#===============================================================================
+# NUMBER OF CLASSES
+#===============================================================================
+class ProtCryo2DNumberOfClassesWizard(Wizard):
+    _targets = [(ProtCryo2D, ['numberOfClasses'])]
 
-    @classmethod
-    def _defineVariables(cls):
-        pass
+    def _getNumberOfClasses(self, protocol):
 
-    @classmethod
-    def getEnviron(cls):
-        """ Setup the environment variables needed to launch cryoSparc. """
-        environ = Environ(os.environ)
+        numberOfClasses = 64
 
-        environ.update({
-            'PATH': Plugin.getHome(),
-            'LD_LIBRARY_PATH': str.join(cls.getHome(), 'cryosparclib')
-                               + ":" + cls.getHome(),
-        }, position=Environ.BEGIN)
+        if protocol.inputParticles.hasValue():
+            numberOfClasses = int(protocol.inputParticles.get().getSize()/IMAGES_PER_CLASS)
 
-        return environ
-
-    @classmethod
-    def isVersionActive(cls):
-        return cls.getActiveVersion().startswith(V2_5_0)
-
-    @classmethod
-    def defineBinaries(cls, env):
-        env.addPipModule('pandas', version='0.24.2')
-        env.addPipModule('pyfftw', version='0.11.1')
+        return numberOfClasses
 
 
-pyworkflow.em.Domain.registerPlugin(__name__)
+    def show(self, form):
+        form.setVar('numberOfClasses', self._getNumberOfClasses(form.protocol))

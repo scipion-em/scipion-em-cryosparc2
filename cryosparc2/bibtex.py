@@ -28,35 +28,35 @@
 """
 
 @article{Punjani2017,
-  Title                    = {cryoSPARC: algorithms for rapid unsupervised cryo-EM structure determination.},
-  Author                   = {Punjani, A., Rubinstein, J.L., Fleet, D.J. & Brubaker, M.A.},
-  Journal                  = {Nature Methods},
-  Year                     = {2017},
-  Month                    = {},
-  Number                   = {14},
-  Pages                    = {290-296},
-  Volume                   = {166},
-  Doi                      = {},
-  Keywords                 = {},
-  Pii                      = {},
-  Pmid                     = {},
-  Url                      = {https://www.nature.com/articles/nmeth.4169}
+  Title                    = "cryoSPARC: algorithms for rapid unsupervised cryo-EM structure determination.",
+  Author                   = "Punjani, A., Rubinstein, J.L., Fleet, D.J. & Brubaker, M.A.",
+  Journal                  = "Nature Methods",
+  Year                     = "2017",
+  Month                    = "",
+  Number                   = "14",
+  Pages                    = "290-296",
+  Volume                   = "166",
+  Doi                      = "",
+  Keywords                 = "",
+  Pii                      = "",
+  Pmid                     = "",
+  Url                      = "https://www.nature.com/articles/nmeth.4169"
 }
 
 @article{Brubaker2017,
-  Title                    = {Building Proteins in a Day: Efficient 3D Molecular Reconstruction.},
-  Author                   = {Brubaker, M.A., Punjani, A & Fleet, D.J.},
-  Journal                  = {IEEE Trans. Pattern Anal. Mach. Intell.},
-  Year                     = {2017},
-  Month                    = {},
-  Number                   = {39},
-  Pages                    = {706-718},
-  Volume                   = {},
-  Doi                      = {},
-  Keywords                 = {},
-  Pii                      = {},
-  Pmid                     = {},
-  Url                      = {https://ieeexplore.ieee.org/document/7740877}
+  Title                    = "Building Proteins in a Day: Efficient 3D Molecular Reconstruction.",
+  Author                   = "Brubaker, M.A., Punjani, A & Fleet, D.J.",
+  Journal                  = "IEEE Trans. Pattern Anal. Mach. Intell.",
+  Year                     = "2017",
+  Month                    = "",
+  Number                   = "39",
+  Pages                    = "706-718",
+  Volume                   = "",
+  Doi                      = "",
+  Keywords                 = "",
+  Pii                      = "",
+  Pmid                     = "",
+  Url                      = "https://ieeexplore.ieee.org/document/7740877"
 }
 
 """

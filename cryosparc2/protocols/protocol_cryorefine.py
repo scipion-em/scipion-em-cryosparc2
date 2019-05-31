@@ -125,7 +125,6 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
             print("waiting...\n")
             commands.getstatusoutput(self._program + " \'wait_job_complete(\""+self.a[-1].split()[-1]+"\", \""+self.e[-1].split()[-1]+"\")\'")
 
-
         print("Refinement Started...")
         self.f = commands.getstatusoutput(self._program + " \'do_run_refine(\""+self.a[-1].split()[-1]+"\", \""+self.b[-1].split()[-1]+"\", \"\'+"+self._user+"\'\", \"" + self.par + "\", \"" + self.vol + "\", None,"+ "\"\'"+str(self.symmetryGroup.get())+"\'\")\'")
         while commands.getstatusoutput(self._program + " \'get_job_status(\""+self.a[-1].split()[-1]+"\", \""+self.f[-1].split()[-1]+"\")\'")[-1].split()[-1] != 'completed':

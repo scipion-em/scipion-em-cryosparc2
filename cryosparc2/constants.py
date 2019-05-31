@@ -24,3 +24,8 @@
 # *  e-mail address 'scipion@cnb.csic.es'
 # *
 # **************************************************************************
+
+CRYOSPARC_HOME = 'CRYOSPARC_HOME'
+
+# Supported versions:
+V2_5_0 = 'V2_5_0'

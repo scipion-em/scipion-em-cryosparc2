@@ -65,14 +65,140 @@ class ProtCryo2D(ProtClassify2D):
                       pointerClass='SetOfParticles',
                       label="Input particles", important=True,
                       help='Select the input images from the project.')
-        form.addParam('numberOfClasses', IntParam, default=50, validators=[Positive],
-                      label='Number of Classes',
-                      help='The number of 2D classes into which to sort the dataset. '
-                           'Runtime is approximately linear in the number of classes. '
-                           'Often, sorting the same dataset into different numbers of '
-                           'classes can be helpful in finding junk particles or rare views')
         form.addParallelSection(threads=1, mpi=1)
-    
+
+        # ----------- [Particle Preprocessing] --------------------------------
+
+        form.addSection(label="Particle Preprocessing")
+        form.addParam('windowsDataSet', BooleanParam, default=True,
+                      label='Window dataset (real-space)?',
+                      help='')
+        form.addParam('windowsInnerRadius', FloatParam, default=0.85,
+                      validators=[Positive],
+                      label='Window inner radius:',
+                      help='')
+        form.addParam('windowsOuterRadius', FloatParam, default=0.99,
+                      validators=[Positive],
+                      label='Window outer radius:',
+                      help='')
+
+        # ----------- [2D Classification] --------------------------------
+
+        form.addSection(label="2D Classification")
+        form.addParam('numberOfClasses', IntParam, default=50,
+                      validators=[Positive],
+                      label='Number of classes:',
+                      help='The number of 2D classes into which to sort the '
+                           'dataset. Runtime is approximately linear in the '
+                           'number of classes. Often, sorting the same dataset '
+                           'into different numbers of classes can be helpful in '
+                           'finding junk particles or rare views.')
+
+        form.addParam('maximunResolution', IntParam, default=6,
+                      validators=[Positive],
+                      label='Maximum resolution (A)',
+                      help='The maximum resolution in Angstroms to consider when aligning and reconstructing 2D classes. This setting controls the box size that is used internally, and higher resolutions can slow down processing.')
+        form.addParam('initialClassification', FloatParam, default=2.0,
+                      label='Initial classification uncertainty factor',
+                      validators=[Positive],
+                      help='This factor (a number greater than 1) controls the initial search for 2D references. A value of 1.0 indicates that the search should quickly become certain about classes and assignments, leading to the algorithm finding more "junk" classes. A value larger than 1.0 (usually between 2 and 10) causes the algorithm to remain uncertain about classes and assignments for more iterations, resulting in more diversity of "good" classes.')
+
+        form.addParam('useCircular2D', BooleanParam, default=True,
+                      label='Use circular mask on 2D classes?',
+                      help='Whether or not to apply a circular window to the 2D classes during classification. This ensures that each 2D class has no density outside the circular window. By default, the window is a circle that only masks out the corners of the 2D classes.')
+
+        form.addParam('reCenter2D', BooleanParam, default=True,
+                      label='Re-center 2D classes',
+                      help='Whether or not to re-center 2D class references at every iteration to avoid drift of density away from the center of the box. This option is often important to keep classes centered and avoid artefacts near the edges of the box.')
+
+        form.addParam('reCenterMask', FloatParam, default=0.2,
+                      validators=[Positive],
+                      label='Re-center mask threshold',
+                      help='2D classes are recentered by computing the center-of-mass (COM) of pixels that are above this threshold value. The threshold is relative to the maximum density value in the reference, so 0.2 means pixels with greater than 20%% of the maximum density.')
+
+        form.addParam('reCenterMaskBinary', BooleanParam, default=False,
+                      label='Re-center mask binary',
+                      help='If True, compute the COM for re-centering by equally weighting every pixel that was above the threshold. If False, weight every pixel by its greyscale density value.')
+        form.addParam('forceMaxover', BooleanParam, default=False,
+                      label='Force Max over poses/shifts',
+                      help='If True, maximize over poses and shifts when aligning particles to references. If False, marginalize over poses and shifts to account for alignment uncertainty. This is generally not necessary, but can provide better results with very small or low SNR particles.')
+        form.addParam('ctfFlipPhases', BooleanParam, default=False,
+                      label='CTF flip phases only',
+                      help='Treat the CTF by flipping phases only, rather that correctly accounting for amplitude and phase. Not recommended.')
+
+
+        form.addParam('numberFinalIterator', IntParam, default=1,
+                      validators=[Positive],
+                      label='Number of final full iterations',
+                      help='The number of final full passes through the dataset at the end of classification. Usually only one full pass is needed.')
+
+        form.addParam('numberOnlineEMIterator', IntParam, default=20,
+                      validators=[Positive],
+                      label='Number of online-EM iterations',
+                      help='The total number of iterations of online-EM to perform. Typically 20 is enough, but for small or low SNR particles, or when classifying subsets that have few distinct views, a larger number like 40 can help.')
+
+        form.addParam('batchSizeClass', IntParam, default=100,
+                      validators=[Positive],
+                      label='Batchsize per class',
+                      help='The number of particles per class to use during each iteration of online-EM. For small or low SNR particles, this can be increased to 200.')
+
+        form.addParam('initialScale2D', IntParam, default=1,
+                      validators=[Positive],
+                      label='2D initial scale',
+                      help='Initial scale of random starting references. Not recommended to change.')
+        form.addParam('zeropadFactor', IntParam, default=2,
+                      validators=[Positive],
+                      label='2D zeropad factor',
+                      help='Zeropadding factor. For very large box particles, this can be reduced to speed up computation and reduce memory requirements.')
+
+        # form.addParam('minOverScale', BooleanParam, default=True,
+        #               label='Min over scale after first iteration',
+        #               help='Whether or not to minimize over per-particle scale factors, after the first iteration. This can help if ice thicknesses varied greatly during data collection.')
+        #
+        # form.addParam('reCenterMaskBinary', BooleanParam, default=False,
+        #               label='Re-center mask binary',
+        #               help='If True, compute the COM for re-centering by equally weighting every pixel that was above the threshold. If False, weight every pixel by its greyscale density value.')
+        #
+        # form.addParam('enforceNonNegative', BooleanParam, default=False,
+        #               label='Enforce non-negativity',
+        #               help='Whether or not to enforce non-negativity of 2D references during optimization. This can help to avoid "streaking" artefacts.')
+        #
+        # form.addParam('useClamSolvent', BooleanParam, default=False,
+        #               label='Use clamp-solvent to solve 2D classes',
+        #               help='Use solvent-clamping to solve 2D references. This, coupled with non-negativity, can drastically reduce background noise and often provides cleaner 2D references.')
+        #
+        # form.addParam('useFull', BooleanParam, default=False,
+        #               label='Use FRC based regularizer',
+        #               help='Use an FRC based regularizer to avoid overfitting during classification.')
+
+        form.addParam('useFullFRC', BooleanParam, default=False,
+                      label='Use full FRC',
+                      help='')
+
+        form.addParam('iterationToStartAnneling', IntParam, default=2,
+                      validators=[Positive],
+                      label='Iteration to start annealing sigma',
+                      help='Iteration at which noise model should be annealed. Not recommended to change.')
+
+        form.addParam('iterationToStartAnneal', IntParam, default=15,
+                      validators=[Positive],
+                      label='Number of iteration to anneal sigma',
+                      help='Number of iterations over which to anneal noise model. Not recommended to change.')
+
+        form.addParam('useWhiteNoiseModel', BooleanParam, default=False,
+                      label='Use white noise model',
+                      help='Force the use of a white noise model.')
+
+        form.addSection(label="Compute settings")
+        form.addParam('cacheParticlesSSD', BooleanParam, default=True,
+                      label='Cache particle images on SSD',
+                      help='Whether or not to copy particle images to the local SSD before running. The cache is persistent, so after caching once, particles should be available for subsequent jobs that require the same data. Not using an SSD can dramatically slow down processing.')
+
+        form.addParam('numberGPU', IntParam, default=1,
+                      validators=[Positive],
+                      label='Number of GPUs to parallelize',
+                      help='Number of GPUs to use during classification')
+
     # --------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
         self._defineFileNames()
@@ -91,7 +217,6 @@ class ProtCryo2D(ProtClassify2D):
                                          self._getFileName('input_particles'),
                                          outputDir=self._getExtraPath(),
                                          fillMagnification=True)
-
         self._program = os.path.join(os.environ['CRYOSPARC_DIR'],
                                      'cryosparc2_master/bin/cryosparcm cli')
         self._user = os.environ['CRYOSPARC_USER']
@@ -105,7 +230,6 @@ class ProtCryo2D(ProtClassify2D):
         self.c = commands.getstatusoutput(self._program + " \'do_import_particles_star(\""+self.a[-1].split()[-1]+"\", \""+self.b[-1].split()[-1]+"\", \"\'+"+self._user+"\'\", \"\'"+ os.path.join(os.getcwd(),self._getFileName('input_particles'))+"\'\", \"\'"+os.path.join(os.getcwd(),self._getExtraPath())+"\'\", \"\'"+str(self.inputParticles.get().getSamplingRate())+"\'\")\'")
         self.par = self.c[-1].split()[-1]+'.imported_particles' 
         
-
     def processStep(self):
         print(self._program + "  \'do_run_class_2D(\""+self.a[-1].split()[-1]+"\", \""+self.b[-1].split()[-1]+"\", \"\'+"+self._user+"\'\", \"" + self.par + "\",\"\'"+str(self.numberOfClasses.get())+"\'\")\'")
         while commands.getstatusoutput(self._program + " \'get_job_status(\""+self.a[-1].split()[-1]+"\", \""+self.c[-1].split()[-1]+"\")\'")[-1].split()[-1] != 'completed':
@@ -153,7 +277,6 @@ class ProtCryo2D(ProtClassify2D):
         self._defineOutputs(outputClasses=classes2DSet)
         self._defineSourceRelation(self.inputParticles, classes2DSet)
 
-
     # --------------------------- INFO functions -------------------------------
     def _validate(self):
         errors = []
@@ -198,7 +321,6 @@ class ProtCryo2D(ProtClassify2D):
         self._numClass = index
         print("number of class is "+str(index))
 
-
     def _fillClassesFromLevel(self, clsSet):
         """ Create the SetOfClasses2D from a given iteration. """
         xmpMd = self._getFileName("out_particles") #the particle with orientation parameters (all_parameters)
@@ -206,10 +328,10 @@ class ProtCryo2D(ProtClassify2D):
                                  updateClassCallback=self._updateClass,
                                  itemDataIterator=md.iterRows(xmpMd,
                                                           sortByLabel=md.MDL_ITEM_ID)) # relion style
+
     def _updateParticle(self, item, row):
         item.setClassId(row.getValue(md.RLN_PARTICLE_CLASS))
         item.setTransform(relionPlugin.rowToAlignment(row, em.ALIGN_2D))
-        
         
     def _updateClass(self, item):
         classId = item.getObjId()

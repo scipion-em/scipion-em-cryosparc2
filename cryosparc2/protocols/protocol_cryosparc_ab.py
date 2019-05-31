@@ -96,7 +96,6 @@ class ProtCryoSparcInitialModel(ProtInitialVolume):
         self.c = commands.getstatusoutput(self._program + " \'do_import_particles_star(\""+self.a[-1].split()[-1]+"\", \""+self.b[-1].split()[-1]+"\", \"\'+"+self._user+"\'\", \"\'"+ os.path.join(os.getcwd(),self._getFileName('input_particles'))+"\'\", \"\'"+os.path.join(os.getcwd(),self._getExtraPath())+"\'\", \"\'"+str(self.inputParticles.get().getSamplingRate())+"\'\")\'")
         self.par = self.c[-1].split()[-1]+'.imported_particles' 
         
-
     def processStep(self):
         print(self._program + "  \'do_run_abinit(\""+self.a[-1].split()[-1]+"\", \""+self.b[-1].split()[-1]+"\", \"\'"+self._user+"\'\", \"" + self.par + "\",\"\'1\'\")\'")
         while commands.getstatusoutput(self._program +" \'get_job_status(\""+self.a[-1].split()[-1]+"\", \""+self.c[-1].split()[-1]+"\")\'")[-1].split()[-1] != 'completed':
