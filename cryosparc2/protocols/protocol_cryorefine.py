@@ -33,6 +33,7 @@ from pyworkflow.em.data import Volume, FSC
 from pyworkflow.em.protocol import ProtRefine3D
 from pyworkflow.em import ALIGN_PROJ
 from pyworkflow.utils import importFromPlugin
+from cryosparc2.utils import *
 
 relionPlugin = importFromPlugin("relion.convert", doRaise=True)
 
@@ -79,7 +80,7 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
     # --------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
         self._defineFileNames()
-        objId = self.inputParticles.get().getObjId()
+        objId = self._getInputParticles().getObjId()
         self._insertFunctionStep("convertInputStep", objId)
         self._insertFunctionStep('processStep')
         self._insertFunctionStep('createOutputStep')
@@ -89,51 +90,53 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
         """ Create the input file in STAR format as expected by Relion.
         If the input particles comes from Relion, just link the file.
         """
-        imgSet = self.inputParticles.get()
+        imgSet = self._getInputParticles()
         # Create links to binary files and write the relion .star file
         relionPlugin.writeSetOfParticles(imgSet,
                                          self._getFileName('input_particles'),
                                          outputDir=self._getExtraPath(),
                                          fillMagnification=True)
 
-        self._program = os.path.join(os.environ['CRYOSPARC_DIR'],
-                                     'cryosparc2_master/bin/cryosparcm cli')
-        self._user = os.environ['CRYOSPARC_USER']
-        self._ssd = os.environ['CRYOSSD_DIR']
-        print("Importing Particles")
-        #create_empty_project(owner_user_id, project_container_dir, title=None, desc=None) returns the new uid of the project that was created
-        self.a = commands.getstatusoutput(self._program + " \'create_empty_project(\"\'+"+self._user+"\'\", \"\'"+self._ssd+"\'\")\'")
-        #create_empty_workspace(project_uid, created_by_user_id, created_by_job_uid=None, title=None, desc=None) returns the new uid of the workspace that was created
-        self.b = commands.getstatusoutput(self._program + " \'create_empty_workspace(\""+self.a[-1].split()[-1]+"\", \"\'+"+self._user+"\'\")\'")
-        #do_import_particles_star(puid, wuid, uuid, abs_star_path, abs_blob_path=None, psize_A=None) returns the new uid of the job that was created
-        self.c = commands.getstatusoutput(self._program + " \'do_import_particles_star(\""+self.a[-1].split()[-1]+"\", \""+self.b[-1].split()[-1]+"\", \"\'+"+self._user+"\'\", \"\'"+ os.path.join(os.getcwd(),self._getFileName('input_particles'))+"\'\", \"\'"+os.path.join(os.getcwd(),self._getExtraPath())+"\'\", \"\'"+str(self.inputParticles.get().getSamplingRate())+"\'\")\'")
-        self.par = self.c[-1].split()[-1]+'.imported_particles'
+        self._importParticles()
 
-        self.vol_fn = os.path.join(os.getcwd(),relionPlugin.convertBinaryVol(self.referenceVolume.get(), self._getTmpPath()))
+        self.vol_fn = os.path.join(os.getcwd(),
+                                   relionPlugin.convertBinaryVol(self.referenceVolume.get(),
+                                                                 self._getTmpPath()))
         print(self.vol_fn)
-        self.e = commands.getstatusoutput(self._program + " \'do_import_volumes(\""+self.a[-1].split()[-1]+"\", \""+self.b[-1].split()[-1]+"\", \"\'+"+self._user+"\'\", \"\'"+ self.vol_fn + "\'\", \"\'map\'\", \"\'"+str(imgSet.getSamplingRate())+"\'\")\'")
-        print(self._program + " \'do_import_volumes(\""+self.a[-1].split()[-1]+"\", \""+self.b[-1].split()[-1]+"\", \"\'+"+self._user+"\'\", \"\'"+ self.vol_fn + "\'\", \"\'map\'\", \"\'"+str(imgSet.getSamplingRate())+"\'\")\'")
+        self.importVolume = self.doImportVolumes()[-1].split()[-1]
+        print(self._program + " \'do_import_volumes(\"" + self.projectName +
+              "\", \"" + self.workSpaceName + "\", \"\' + "+self._user +
+              "\'\", \"\'" + self.vol_fn + "\'\", \"\'map\'\", \"\'" +
+              str(imgSet.getSamplingRate())+"\'\")\'")
 
     def processStep(self):
-        self.vol = self.e[-1].split()[-1]+'.imported_volume.map'
-        print(self._program + " \'do_run_refine(\""+self.a[-1].split()[-1]+"\", \""+self.b[-1].split()[-1]+"\", \"\'+"+self._user+"\'\", \"" + self.par + "\", \"" + self.vol + "\", None,"+ "\"\'"+self.symmetryGroup.get()+"\'\")\'")
-        while commands.getstatusoutput(self._program + " \'get_job_status(\""+self.a[-1].split()[-1]+"\", \""+self.c[-1].split()[-1]+"\")\'")[-1].split()[-1] != 'completed':
-            print("waiting...\n")
-            commands.getstatusoutput(self._program + " \'wait_job_complete(\""+self.a[-1].split()[-1]+"\", \""+self.c[-1].split()[-1]+"\")\'")
+        self.vol = self.importVolume + '.imported_volume.map'
+        print(self._program + " \'do_run_refine(\""+self.projectName+"\", \""+self.workSpaceName+"\", \"\'+"+self._user+"\'\", \"" + self.par + "\", \"" + self.vol + "\", None,"+ "\"\'"+self.symmetryGroup.get()+"\'\")\'")
 
-        while commands.getstatusoutput(self._program + " \'get_job_status(\""+self.a[-1].split()[-1]+"\", \""+self.e[-1].split()[-1]+"\")\'")[-1].split()[-1] != 'completed':
+        while self.getJobStatus(self.importedParticles) != 'completed':
             print("waiting...\n")
-            commands.getstatusoutput(self._program + " \'wait_job_complete(\""+self.a[-1].split()[-1]+"\", \""+self.e[-1].split()[-1]+"\")\'")
+            self.waitJob(self.importedParticles)
+
+        while self.getJobStatus(self.importVolume) != 'completed':
+            print("waiting...\n")
+            self.waitJob(self.importVolume)
 
         print("Refinement Started...")
-        self.f = commands.getstatusoutput(self._program + " \'do_run_refine(\""+self.a[-1].split()[-1]+"\", \""+self.b[-1].split()[-1]+"\", \"\'+"+self._user+"\'\", \"" + self.par + "\", \"" + self.vol + "\", None,"+ "\"\'"+str(self.symmetryGroup.get())+"\'\")\'")
-        while commands.getstatusoutput(self._program + " \'get_job_status(\""+self.a[-1].split()[-1]+"\", \""+self.f[-1].split()[-1]+"\")\'")[-1].split()[-1] != 'completed':
-            commands.getstatusoutput(self._program + " \'wait_job_complete(\""+self.a[-1].split()[-1]+"\", \""+self.f[-1].split()[-1]+"\")\'")
+        self.runRefine = self.doRunRefine()[-1].split()[-1]
+        while self.getJobStatus(self.runRefine) != 'completed':
+            print("waiting...\n")
+            self.waitJob(self.importVolume)
 
     # -------------------------- STEPS functions ------------------------------
     def createOutputStep(self):
+        """
+        """
         self._program2 = os.path.join(os.environ['PYEM_DIR'], 'csparc2star.py')
-        commands.getstatusoutput(self._program + " \'get_job_streamlog(\""+self.a[-1].split()[-1]+"\", \""+self.f[-1].split()[-1]+ "\")\'" + ">" +self._getFileName('stream_log'))
+
+        commands.getstatusoutput(self._program + " \'get_job_streamlog(\"" +
+                                 self.projectName+"\", \"" + self.runRefine +
+                                 "\")\'" + ">" +self._getFileName('stream_log'))
+
         # Get the metadata information from stream.log
         with open(self._getFileName('stream_log')) as f:
             data = f.readlines()
@@ -147,14 +150,21 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
                     idd = y['imgfiles'][2]['fileid']
                     itera = z[-3:]
 
-        self.runJob(self._program2, self._ssd+'/'+self.a[-1].split()[-1]+'/'+self.f[-1].split()[-1]+"/cryosparc_"+self.a[-1].split()[-1]+"_"+self.f[-1].split()[-1]+"_"+itera+"_particles.cs"+" "+self._getFileName('out_particles')+" -p "+self._ssd+"/"+self.a[-1].split()[-1]+'/'+self.f[-1].split()[-1]+"/passthrough_particles.cs", numberOfMpi=1)
-        # Link the folder on SSD to scipion directory
-        os.system("ln -s "+self._ssd+"/"+self.a[-1].split()[-1]+'/'+self.f[-1].split()[-1]+" "+ self._getExtraPath())
+        self.runJob(self._program2, self._ssd + '/' + self.projectName + '/' +
+                    self.runRefine + "/cryosparc_" +self.projectName + "_" +
+                    self.runRefine+"_" + itera + "_particles.cs" + " " +
+                    self._getFileName('out_particles') +" -p " + self._ssd +
+                    "/" + self.projectName + '/' + self.runRefine +
+                    "/passthrough_particles.cs", numberOfMpi=1)
 
-        fnVol = self._getExtraPath() + "/" + self.f[-1].split()[-1] + "/cryosparc_"+self.a[-1].split()[-1]+"_"+self.f[-1].split()[-1]+"_"+itera+"_volume_map.mrc"
-        half1 = self._getExtraPath() + "/" + self.f[-1].split()[-1] + "/cryosparc_"+self.a[-1].split()[-1]+"_"+self.f[-1].split()[-1]+"_"+itera+"_volume_map_half_A.mrc"
-        half2 = self._getExtraPath() + "/" + self.f[-1].split()[-1] + "/cryosparc_"+self.a[-1].split()[-1]+"_"+self.f[-1].split()[-1]+"_"+itera+"_volume_map_half_B.mrc"
-        imgSet = self.inputParticles.get()
+        # Link the folder on SSD to scipion directory
+        os.system("ln -s " + self._ssd + "/" + self.projectName + '/' +
+                  self.runRefine + " " + self._getExtraPath())
+
+        fnVol = self._getExtraPath() + "/" + self.runRefine + "/cryosparc_" + self.projectName + "_" + self.runRefine + "_" + itera + "_volume_map.mrc"
+        half1 = self._getExtraPath() + "/" + self.runRefine + "/cryosparc_" + self.projectName + "_" + self.runRefine + "_" + itera + "_volume_map_half_A.mrc"
+        half2 = self._getExtraPath() + "/" + self.runRefine + "/cryosparc_" + self.projectName + "_" + self.runRefine + "_" + itera + "_volume_map_half_B.mrc"
+        imgSet = self._getInputParticles()
         vol = Volume()
         vol.setFileName(fnVol)
         vol.setSamplingRate(imgSet.getSamplingRate())
@@ -177,7 +187,7 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
         wv=[]
         corr = []
         for x in lines[1:-1]:
-            wv.append(str(float(x.split('\t')[0])/(int(self.inputParticles.get().getDim()[0])*float(imgSet.getSamplingRate()))))
+            wv.append(str(float(x.split('\t')[0])/(int(self._getInputParticles().getDim()[0])*float(imgSet.getSamplingRate()))))
             corr.append(x.split('\t')[6])
         f.close()
 
@@ -197,10 +207,13 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
         return validateMsgs
     # -------------------------- UTILS functions ------------------------------
 
+    def _getInputParticles(self):
+        return self.inputParticles.get()
+
     def _fillDataFromIter(self, imgSet):
         outImgsFn = self._getFileName('out_particles')
         imgSet.setAlignmentProj()
-        imgSet.copyItems(self.inputParticles.get(),
+        imgSet.copyItems(self._getInputParticles(),
                          updateItemCallback=self._createItemMatrix,
                          itemDataIterator=md.iterRows(outImgsFn,
                                                       sortByLabel=md.RLN_IMAGE_ID))
@@ -209,5 +222,89 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
         relionPlugin.createItemMatrix(particle, row, align=ALIGN_PROJ)
         relionPlugin.setRelionAttributes(particle, row,
                                          md.RLN_PARTICLE_RANDOM_SUBSET)
+
+
+    def _importParticles(self):
+        """
+        Initialize all utils cryoSPARC variables
+        """
+        self._program = getCryosparcProgram()
+        self._user = getCryosparcUser()
+        self._ssd = getCryosparcSSD()
+        print("Importing Particles")
+
+        # create empty project
+        self.a = createEmptyProject()
+        self.projectName = self.a[-1].split()[-1]
+
+        # create empty workspace
+        self.b = createEmptyWorkSpace(self.projectName)
+        self.workSpaceName = self.b[-1].split()[-1]
+
+        # import_particles_star
+        self.c = self.doImportParticlesStar()
+
+        self.importedParticles = self.c[-1].split()[-1]
+        self.par = self.importedParticles + '.imported_particles'
+
+    def getJobStatus(self, job):
+        """
+        Return the job status
+        """
+        return commands.getstatusoutput(self._program +
+                                        " \'get_job_status(\""+
+                                        self.projectName+"\", \""+
+                                        job+"\")\'")[-1].split()[-1]
+
+    def waitJob(self, job):
+        commands.getstatusoutput(self._program +
+                                 " \'wait_job_complete(\"" +
+                                 self.projectName + "\", \"" +
+                                 job + "\")\'")
+
+    def doImportParticlesStar(self):
+        """
+        do_import_particles_star(puid, wuid, uuid, abs_star_path,
+                                 abs_blob_path=None, psize_A=None)
+        returns the new uid of the job that was created
+        """
+        return commands.getstatusoutput(self._program +
+                                        " \'do_import_particles_star(\"" +
+                                        self.projectName + "\", \"" +
+                                        self.workSpaceName + "\", \"\'+" +
+                                        self._user + "\'\", \"\'" +
+                                        os.path.join(os.getcwd(),
+                                                     self._getFileName('input_particles')) +
+                                        "\'\", \"\'" + os.path.join(os.getcwd(),
+                                                                    self._getExtraPath()) +
+                                        "\'\", \"\'" +
+                                        str(self._getInputParticles().getSamplingRate()) +
+                                        "\'\")\'")
+
+    def doImportVolumes(self):
+        """
+        :return:
+        """
+        return commands.getstatusoutput(self._program + "\'do_import_volumes(\""
+                                        + self.projectName + "\", \"" +
+                                        self.workSpaceName+"\", \"\'+" +
+                                        self._user + "\'\", \"\'" +
+                                        self.vol_fn + "\'\", \"\'map\'\", \"\'"+
+                                        str(self._getInputParticles().getSamplingRate()) +
+                                        "\'\")\'")
+
+    def doRunRefine(self):
+        """
+        :return:
+        """
+        return commands.getstatusoutput(self._program + " \'do_run_refine(\"" +
+                                        self.projectName + "\", \"" +
+                                        self.workSpaceName + "\", \"\'+" +
+                                        self._user + "\'\", \"" + self.par +
+                                        "\", \"" + self.vol + "\", None," +
+                                        "\"\'" + str(self.symmetryGroup.get()) +
+                                        "\'\")\'")
+
+
 
 

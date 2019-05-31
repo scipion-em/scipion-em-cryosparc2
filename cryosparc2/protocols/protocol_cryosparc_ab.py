@@ -67,7 +67,7 @@ class ProtCryoSparcInitialModel(ProtInitialVolume):
     # --------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
         self._defineFileNames()
-        objId = self.inputParticles.get().getObjId()
+        objId = self._getInputParticles().getObjId()
         self._insertFunctionStep("convertInputStep", objId)
         self._insertFunctionStep('processStep')
         self._insertFunctionStep('createOutputStep')
@@ -77,7 +77,7 @@ class ProtCryoSparcInitialModel(ProtInitialVolume):
         """ Create the input file in STAR format as expected by Relion.
         If the input particles comes from Relion, just link the file. 
         """
-        imgSet = self.inputParticles.get()
+        imgSet = self._getInputParticles()
         relionPlugin.writeSetOfParticles(imgSet,
                                          self._getFileName('input_particles'),
                                          outputDir=self._getExtraPath(),
@@ -112,7 +112,7 @@ class ProtCryoSparcInitialModel(ProtInitialVolume):
                   self.runAbinit + " " + self._getExtraPath())
 
        
-        imgSet = self.inputParticles.get()
+        imgSet = self._getInputParticles()
         vol = Volume()
         fnVol = self._getExtraPath() + "/" + self.runAbinit + "/cryosparc_" +\
                 self.projectName+"_"+self.runAbinit+"_class_00_final_volume.mrc"
@@ -138,10 +138,13 @@ class ProtCryoSparcInitialModel(ProtInitialVolume):
 
     # --------------------------- UTILS functions ---------------------------
 
+    def _getInputParticles(self):
+        return self.inputParticles.get()
+
     def _fillDataFromIter(self, imgSet):
         outImgsFn = self._getFileName('out_particles')
         imgSet.setAlignmentProj()
-        imgSet.copyItems(self.inputParticles.get(),
+        imgSet.copyItems(self._getInputParticles(),
                          updateItemCallback=self._createItemMatrix,
                          itemDataIterator=md.iterRows(outImgsFn,
                                                       sortByLabel=md.RLN_IMAGE_ID))
