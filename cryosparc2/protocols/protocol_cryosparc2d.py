@@ -189,6 +189,8 @@ class ProtCryo2D(ProtClassify2D):
                       label='Use white noise model',
                       help='Force the use of a white noise model.')
 
+        # ----------- [Compute settings] --------------------------------
+
         form.addSection(label="Compute settings")
         form.addParam('cacheParticlesSSD', BooleanParam, default=True,
                       label='Cache particle images on SSD',
