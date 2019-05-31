@@ -24,6 +24,8 @@
 # *
 # **************************************************************************
 
+import os
+import commands
 import pyworkflow.em.metadata as md
 from pyworkflow.protocol.params import (PointerParam, FloatParam,
                                         LabelParam, IntParam,
@@ -33,11 +35,9 @@ from pyworkflow.protocol.params import (PointerParam, FloatParam,
 from pyworkflow.em.data import Volume
 from pyworkflow.em.protocol import ProtInitialVolume
 from pyworkflow.utils import importFromPlugin
+from cryosparc2.utils import *
 
 relionPlugin = importFromPlugin("relion.convert", doRaise=True)
-
-import os
-import commands
 
 
 class ProtCryoSparcInitialModel(ProtInitialVolume):
@@ -82,40 +82,40 @@ class ProtCryoSparcInitialModel(ProtInitialVolume):
                                          self._getFileName('input_particles'),
                                          outputDir=self._getExtraPath(),
                                          fillMagnification=True)
+        self._importParticles()
 
-        self._program = os.path.join(os.environ['CRYOSPARC_DIR'],
-                                     'cryosparc2_master/bin/cryosparcm cli')
-        self._user = os.environ['CRYOSPARC_USER']
-        self._ssd = os.environ['CRYOSSD_DIR']
-        print("Importing Particles")
-        #create_empty_project(owner_user_id, project_container_dir, title=None, desc=None) returns the new uid of the project that was created
-        self.a = commands.getstatusoutput(self._program + " \'create_empty_project(\"\'+"+self._user+"\'\", \"\'"+self._ssd+"\'\")\'")
-        #create_empty_workspace(project_uid, created_by_user_id, created_by_job_uid=None, title=None, desc=None) returns the new uid of the workspace that was created
-        self.b = commands.getstatusoutput(self._program + " \'create_empty_workspace(\""+self.a[-1].split()[-1]+"\", \"\'+"+self._user+"\'\")\'")
-        #do_import_particles_star(puid, wuid, uuid, abs_star_path, abs_blob_path=None, psize_A=None) returns the new uid of the job that was created
-        self.c = commands.getstatusoutput(self._program + " \'do_import_particles_star(\""+self.a[-1].split()[-1]+"\", \""+self.b[-1].split()[-1]+"\", \"\'+"+self._user+"\'\", \"\'"+ os.path.join(os.getcwd(),self._getFileName('input_particles'))+"\'\", \"\'"+os.path.join(os.getcwd(),self._getExtraPath())+"\'\", \"\'"+str(self.inputParticles.get().getSamplingRate())+"\'\")\'")
-        self.par = self.c[-1].split()[-1]+'.imported_particles' 
-        
     def processStep(self):
-        print(self._program + "  \'do_run_abinit(\""+self.a[-1].split()[-1]+"\", \""+self.b[-1].split()[-1]+"\", \"\'"+self._user+"\'\", \"" + self.par + "\",\"\'1\'\")\'")
-        while commands.getstatusoutput(self._program +" \'get_job_status(\""+self.a[-1].split()[-1]+"\", \""+self.c[-1].split()[-1]+"\")\'")[-1].split()[-1] != 'completed':
+
+        while self.getJobStatus(self.importedParticles) != 'completed':
             print("waiting...\n")
-            commands.getstatusoutput(self._program + " \'wait_job_complete(\""+self.a[-1].split()[-1]+"\", \""+self.c[-1].split()[-1]+"\")\'")
+            self.waitJob(self.importedParticles)
+
         print("Ab Initial Model Generation Started...")
-        self.d = commands.getstatusoutput(self._program + " \'do_run_abinit(\""+self.a[-1].split()[-1]+"\", \""+self.b[-1].split()[-1]+"\", \"\'"+self._user+"\'\", \"" + self.par + "\",\"\'1\'\")\'")
-        while commands.getstatusoutput(self._program + " \'get_job_status(\""+self.a[-1].split()[-1]+"\", \""+self.d[-1].split()[-1]+"\")\'")[-1].split()[-1] != 'completed':
-            commands.getstatusoutput(self._program + " \'wait_job_complete(\""+self.a[-1].split()[-1]+"\", \""+self.d[-1].split()[-1]+"\")\'")
+
+        self.runAbinit = self.doRunAbinit()[-1].split()[-1]
+
+        while self.getJobStatus(self.runAbinit) != 'completed':
+            self.waitJob(self.runAbinit)
 
     def createOutputStep(self):
-        self._program2 = os.path.join(os.environ['PYEM_DIR'], 'csparc2star.py')
-        self.runJob(self._program2, self._ssd+'/'+self.a[-1].split()[-1]+'/'+self.d[-1].split()[-1]+"/cryosparc_"+self.a[-1].split()[-1]+"_"+self.d[-1].split()[-1]+"_class_00_final_particles.cs"+" "+self._getFileName('out_particles'), numberOfMpi=1)
+
+        _program2 = os.path.join(os.environ['PYEM_DIR'], 'csparc2star.py')
+
+        self.runJob(_program2, self._ssd + '/' + self.projectName + '/' +
+                    self.runAbinit + "/cryosparc_" +
+                    self.projectName + "_" + self.runAbinit +
+                    "_class_00_final_particles.cs" + " " +
+                    self._getFileName('out_particles'), numberOfMpi=1)
+
         # Link the folder on SSD to scipion directory
-        os.system("ln -s "+self._ssd+"/"+self.a[-1].split()[-1]+'/'+self.d[-1].split()[-1]+" "+ self._getExtraPath())
+        os.system("ln -s " + self._ssd + "/" + self.projectName + '/' +
+                  self.runAbinit + " " + self._getExtraPath())
 
        
         imgSet = self.inputParticles.get()
         vol = Volume()
-        fnVol = self._getExtraPath() + "/" + self.d[-1].split()[-1] + "/cryosparc_"+self.a[-1].split()[-1]+"_"+self.d[-1].split()[-1]+"_class_00_final_volume.mrc"
+        fnVol = self._getExtraPath() + "/" + self.runAbinit + "/cryosparc_" +\
+                self.projectName+"_"+self.runAbinit+"_class_00_final_volume.mrc"
         vol.setFileName(fnVol)
         vol.setSamplingRate(imgSet.getSamplingRate())
 
@@ -150,3 +150,72 @@ class ProtCryoSparcInitialModel(ProtInitialVolume):
         from pyworkflow.em import ALIGN_PROJ
 
         relionPlugin.createItemMatrix(item, row, align=ALIGN_PROJ)
+
+    def _importParticles(self):
+        """
+        Initialize all utils cryoSPARC variables
+        """
+        self._program = getCryosparcProgram()
+        self._user = getCryosparcUser()
+        self._ssd = getCryosparcSSD()
+        print("Importing Particles")
+
+        # create empty project
+        self.a = createEmptyProject()
+        self.projectName = self.a[-1].split()[-1]
+
+        # create empty workspace
+        self.b = createEmptyWorkSpace(self.projectName)
+        self.workSpaceName = self.b[-1].split()[-1]
+
+        # import_particles_star
+        self.c = self.doImportParticlesStar()
+
+        self.importedParticles = self.c[-1].split()[-1]
+        self.par = self.importedParticles + '.imported_particles'
+
+    def getJobStatus(self, job):
+        """
+        Return the job status
+        """
+        return commands.getstatusoutput(self._program +
+                                        " \'get_job_status(\""+
+                                        self.projectName+"\", \""+
+                                        job+"\")\'")[-1].split()[-1]
+
+    def waitJob(self, job):
+        commands.getstatusoutput(self._program +
+                                 " \'wait_job_complete(\"" +
+                                 self.projectName + "\", \"" +
+                                 job + "\")\'")
+
+    def doImportParticlesStar(self):
+        """
+        do_import_particles_star(puid, wuid, uuid, abs_star_path,
+                                 abs_blob_path=None, psize_A=None)
+        returns the new uid of the job that was created
+        """
+        return commands.getstatusoutput(self._program +
+                                        " \'do_import_particles_star(\"" +
+                                        self.projectName + "\", \"" +
+                                        self.workSpaceName + "\", \"\'+" +
+                                        self._user + "\'\", \"\'" +
+                                        os.path.join(os.getcwd(),
+                                                     self._getFileName('input_particles')) +
+                                        "\'\", \"\'" + os.path.join(os.getcwd(),
+                                                                    self._getExtraPath()) +
+                                        "\'\", \"\'" +
+                                        str(self._getInputParticles().getSamplingRate()) +
+                                        "\'\")\'")
+
+    def doRunAbinit(self):
+        """self._program + "  \'do_run_abinit(\"" + self.projectName +
+        "\", \"" + self.workSpaceName + "\", \"\'" + self._user + "\'\", \""
+        + self.par + "\",\"\'1\'\")\'")
+        """
+        return commands.getstatusoutput(self._program + " \'do_run_abinit(\"" +
+                                        self.projectName + "\", \"" +
+                                        self.workSpaceName + "\", \"\'" +
+                                        self._user + "\'\", \"" + self.par +
+                                        "\",\"\'1\'\")\'")
+

@@ -228,27 +228,27 @@ class ProtCryo2D(ProtClassify2D):
             self.waitJob(self.importedParticles)
 
         print("2D Classifications Started...")
-        self.runClas2D = self.doRunClass2D()[-1].split()[-1]
+        self.runClass2D = self.doRunClass2D()[-1].split()[-1]
 
-        while self.getJobStatus(self.runClas2D) != 'completed':
-            self.waitJob(self.runClas2D)
+        while self.getJobStatus(self.runClass2D) != 'completed':
+            self.waitJob(self.runClass2D)
 
     def createOutputStep(self):
 
         _program2 = os.path.join(os.environ['PYEM_DIR'], 'csparc2star.py')
         
         self.runJob(_program2, self._ssd+'/' + self.projectName + '/' +
-                    self.runClas2D + "/cryosparc_" + self.projectName+"_" +
-                    self.runClas2D + "_020_particles.cs" + " " +
+                    self.runClass2D + "/cryosparc_" + self.projectName+"_" +
+                    self.runClass2D + "_020_particles.cs" + " " +
                     self._getFileName('out_particles'), numberOfMpi=1)
         self.runJob(_program2, self._ssd + '/' + self.projectName + '/' +
-                    self.runClas2D + "/cryosparc_" + self.projectName + "_" +
-                    self.runClas2D + "_020_class_averages.cs" + " " +
+                    self.runClass2D + "/cryosparc_" + self.projectName + "_" +
+                    self.runClass2D + "_020_class_averages.cs" + " " +
                     self._getFileName('out_class'), numberOfMpi=1)
 
         # Link the folder on SSD to scipion directory
         os.system("ln -s " + self._ssd + "/" + self.projectName + '/' +
-                  self.runClas2D + " " + self._getExtraPath())
+                  self.runClass2D + " " + self._getExtraPath())
 
         with open(self._getFileName('out_class'), 'r') as input_file, \
                 open(self._getFileName('out_class_m2'), 'w') as output_file:
@@ -333,10 +333,13 @@ class ProtCryo2D(ProtClassify2D):
 
     def _fillClassesFromLevel(self, clsSet):
         """ Create the SetOfClasses2D from a given iteration. """
-        xmpMd = self._getFileName("out_particles") #the particle with orientation parameters (all_parameters)
+
+        # the particle with orientation parameters (all_parameters)
+        xmpMd = self._getFileName("out_particles")
+
         clsSet.classifyItems(updateItemCallback=self._updateParticle,
-                                 updateClassCallback=self._updateClass,
-                                 itemDataIterator=md.iterRows(xmpMd,
+                             updateClassCallback=self._updateClass,
+                             itemDataIterator=md.iterRows(xmpMd,
                                                           sortByLabel=md.MDL_ITEM_ID)) # relion style
 
     def _updateParticle(self, item, row):
@@ -387,17 +390,6 @@ class ProtCryo2D(ProtClassify2D):
                                  " \'wait_job_complete(\"" +
                                  self.projectName + "\", \"" +
                                  job + "\")\'")
-    def doRunClass2D(self):
-        """
-        do_run_class_2D(puid, wuid, uuid, particle_group, num_classes=50)
-        returns: the new uid of the job that was created
-        """
-        return commands.getstatusoutput(self._program + " \'do_run_class_2D(\"" +
-                                        self.projectName + "\", \"" +
-                                        self.workSpaceName + "\", \"\'+" +
-                                        self._user + "\'\", \"" + self.par +
-                                        "\",\"\'" + str(self.numberOfClasses.get()) +
-                                        "\'\")\'")
 
     def doImportParticlesStar(self):
         """
@@ -418,5 +410,15 @@ class ProtCryo2D(ProtClassify2D):
                                         str(self._getInputParticles().getSamplingRate()) +
                                         "\'\")\'")
 
-
+    def doRunClass2D(self):
+        """
+        do_run_class_2D(puid, wuid, uuid, particle_group, num_classes=50)
+        returns: the new uid of the job that was created
+        """
+        return commands.getstatusoutput(self._program + " \'do_run_class_2D(\"" +
+                                        self.projectName + "\", \"" +
+                                        self.workSpaceName + "\", \"\'+" +
+                                        self._user + "\'\", \"" + self.par +
+                                        "\",\"\'" + str(self.numberOfClasses.get()) +
+                                        "\'\")\'")
 
