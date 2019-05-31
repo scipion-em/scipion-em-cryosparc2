@@ -34,8 +34,10 @@ from pyworkflow.em.protocol import ProtClassify2D, SetOfClasses2D
 from pyworkflow.protocol.params import (PointerParam, BooleanParam, FloatParam,
                                         IntParam, Positive, StringParam)
 from pyworkflow.utils import importFromPlugin
+from cryosparc2.utils import *
 
 relionPlugin = importFromPlugin("relion.convert", doRaise=True)
+
 
 
 class ProtCryo2D(ProtClassify2D):
@@ -126,7 +128,6 @@ class ProtCryo2D(ProtClassify2D):
                       label='CTF flip phases only',
                       help='Treat the CTF by flipping phases only, rather that correctly accounting for amplitude and phase. Not recommended.')
 
-
         form.addParam('numberFinalIterator', IntParam, default=1,
                       validators=[Positive],
                       label='Number of final full iterations',
@@ -204,7 +205,7 @@ class ProtCryo2D(ProtClassify2D):
     # --------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
         self._defineFileNames()
-        objId = self.inputParticles.get().getObjId()
+        objId = self._getInputParticles().getObjId()
         self._insertFunctionStep("convertInputStep", objId)
         self._insertFunctionStep('processStep')
         self._insertFunctionStep('createOutputStep')
@@ -214,44 +215,43 @@ class ProtCryo2D(ProtClassify2D):
         """ Create the input file in STAR format as expected by Relion.
         If the input particles comes from Relion, just link the file. 
         """
-        imgSet = self.inputParticles.get()
+        imgSet = self._getInputParticles()
         relionPlugin.writeSetOfParticles(imgSet,
                                          self._getFileName('input_particles'),
                                          outputDir=self._getExtraPath(),
                                          fillMagnification=True)
-        self._program = os.path.join(os.environ['CRYOSPARC_DIR'],
-                                     'cryosparc2_master/bin/cryosparcm cli')
-        self._user = os.environ['CRYOSPARC_USER']
-        self._ssd = os.environ['CRYOSSD_DIR']
-        print("Importing Particles")
-        #create_empty_project(owner_user_id, project_container_dir, title=None, desc=None) returns the new uid of the project that was created
-        self.a = commands.getstatusoutput(self._program + " \'create_empty_project(\"\'+"+self._user+"\'\", \"\'"+self._ssd+"\'\")\'")
-        #create_empty_workspace(project_uid, created_by_user_id, created_by_job_uid=None, title=None, desc=None) returns the new uid of the workspace that was created
-        self.b = commands.getstatusoutput(self._program + " \'create_empty_workspace(\""+self.a[-1].split()[-1]+"\", \"\'+"+self._user+"\'\")\'")
-        #do_import_particles_star(puid, wuid, uuid, abs_star_path, abs_blob_path=None, psize_A=None) returns the new uid of the job that was created
-        self.c = commands.getstatusoutput(self._program + " \'do_import_particles_star(\""+self.a[-1].split()[-1]+"\", \""+self.b[-1].split()[-1]+"\", \"\'+"+self._user+"\'\", \"\'"+ os.path.join(os.getcwd(),self._getFileName('input_particles'))+"\'\", \"\'"+os.path.join(os.getcwd(),self._getExtraPath())+"\'\", \"\'"+str(self.inputParticles.get().getSamplingRate())+"\'\")\'")
-        self.par = self.c[-1].split()[-1]+'.imported_particles' 
-        
+        self._importParticles()
+
     def processStep(self):
-        print(self._program + "  \'do_run_class_2D(\""+self.a[-1].split()[-1]+"\", \""+self.b[-1].split()[-1]+"\", \"\'+"+self._user+"\'\", \"" + self.par + "\",\"\'"+str(self.numberOfClasses.get())+"\'\")\'")
-        while commands.getstatusoutput(self._program + " \'get_job_status(\""+self.a[-1].split()[-1]+"\", \""+self.c[-1].split()[-1]+"\")\'")[-1].split()[-1] != 'completed':
+        while self.getJobStatus(self.importedParticles) != 'completed':
             print("waiting...\n")
-            commands.getstatusoutput(self._program + " \'wait_job_complete(\""+self.a[-1].split()[-1]+"\", \""+self.c[-1].split()[-1]+"\")\'")
+            self.waitJob(self.importedParticles)
+
         print("2D Classifications Started...")
-        #do_run_class_2D(puid, wuid, uuid, particle_group, num_classes=50) returns the new uid of the job that was created
-        self.d = commands.getstatusoutput(self._program + " \'do_run_class_2D(\""+self.a[-1].split()[-1]+"\", \""+self.b[-1].split()[-1]+"\", \"\'+"+self._user+"\'\", \"" + self.par + "\",\"\'"+str(self.numberOfClasses.get())+"\'\")\'")
-        while commands.getstatusoutput(self._program + " \'get_job_status(\""+self.a[-1].split()[-1]+"\", \""+self.d[-1].split()[-1]+"\")\'")[-1].split()[-1] != 'completed':
-            commands.getstatusoutput(self._program + " \'wait_job_complete(\""+self.a[-1].split()[-1]+"\", \""+self.d[-1].split()[-1]+"\")\'")
+        self.runClas2D = self.doRunClass2D()[-1].split()[-1]
+
+        while self.getJobStatus(self.runClas2D) != 'completed':
+            self.waitJob(self.runClas2D)
 
     def createOutputStep(self):
-        self._program2 = os.path.join(os.environ['PYEM_DIR'], 'csparc2star.py')
-        
-        self.runJob(self._program2, self._ssd+'/'+self.a[-1].split()[-1]+'/'+self.d[-1].split()[-1]+"/cryosparc_"+self.a[-1].split()[-1]+"_"+self.d[-1].split()[-1]+"_020_particles.cs"+" "+self._getFileName('out_particles'), numberOfMpi=1)
-        self.runJob(self._program2, self._ssd+'/'+self.a[-1].split()[-1]+'/'+self.d[-1].split()[-1]+"/cryosparc_"+self.a[-1].split()[-1]+"_"+self.d[-1].split()[-1]+"_020_class_averages.cs"+" "+self._getFileName('out_class'), numberOfMpi=1)
-        # Link the folder on SSD to scipion directory
-        os.system("ln -s "+self._ssd+"/"+self.a[-1].split()[-1]+'/'+self.d[-1].split()[-1]+" "+ self._getExtraPath())
 
-        with open(self._getFileName('out_class'), 'r') as input_file, open(self._getFileName('out_class_m2'), 'w') as output_file:
+        _program2 = os.path.join(os.environ['PYEM_DIR'], 'csparc2star.py')
+        
+        self.runJob(_program2, self._ssd+'/' + self.projectName + '/' +
+                    self.runClas2D + "/cryosparc_" + self.projectName+"_" +
+                    self.runClas2D + "_020_particles.cs" + " " +
+                    self._getFileName('out_particles'), numberOfMpi=1)
+        self.runJob(_program2, self._ssd + '/' + self.projectName + '/' +
+                    self.runClas2D + "/cryosparc_" + self.projectName + "_" +
+                    self.runClas2D + "_020_class_averages.cs" + " " +
+                    self._getFileName('out_class'), numberOfMpi=1)
+
+        # Link the folder on SSD to scipion directory
+        os.system("ln -s " + self._ssd + "/" + self.projectName + '/' +
+                  self.runClas2D + " " + self._getExtraPath())
+
+        with open(self._getFileName('out_class'), 'r') as input_file, \
+                open(self._getFileName('out_class_m2'), 'w') as output_file:
             j = 0 #mutex lock
             i = 0 #start
             k = 1
@@ -266,13 +266,21 @@ class ProtCryo2D(ProtClassify2D):
                     for n, m in enumerate(line.split()):
                         if '@' in m:
                             break
-                    output_file.write(" ".join(line.split()[:n]) + " " + line.split()[n].split('@')[0] + '@'+ self._getExtraPath() +"/"+ line.split()[n].split('@')[1] + " " + " ".join(line.split()[n+1:])+"\n")
+                    output_file.write(" ".join(line.split()[:n]) + " " +
+                                      line.split()[n].split('@')[0] + '@'+
+                                      self._getExtraPath() + "/" +
+                                      line.split()[n].split('@')[1] + " " +
+                                      " ".join(line.split()[n+1:])+"\n")
                     j = 1
                 else:
-                    output_file.write(" ".join(line.split()[:n]) + " " + line.split()[n].split('@')[0] + '@'+ self._getExtraPath() +"/"+ line.split()[n].split('@')[1] + " " + " ".join(line.split()[n+1:])+"\n")
+                    output_file.write(" ".join(line.split()[:n]) + " " +
+                                      line.split()[n].split('@')[0] + '@'+
+                                      self._getExtraPath() + "/" +
+                                      line.split()[n].split('@')[1] + " " +
+                                      " ".join(line.split()[n+1:])+"\n")
         
         self._loadClassesInfo(self._getFileName('out_class_m2'))
-        inputParticles = self.inputParticles.get()
+        inputParticles = self._getInputParticles()
         classes2DSet = self._createSetOfClasses2D(inputParticles)
         self._fillClassesFromLevel(classes2DSet)
   
@@ -341,6 +349,74 @@ class ProtCryo2D(ProtClassify2D):
             index, fn, row = self._classesInfo[classId]
             item.setAlignment2D()
             item.getRepresentative().setLocation(index, fn)
-        
+
+    def _importParticles(self):
+        """
+        Initialize all utils cryoSPARC variables
+        """
+        self._program = getCryosparcProgram()
+        self._user = getCryosparcUser()
+        self._ssd = getCryosparcSSD()
+        print("Importing Particles")
+
+        # create empty project
+        self.a = createEmptyProject()
+        self.projectName = self.a[-1].split()[-1]
+
+        # create empty workspace
+        self.b = createEmptyWorkSpace(self.projectName)
+        self.workSpaceName = self.b[-1].split()[-1]
+
+        # import_particles_star
+        self.c = self.doImportParticlesStar()
+
+        self.importedParticles = self.c[-1].split()[-1]
+        self.par = self.importedParticles + '.imported_particles'
+
+    def getJobStatus(self, job):
+        """
+        Return the job status
+        """
+        return commands.getstatusoutput(self._program +
+                                        " \'get_job_status(\""+
+                                        self.projectName+"\", \""+
+                                        job+"\")\'")[-1].split()[-1]
+
+    def waitJob(self, job):
+        commands.getstatusoutput(self._program +
+                                 " \'wait_job_complete(\"" +
+                                 self.projectName + "\", \"" +
+                                 job + "\")\'")
+    def doRunClass2D(self):
+        """
+        do_run_class_2D(puid, wuid, uuid, particle_group, num_classes=50)
+        returns: the new uid of the job that was created
+        """
+        return commands.getstatusoutput(self._program + " \'do_run_class_2D(\"" +
+                                        self.projectName + "\", \"" +
+                                        self.workSpaceName + "\", \"\'+" +
+                                        self._user + "\'\", \"" + self.par +
+                                        "\",\"\'" + str(self.numberOfClasses.get()) +
+                                        "\'\")\'")
+
+    def doImportParticlesStar(self):
+        """
+        do_import_particles_star(puid, wuid, uuid, abs_star_path,
+                                 abs_blob_path=None, psize_A=None)
+        returns the new uid of the job that was created
+        """
+        return commands.getstatusoutput(self._program +
+                                        " \'do_import_particles_star(\"" +
+                                        self.projectName + "\", \"" +
+                                        self.workSpaceName + "\", \"\'+" +
+                                        self._user + "\'\", \"\'" +
+                                        os.path.join(os.getcwd(),
+                                                     self._getFileName('input_particles')) +
+                                        "\'\", \"\'" + os.path.join(os.getcwd(),
+                                                                    self._getExtraPath()) +
+                                        "\'\", \"\'" +
+                                        str(self._getInputParticles().getSamplingRate()) +
+                                        "\'\")\'")
+
 
 
