@@ -163,11 +163,11 @@ class ProtCryo2D(ProtClassify2D):
         # form.addParam('enforceNonNegative', BooleanParam, default=False,
         #               label='Enforce non-negativity',
         #               help='Whether or not to enforce non-negativity of 2D references during optimization. This can help to avoid "streaking" artefacts.')
-        #
-        # form.addParam('useClamSolvent', BooleanParam, default=False,
-        #               label='Use clamp-solvent to solve 2D classes',
-        #               help='Use solvent-clamping to solve 2D references. This, coupled with non-negativity, can drastically reduce background noise and often provides cleaner 2D references.')
-        #
+
+        form.addParam('useClamSolvent', BooleanParam, default=False,
+                      label='Use clamp-solvent to solve 2D classes',
+                      help='Use solvent-clamping to solve 2D references. This, coupled with non-negativity, can drastically reduce background noise and often provides cleaner 2D references.')
+
         # form.addParam('useFull', BooleanParam, default=False,
         #               label='Use FRC based regularizer',
         #               help='Use an FRC based regularizer to avoid overfitting during classification.')
