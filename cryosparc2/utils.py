@@ -61,11 +61,10 @@ def createEmptyWorkSpace(projectName):
                            title=None, desc=None)
     returns the new uid of the workspace that was created
     """
-
     create_work_space_cmd = (getCryosparcProgram() +
-                             " \'create_empty_workspace(\"" +
-                             projectName + "\", \"\'+" +
-                             getCryosparcUser() + "\'\")\'")
+                             ' %screate_empty_workspace("%s", "%s+%s%s")%s '
+                             % ("'", projectName, "'", getCryosparcUser(), "'",
+                                "'"))
 
     return commands.getstatusoutput(create_work_space_cmd)
 
