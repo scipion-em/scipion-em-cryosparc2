@@ -416,18 +416,19 @@ class ProtCryo2D(ProtClassify2D):
                                  abs_blob_path=None, psize_A=None)
         returns the new uid of the job that was created
         """
-        return commands.getstatusoutput(self._program +
-                                        " \'do_import_particles_star(\"" +
-                                        self.projectName + "\", \"" +
-                                        self.workSpaceName + "\", \"\'" +
-                                        self._user + "\'\", \"\'" +
-                                        os.path.join(os.getcwd(),
-                                                     self._getFileName('input_particles')) +
-                                        "\'\", \"\'" + os.path.join(os.getcwd(),
-                                                                    self._getExtraPath()) +
-                                        "\'\", \"\'" +
-                                        str(self._getInputParticles().getSamplingRate()) +
-                                        "\'\")\'")
+        import_particles_cmd = (self._program +
+                                ' %sdo_import_particles_star("%s","%s", '
+                                '"%s+%s%s", "%s%s%s", "%s%s%s", "%s%s%s")%s'
+                                % ("'", self.projectName, self.workSpaceName,
+                                   "'", self._user, "'", "'",
+                                   os.path.join(os.getcwd(),
+                                                self._getFileName('input_particles')),
+                                   "'", "'", os.path.join(os.getcwd(),
+                                                          self._getExtraPath()),
+                                   "'", "'", str(self._getInputParticles().getSamplingRate()),
+                                   "'", "'"))
+
+        return commands.getstatusoutput(import_particles_cmd)
 
     def doRunClass2D(self):
         """
