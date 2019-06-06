@@ -26,8 +26,7 @@
 # **************************************************************************
 import os
 import commands
-from constants import *
-
+from pyworkflow.utils import utils
 
 def getCryosparcProgram():
     return os.path.join(os.environ['CRYOSPARC_DIR'],
@@ -43,21 +42,64 @@ def getCryosparcSSD():
 
 
 def createEmptyProject():
-    # create_empty_project(owner_user_id, project_container_dir, title=None,
-    #                      desc=None)
-    # returns the new uid of the project that was created
-    return commands.getstatusoutput(getCryosparcProgram() +
-                                    " \'create_empty_project(\"\'+" +
-                                    getCryosparcUser() + "\'\", \"\'" +
-                                    getCryosparcSSD() + "\'\")\'")
+    """ create_empty_project(owner_user_id, project_container_dir, title=None,
+                            desc=None)
+    """
+
+    create_empty_project_cmd = (getCryosparcProgram() +
+                                ' %screate_empty_project("%s+%s%s", "%s")%s '
+                                % ("'", "'", str(getCryosparcUser()), "'",
+                                str(getCryosparcSSD()), "'"))
+
+    return commands.getstatusoutput(create_empty_project_cmd)
 
 
 def createEmptyWorkSpace(projectName):
-    # create_empty_workspace(project_uid, created_by_user_id,
-    #                        created_by_job_uid=None,
-    #                        title=None, desc=None)
-    # returns the new uid of the workspace that was created
-    return commands.getstatusoutput(getCryosparcProgram() +
-                                    " \'create_empty_workspace(\"" +
-                                    projectName + "\", \"\'+" +
-                                    getCryosparcUser() + "\'\")\'")
+    """
+    create_empty_workspace(project_uid, created_by_user_id,
+                           created_by_job_uid=None,
+                           title=None, desc=None)
+    returns the new uid of the workspace that was created
+    """
+
+    create_work_space_cmd = (getCryosparcProgram() +
+                             " \'create_empty_workspace(\"" +
+                             projectName + "\", \"\'+" +
+                             getCryosparcUser() + "\'\")\'")
+
+    return commands.getstatusoutput(create_work_space_cmd)
+
+
+def doJob(jobType, projectName, workSpaceName, params, input_group_conect):
+    """
+    do_job(job_type, puid='P1', wuid='W1', uuid='devuser', params={},
+           input_group_connects={})
+    """
+    do_job_cmd = (getCryosparcProgram() +
+                  ' %sdo_job("%s","%s","%s", "%s+%s%s", %s, %s)%s' %
+                  ("'", jobType, projectName, workSpaceName, "'",
+                   getCryosparcUser(), "'", params, input_group_conect, "'"))
+
+    return commands.getstatusoutput(do_job_cmd)
+
+
+def getJobStatus(projectName, job):
+    """
+    Return the job status
+    """
+    get_job_status_cmd = (getCryosparcProgram() +
+                          ' %sget_job_status("%s", "%s")%s'
+                          % ("'", projectName, job, "'"))
+
+    return commands.getstatusoutput(get_job_status_cmd)[-1].split()[-1]
+
+
+def waitJob(projectName, job):
+    """
+    Wait while the job not finished
+    """
+    wait_job_cmd = (getCryosparcProgram() +
+                    ' %swait_job_complete("%s", "%s")%s'
+                    % ("'", projectName, job, "'"))
+    commands.getstatusoutput(wait_job_cmd)
+
