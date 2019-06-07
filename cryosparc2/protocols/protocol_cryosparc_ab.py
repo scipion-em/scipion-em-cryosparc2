@@ -28,7 +28,7 @@ import os
 import commands
 import pyworkflow.em.metadata as md
 from pyworkflow.protocol.params import (PointerParam, FloatParam,
-                                        LabelParam, IntParam,
+                                        LabelParam, IntParam, Positive,
                                         EnumParam, StringParam,
                                         BooleanParam, PathParam,
                                         LEVEL_ADVANCED)
@@ -64,6 +64,202 @@ class ProtCryoSparcInitialModel(ProtInitialVolume):
                       help='Select the input images from the project.')
         form.addParallelSection(threads=1, mpi=1)
 
+        # --------------[Ab-Initio reconstruction]---------------------------
+
+        form.addSection(label='Ab-Initio reconstruction')
+
+        form.addParam('abinit_K', IntParam, default=1,
+                      validators=[Positive],
+                      label='Number of Ab-Initio classes:',
+                      help='The number of classes. Each class will be randomly initialized independently, unless an initial structure was provided, in which case each class will be a random variant of the initial structure')
+
+        form.addParam('abinit_max_res', FloatParam, default=12.0,
+                      validators=[Positive],
+                      label='Maximum resolution (Angstroms):',
+                      help='Maximum frequency to consider')
+
+        form.addParam('abinit_init_res', FloatParam, default=35.0,
+                      validators=[Positive],
+                      label='Initial resolution (Angstroms):',
+                      help='Starting frequency to consider')
+
+        form.addParam('abinit_num_init_iters', IntParam, default=200,
+                      expertLevel=LEVEL_ADVANCED,
+                      validators=[Positive],
+                      label='Number of initial iterations:',
+                      help='Number of initial iterations before annealing starts')
+
+        form.addParam('abinit_num_final_iters', IntParam, default=300,
+                      expertLevel=LEVEL_ADVANCED,
+                      validators=[Positive],
+                      label='Number of final iterations:',
+                      help='Number of final iterations after annealing ends')
+
+        form.addParam('abinit_radwn_step', FloatParam, default=0.04,
+                      expertLevel=LEVEL_ADVANCED,
+                      validators=[Positive],
+                      label='Fourier radius step:',
+                      help='Increase in Fourier radius a each iteration')
+
+        form.addParam('abinit_window', BooleanParam, default=True,
+                      expertLevel=LEVEL_ADVANCED,
+                      label='Window structures in real space:',
+                      help='Softly window the reconstructions in real space at each iteration')
+
+        form.addParam('abinit_center', BooleanParam, default=True,
+                      expertLevel=LEVEL_ADVANCED,
+                      label='Center structures in real space:',
+                      help='Center the reconstructions in real space at each iteration')
+
+        form.addParam('abinit_scale_mg_correct', BooleanParam, default=False,
+                      expertLevel=LEVEL_ADVANCED,
+                      label='Correct for per-micrograph optimal scales:',
+                      help='(Experimental) Estimate and compute optimal scales per micrograph')
+
+        form.addParam('abinit_scale_compute', BooleanParam, default=False,
+                      expertLevel=LEVEL_ADVANCED,
+                      label='Compute per-image optimal scales:',
+                      help='(Experimental) Estimate and compute optimal scales per image')
+
+        form.addParam('abinit_mom', IntParam, default=0,
+                      expertLevel=LEVEL_ADVANCED,
+                      validators=[Positive],
+                      label='SGD Momentum:',
+                      help='Momentum for stochastic gradient descent')
+
+        form.addParam('abinit_sparsity', IntParam, default=0,
+                      expertLevel=LEVEL_ADVANCED,
+                      validators=[Positive],
+                      label='Sparsity prior:',
+                      help='')
+
+        form.addParam('abinit_minisize_init', IntParam, default=90,
+                      expertLevel=LEVEL_ADVANCED,
+                      validators=[Positive],
+                      label='Initial minibatch size:',
+                      help='Number of images per minibatch at the beginning. Set to zero to autotune')
+
+        form.addParam('abinit_minisize', IntParam, default=300,
+                      expertLevel=LEVEL_ADVANCED,
+                      validators=[Positive],
+                      label='Final minibatch size:',
+                      help='Final number of images per minibatch. Set to zero to autotune')
+
+        form.addParam('abinit_minisize_epsilon', FloatParam, default=0.05,
+                      expertLevel=LEVEL_ADVANCED,
+                      validators=[Positive],
+                      label='Abinit minisize epsilon:',
+                      help='Parameter that controls batch size when autotuning minibatch size. Set closer to zero for larger batches')
+
+        form.addParam('abinit_minisize_minp', FloatParam, default=0.01,
+                      expertLevel=LEVEL_ADVANCED,
+                      validators=[Positive],
+                      label='Abinit minisize minp:',
+                      help='Parameter that controls how the batch size adjusts to low probability classes when autotuning minibatch sizes')
+
+        form.addParam('abinit_minisize_num_init_iters', IntParam, default=300,
+                      expertLevel=LEVEL_ADVANCED,
+                      validators=[Positive],
+                      label='Initial minibatch size num iters:',
+                      help='When to switch to final number of images per minibatch')
+
+        form.addParam('abinit_noise_model', StringParam, default="symmetric",
+                      label='Noise model (white, symmetric or coloured:',
+                      help='Noise model to use. Valid options are white, coloured or symmetric. Symmetric is the default, meaning coloured with radial symmetry')
+
+        form.addParam('abinit_noise_priorw', IntParam, default=50,
+                      expertLevel=LEVEL_ADVANCED,
+                      validators=[Positive],
+                      label='Noise priorw:',
+                      help='Weight of the prior for estimating noise (units of # of images)')
+
+        form.addParam('abinit_noise_initw', IntParam, default=5000,
+                      expertLevel=LEVEL_ADVANCED,
+                      validators=[Positive],
+                      label='Noise initw:',
+                      help='Weight of the initial noise estimate (units of # of images)')
+
+        form.addParam('abinit_class_anneal_beta', FloatParam, default=0.1,
+                      expertLevel=LEVEL_ADVANCED,
+                      validators=[Positive],
+                      label='Class similarity:',
+                      help='Expected similarity of structures from different classes. A number between 0 and 1. 0 means classes are independent, 1 means classes are very similar)')
+
+        form.addParam('abinit_class_anneal_start', IntParam, default=300,
+                      expertLevel=LEVEL_ADVANCED,
+                      validators=[Positive],
+                      label='Class similarity anneal start iter:',
+                      help='Start point for annealing the similarity factor')
+
+        form.addParam('abinit_class_anneal_end', IntParam, default=350,
+                      expertLevel=LEVEL_ADVANCED,
+                      validators=[Positive],
+                      label='Class similarity anneal end iter:',
+                      help='Finish point for annealing the similarity factor')
+
+        form.addParam('abinit_target_initial_ess_fraction', FloatParam, default=0.011,
+                      expertLevel=LEVEL_ADVANCED,
+                      validators=[Positive],
+                      label='Target 3D ESS Fraction:',
+                      help='Fraction of poses at the first iteration that should have significant probability (used for auto-tuning initial noise sigma-scale)')
+
+        form.addParam('abinit_symmetry', StringParam, default="C1",
+                      validators=[Positive],
+                      label='Symmetry:',
+                      help='Symmetry enforced (C, D, I, O, T). Eg. C1, D7, C4 etc. Enforcing symmetry above C1 is not recommended for ab-initio reconstruction')
+
+        form.addParam('abinit_r_grid', FloatParam, default=25,
+                      expertLevel=LEVEL_ADVANCED,
+                      validators=[Positive],
+                      label='Abinit_r_grid:')
+
+        form.addParam('abinit_high_lr_duration', FloatParam, default=100,
+                      expertLevel=LEVEL_ADVANCED,
+                      validators=[Positive],
+                      label='Initial learning rate duration:',
+                      help='How long to apply the initial learning rate')
+
+        form.addParam('abinit_high_lr', FloatParam, default=0.4,
+                      validators=[Positive],
+                      label='Initial learning rate:',
+                      help='Learning rate (step size) used at the start of optimization to help make rapid progress')
+
+        form.addParam('abinit_nonneg', BooleanParam, default=True,
+                      label='Enforce non-negativity:',
+                      help='Enforce non-negativity of structures in real space during optimization. Non-negativity is recommended for ab-initio reconstruction')
+
+        form.addParam('abinit_ignore_dc', BooleanParam, default=True,
+                      label='Ignore DC component:',
+                      help='Ignore the DC component of images. Should be true')
+
+        form.addParam('abinit_init_radwn_cutoff', IntParam, default=7,
+                      expertLevel=LEVEL_ADVANCED,
+                      validators=[Positive],
+                      label='Initial structure lowpass (Fourier radius):',
+                      help='Lowpass filter cutoff in Fourier radius for initial random structures')
+
+        form.addParam('abinit_search_start_iter', IntParam, default=200,
+                      expertLevel=LEVEL_ADVANCED,
+                      validators=[Positive],
+                      label='Abinit_search_start_iter:')
+
+        form.addParam('abinit_use_engine', BooleanParam, default=True,
+                      expertLevel=LEVEL_ADVANCED,
+                      label='Use fast codepaths:')
+
+        form.addParam('intermediate_plots', BooleanParam, default=True,
+                      expertLevel=LEVEL_ADVANCED,
+                      label='Show plots from intermediate steps:')
+
+        # --------------[Compute settings]---------------------------
+
+        form.addSection(label='Compute settings')
+
+        form.addParam('compute_use_ssd', BooleanParam, default=True,
+                      label='Cache particle images on SSD:',
+                      help='')
+
+
     # --------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
         self._defineFileNames()
@@ -83,16 +279,16 @@ class ProtCryoSparcInitialModel(ProtInitialVolume):
                                          outputDir=self._getExtraPath(),
                                          fillMagnification=True)
         self._importParticles()
-        while getJobStatus(self.importedParticles) != 'completed':
-            waitJob(self.importedParticles)
+        while getJobStatus(self.projectName, self.importedParticles) != 'completed':
+            waitJob(self.projectName, self.importedParticles)
 
     def processStep(self):
 
         print("Ab Initial Model Generation Started...")
         self.runAbinit = self.doRunAbinit()[-1].split()[-1]
 
-        while getJobStatus(self.runAbinit) != 'completed':
-            waitJob(self.runAbinit)
+        while getJobStatus(self.projectName, self.runAbinit) != 'completed':
+            waitJob(self.projectName, self.runAbinit)
 
     def createOutputStep(self):
 
@@ -202,5 +398,5 @@ class ProtCryoSparcInitialModel(ProtInitialVolume):
                                         self.projectName + "\", \"" +
                                         self.workSpaceName + "\", \"\'" +
                                         self._user + "\'\", \"" + self.par +
-                                        "\",\"\'1\'\")\'")
+                                        "\",\"\'2\'\")\'")
 
