@@ -63,8 +63,8 @@ def createEmptyWorkSpace(projectName):
     """
     create_work_space_cmd = (getCryosparcProgram() +
                              ' %screate_empty_workspace("%s", "%s+%s%s")%s '
-                             % ("'", projectName, "'", getCryosparcUser(), "'",
-                                "'"))
+                             % ("'", projectName, "'", str(getCryosparcUser()),
+                                "'", "'"))
 
     return commands.getstatusoutput(create_work_space_cmd)
 

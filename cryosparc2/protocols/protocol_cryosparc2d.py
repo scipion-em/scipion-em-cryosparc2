@@ -262,21 +262,21 @@ class ProtCryo2D(ProtClassify2D):
         """
         print (utils.greenStr("Creating the output..."))
         _program2 = os.path.join(os.environ['PYEM_DIR'], 'csparc2star.py')
-        _numberOfIter = "_00" + str(self.numberOnlineEMIterator.get())
+        _numberOfIter = str("_00" + str(self.numberOnlineEMIterator.get()))
         if self.numberOnlineEMIterator.get() > 9:
-            _numberOfIter = "_0" + str(self.numberOnlineEMIterator.get())
+            _numberOfIter = str("_0" + str(self.numberOnlineEMIterator.get()))
 
         self.runJob(_program2, self._ssd+'/' + self.projectName + '/' +
                     self.runClass2D + "/cryosparc_" + self.projectName+"_" +
                     self.runClass2D + _numberOfIter + "_particles.cs" + " " +
                     self._getFileName('out_particles'),
-                    numberOfMpi=self.numberOfMpi.get())
+                    numberOfMpi=1)
 
         self.runJob(_program2, self._ssd + '/' + self.projectName + '/' +
                     self.runClass2D + "/cryosparc_" + self.projectName + "_" +
                     self.runClass2D + _numberOfIter + "_class_averages.cs" +
                     " " + self._getFileName('out_class'),
-                    numberOfMpi=self.numberOfMpi.get())
+                    numberOfMpi=1)
 
         # Link the folder on SSD to scipion directory
         os.system("ln -s " + self._ssd + "/" + self.projectName + '/' +

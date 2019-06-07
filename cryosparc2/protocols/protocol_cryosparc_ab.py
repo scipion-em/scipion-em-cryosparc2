@@ -83,19 +83,16 @@ class ProtCryoSparcInitialModel(ProtInitialVolume):
                                          outputDir=self._getExtraPath(),
                                          fillMagnification=True)
         self._importParticles()
+        while getJobStatus(self.importedParticles) != 'completed':
+            waitJob(self.importedParticles)
 
     def processStep(self):
 
-        while self.getJobStatus(self.importedParticles) != 'completed':
-            print("waiting...\n")
-            self.waitJob(self.importedParticles)
-
         print("Ab Initial Model Generation Started...")
-
         self.runAbinit = self.doRunAbinit()[-1].split()[-1]
 
-        while self.getJobStatus(self.runAbinit) != 'completed':
-            self.waitJob(self.runAbinit)
+        while getJobStatus(self.runAbinit) != 'completed':
+            waitJob(self.runAbinit)
 
     def createOutputStep(self):
 
@@ -177,39 +174,24 @@ class ProtCryoSparcInitialModel(ProtInitialVolume):
         self.importedParticles = self.c[-1].split()[-1]
         self.par = self.importedParticles + '.imported_particles'
 
-    def getJobStatus(self, job):
-        """
-        Return the job status
-        """
-        return commands.getstatusoutput(self._program +
-                                        " \'get_job_status(\""+
-                                        self.projectName+"\", \""+
-                                        job+"\")\'")[-1].split()[-1]
-
-    def waitJob(self, job):
-        commands.getstatusoutput(self._program +
-                                 " \'wait_job_complete(\"" +
-                                 self.projectName + "\", \"" +
-                                 job + "\")\'")
-
     def doImportParticlesStar(self):
         """
         do_import_particles_star(puid, wuid, uuid, abs_star_path,
                                  abs_blob_path=None, psize_A=None)
         returns the new uid of the job that was created
         """
-        return commands.getstatusoutput(self._program +
-                                        " \'do_import_particles_star(\"" +
-                                        self.projectName + "\", \"" +
-                                        self.workSpaceName + "\", \"\'+" +
-                                        self._user + "\'\", \"\'" +
-                                        os.path.join(os.getcwd(),
-                                                     self._getFileName('input_particles')) +
-                                        "\'\", \"\'" + os.path.join(os.getcwd(),
-                                                                    self._getExtraPath()) +
-                                        "\'\", \"\'" +
-                                        str(self._getInputParticles().getSamplingRate()) +
-                                        "\'\")\'")
+        import_particles_cmd = (self._program +
+                                ' %sdo_import_particles_star("%s","%s", '
+                                '"%s+%s%s", "%s%s%s", "%s%s%s", "%s%s%s")%s'
+                                % ("'", self.projectName, self.workSpaceName,
+                                   "'", self._user, "'", "'",
+                                   os.path.join(os.getcwd(), self._getFileName('input_particles')),
+                                   "'", "'", os.path.join(os.getcwd(), self._getExtraPath()),
+                                   "'", "'",
+                                   str(self._getInputParticles().getSamplingRate()),
+                                   "'", "'"))
+
+        return commands.getstatusoutput(import_particles_cmd)
 
     def doRunAbinit(self):
         """self._program + "  \'do_run_abinit(\"" + self.projectName +
