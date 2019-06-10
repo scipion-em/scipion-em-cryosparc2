@@ -189,8 +189,7 @@ class ProtCryo2D(ProtClassify2D):
                            'during classification.')
 
         form.addParam('useFullFRC', BooleanParam, default=False,
-                      label='Use full FRC',
-                      help='')
+                      label='Use full FRC')
 
         form.addParam('iterationToStartAnneling', IntParam, default=2,
                       validators=[Positive],
