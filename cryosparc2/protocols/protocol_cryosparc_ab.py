@@ -321,33 +321,43 @@ class ProtCryoSparcInitialModel(ProtInitialVolume):
 
         _program2 = os.path.join(os.environ['PYEM_DIR'], 'csparc2star.py')
 
-        self.runJob(_program2, self._ssd + '/' + self.projectName + '/' +
-                    self.runAbinit + "/cryosparc_" +
-                    self.projectName + "_" + self.runAbinit +
-                    "_class_00_final_particles.cs" + " " +
-                    self._getFileName('out_particles'), numberOfMpi=1)
-
         # Link the folder on SSD to scipion directory
         os.system("ln -s " + self._ssd + "/" + self.projectName + '/' +
                   self.runAbinit + " " + self._getExtraPath())
 
-       
-        imgSet = self._getInputParticles()
-        vol = Volume()
-        fnVol = self._getExtraPath() + "/" + self.runAbinit + "/cryosparc_" +\
-                self.projectName+"_"+self.runAbinit+"_class_00_final_volume.mrc"
-        vol.setFileName(fnVol)
-        vol.setSamplingRate(imgSet.getSamplingRate())
+        volumeDict = {}
+        particlesDict = {}
+        for numberOfClass in range(0, self.abinit_K.get()):
 
-        outImgSet = self._createSetOfParticles()
-        outImgSet.copyInfo(imgSet)
-        self._fillDataFromIter(outImgSet)
+            self.runJob(_program2, self._ssd + '/' + self.projectName + '/' +
+                        self.runAbinit + "/cryosparc_" +
+                        self.projectName + "_" + self.runAbinit +
+                        "_class_0" + str(numberOfClass) +
+                        "_final_particles.cs" + " " +
+                        self._getFileName('out_particles'), numberOfMpi=1)
 
-        self._defineOutputs(outputVolume=vol)
+
+            imgSet = self._getInputParticles()
+            vol = Volume()
+            fnVol = (self._getExtraPath() + "/" + self.runAbinit + "/cryosparc_"
+                     + self.projectName+"_"+self.runAbinit+"_class_0" +
+                     str(numberOfClass) + "_final_volume.mrc")
+            vol.setFileName(fnVol)
+            vol.setSamplingRate(imgSet.getSamplingRate())
+
+            # outImgSet = self._createSetOfParticles(suffix=str(numberOfClass))
+            # outImgSet.copyInfo(imgSet)
+            # self._fillDataFromIter(outImgSet)
+            volumeDict[str('outputVolume' + str(numberOfClass))] = vol
+            # particlesDict[str('outputParticles' + str(numberOfClass))] = outImgSet
+
+        self._defineOutputs(**volumeDict)
         self._defineSourceRelation(self.inputParticles, vol)
-        self._defineOutputs(outputParticles=outImgSet)
-        self._defineTransformRelation(self.inputParticles, outImgSet)
-    
+        # self._defineOutputs(**particlesDict)
+        # self._defineTransformRelation(self.inputParticles, outImgSet)
+            # volumeDict.clear()
+            # particlesDict.clear()
+
     # --------------------------- INFO functions -------------------------------
     def _validate(self):
         """ Should be overriden in subclasses to 
