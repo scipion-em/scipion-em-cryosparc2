@@ -27,20 +27,21 @@
 import os
 import commands
 import pyworkflow.em.metadata as md
+from pyworkflow.em import ALIGN_PROJ
 from pyworkflow.protocol.params import (PointerParam, FloatParam,
                                         LabelParam, IntParam, Positive,
                                         EnumParam, StringParam,
                                         BooleanParam, PathParam,
                                         LEVEL_ADVANCED)
 from pyworkflow.em.data import Volume
-from pyworkflow.em.protocol import ProtInitialVolume
+from pyworkflow.em.protocol import ProtInitialVolume, ProtClassify3D
 from pyworkflow.utils import importFromPlugin
 from cryosparc2.utils import *
 
 relionPlugin = importFromPlugin("relion.convert", doRaise=True)
 
 
-class ProtCryoSparcInitialModel(ProtInitialVolume):
+class ProtCryoSparcInitialModel(ProtInitialVolume, ProtClassify3D):
     """    
     Generate a 3D initial model _de novo_ from 2D particles using
     CryoSparc Stochastic Gradient Descent (SGD) algorithm.
@@ -51,7 +52,8 @@ class ProtCryoSparcInitialModel(ProtInitialVolume):
         """ Centralize how files are called within the protocol. """
         myDict = {
                   'input_particles': self._getPath('input_particles.star'),
-                  'out_particles': self._getPath() + '/output_particle.star'
+                  'out_particles': self._getPath() + '/output_particle.star',
+                  'out_class': self._getPath() + '/output_class.star'
                   }
         self._updateFilenamesDict(myDict)
 
@@ -127,15 +129,13 @@ class ProtCryoSparcInitialModel(ProtInitialVolume):
                       help='(Experimental) Estimate and compute optimal scales '
                            'per image')
 
-        form.addParam('abinit_mom', IntParam, default=0,
+        form.addParam('abinit_mom', FloatParam, default=0,
                       expertLevel=LEVEL_ADVANCED,
-                      validators=[Positive],
                       label='SGD Momentum:',
                       help='Momentum for stochastic gradient descent')
 
-        form.addParam('abinit_sparsity', IntParam, default=0,
+        form.addParam('abinit_sparsity', FloatParam, default=0,
                       expertLevel=LEVEL_ADVANCED,
-                      validators=[Positive],
                       label='Sparsity prior:',
                       help='')
 
@@ -225,7 +225,6 @@ class ProtCryoSparcInitialModel(ProtInitialVolume):
                            'auto-tuning initial noise sigma-scale)')
 
         form.addParam('abinit_symmetry', StringParam, default="C1",
-                      validators=[Positive],
                       label='Symmetry:',
                       help='Symmetry enforced (C, D, I, O, T). Eg. C1, D7, C4 '
                            'etc. Enforcing symmetry above C1 is not '
@@ -300,6 +299,7 @@ class ProtCryoSparcInitialModel(ProtInitialVolume):
         """ Create the input file in STAR format as expected by Relion.
         If the input particles comes from Relion, just link the file. 
         """
+        print(utils.greenStr("Importing Particles..."))
         imgSet = self._getInputParticles()
         relionPlugin.writeSetOfParticles(imgSet,
                                          self._getFileName('input_particles'),
@@ -311,53 +311,58 @@ class ProtCryoSparcInitialModel(ProtInitialVolume):
 
     def processStep(self):
 
-        print("Ab Initial Model Generation Started...")
+        print(utils.greenStr("Ab Initial Model Generation Started..."))
         self.runAbinit = self.doRunAbinit()[-1].split()[-1]
 
         while getJobStatus(self.projectName, self.runAbinit) != 'completed':
             waitJob(self.projectName, self.runAbinit)
 
     def createOutputStep(self):
-
+        print (utils.greenStr("Creating the output..."))
         _program2 = os.path.join(os.environ['PYEM_DIR'], 'csparc2star.py')
+
+        self.runJob(_program2, self._ssd + '/' + self.projectName + '/' +
+                    self.runAbinit + "/cryosparc_" +
+                    self.projectName + "_" + self.runAbinit +
+                    "_final_particles.cs" + " " +
+                    self._getFileName('out_particles'), numberOfMpi=1)
 
         # Link the folder on SSD to scipion directory
         os.system("ln -s " + self._ssd + "/" + self.projectName + '/' +
                   self.runAbinit + " " + self._getExtraPath())
 
-        volumeDict = {}
-        particlesDict = {}
-        for numberOfClass in range(0, self.abinit_K.get()):
+        # Create model files for 3D classiffication
+        with open(self._getFileName('out_class'), 'w') as output_file:
+            output_file.write('\n')
+            output_file.write('data_images')
+            output_file.write('\n\n')
+            output_file.write('loop_')
+            output_file.write('\n')
+            output_file.write('_rlnReferenceImage')
+            output_file.write('\n')
+            for i in range(int(self.abinit_K.get())):
+                output_file.write("%02d"%(i+1)+"@"+self._getExtraPath() + "/" + self.runAbinit + "/cryosparc_" +\
+                self.projectName+"_"+self.runAbinit+"_class_%02d"%i+"_final_volume.mrc\n")
 
-            self.runJob(_program2, self._ssd + '/' + self.projectName + '/' +
-                        self.runAbinit + "/cryosparc_" +
-                        self.projectName + "_" + self.runAbinit +
-                        "_class_0" + str(numberOfClass) +
-                        "_final_particles.cs" + " " +
-                        self._getFileName('out_particles'), numberOfMpi=1)
+        imgSet = self._getInputParticles()
+        classes3D = self._createSetOfClasses3D(imgSet)
+        self._fillClassesFromIter(classes3D, self._getFileName('out_particles'))
 
+        self._defineOutputs(outputClasses=classes3D)
+        self._defineSourceRelation(self.inputParticles, classes3D)
 
-            imgSet = self._getInputParticles()
-            vol = Volume()
-            fnVol = (self._getExtraPath() + "/" + self.runAbinit + "/cryosparc_"
-                     + self.projectName+"_"+self.runAbinit+"_class_0" +
-                     str(numberOfClass) + "_final_volume.mrc")
-            vol.setFileName(fnVol)
-            vol.setSamplingRate(imgSet.getSamplingRate())
+        # create a SetOfVolumes and define its relations
+        volumes = self._createSetOfVolumes()
+        volumes.setSamplingRate(imgSet.getSamplingRate())
 
-            # outImgSet = self._createSetOfParticles(suffix=str(numberOfClass))
-            # outImgSet.copyInfo(imgSet)
-            # self._fillDataFromIter(outImgSet)
-            volumeDict[str('outputVolume' + str(numberOfClass))] = vol
-            # particlesDict[str('outputParticles' + str(numberOfClass))] = outImgSet
+        for class3D in classes3D:
+            vol = class3D.getRepresentative()
+            vol.setObjId(class3D.getObjId())
+            volumes.append(vol)
 
-        self._defineOutputs(**volumeDict)
-        self._defineSourceRelation(self.inputParticles, vol)
-        # self._defineOutputs(**particlesDict)
-        # self._defineTransformRelation(self.inputParticles, outImgSet)
-            # volumeDict.clear()
-            # particlesDict.clear()
-
+        self._defineOutputs(outputVolumes=volumes)
+        self._defineSourceRelation(self.inputParticles, volumes)
+    
     # --------------------------- INFO functions -------------------------------
     def _validate(self):
         """ Should be overriden in subclasses to 
@@ -371,18 +376,40 @@ class ProtCryoSparcInitialModel(ProtInitialVolume):
     def _getInputParticles(self):
         return self.inputParticles.get()
 
-    def _fillDataFromIter(self, imgSet):
-        outImgsFn = self._getFileName('out_particles')
-        imgSet.setAlignmentProj()
-        imgSet.copyItems(self._getInputParticles(),
-                         updateItemCallback=self._createItemMatrix,
-                         itemDataIterator=md.iterRows(outImgsFn,
-                                                      sortByLabel=md.RLN_IMAGE_ID))
+    def _loadClassesInfo(self, filename):
+        """ Read some information about the produced CryoSparc Classes
+        from the star file.
+        """
+        self._classesInfo = {}  # store classes info, indexed by class id
 
-    def _createItemMatrix(self, item, row):
-        from pyworkflow.em import ALIGN_PROJ
+        modelStar = md.MetaData(filename)
 
-        relionPlugin.createItemMatrix(item, row, align=ALIGN_PROJ)
+        for classNumber, row in enumerate(md.iterRows(modelStar)):
+            index, fn = relionPlugin.relionToLocation(row.getValue('rlnReferenceImage'))
+            # Store info indexed by id, we need to store the row.clone() since
+            # the same reference is used for iteration
+            self._classesInfo[classNumber+1] = (index, fn, row.clone())
+
+    def _fillClassesFromIter(self, clsSet, filename):
+        """ Create the SetOfClasses3D """
+        self._loadClassesInfo(self._getFileName('out_class'))
+        outImgsFn = self._getFileName('out_class')
+        clsSet.classifyItems(updateItemCallback=self._updateParticle,
+                             updateClassCallback=self._updateClass,
+                             itemDataIterator=md.iterRows(filename,
+                                                          sortByLabel=md.RLN_IMAGE_ID))
+
+    def _updateParticle(self, item, row):
+        item.setClassId(row.getValue(md.RLN_PARTICLE_CLASS))
+        item.setTransform(relionPlugin.rowToAlignment(row, ALIGN_PROJ))
+
+    def _updateClass(self, item):
+        classId = item.getObjId()
+        if classId in self._classesInfo:
+            index, fn, row = self._classesInfo[classId]
+            fn += ":mrc"
+            item.setAlignmentProj()
+            item.getRepresentative().setLocation(index, fn)
 
     def _importParticles(self):
         """
@@ -391,7 +418,6 @@ class ProtCryoSparcInitialModel(ProtInitialVolume):
         self._program = getCryosparcProgram()
         self._user = getCryosparcUser()
         self._ssd = getCryosparcSSD()
-        print("Importing Particles")
 
         # create empty project
         self.a = createEmptyProject()
