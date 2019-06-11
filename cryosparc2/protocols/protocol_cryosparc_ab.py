@@ -27,20 +27,21 @@
 import os
 import commands
 import pyworkflow.em.metadata as md
+from pyworkflow.em import ALIGN_PROJ
 from pyworkflow.protocol.params import (PointerParam, FloatParam,
                                         LabelParam, IntParam, Positive,
                                         EnumParam, StringParam,
                                         BooleanParam, PathParam,
                                         LEVEL_ADVANCED)
 from pyworkflow.em.data import Volume
-from pyworkflow.em.protocol import ProtInitialVolume
+from pyworkflow.em.protocol import ProtInitialVolume, ProtClassify3D
 from pyworkflow.utils import importFromPlugin
 from cryosparc2.utils import *
 
 relionPlugin = importFromPlugin("relion.convert", doRaise=True)
 
 
-class ProtCryoSparcInitialModel(ProtInitialVolume):
+class ProtCryoSparcInitialModel(ProtInitialVolume, ProtClassify3D):
     """    
     Generate a 3D initial model _de novo_ from 2D particles using
     CryoSparc Stochastic Gradient Descent (SGD) algorithm.
@@ -51,7 +52,8 @@ class ProtCryoSparcInitialModel(ProtInitialVolume):
         """ Centralize how files are called within the protocol. """
         myDict = {
                   'input_particles': self._getPath('input_particles.star'),
-                  'out_particles': self._getPath() + '/output_particle.star'
+                  'out_particles': self._getPath() + '/output_particle.star',
+                  'out_class': self._getPath() + '/output_class.star'
                   }
         self._updateFilenamesDict(myDict)
 
@@ -328,27 +330,37 @@ class ProtCryoSparcInitialModel(ProtInitialVolume):
         os.system("ln -s " + self._ssd + "/" + self.projectName + '/' +
                   self.runAbinit + " " + self._getExtraPath())
 
+        # Create model files for 3D classiffication
+        with open(self._getFileName('out_class'), 'w') as output_file:
+            output_file.write('\n')
+            output_file.write('data_images')
+            output_file.write('\n\n')
+            output_file.write('loop_')
+            output_file.write('\n')
+            output_file.write('_rlnReferenceImage')
+            output_file.write('\n')
+            for i in range(int(self.abinit_K.get())):
+                output_file.write("%02d"%(i+1)+"@"+self._getExtraPath() + "/" + self.runAbinit + "/cryosparc_" +\
+                self.projectName+"_"+self.runAbinit+"_class_%02d"%i+"_final_volume.mrc\n")
        
         imgSet = self._getInputParticles()
-        volumes = self._getVolumes()
+        classes3D = self._createSetOfClasses3D(imgSet)
+        self._fillClassesFromIter(classes3D, self._getFileName('out_particles'))
 
-        outImgSet = self._createSetOfParticles()
-        outImgSet.copyInfo(imgSet)
-        self._fillDataFromIter(outImgSet)
+        self._defineOutputs(outputClasses=classes3D)
+        self._defineSourceRelation(self.inputParticles, classes3D)
 
-        if len(volumes) > 1:
-            output = self._createSetOfVolumes()
-            output.setSamplingRate(imgSet.getSamplingRate())
-            for vol in volumes:
-                output.append(vol)
-            self._defineOutputs(outputVolumes=output)
-        else:
-            output = volumes[0]
-            self._defineOutputs(outputVolume=output)
-
-        self._defineSourceRelation(self.inputParticles, output)
-        self._defineOutputs(outputParticles=outImgSet)
-        self._defineTransformRelation(self.inputParticles, outImgSet)
+        # create a SetOfVolumes and define its relations
+        volumes = self._createSetOfVolumes()
+        volumes.setSamplingRate(imgSet.getSamplingRate())
+        
+        for class3D in classes3D:
+            vol = class3D.getRepresentative()
+            vol.setObjId(class3D.getObjId())
+            volumes.append(vol)
+        
+        self._defineOutputs(outputVolumes=volumes)
+        self._defineSourceRelation(self.inputParticles, volumes)
     
     # --------------------------- INFO functions -------------------------------
     def _validate(self):
@@ -363,36 +375,40 @@ class ProtCryoSparcInitialModel(ProtInitialVolume):
     def _getInputParticles(self):
         return self.inputParticles.get()
 
-    def _getVolumes(self):
-        """ Return the list of volumes generated.
-        The number of volumes in the list will be equal to
-        the number of classes requested by the user in the protocol. """
-        # Provide 1 as default value for making it backward compatible
-        k = self.getAttributeValue('abinit_K', 1)
-        pixelSize = self._getInputParticles().getSamplingRate()
-        volumes = []
+    def _loadClassesInfo(self, filename):
+        """ Read some information about the produced CryoSparc Classes
+        from the star file.
+        """
+        self._classesInfo = {}  # store classes info, indexed by class id
+         
+        modelStar = md.MetaData(filename)
+        
+        for classNumber, row in enumerate(md.iterRows(modelStar)):
+            index, fn = relionPlugin.relionToLocation(row.getValue('rlnReferenceImage'))
+            # Store info indexed by id, we need to store the row.clone() since
+            # the same reference is used for iteration            
+            self._classesInfo[classNumber+1] = (index, fn, row.clone())
 
-        for i in range(1, k + 1):
-            vol = Volume()
-            fnVol = self._getExtraPath() + "/" + self.runAbinit + "/cryosparc_" +\
-            self.projectName+"_"+self.runAbinit+"_class_00_final_volume.mrc"
-            vol.setFileName(fnVol)
-            vol.setSamplingRate(pixelSize)
-            volumes.append(vol)
+    def _fillClassesFromIter(self, clsSet, filename):
+        """ Create the SetOfClasses3D """
+        self._loadClassesInfo(self._getFileName('out_class'))
+        outImgsFn = self._getFileName('out_class')
+        clsSet.classifyItems(updateItemCallback=self._updateParticle,
+                             updateClassCallback=self._updateClass,
+                             itemDataIterator=md.iterRows(filename,
+                                                          sortByLabel=md.RLN_IMAGE_ID))
+    
+    def _updateParticle(self, item, row):
+        item.setClassId(row.getValue(md.RLN_PARTICLE_CLASS))
+        item.setTransform(relionPlugin.rowToAlignment(row, ALIGN_PROJ))
 
-        return volumes
-    def _fillDataFromIter(self, imgSet):
-        outImgsFn = self._getFileName('out_particles')
-        imgSet.setAlignmentProj()
-        imgSet.copyItems(self._getInputParticles(),
-                         updateItemCallback=self._createItemMatrix,
-                         itemDataIterator=md.iterRows(outImgsFn,
-                                                      sortByLabel=md.RLN_IMAGE_ID))
-
-    def _createItemMatrix(self, item, row):
-        from pyworkflow.em import ALIGN_PROJ
-
-        relionPlugin.createItemMatrix(item, row, align=ALIGN_PROJ)
+    def _updateClass(self, item):
+        classId = item.getObjId()
+        if classId in self._classesInfo:
+            index, fn, row = self._classesInfo[classId]
+            fn += ":mrc"
+            item.setAlignmentProj()
+            item.getRepresentative().setLocation(index, fn)
 
     def _importParticles(self):
         """
