@@ -127,15 +127,13 @@ class ProtCryoSparcInitialModel(ProtInitialVolume):
                       help='(Experimental) Estimate and compute optimal scales '
                            'per image')
 
-        form.addParam('abinit_mom', IntParam, default=0,
+        form.addParam('abinit_mom', FloatParam, default=0,
                       expertLevel=LEVEL_ADVANCED,
-                      validators=[Positive],
                       label='SGD Momentum:',
                       help='Momentum for stochastic gradient descent')
 
-        form.addParam('abinit_sparsity', IntParam, default=0,
+        form.addParam('abinit_sparsity', FloatParam, default=0,
                       expertLevel=LEVEL_ADVANCED,
-                      validators=[Positive],
                       label='Sparsity prior:',
                       help='')
 
@@ -198,7 +196,6 @@ class ProtCryoSparcInitialModel(ProtInitialVolume):
 
         form.addParam('abinit_class_anneal_beta', FloatParam, default=0.1,
                       expertLevel=LEVEL_ADVANCED,
-                      validators=[Positive],
                       label='Class similarity:',
                       help='Expected similarity of structures from different '
                            'classes. A number between 0 and 1. 0 means classes '
@@ -225,7 +222,6 @@ class ProtCryoSparcInitialModel(ProtInitialVolume):
                            'auto-tuning initial noise sigma-scale)')
 
         form.addParam('abinit_symmetry', StringParam, default="C1",
-                      validators=[Positive],
                       label='Symmetry:',
                       help='Symmetry enforced (C, D, I, O, T). Eg. C1, D7, C4 '
                            'etc. Enforcing symmetry above C1 is not '
@@ -300,6 +296,7 @@ class ProtCryoSparcInitialModel(ProtInitialVolume):
         """ Create the input file in STAR format as expected by Relion.
         If the input particles comes from Relion, just link the file. 
         """
+        print(utils.greenStr("Importing Particles..."))
         imgSet = self._getInputParticles()
         relionPlugin.writeSetOfParticles(imgSet,
                                          self._getFileName('input_particles'),
@@ -311,20 +308,20 @@ class ProtCryoSparcInitialModel(ProtInitialVolume):
 
     def processStep(self):
 
-        print("Ab Initial Model Generation Started...")
+        print(utils.greenStr("Ab Initial Model Generation Started..."))
         self.runAbinit = self.doRunAbinit()[-1].split()[-1]
 
         while getJobStatus(self.projectName, self.runAbinit) != 'completed':
             waitJob(self.projectName, self.runAbinit)
 
     def createOutputStep(self):
-
+        print (utils.greenStr("Creating the output..."))
         _program2 = os.path.join(os.environ['PYEM_DIR'], 'csparc2star.py')
 
         self.runJob(_program2, self._ssd + '/' + self.projectName + '/' +
                     self.runAbinit + "/cryosparc_" +
                     self.projectName + "_" + self.runAbinit +
-                    "_class_00_final_particles.cs" + " " +
+                    "_final_particles.cs" + " " +
                     self._getFileName('out_particles'), numberOfMpi=1)
 
         # Link the folder on SSD to scipion directory
@@ -333,18 +330,23 @@ class ProtCryoSparcInitialModel(ProtInitialVolume):
 
        
         imgSet = self._getInputParticles()
-        vol = Volume()
-        fnVol = self._getExtraPath() + "/" + self.runAbinit + "/cryosparc_" +\
-                self.projectName+"_"+self.runAbinit+"_class_00_final_volume.mrc"
-        vol.setFileName(fnVol)
-        vol.setSamplingRate(imgSet.getSamplingRate())
+        volumes = self._getVolumes()
 
         outImgSet = self._createSetOfParticles()
         outImgSet.copyInfo(imgSet)
         self._fillDataFromIter(outImgSet)
 
-        self._defineOutputs(outputVolume=vol)
-        self._defineSourceRelation(self.inputParticles, vol)
+        if len(volumes) > 1:
+            output = self._createSetOfVolumes()
+            output.setSamplingRate(imgSet.getSamplingRate())
+            for vol in volumes:
+                output.append(vol)
+            self._defineOutputs(outputVolumes=output)
+        else:
+            output = volumes[0]
+            self._defineOutputs(outputVolume=output)
+
+        self._defineSourceRelation(self.inputParticles, output)
         self._defineOutputs(outputParticles=outImgSet)
         self._defineTransformRelation(self.inputParticles, outImgSet)
     
@@ -361,6 +363,24 @@ class ProtCryoSparcInitialModel(ProtInitialVolume):
     def _getInputParticles(self):
         return self.inputParticles.get()
 
+    def _getVolumes(self):
+        """ Return the list of volumes generated.
+        The number of volumes in the list will be equal to
+        the number of classes requested by the user in the protocol. """
+        # Provide 1 as default value for making it backward compatible
+        k = self.getAttributeValue('abinit_K', 1)
+        pixelSize = self._getInputParticles().getSamplingRate()
+        volumes = []
+
+        for i in range(1, k + 1):
+            vol = Volume()
+            fnVol = self._getExtraPath() + "/" + self.runAbinit + "/cryosparc_" +\
+            self.projectName+"_"+self.runAbinit+"_class_00_final_volume.mrc"
+            vol.setFileName(fnVol)
+            vol.setSamplingRate(pixelSize)
+            volumes.append(vol)
+
+        return volumes
     def _fillDataFromIter(self, imgSet):
         outImgsFn = self._getFileName('out_particles')
         imgSet.setAlignmentProj()
@@ -381,7 +401,6 @@ class ProtCryoSparcInitialModel(ProtInitialVolume):
         self._program = getCryosparcProgram()
         self._user = getCryosparcUser()
         self._ssd = getCryosparcSSD()
-        print("Importing Particles")
 
         # create empty project
         self.a = createEmptyProject()

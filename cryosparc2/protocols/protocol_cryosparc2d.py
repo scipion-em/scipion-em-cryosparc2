@@ -133,7 +133,7 @@ class ProtCryo2D(ProtClassify2D):
                            'If False, weight every pixel by its greyscale '
                            'density value.')
 
-        form.addParam('forceMaxover', BooleanParam, default=False,
+        form.addParam('forceMaxover', BooleanParam, default=True,
                       label='Force Max over poses/shifts',
                       help='If True, maximize over poses and shifts when '
                            'aligning particles to references. If False, '
@@ -183,12 +183,12 @@ class ProtCryo2D(ProtClassify2D):
                            'this can be reduced to speed up computation and '
                            'reduce memory requirements.')
 
-        form.addParam('useFRCRegularized', BooleanParam, default=False,
+        form.addParam('useFRCRegularized', BooleanParam, default=True,
                       label='Use FRC based regularizer',
                       help='Use an FRC based regularizer to avoid overfitting '
                            'during classification.')
 
-        form.addParam('useFullFRC', BooleanParam, default=False,
+        form.addParam('useFullFRC', BooleanParam, default=True,
                       label='Use full FRC')
 
         form.addParam('iterationToStartAnneling', IntParam, default=2,
@@ -363,7 +363,6 @@ class ProtCryo2D(ProtClassify2D):
             # the same reference is used for iteration
             self._classesInfo[classNumber + 1] = (index, fn, row.clone())
         self._numClass = index
-        print("number of class is "+str(index))
 
     def _fillClassesFromLevel(self, clsSet):
         """ Create the SetOfClasses2D from a given iteration. """
