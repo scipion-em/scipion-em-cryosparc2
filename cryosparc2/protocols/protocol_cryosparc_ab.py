@@ -1,8 +1,10 @@
 # **************************************************************************
 # *
 # *  Authors:     Szu-Chi Chung (phonchi@stat.sinica.edu.tw) 
+# *               Yunior C. Fonseca Reyna (cfonseca@cnb.csic.es)
 # *
 # * SABID Laboratory, Institute of Statistical Science, Academia Sinica
+# * Unidad de  Bioinformatica of Centro Nacional de Biotecnologia , CSIC
 # *
 # * This program is free software; you can redistribute it and/or modify
 # * it under the terms of the GNU General Public License as published by
