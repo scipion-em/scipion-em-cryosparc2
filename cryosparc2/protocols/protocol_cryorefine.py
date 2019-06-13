@@ -321,8 +321,9 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
 
         self.vol_fn = os.path.join(os.getcwd(),
                                    relionPlugin.convertBinaryVol(self.referenceVolume.get(),
-                                                                 self._getTmpPath()))
-        self.importVolume = self.doImportVolumes()[-1].split()[-1]
+                                                                 self._getExtraPath()))
+        self.importVolume = self.doImportVolumes()
+        self.importVolume = self.importVolume[-1].split()[-1]
         print('Imported volume:', self.importVolume)
 
     def processStep(self):
@@ -353,6 +354,7 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
         # Get the metadata information from stream.log
         with open(self._getFileName('stream_log')) as f:
             data = f.readlines()
+        print('Data: ', data)
         x = ast.literal_eval(data[0])
 
         # Find the ID of last iteration
@@ -520,19 +522,16 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
         """
         :return:
         """
-        map = 'map'
-        import_volumes_cmd = (self._program +
-                              ' %sdo_import_volumes("%s","%s", "%s+%s%s", '
-                              '"%s%s%s", %s%s%s, %s%s%s)%s'
-                              % ("'", self.projectName, self.workSpaceName,
-                                 "'", self._user, "'", "'", self.vol_fn, "'",
-                                 "'", map, "'", "'",
-                                 str(self._getInputParticles().getSamplingRate()),
-                                 "'", "'"))
 
-        print(import_volumes_cmd)
+        className = "import_volumes"
+        params = {"volume_blob_path": str(self.vol_fn),
+                  "volume_out_name": "map",
+                  "volume_psize": str(self._getInputParticles().getSamplingRate())}
 
-        return commands.getstatusoutput(import_volumes_cmd)
+        return doJob(className, self.projectName, self.workSpaceName,
+                     str(params).replace('\'', '"'), '{}')
+
+
 
     def doRunRefine(self):
         """
@@ -543,7 +542,7 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
                                         self.workSpaceName + "\", \"\'+" +
                                         self._user + "\'\", \"" + self.par +
                                         "\", \"" + self.vol + "\", None," +
-                                        "\"\'" + str(self.symmetryGroup.get()) +
+                                        "\"\'" + str(self.refine_symmetry.get()) +
                                         "\'\")\'")
 
 
