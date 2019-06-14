@@ -128,13 +128,13 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
         #               expertLevel=LEVEL_ADVANCED,
         #               label="Highpass resolution (A)")
 
-        # form.addParam('refine_SPW', IntParam, default=None,
-        #               expertLevel=LEVEL_ADVANCED,
-        #               label="Use SPW")
-
-        form.addParam('refine_particle_mw_kda', BooleanParam, default=False,
+        form.addParam('refine_SPW', BooleanParam, default=False,
                       expertLevel=LEVEL_ADVANCED,
-                      label="Particle MW (KDa)")
+                      label="Use SPW")
+
+        # form.addParam('refine_particle_mw_kda', IntParam, default=None,
+        #               expertLevel=LEVEL_ADVANCED,
+        #               label="Particle MW (KDa)")
 
         form.addParam('refine_FSC_weight', StringParam, default='fsc_loosemask',
                       expertLevel=LEVEL_ADVANCED,
@@ -290,7 +290,7 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
 
         form.addSection(label='Compute settings')
 
-        form.addParam('compute_settings', BooleanParam, default=True,
+        form.addParam('compute_use_ssd', BooleanParam, default=True,
                       label='Cache particle images on SSD:',
                       help='Use the SSD to cache particles. Speeds up '
                            'processing significantly')
@@ -324,15 +324,13 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
                                                                  self._getExtraPath()))
         self.importVolume = self.doImportVolumes()
         self.importVolume = self.importVolume[-1].split()[-1]
-        print('Imported volume:', self.importVolume)
 
     def processStep(self):
-        self.vol = self.importVolume + '.imported_volume.map'
+        self.vol = self.importVolume + '.imported_volume'
 
         while getJobStatus(self.projectName, self.importedParticles) != 'completed':
             waitJob(self.projectName, self.importedParticles)
 
-        print('Importing volume started...')
         while getJobStatus(self.projectName, self.importVolume) != 'completed':
             waitJob(self.projectName, self.importVolume)
 
@@ -474,8 +472,7 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
                                  abs_blob_path=None, psize_A=None)
         returns the new uid of the job that was created
         """
-        cmd = """ 'do_import_particles_star("%s","%s", "'+%s'", "'%s'", "'%s'", 
-                                            "'%s'")'"""
+        cmd = """ 'do_import_particles_star("%s","%s", "'+%s'", "'%s'", "'%s'", "'%s'")'"""
         import_particles_cmd = (self._program + cmd % (
             self.projectName, self.workSpaceName,
             self._user,
@@ -487,35 +484,6 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
         ))
         print(utils.greenStr(import_particles_cmd))
         return commands.getstatusoutput(import_particles_cmd)
-
-    def _defineParamsName(self):
-        """ Define a list with all protocol parameters names"""
-        self._paramsName = ['refine_N', 'refine_symmetry',
-                            'refine_symmetry_do_align',
-                            'refine_do_init_scale_est',
-                            'refine_num_final_iterations',
-                            'refine_res_align_max', 'refine_res_init',
-                            'refine_res_gsfsc_split',
-                            'refine_highpass_res', 'refine_SPW',
-                            'refine_particle_mw_kda',
-                            'refine_FSC_weight', 'refine_bnb_params',
-                            'refine_clip',
-                            'refine_window', 'refine_skip_premult',
-                            'refine_ignore_dc',
-                            'refine_batchsize_init',
-                            'refine_batchsize_snrfactor',
-                            'refine_scale_min', 'refine_scale_align_use_prev',
-                            'refine_scale_ctf_use_current',
-                            'refine_scale_start_iter',
-                            'refine_noise_model', 'refine_noise_priorw',
-                            'refine_noise_initw',
-                            'refine_noise_init_sigmascale',
-                            'refine_minisize', 'refine_mask',
-                            'refine_dynamic_mask_thresh_factor',
-                            'refine_dynamic_mask_near_ang',
-                            'refine_dynamic_mask_far_ang',
-                            'refine_dynamic_mask_start_res',
-                            'refine_dynamic_mask_use_abs', 'compute_settings']
 
     def doImportVolumes(self):
         """
@@ -530,19 +498,60 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
         return doJob(className, self.projectName, self.workSpaceName,
                      str(params).replace('\'', '"'), '{}')
 
+    def _defineParamsName(self):
+        """ Define a list with all protocol parameters names"""
+        self._paramsName = ['refine_symmetry',
+                            'refine_symmetry_do_align',
+                            'refine_do_init_scale_est',
+                            'refine_num_final_iterations',
+                            'refine_res_init',
+                            'refine_res_gsfsc_split',
+                            'refine_FSC_weight', 'refine_bnb_params',
+                            'refine_clip',
+                            'refine_window', 'refine_skip_premult',
+                            'refine_ignore_dc',
+                            'refine_batchsize_init',
+                            'refine_batchsize_snrfactor',
+                            'refine_batchsize_epsilon',
+                            'refine_scale_min', 'refine_scale_align_use_prev',
+                            'refine_scale_ctf_use_current',
+                            'refine_scale_start_iter',
+                            'refine_noise_model', 'refine_noise_priorw',
+                            'refine_noise_initw',
+                            'refine_noise_init_sigmascale',
+                            'refine_minisize', 'refine_mask',
+                            'refine_dynamic_mask_thresh_factor',
+                            'refine_dynamic_mask_near_ang',
+                            'refine_dynamic_mask_far_ang',
+                            'refine_dynamic_mask_start_res',
+                            'refine_dynamic_mask_use_abs',
+                            'compute_use_ssd']
 
 
     def doRunRefine(self):
         """
         :return:
         """
-        return commands.getstatusoutput(self._program + " \' do_run_refine(\"" +
-                                        self.projectName + "\", \"" +
-                                        self.workSpaceName + "\", \"\'+" +
-                                        self._user + "\'\", \"" + self.par +
-                                        "\", \"" + self.vol + "\", None," +
-                                        "\"\'" + str(self.refine_symmetry.get()) +
-                                        "\'\")\'")
+        className = "homo_refine"
+        input_group_conect = {"particles": str(self.par),
+                              "volume": str(self.vol)}
+        # {'particles' : 'JXX.imported_particles' }
+        params = {}
+
+        for paramName in self._paramsName:
+            params[str(paramName)] = str(self.getAttributeValue(paramName))
+
+        do_job_cmd = (getCryosparcProgram() +
+                      ' %sdo_job("%s","%s","%s", "%s+%s%s", %s, %s)%s' %
+                      ("'", className, self.projectName, self.workSpaceName, "'",
+                       getCryosparcUser(), "'", str(params).replace('\'', '"'), str(input_group_conect).replace('\'', '"'),
+                       "'"))
+
+        print(do_job_cmd)
+        return doJob(className, self.projectName, self.workSpaceName,
+                     str(params).replace('\'', '"'),
+                     str(input_group_conect).replace('\'', '"'))
+
 
 
 

@@ -78,6 +78,8 @@ def doJob(jobType, projectName, workSpaceName, params, input_group_conect):
                   ' %sdo_job("%s","%s","%s", "%s+%s%s", %s, %s)%s' %
                   ("'", jobType, projectName, workSpaceName, "'",
                    getCryosparcUser(), "'", params, input_group_conect, "'"))
+
+    print(utils.greenStr(do_job_cmd))
     return commands.getstatusoutput(do_job_cmd)
 
 
