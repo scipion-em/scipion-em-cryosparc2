@@ -541,13 +541,6 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
         for paramName in self._paramsName:
             params[str(paramName)] = str(self.getAttributeValue(paramName))
 
-        do_job_cmd = (getCryosparcProgram() +
-                      ' %sdo_job("%s","%s","%s", "%s+%s%s", %s, %s)%s' %
-                      ("'", className, self.projectName, self.workSpaceName, "'",
-                       getCryosparcUser(), "'", str(params).replace('\'', '"'), str(input_group_conect).replace('\'', '"'),
-                       "'"))
-
-        print(do_job_cmd)
         return doJob(className, self.projectName, self.workSpaceName,
                      str(params).replace('\'', '"'),
                      str(input_group_conect).replace('\'', '"'))
