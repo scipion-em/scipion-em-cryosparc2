@@ -42,7 +42,7 @@ relionPlugin = importFromPlugin("relion.convert", doRaise=True)
 
 import os
 import commands
-import ast
+import ast, json
 
 
 class ProtCryoSparcRefine3D(ProtRefine3D):
@@ -326,7 +326,7 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
         self.importVolume = self.importVolume[-1].split()[-1]
 
     def processStep(self):
-        self.vol = self.importVolume + '.imported_volume'
+        self.vol = self.importVolume + '.imported_volume.map'
 
         while getJobStatus(self.projectName, self.importedParticles) != 'completed':
             waitJob(self.projectName, self.importedParticles)
@@ -352,7 +352,8 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
         # Get the metadata information from stream.log
         with open(self._getFileName('stream_log')) as f:
             data = f.readlines()
-        x = ast.literal_eval(data[0])
+
+        x = ast.literal_eval(data[1])
 
         # Find the ID of last iteration
         for y in x:
