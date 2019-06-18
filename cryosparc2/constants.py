@@ -29,3 +29,7 @@ CRYOSPARC_HOME = 'CRYOSPARC_HOME'
 
 # Supported versions:
 V2_5_0 = 'V2_5_0'
+
+# Suffix for all project
+
+suffix = 'ProjCryoSparc_'

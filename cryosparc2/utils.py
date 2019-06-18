@@ -26,7 +26,7 @@
 # **************************************************************************
 import os
 import commands
-from pyworkflow.utils import utils
+import pyworkflow.utils as pwutils
 
 def getCryosparcProgram():
     return os.path.join(os.environ['CRYOSPARC_DIR'],
@@ -41,17 +41,36 @@ def getCryosparcSSD():
     return os.environ['CRYOSSD_DIR']
 
 
-def createEmptyProject():
-    """ create_empty_project(owner_user_id, project_container_dir, title=None,
+def createEmptyProject(projectDir, projectTitle):
+    """
+    create_empty_project(owner_user_id, project_container_dir, title=None,
                             desc=None)
     """
 
     create_empty_project_cmd = (getCryosparcProgram() +
-                                ' %screate_empty_project("%s+%s%s", "%s")%s '
+                                ' %screate_empty_project("%s+%s%s", "%s", "%s")%s '
                                 % ("'", "'", str(getCryosparcUser()), "'",
-                                str(getCryosparcSSD()), "'"))
+                                   str(projectDir), str(projectTitle), "'"))
 
     return commands.getstatusoutput(create_empty_project_cmd)
+
+
+def createProjectDir(project_container_dir):
+    """
+    Given a "root" directory, create a project (PXXX) dir if it doesn't already
+     exist
+    :param project_container_dir: the "root" directory in which to create the
+                                  project (PXXX) directory
+    :param projectName: the name of the project
+    :returns: str - the final path of the new project dir with shell variables
+              still in the returned path (the path should be expanded every
+              time it is used)
+    """
+    create_project_dir_cmd = (getCryosparcProgram() +
+                             ' %scheck_or_create_project_container_dir("%s%s%s")%s '
+                             % ("'", "'", project_container_dir, "'", "'"))
+
+    return commands.getstatusoutput(create_project_dir_cmd)
 
 
 def createEmptyWorkSpace(projectName):
@@ -65,7 +84,6 @@ def createEmptyWorkSpace(projectName):
                              ' %screate_empty_workspace("%s", "%s+%s%s")%s '
                              % ("'", projectName, "'", str(getCryosparcUser()),
                                 "'", "'"))
-
     return commands.getstatusoutput(create_work_space_cmd)
 
 
@@ -79,7 +97,7 @@ def doJob(jobType, projectName, workSpaceName, params, input_group_conect):
                   ("'", jobType, projectName, workSpaceName, "'",
                    getCryosparcUser(), "'", params, input_group_conect, "'"))
 
-    print(utils.greenStr(do_job_cmd))
+    print(pwutils.greenStr(do_job_cmd))
     return commands.getstatusoutput(do_job_cmd)
 
 

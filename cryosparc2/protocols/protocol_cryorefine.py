@@ -35,10 +35,10 @@ from pyworkflow.protocol.params import (PointerParam, FloatParam, LabelParam,
 from pyworkflow.em.data import Volume, FSC
 from pyworkflow.em.protocol import ProtRefine3D
 from pyworkflow.em import ALIGN_PROJ
-from pyworkflow.utils import importFromPlugin
 from cryosparc2.utils import *
+from cryosparc2.constants import *
 
-relionPlugin = importFromPlugin("relion.convert", doRaise=True)
+relionPlugin = pwutils.importFromPlugin("relion.convert", doRaise=True)
 
 import os
 import commands
@@ -300,6 +300,7 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
     def _insertAllSteps(self):
         self._defineFileNames()
         self._defineParamsName()
+
         objId = self._getInputParticles().getObjId()
         self._insertFunctionStep("convertInputStep", objId)
         self._insertFunctionStep('processStep')
@@ -318,7 +319,6 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
                                          fillMagnification=True)
 
         self._importParticles()
-
         self.vol_fn = os.path.join(os.getcwd(),
                                    relionPlugin.convertBinaryVol(self.referenceVolume.get(),
                                                                  self._getExtraPath()))
@@ -363,15 +363,15 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
                     idd = y['imgfiles'][2]['fileid']
                     itera = z[-3:]
 
-        self.runJob(self._program2, self._ssd + '/' + self.projectName + '/' +
+        self.runJob(self._program2, self.projectPath + '/' + self.projectName + '/' +
                     self.runRefine + "/cryosparc_" +self.projectName + "_" +
                     self.runRefine+"_" + itera + "_particles.cs" + " " +
-                    self._getFileName('out_particles') +" -p " + self._ssd +
+                    self._getFileName('out_particles') +" -p " + self.projectPath +
                     "/" + self.projectName + '/' + self.runRefine +
                     "/passthrough_particles.cs", numberOfMpi=1)
 
         # Link the folder on SSD to scipion directory
-        os.system("ln -s " + self._ssd + "/" + self.projectName + '/' +
+        os.system("ln -s " + self.projectPath + "/" + self.projectName + '/' +
                   self.runRefine + " " + self._getExtraPath())
 
         fnVol = (self._getExtraPath() + "/" + self.runRefine + "/cryosparc_" +
@@ -451,10 +451,15 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
         self._program = getCryosparcProgram()
         self._user = getCryosparcUser()
         self._ssd = getCryosparcSSD()
-        print("Importing Particles")
 
+        # Create a cryoSPARC project dir
+        self.projectDirName = suffix + self.getProject().getShortName()
+        self.projectPath = pwutils.join(self._ssd, self.projectDirName)
+        self.projectDir = createProjectDir(self.projectPath)
+
+        print("Importing Particles")
         # create empty project
-        self.a = createEmptyProject()
+        self.a = createEmptyProject(self.projectPath, self.projectDirName)
         self.projectName = self.a[-1].split()[-1]
 
         # create empty workspace
@@ -483,7 +488,7 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
             self._getExtraPath()),
             str(self._getInputParticles().getSamplingRate())
         ))
-        print(utils.greenStr(import_particles_cmd))
+        print(pwutils.greenStr(import_particles_cmd))
         return commands.getstatusoutput(import_particles_cmd)
 
     def doImportVolumes(self):

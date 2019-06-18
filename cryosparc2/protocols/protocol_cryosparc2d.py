@@ -35,11 +35,10 @@ import pyworkflow.em.metadata as md
 from pyworkflow.em.protocol import ProtClassify2D, SetOfClasses2D
 from pyworkflow.protocol.params import (PointerParam, BooleanParam, FloatParam,
                                         IntParam, Positive, StringParam)
-from pyworkflow.utils import importFromPlugin, utils
-
 from cryosparc2.utils import *
+from cryosparc2.constants import *
 
-relionPlugin = importFromPlugin("relion.convert", doRaise=True)
+relionPlugin = pwutils.importFromPlugin("relion.convert", doRaise=True)
 
 
 class ProtCryo2D(ProtClassify2D):
@@ -238,7 +237,7 @@ class ProtCryo2D(ProtClassify2D):
         """ Create the input file in STAR format as expected by Relion.
         If the input particles comes from Relion, just link the file. 
         """
-        print(utils.greenStr("Importing Particles..."))
+        print(pwutils.greenStr("Importing Particles..."))
         imgSet = self._getInputParticles()
         relionPlugin.writeSetOfParticles(imgSet,
                                          self._getFileName('input_particles'),
@@ -252,7 +251,7 @@ class ProtCryo2D(ProtClassify2D):
         """
         Classify particles into multiples 2D classes
         """
-        print(utils.greenStr("2D Classifications Started..."))
+        print(pwutils.greenStr("2D Classifications Started..."))
         self.runClass2D = self.doRunClass2D()[-1].split()[-1]
         while getJobStatus(self.projectName, self.runClass2D) != 'completed':
             waitJob(self.projectName, self.runClass2D)
@@ -261,26 +260,26 @@ class ProtCryo2D(ProtClassify2D):
         """
         Create the protocol output. Convert cryosparc file to Relion file
         """
-        print (utils.greenStr("Creating the output..."))
+        print (pwutils.greenStr("Creating the output..."))
         _program2 = os.path.join(os.environ['PYEM_DIR'], 'csparc2star.py')
         _numberOfIter = str("_00" + str(self.numberOnlineEMIterator.get()))
         if self.numberOnlineEMIterator.get() > 9:
             _numberOfIter = str("_0" + str(self.numberOnlineEMIterator.get()))
 
-        self.runJob(_program2, self._ssd+'/' + self.projectName + '/' +
+        self.runJob(_program2, self.projectPath+'/' + self.projectName + '/' +
                     self.runClass2D + "/cryosparc_" + self.projectName+"_" +
                     self.runClass2D + _numberOfIter + "_particles.cs" + " " +
                     self._getFileName('out_particles'),
                     numberOfMpi=1)
 
-        self.runJob(_program2, self._ssd + '/' + self.projectName + '/' +
+        self.runJob(_program2, self.projectPath + '/' + self.projectName + '/' +
                     self.runClass2D + "/cryosparc_" + self.projectName + "_" +
                     self.runClass2D + _numberOfIter + "_class_averages.cs" +
                     " " + self._getFileName('out_class'),
                     numberOfMpi=1)
 
         # Link the folder on SSD to scipion directory
-        os.system("ln -s " + self._ssd + "/" + self.projectName + '/' +
+        os.system("ln -s " + self.projectPath + "/" + self.projectName + '/' +
                   self.runClass2D + " " + self._getExtraPath())
 
         with open(self._getFileName('out_class'), 'r') as input_file, \
@@ -396,8 +395,14 @@ class ProtCryo2D(ProtClassify2D):
         self._user = getCryosparcUser()
         self._ssd = getCryosparcSSD()
 
+        # Create a cryoSPARC project dir
+        self.projectDirName = suffix + self.getProject().getShortName()
+        self.projectPath = pwutils.join(self._ssd, self.projectDirName)
+        self.projectDir = createProjectDir(self.projectPath)
+
+        print("Importing Particles")
         # create empty project
-        self.a = createEmptyProject()
+        self.a = createEmptyProject(self.projectPath, self.projectDirName)
         self.projectName = self.a[-1].split()[-1]
 
         # create empty workspace
@@ -416,8 +421,7 @@ class ProtCryo2D(ProtClassify2D):
                                  abs_blob_path=None, psize_A=None)
         returns the new uid of the job that was created
         """
-        cmd = """ 'do_import_particles_star("%s","%s", "'+%s'", "'%s'", "'%s'", 
-                                            "'%s'")'"""
+        cmd = """ 'do_import_particles_star("%s","%s", "'+%s'", "'%s'", "'%s'", "'%s'")'"""
         import_particles_cmd = (self._program + cmd % (
             self.projectName, self.workSpaceName,
             self._user,
@@ -427,7 +431,7 @@ class ProtCryo2D(ProtClassify2D):
             self._getExtraPath()),
             str(self._getInputParticles().getSamplingRate())
         ))
-        print(utils.greenStr(import_particles_cmd))
+        print(pwutils.greenStr(import_particles_cmd))
         return commands.getstatusoutput(import_particles_cmd)
 
     def doRunClass2D(self):
