@@ -353,7 +353,7 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
         with open(self._getFileName('stream_log')) as f:
             data = f.readlines()
 
-        x = ast.literal_eval(data[1])
+        x = ast.literal_eval(data[0])
 
         # Find the ID of last iteration
         for y in x:
