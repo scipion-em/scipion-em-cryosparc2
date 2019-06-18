@@ -28,6 +28,7 @@ import os
 import commands
 import pyworkflow.utils as pwutils
 
+
 def getCryosparcProgram():
     return os.path.join(os.environ['CRYOSPARC_DIR'],
                         'cryosparc2_master/bin/cryosparcm cli')
@@ -39,6 +40,16 @@ def getCryosparcUser():
 
 def getCryosparcSSD():
     return os.environ['CRYOSSD_DIR']
+
+
+def getProjectPath(projectDir):
+    """
+    Gets all projects of given path .
+    folderPath -- Folder path to get subfolders.
+    returns -- Set with all subfolders.
+    """
+    folderPaths = os.listdir(projectDir)
+    return folderPaths
 
 
 def createEmptyProject(projectDir, projectTitle):
@@ -73,7 +84,7 @@ def createProjectDir(project_container_dir):
     return commands.getstatusoutput(create_project_dir_cmd)
 
 
-def createEmptyWorkSpace(projectName):
+def createEmptyWorkSpace(projectName, workspaceTitle, workspaceComment):
     """
     create_empty_workspace(project_uid, created_by_user_id,
                            created_by_job_uid=None,
@@ -81,9 +92,11 @@ def createEmptyWorkSpace(projectName):
     returns the new uid of the workspace that was created
     """
     create_work_space_cmd = (getCryosparcProgram() +
-                             ' %screate_empty_workspace("%s", "%s+%s%s")%s '
+                             ' %screate_empty_workspace("%s", "%s+%s%s", "%s", "%s", "%s")%s '
                              % ("'", projectName, "'", str(getCryosparcUser()),
-                                "'", "'"))
+                                "'", "None", str(workspaceTitle),
+                                str(workspaceComment), "'"))
+    print(create_work_space_cmd)
     return commands.getstatusoutput(create_work_space_cmd)
 
 

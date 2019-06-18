@@ -400,14 +400,20 @@ class ProtCryo2D(ProtClassify2D):
         self.projectPath = pwutils.join(self._ssd, self.projectDirName)
         self.projectDir = createProjectDir(self.projectPath)
 
-        print("Importing Particles")
-        # create empty project
-        self.a = createEmptyProject(self.projectPath, self.projectDirName)
-        self.projectName = self.a[-1].split()[-1]
+        # create empty project or load an exists one
+        folderPaths = getProjectPath(self.projectPath)
+        if not folderPaths:
+            self.a = createEmptyProject(self.projectPath, self.projectDirName)
+            self.projectName = self.a[-1].split()[-1]
+        else:
+            self.projectName = folderPaths[0]
 
         # create empty workspace
-        self.b = createEmptyWorkSpace(self.projectName)
+        self.b = createEmptyWorkSpace(self.projectName, self.getRunName(),
+                                      self.getObjComment())
         self.workSpaceName = self.b[-1].split()[-1]
+
+        print("Importing Particles")
 
         # import_particles_star
         self.c = self.doImportParticlesStar()
