@@ -15,9 +15,9 @@ cryo-EM, along with a browser based user interface and command line tools.
 You will need to use `2.0.0 <https://github.com/I2PC/scipion/releases/tag/v2.0>`_ version of Scipion to run these protocols.
 
 For now, is recommended that the plugin be installed in developer mode.
-For that, follow the following instructions:
+For that, follow these instructions:
 
-1. Clone or download the plugin repository located in `cryoSPARC plugin <https://github.com/scipion-em/scipion-em-cryosparc2>`_
+1. Clone or download the plugin repository
 
 .. code-block::
 
@@ -39,7 +39,7 @@ independent installation of CryoSPARC software suite by the user is required
 before running the programs.
 
 To install CryoSPARC v2 software review the detailed system requirements and install
-instructions available `here <https://cryosparc.com/docs/reference/install/>`_
+instructions available `here <https://cryosparc.com/docs/reference/install/>`_.
 These cover workstation and cluster installs, file configuration and how to update
 cryoSPARC v2 when new versions become available.
 
