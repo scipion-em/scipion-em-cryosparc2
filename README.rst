@@ -12,7 +12,7 @@ cryo-EM, along with a browser based user interface and command line tools.
 **Install this plugin**
 -----------------------
 
-You will need to use `2.0.0 <https://github.com/I2PC/scipion/releases/tag/v2.0>`_ version of Scipion to run these protocols.
+You will need to use `2.0.0 <https://scipion-em.github.io/docs/release-2.0.0/docs/scipion-modes/how-to-install.html>`_ version of Scipion to run these protocols.
 
 For now, is recommended that the plugin be installed in developer mode.
 For that, follow these instructions:
