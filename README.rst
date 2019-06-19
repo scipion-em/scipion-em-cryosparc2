@@ -30,17 +30,36 @@ For that, follow these instructions:
     scipion installp -p local/path/to/scipion-em-cryosparc2 --devel
 
 
+3. Install **CryoSPARC software**
 
-**CryoSPARC software**
-----------------------
+    CryoSPARC v2 software will *NOT* be installed automatically with the plugin. The
+    independent installation of CryoSPARC software suite by the user is required
+    before running the programs.
 
-CryoSPARC v2 software will *NOT* be installed automatically with the plugin. The
-independent installation of CryoSPARC software suite by the user is required
-before running the programs.
+    To install CryoSPARC v2 software review the detailed system requirements and install
+    instructions available `here <https://cryosparc.com/docs/reference/install/>`_.
+    These cover workstation and cluster installs, file configuration and how to update
+    cryoSPARC v2 when new versions become available.
 
-To install CryoSPARC v2 software review the detailed system requirements and install
-instructions available `here <https://cryosparc.com/docs/reference/install/>`_.
-These cover workstation and cluster installs, file configuration and how to update
-cryoSPARC v2 when new versions become available.
+4. Download or clone **pyem** repository (This step is mandatory for now. Then
+   it will be installed as a python module when installing the plugin)
+
+   **PyEM** is a collection of Python modules and command-line utilities for
+   electron microscopy of biological samples.
+
+   .. code-block::
+
+        git clone https://github.com/asarnow/pyem.git
+
+5. Add the following variables in the ``scipion.conf`` file:
+
+   .. code-block::
+
+       CRYOSPARC_DIR = <install_path>
+       CRYOSPARC_USER = <user name with which cryosparc was installed>
+       CRYOSSD_DIR = <path on the worker node to a writable directory residing on the local SSD>
+
+
+
 
 
