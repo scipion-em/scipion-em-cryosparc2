@@ -58,6 +58,7 @@ For that, follow these instructions:
        CRYOSPARC_DIR = <install_path>
        CRYOSPARC_USER = <user name with which cryosparc was installed>
        CRYOSSD_DIR = <path on the worker node to a writable directory residing on the local SSD>
+       PYEM_DIR = <pyem_path>
 
 
 
