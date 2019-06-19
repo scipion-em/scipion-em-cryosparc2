@@ -62,10 +62,8 @@ class Plugin(pyworkflow.em.Plugin):
     @classmethod
     def defineBinaries(cls, env):
 
-        pyemLibcmd = "git+https://github.com/asarnow/pyem"
-
-        env.addPipModule('pandas', version='0.24.2')
-        env.addPipModule('pyfftw', version='0.11.1')
+        pyemLibcmd = 'pip install git+https://github.com/asarnow/pyem'
+        env.addPipModule('pyem', version='0.4', pipCmd=pyemLibcmd)
 
 
 pyworkflow.em.Domain.registerPlugin(__name__)
