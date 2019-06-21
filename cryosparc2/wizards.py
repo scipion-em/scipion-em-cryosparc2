@@ -43,7 +43,8 @@ class ProtCryo2DNumberOfClassesWizard(Wizard):
         numberOfClasses = 64
 
         if protocol.inputParticles.hasValue():
-            numberOfClasses = int(protocol.inputParticles.get().getSize()/IMAGES_PER_CLASS)
+            if (protocol.inputParticles.get().getSize() > IMAGES_PER_CLASS):
+                numberOfClasses = int(protocol.inputParticles.get().getSize()/IMAGES_PER_CLASS)
 
         return numberOfClasses
 

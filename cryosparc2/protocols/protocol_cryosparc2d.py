@@ -35,6 +35,7 @@ import pyworkflow.em.metadata as md
 from pyworkflow.em.protocol import ProtClassify2D, SetOfClasses2D
 from pyworkflow.protocol.params import (PointerParam, BooleanParam, FloatParam,
                                         IntParam, Positive, StringParam)
+from cryosparc2.convert import *
 from cryosparc2.utils import *
 from cryosparc2.constants import *
 
@@ -261,22 +262,34 @@ class ProtCryo2D(ProtClassify2D):
         Create the protocol output. Convert cryosparc file to Relion file
         """
         print (pwutils.greenStr("Creating the output..."))
-        _program2 = os.path.join(os.environ['PYEM_DIR'], 'csparc2star.py')
         _numberOfIter = str("_00" + str(self.numberOnlineEMIterator.get()))
         if self.numberOnlineEMIterator.get() > 9:
             _numberOfIter = str("_0" + str(self.numberOnlineEMIterator.get()))
 
-        self.runJob(_program2, self.projectPath+'/' + self.projectName + '/' +
-                    self.runClass2D + "/cryosparc_" + self.projectName+"_" +
-                    self.runClass2D + _numberOfIter + "_particles.cs" + " " +
-                    self._getFileName('out_particles'),
-                    numberOfMpi=1)
+        csFile = os.path.join(self.projectPath, self.projectName, self.runClass2D,
+                              ("cryosparc_" + self.projectName+"_" +
+                               self.runClass2D + _numberOfIter + "_particles.cs"))
 
-        self.runJob(_program2, self.projectPath + '/' + self.projectName + '/' +
-                    self.runClass2D + "/cryosparc_" + self.projectName + "_" +
-                    self.runClass2D + _numberOfIter + "_class_averages.cs" +
-                    " " + self._getFileName('out_class'),
-                    numberOfMpi=1)
+        outputStarFn = self._getFileName('out_particles')
+        argsList = [csFile, outputStarFn]
+
+        parser = defineArgs()
+        args = parser.parse_args(argsList)
+        convertCs2Star(args)
+
+        csFile = os.path.join(self.projectPath, self.projectName,
+                              self.runClass2D, ("cryosparc_" +
+                                                self.projectName + "_" +
+                                                self.runClass2D +
+                                                _numberOfIter +
+                                                "_class_averages.cs"))
+
+        outputClassFn = self._getFileName('out_class')
+        argsList = [csFile, outputClassFn]
+
+        parser = defineArgs()
+        args = parser.parse_args(argsList)
+        convertCs2Star(args)
 
         # Link the folder on SSD to scipion directory
         os.system("ln -s " + self.projectPath + "/" + self.projectName + '/' +

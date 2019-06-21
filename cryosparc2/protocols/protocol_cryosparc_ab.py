@@ -37,6 +37,7 @@ from pyworkflow.protocol.params import (PointerParam, FloatParam,
                                         LEVEL_ADVANCED)
 from pyworkflow.em.data import Volume
 from pyworkflow.em.protocol import ProtInitialVolume, ProtClassify3D
+from cryosparc2.convert import *
 from cryosparc2.utils import *
 from cryosparc2.constants import *
 
@@ -320,14 +321,22 @@ class ProtCryoSparcInitialModel(ProtInitialVolume, ProtClassify3D):
             waitJob(self.projectName, self.runAbinit)
 
     def createOutputStep(self):
-        print (pwutils.greenStr("Creating the output..."))
-        _program2 = os.path.join(os.environ['PYEM_DIR'], 'csparc2star.py')
+        """
+        Create the protocol output. Convert cryosparc file to Relion file
+        """
 
-        self.runJob(_program2, self.projectPath + '/' + self.projectName + '/' +
-                    self.runAbinit + "/cryosparc_" +
-                    self.projectName + "_" + self.runAbinit +
-                    "_final_particles.cs" + " " +
-                    self._getFileName('out_particles'), numberOfMpi=1)
+        print (pwutils.greenStr("Creating the output..."))
+
+        csFile = os.path.join(self.projectPath, self.projectName, self.runAbinit,
+                              ("cryosparc_" + self.projectName + "_" +
+                               self.runAbinit + "_final_particles.cs"))
+
+        outputClassFn = self._getFileName('out_particles')
+        argsList = [csFile, outputClassFn]
+
+        parser = defineArgs()
+        args = parser.parse_args(argsList)
+        convertCs2Star(args)
 
         # Link the folder on SSD to scipion directory
         os.system("ln -s " + self.projectPath + "/" + self.projectName + '/' +
@@ -344,7 +353,8 @@ class ProtCryoSparcInitialModel(ProtInitialVolume, ProtClassify3D):
             output_file.write('\n')
             for i in range(int(self.abinit_K.get())):
                 output_file.write("%02d"%(i+1)+"@"+self._getExtraPath() + "/" + self.runAbinit + "/cryosparc_" +\
-                self.projectName+"_"+self.runAbinit+"_class_%02d"%i+"_final_volume.mrc\n")
+                self.projectName + "_"+self.runAbinit + "_class_%02d"%i +
+                                  "_final_volume.mrc\n")
 
         imgSet = self._getInputParticles()
         classes3D = self._createSetOfClasses3D(imgSet)
@@ -438,14 +448,6 @@ class ProtCryoSparcInitialModel(ProtInitialVolume, ProtClassify3D):
         self.b = createEmptyWorkSpace(self.projectName, self.getRunName(),
                                       self.getObjComment())
         self.workSpaceName = self.b[-1].split()[-1]
-
-        print("Importing Particles")
-
-        # import_particles_star
-        self.c = self.doImportParticlesStar()
-
-        self.importedParticles = self.c[-1].split()[-1]
-        self.par = self.importedParticles + '.imported_particles'
 
         print("Importing Particles")
 

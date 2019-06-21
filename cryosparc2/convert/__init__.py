@@ -25,11 +25,4 @@
 # *
 # **************************************************************************
 
-CRYOSPARC_HOME = 'CRYOSPARC_HOME'
-
-# Supported versions:
-V2_8_0 = 'V2_8_0'
-
-# Suffix for all project
-
-suffix = 'ProjCryoSparc_'
+from convert import convertCs2Star, defineArgs

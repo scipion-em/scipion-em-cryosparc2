@@ -28,6 +28,7 @@
 
 import pyworkflow.em as em
 import pyworkflow.em.metadata as md
+from cryosparc2.convert import *
 from pyworkflow.protocol.params import (PointerParam, FloatParam, LabelParam,
                                         IntParam, EnumParam, StringParam,
                                         Positive, BooleanParam, PathParam,
@@ -295,7 +296,6 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
                       help='Use the SSD to cache particles. Speeds up '
                            'processing significantly')
 
-
     # --------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
         self._defineFileNames()
@@ -321,7 +321,7 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
         self._importParticles()
         self.vol_fn = os.path.join(os.getcwd(),
                                    relionPlugin.convertBinaryVol(self.referenceVolume.get(),
-                                                                 self._getExtraPath()))
+                                                                 self._getTmpPath()))
         self.importVolume = self.doImportVolumes()
         self.importVolume = self.importVolume[-1].split()[-1]
 
@@ -342,12 +342,11 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
     # -------------------------- STEPS functions ------------------------------
     def createOutputStep(self):
         """
+        Create the protocol output. Convert cryosparc file to Relion file
         """
-        self._program2 = os.path.join(os.environ['PYEM_DIR'], 'csparc2star.py')
-
         commands.getstatusoutput(self._program + " \'get_job_streamlog(\"" +
                                  self.projectName+"\", \"" + self.runRefine +
-                                 "\")\'" + ">" +self._getFileName('stream_log'))
+                                 "\")\'" + ">" + self._getFileName('stream_log'))
 
         # Get the metadata information from stream.log
         with open(self._getFileName('stream_log')) as f:
@@ -363,26 +362,35 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
                     idd = y['imgfiles'][2]['fileid']
                     itera = z[-3:]
 
-        self.runJob(self._program2, self.projectPath + '/' + self.projectName + '/' +
-                    self.runRefine + "/cryosparc_" +self.projectName + "_" +
-                    self.runRefine+"_" + itera + "_particles.cs" + " " +
-                    self._getFileName('out_particles') +" -p " + self.projectPath +
-                    "/" + self.projectName + '/' + self.runRefine +
-                    "/passthrough_particles.cs", numberOfMpi=1)
+        csFile = os.path.join(self.projectPath, self.projectName, self.runRefine,
+                              ("cryosparc_" + self.projectName + "_" +
+                               self.runRefine+"_" + itera + "_particles.cs"))
+
+        outputStarFn = self._getFileName('out_particles')
+        argsList = [csFile, outputStarFn]
+
+        parser = defineArgs()
+        args = parser.parse_args(argsList)
+        convertCs2Star(args)
 
         # Link the folder on SSD to scipion directory
         os.system("ln -s " + self.projectPath + "/" + self.projectName + '/' +
                   self.runRefine + " " + self._getExtraPath())
 
-        fnVol = (self._getExtraPath() + "/" + self.runRefine + "/cryosparc_" +
-                self.projectName + "_" + self.runRefine + "_" + itera +
-                 "_volume_map.mrc")
-        half1 = (self._getExtraPath() + "/" + self.runRefine + "/cryosparc_" +
-                 self.projectName + "_" + self.runRefine + "_" + itera +
-                 "_volume_map_half_A.mrc")
-        half2 = (self._getExtraPath() + "/" + self.runRefine + "/cryosparc_" +
-                 self.projectName + "_" + self.runRefine + "_" + itera +
-                 "_volume_map_half_B.mrc")
+        fnVol = os.path.join(self._getExtraPath(), self.runRefine,
+                             ("cryosparc_" + self.projectName + "_" +
+                              self.runRefine + "_" + itera + "_volume_map.mrc"))
+
+        half1 = os.path.join(self._getExtraPath(), self.runRefine,
+                             ("cryosparc_" + self.projectName + "_" +
+                              self.runRefine + "_" + itera +
+                              "_volume_map_half_A.mrc"))
+
+        half2 = os.path.join(self._getExtraPath(), self.runRefine,
+                             ("cryosparc_" + self.projectName + "_" +
+                              self.runRefine + "_" + itera +
+                              "_volume_map_half_B.mrc"))
+
         imgSet = self._getInputParticles()
         vol = Volume()
         vol.setFileName(fnVol)
@@ -538,7 +546,6 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
                             'refine_dynamic_mask_start_res',
                             'refine_dynamic_mask_use_abs',
                             'compute_use_ssd']
-
 
     def doRunRefine(self):
         """
