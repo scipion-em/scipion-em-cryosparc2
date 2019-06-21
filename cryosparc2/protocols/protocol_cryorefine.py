@@ -26,12 +26,10 @@
 # *
 # **************************************************************************
 
-import pyworkflow.em as em
 import pyworkflow.em.metadata as md
 from cryosparc2.convert import *
-from pyworkflow.protocol.params import (PointerParam, FloatParam, LabelParam,
-                                        IntParam, EnumParam, StringParam,
-                                        Positive, BooleanParam, PathParam,
+from pyworkflow.protocol.params import (PointerParam, FloatParam, IntParam,
+                                        StringParam, Positive, BooleanParam,
                                         LEVEL_ADVANCED)
 from pyworkflow.em.data import Volume, FSC
 from pyworkflow.em.protocol import ProtRefine3D
@@ -43,7 +41,7 @@ relionPlugin = pwutils.importFromPlugin("relion.convert", doRaise=True)
 
 import os
 import commands
-import ast, json
+import ast
 
 
 class ProtCryoSparcRefine3D(ProtRefine3D):
@@ -344,9 +342,9 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
         """
         Create the protocol output. Convert cryosparc file to Relion file
         """
-        commands.getstatusoutput(self._program + " \'get_job_streamlog(\"" +
-                                 self.projectName+"\", \"" + self.runRefine +
-                                 "\")\'" + ">" + self._getFileName('stream_log'))
+
+        get_job_streamlog(self.projectName, self.runRefine,
+                          self._getFileName('stream_log'))
 
         # Get the metadata information from stream.log
         with open(self._getFileName('stream_log')) as f:

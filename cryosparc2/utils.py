@@ -133,3 +133,11 @@ def waitJob(projectName, job):
                     % ("'", projectName, job, "'"))
     commands.getstatusoutput(wait_job_cmd)
 
+
+def get_job_streamlog(projectName, job, fileName):
+
+    get_job_streamlog_cmd = (getCryosparcProgram() +
+                             ' %sget_job_streamlog("%s", "%s")%s%s'
+                             % ("'", projectName, job, "'", ">" + fileName))
+
+    commands.getstatusoutput(get_job_streamlog_cmd)
