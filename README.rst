@@ -41,24 +41,13 @@ For that, follow these instructions:
     These cover workstation and cluster installs, file configuration and how to update
     cryoSPARC v2 when new versions become available.
 
-4. Download or clone **pyem** repository (This step is mandatory for now. Then
-   it will be installed as a python module when installing the plugin)
-
-   **PyEM** is a collection of Python modules and command-line utilities for
-   electron microscopy of biological samples.
-
-   .. code-block::
-
-        git clone https://github.com/asarnow/pyem.git
-
-5. Add the following variables in the ``scipion.conf`` file:
+4. Add the following variables in the ``scipion.conf`` file:
 
    .. code-block::
 
        CRYOSPARC_DIR = <install_path>
        CRYOSPARC_USER = <user name with which cryosparc was installed>
        CRYOSSD_DIR = <path on the worker node to a writable directory residing on the local SSD>
-       PYEM_DIR = <pyem_path>
 
 
 
