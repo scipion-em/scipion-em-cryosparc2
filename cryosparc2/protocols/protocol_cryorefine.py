@@ -47,7 +47,7 @@ import ast
 class ProtCryoSparcRefine3D(ProtRefine3D):
     """ Protocol to refine a 3D map using cryosparc.
     """
-    _label = '3D refinement'
+    _label = '3D homogeneous refinement'
 
     # --------------------------- DEFINE param functions ----------------------
     def _defineFileNames(self):
