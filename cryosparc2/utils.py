@@ -29,14 +29,18 @@ import commands
 import pyworkflow.utils as pwutils
 
 
+def getCryosparcDir():
+    return os.environ['CRYOSPARC_DIR']
+
+
 def getCryosparcProgram():
-    return os.path.join(os.environ['CRYOSPARC_DIR'],
+    return os.path.join(getCryosparcDir(),
                         'cryosparc2_master/bin/cryosparcm cli')
 
 
 def cryosparcExist():
     msg = []
-    if not os.path.exists(os.environ['CRYOSPARC_DIR']):
+    if not os.path.exists(getCryosparcDir()):
        msg.append(('The cryoSPARC software do not exist in %s. Please install it')
                   % str(os.environ['CRYOSPARC_DIR']))
     return msg
@@ -53,7 +57,12 @@ def getCryosparcUser():
 
 
 def getCryosparcSSD():
-    return os.environ['CRYOSSD_DIR']
+    if os.environ.get('CRYOSSD_DIR') is None:
+        cryoSSD_Dir = os.path.join(str(getCryosparcDir()), 'cryo_ssd')
+        os.mkdir(cryoSSD_Dir)
+    else:
+        cryoSSD_Dir = os.environ['CRYOSSD_DIR']
+    return cryoSSD_Dir
 
 
 def getProjectPath(projectDir):
