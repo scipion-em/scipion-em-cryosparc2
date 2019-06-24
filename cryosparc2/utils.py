@@ -34,6 +34,20 @@ def getCryosparcProgram():
                         'cryosparc2_master/bin/cryosparcm cli')
 
 
+def cryosparcExist():
+    msg = []
+    if not os.path.exists(os.environ['CRYOSPARC_DIR']):
+       msg.append(('The cryoSPARC software do not exist in %s. Please install it')
+                  % str(os.environ['CRYOSPARC_DIR']))
+    return msg
+
+
+#TODO create the way to check this
+def isCryosparcRunning():
+    msg = []
+    return msg
+
+
 def getCryosparcUser():
     return os.environ['CRYOSPARC_USER']
 
@@ -50,6 +64,13 @@ def getProjectPath(projectDir):
     """
     folderPaths = os.listdir(projectDir)
     return folderPaths
+
+
+def getJobLog(projectName, job):
+    """
+    Return the job log
+    """
+    return os.path.join(getCryosparcSSD(), projectName, job, 'job.log')
 
 
 def createEmptyProject(projectDir, projectTitle):

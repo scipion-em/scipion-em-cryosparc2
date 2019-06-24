@@ -40,7 +40,7 @@
   Keywords                 = "",
   Pii                      = "",
   Pmid                     = "",
-  Url                      = "https://www.nature.com/articles/nmeth.4169"
+  url                      = "https://www.nature.com/articles/nmeth.4169"
 }
 
 @article{Brubaker2017,
@@ -56,7 +56,7 @@
   Keywords                 = "",
   Pii                      = "",
   Pmid                     = "",
-  Url                      = "https://ieeexplore.ieee.org/document/7740877"
+  url                      = "https://ieeexplore.ieee.org/document/7740877"
 }
 
 """

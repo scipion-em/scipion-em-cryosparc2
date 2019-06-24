@@ -37,6 +37,7 @@ _logo = 'cryosparc2_logo.png'
 
 class Plugin(pyworkflow.em.Plugin):
     _homeVar = CRYOSPARC_HOME
+    _supportedVersions = [V2_5, V2_8]
 
     @classmethod
     def _defineVariables(cls):
@@ -57,7 +58,7 @@ class Plugin(pyworkflow.em.Plugin):
 
     @classmethod
     def isVersionActive(cls):
-        return cls.getActiveVersion().startswith(V2_5_0)
+        return cls.getActiveVersion().startswith(V2_8)
 
     @classmethod
     def defineBinaries(cls, env):

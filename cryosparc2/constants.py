@@ -28,8 +28,8 @@
 CRYOSPARC_HOME = 'CRYOSPARC_HOME'
 
 # Supported versions:
-V2_8_0 = 'V2_8_0'
+V2_5 = 'V2_5'
+V2_8 = 'V2_8'
 
 # Suffix for all project
-
 suffix = 'ProjCryoSparc_'

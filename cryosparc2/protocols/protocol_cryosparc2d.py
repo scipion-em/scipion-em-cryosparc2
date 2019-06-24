@@ -334,9 +334,10 @@ class ProtCryo2D(ProtClassify2D):
 
     # --------------------------- INFO functions -------------------------------
     def _validate(self):
-        errors = []
-
-        return errors
+        validateMsgs = cryosparcExist()
+        if not validateMsgs:
+            validateMsgs = isCryosparcRunning()
+        return validateMsgs
 
     def _summary(self):
         summary = []

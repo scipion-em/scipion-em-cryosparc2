@@ -380,7 +380,9 @@ class ProtCryoSparcInitialModel(ProtInitialVolume, ProtClassify3D):
         """ Should be overriden in subclasses to 
         return summary message for NORMAL EXECUTION. 
         """
-        validateMsgs = []
+        validateMsgs = cryosparcExist()
+        if not validateMsgs:
+            validateMsgs = isCryosparcRunning()
         return validateMsgs
 
     # --------------------------- UTILS functions ---------------------------
