@@ -75,11 +75,12 @@ def getProjectPath(projectDir):
     return folderPaths
 
 
-def getJobLog(projectName, job):
+def getJobLog(projectDirName, projectName, job):
     """
     Return the job log
     """
-    return os.path.join(getCryosparcSSD(), projectName, job, 'job.log')
+    return os.path.join(getCryosparcSSD(), projectDirName, projectName, job,
+                        'job.log')
 
 
 def createEmptyProject(projectDir, projectTitle):
