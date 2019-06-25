@@ -44,6 +44,9 @@ relionPlugin = pwutils.importFromPlugin("relion.convert", doRaise=True)
 
 class ProtCryo2D(ProtClassify2D):
     """ Wrapper to CryoSparc 2D clustering program.
+        Classify particles into multiple 2D classes to facilitate stack cleaning
+        and removal of junk particles. Also useful as a sanity check to
+        investigate particle quality.
     """
     _label = 'perform Cryosparc2D'
     

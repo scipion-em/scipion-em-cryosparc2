@@ -46,6 +46,8 @@ import ast
 
 class ProtCryoSparcRefine3D(ProtRefine3D):
     """ Protocol to refine a 3D map using cryosparc.
+        Rapidly refine a single homogeneous structure to high-resolution and
+        validate using the gold-standard FSC.
     """
     _label = '3D homogeneous refinement'
 
