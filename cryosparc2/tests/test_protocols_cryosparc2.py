@@ -192,3 +192,48 @@ class TestCryosparcClassify2D(TestCryosparcBase):
         _checkAsserts(cryosparcProtGpu)
 
 
+class TestCryosparc3DInitialModel(TestCryosparcBase):
+
+    @classmethod
+    def setUpClass(cls):
+        setupTestProject(cls)
+        setupTestProject(cls)
+        dataProject = 'grigorieff'
+        dataset = DataSet.getDataSet(dataProject)
+        TestCryosparcBase.setData()
+        particlesPattern = dataset.getFile('particles.sqlite')
+        cls.protImport = cls.runImportParticleCryoSPARC(cls.partFn2)
+
+    def testCryosparcInitialModel(self):
+        def _runCryosparcInitialModel(label=''):
+            protInitialModel = self.newProtocol(ProtCryoSparcInitialModel,
+                                      numberOfMpi=4, numberOfThreads=1)
+
+            # Normalization after the imported particles
+            relionProtocol = self.newProtocol(
+                relionProtocols.ProtRelionPreprocessParticles,
+                doNormalize=True,
+                doScale=True, scaleSize=140,
+                doInvert=False)
+            relionProtocol.setObjLabel('relion: preprocess particles')
+            relionProtocol.inputParticles.set(self.protImport.outputParticles)
+            self.launchProtocol(relionProtocol)
+
+            protInitialModel.inputParticles.set(relionProtocol.outputParticles)
+            protInitialModel.abinit_K.set(1)
+            protInitialModel.abinit_symmetry.set('C1')
+            protInitialModel.setObjLabel(label)
+            self.launchProtocol(protInitialModel)
+            return protInitialModel
+
+        def _checkAsserts(cryosparcProt):
+            self.assertIsNotNone(cryosparcProt.outputClasses,
+                                 "There was a problem with Cryosparc 3D initial model")
+
+            self.assertIsNotNone(cryosparcProt.outputVolumes,
+                                 "There was a problem with Cryosparc 3D initial model")
+
+        cryosparcProtGpu = _runCryosparcInitialModel(label="Cryosparc 3D initial model")
+        _checkAsserts(cryosparcProtGpu)
+
+
