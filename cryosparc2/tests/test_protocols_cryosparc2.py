@@ -40,6 +40,9 @@ class TestCryosparcBase(BaseTest):
         cls.dataset = DataSet.getDataSet(dataProject)
         cls.micFn = cls.dataset.getFile('allMics')
         cls.volFn = cls.dataset.getFile('vol2')
+        cls.partFn1 = cls.dataset.getFile('particles2')
+        cls.partFn2 = cls.dataset.getFile('particles3')
+        cls.ctfFn = cls.dataset.getFile('ctf')
 
     @classmethod
     def runImportMicrograph(cls, pattern, samplingRate, voltage,
@@ -128,7 +131,7 @@ class TestCryosparcBase(BaseTest):
                                        magnification=50000)
 
     @classmethod
-    def runImportParticleGrigorieff(cls, pattern):
+    def runImportParticleCryoSPARC(cls, pattern):
         """ Run an Import micrograph protocol. """
         return cls.runImportParticles(pattern,
                                       samplingRate=4.,
@@ -136,7 +139,7 @@ class TestCryosparcBase(BaseTest):
                                       importFrom=ProtImportParticles.IMPORT_FROM_SCIPION)
 
     @classmethod
-    def runImportVolumesGrigorieff(cls, pattern):
+    def runImportVolumesCryoSPARC(cls, pattern):
         """ Run an Import micrograph protocol. """
         return cls.runImportVolumes(pattern,
                                     samplingRate=4.,
@@ -152,7 +155,7 @@ class TestCryosparcClassify2D(TestCryosparcBase):
         dataset = DataSet.getDataSet(dataProject)
         TestCryosparcBase.setData()
         particlesPattern = dataset.getFile('particles.sqlite')
-        cls.protImport = cls.runImportParticleGrigorieff(particlesPattern)
+        cls.protImport = cls.runImportParticleCryoSPARC(cls.partFn2)
 
     def testCryosparc2D(self):
         def _runCryosparcClassify2D(label=''):
@@ -162,16 +165,16 @@ class TestCryosparcClassify2D(TestCryosparcBase):
 
             # Normalization after the imported particles
             relionProtocol = self.newProtocol(relionProtocols.ProtRelionPreprocessParticles,
-                                        doNormalize=False,
-                                        doScale=True, scaleSize=50,
-                                        doInvert=True)
-            relionProtocol.setObjLabel('relion: scale-invert')
+                                        doNormalize=True,
+                                        doScale=True, scaleSize=140,
+                                        doInvert=False)
+            relionProtocol.setObjLabel('relion: preprocess particles')
             relionProtocol.inputParticles.set(self.protImport.outputParticles)
             self.launchProtocol(relionProtocol)
 
             prot2D.inputParticles.set(relionProtocol.outputParticles)
-            prot2D.numberOfClasses.set(10)
-            prot2D.numberOnlineEMIterator.set(10)
+            prot2D.numberOfClasses.set(5)
+            prot2D.numberOnlineEMIterator.set(40)
             prot2D.setObjLabel(label)
             prot2D.numberGPU.set(1)
             self.launchProtocol(prot2D)
