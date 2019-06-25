@@ -435,6 +435,9 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
         validateMsgs = cryosparcExist()
         if not validateMsgs:
             validateMsgs = isCryosparcRunning()
+        particles = self._getInputParticles()
+        if not particles.hasCTF():
+            validateMsgs.append("The Particles has not associated a CTF model")
         return validateMsgs
     # -------------------------- UTILS functions ------------------------------
 
