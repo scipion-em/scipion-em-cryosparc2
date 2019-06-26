@@ -259,7 +259,7 @@ class ProtCryo2D(ProtClassify2D):
         """
         print(pwutils.greenStr("2D Classifications Started..."))
         self.runClass2D = String(self.doRunClass2D()[-1].split()[-1])
-        self.currenJob.set(self.runClass2D)
+        self.currenJob.set(self.runClass2D.get())
         self._store(self)
         while getJobStatus(self.projectName.get(), self.runClass2D.get()) != 'completed':
             waitJob(self.projectName.get(), self.runClass2D.get())

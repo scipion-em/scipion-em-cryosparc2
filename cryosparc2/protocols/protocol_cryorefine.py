@@ -325,7 +325,7 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
                                                                  self._getTmpPath()))
         self.importVolume = self.doImportVolumes()
         self.importVolume = String(self.importVolume[-1].split()[-1])
-        self.currenJob.set(self.importVolume)
+        self.currenJob.set(self.importVolume.get())
         self._store(self)
 
     def processStep(self):
@@ -339,7 +339,7 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
 
         print("Refinement started...")
         self.runRefine = String(self.doRunRefine()[-1].split()[-1])
-        self.currenJob.set(self.runRefine)
+        self.currenJob.set(self.runRefine.get())
         self._store(self)
 
         while getJobStatus(self.projectName.get(), self.runRefine.get()) != 'completed':

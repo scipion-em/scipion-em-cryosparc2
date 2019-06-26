@@ -316,6 +316,7 @@ class ProtCryoSparcInitialModel(ProtInitialVolume, ProtClassify3D):
 
         print(pwutils.greenStr("Ab Initial Model Generation Started..."))
         self.runAbinit = String(self.doRunAbinit()[-1].split()[-1])
+        self.currenJob.set(self.runAbinit)
         self._store(self)
 
         while getJobStatus(self.projectName.get(), self.runAbinit.get()) != 'completed':
