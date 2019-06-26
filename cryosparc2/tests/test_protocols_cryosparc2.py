@@ -237,3 +237,51 @@ class TestCryosparc3DInitialModel(TestCryosparcBase):
         _checkAsserts(cryosparcProtGpu)
 
 
+class TestCryosparc3DRefinement(TestCryosparcBase):
+
+    @classmethod
+    def setUpClass(cls):
+        setupTestProject(cls)
+        setupTestProject(cls)
+        dataProject = 'grigorieff'
+        dataset = DataSet.getDataSet(dataProject)
+        TestCryosparcBase.setData()
+        particlesPattern = dataset.getFile('particles.sqlite')
+        cls.protImport = cls.runImportParticleCryoSPARC(cls.partFn2)
+
+    def testCryosparc3DRefinement(self):
+        def _runCryosparctest3DRefinement(label=''):
+            prot3DRefinement = self.newProtocol(ProtCryoSparcRefine3D,
+                                      numberOfMpi=4, numberOfThreads=1)
+
+            # Normalization after the imported particles
+            relionProtocol = self.newProtocol(
+                relionProtocols.ProtRelionPreprocessParticles,
+                doNormalize=True,
+                doScale=True, scaleSize=140,
+                doInvert=False)
+            relionProtocol.setObjLabel('relion: preprocess particles')
+            relionProtocol.inputParticles.set(self.protImport.outputParticles)
+            self.launchProtocol(relionProtocol)
+
+            importVolumeProt = self.runImportVolumesCryoSPARC(self.volFn)
+
+            prot3DRefinement.inputParticles.set(relionProtocol.outputParticles)
+            prot3DRefinement.referenceVolume.set(importVolumeProt.outputVolume)
+            prot3DRefinement.refine_symmetry.set('C1')
+            prot3DRefinement.setObjLabel(label)
+            self.launchProtocol(prot3DRefinement)
+            return prot3DRefinement
+
+        def _checkAsserts(cryosparcProt):
+            self.assertIsNotNone(cryosparcProt.outputVolume,
+                                 "There was a problem with Cryosparc 3D refinement")
+
+        cryosparcProtGpu = _runCryosparctest3DRefinement(label="Cryosparc 3D refinement")
+        _checkAsserts(cryosparcProtGpu)
+
+
+
+
+
+
