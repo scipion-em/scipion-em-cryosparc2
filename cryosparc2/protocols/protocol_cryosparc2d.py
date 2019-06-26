@@ -259,7 +259,8 @@ class ProtCryo2D(ProtClassify2D):
         """
         print(pwutils.greenStr("2D Classifications Started..."))
         self.runClass2D = String(self.doRunClass2D()[-1].split()[-1])
-        self._store()
+        self.currenJob.set(self.runClass2D)
+        self._store(self)
         while getJobStatus(self.projectName.get(), self.runClass2D.get()) != 'completed':
             waitJob(self.projectName.get(), self.runClass2D.get())
 
@@ -473,7 +474,7 @@ class ProtCryo2D(ProtClassify2D):
         """
         cmd = """ 'do_import_particles_star("%s","%s", "'+%s'", "'%s'", "'%s'", "'%s'")'"""
         import_particles_cmd = (self._program + cmd % (
-            self.projectName, self.workSpaceName,
+            self.projectName.get(), self.workSpaceName.get(),
             self._user,
             os.path.join(os.getcwd(),
             self._getFileName('input_particles')),
@@ -518,6 +519,6 @@ class ProtCryo2D(ProtClassify2D):
                   "compute_use_ssd": str(self.cacheParticlesSSD.get()),
                   "compute_num_gpus": str(self.numberGPU.get())}
 
-        return doJob(className, self.projectName, self.workSpaceName,
+        return doJob(className, self.projectName.get(), self.workSpaceName.get(),
                      str(params).replace('\'', '"'),
                      str(input_group_conect).replace('\'', '"'))

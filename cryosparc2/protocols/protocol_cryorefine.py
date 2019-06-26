@@ -521,7 +521,7 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
         """
         cmd = """ 'do_import_particles_star("%s","%s", "'+%s'", "'%s'", "'%s'", "'%s'")'"""
         import_particles_cmd = (self._program + cmd % (
-            self.projectName, self.workSpaceName,
+            self.projectName.get(), self.workSpaceName.get(),
             self._user,
             os.path.join(os.getcwd(),
             self._getFileName('input_particles')),
@@ -588,7 +588,7 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
         for paramName in self._paramsName:
             params[str(paramName)] = str(self.getAttributeValue(paramName))
 
-        return doJob(className, self.projectName, self.workSpaceName,
+        return doJob(className, self.projectName.get(), self.workSpaceName.get(),
                      str(params).replace('\'', '"'),
                      str(input_group_conect).replace('\'', '"'))
 
