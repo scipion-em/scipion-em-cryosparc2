@@ -172,3 +172,12 @@ def get_job_streamlog(projectName, job, fileName):
                              % ("'", projectName, job, "'", ">" + fileName))
 
     commands.getstatusoutput(get_job_streamlog_cmd)
+
+
+def killJob(projectName, job):
+
+    kill_job_cmd = (getCryosparcProgram() +
+                    ' %skill_job("%s", "%s")%s'
+                    % ("'", projectName, job, "'"))
+    print(kill_job_cmd)
+    commands.getstatusoutput(kill_job_cmd)

@@ -27,13 +27,14 @@
 # **************************************************************************
 
 import pyworkflow.em.metadata as md
-from cryosparc2.convert import *
+import pyworkflow as pw
 from pyworkflow.protocol.params import (PointerParam, FloatParam, IntParam,
                                         StringParam, Positive, BooleanParam,
                                         LEVEL_ADVANCED)
-from pyworkflow.em.data import Volume, FSC
+from pyworkflow.em.data import Volume, FSC, String
 from pyworkflow.em.protocol import ProtRefine3D
 from pyworkflow.em import ALIGN_PROJ
+from cryosparc2.convert import *
 from cryosparc2.utils import *
 from cryosparc2.constants import *
 
@@ -300,7 +301,7 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
     def _insertAllSteps(self):
         self._defineFileNames()
         self._defineParamsName()
-
+        self._initializeUtilsVariables()
         objId = self._getInputParticles().getObjId()
         self._insertFunctionStep("convertInputStep", objId)
         self._insertFunctionStep('processStep')
@@ -323,29 +324,33 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
                                    relionPlugin.convertBinaryVol(self.referenceVolume.get(),
                                                                  self._getTmpPath()))
         self.importVolume = self.doImportVolumes()
-        self.importVolume = self.importVolume[-1].split()[-1]
+        self.importVolume = String(self.importVolume[-1].split()[-1])
+        self.currenJob.set(self.importVolume)
+        self._store(self)
 
     def processStep(self):
-        self.vol = self.importVolume + '.imported_volume.map'
+        self.vol = self.importVolume.get() + '.imported_volume.map'
 
-        while getJobStatus(self.projectName, self.importedParticles) != 'completed':
-            waitJob(self.projectName, self.importedParticles)
+        while getJobStatus(self.projectName.get(), self.importedParticles.get()) != 'completed':
+            waitJob(self.projectName.get(), self.importedParticles.get())
 
-        while getJobStatus(self.projectName, self.importVolume) != 'completed':
-            waitJob(self.projectName, self.importVolume)
+        while getJobStatus(self.projectName.get(), self.importVolume.get()) != 'completed':
+            waitJob(self.projectName.get(), self.importVolume.get())
 
         print("Refinement started...")
-        self.runRefine = self.doRunRefine()[-1].split()[-1]
-        while getJobStatus(self.projectName, self.runRefine) != 'completed':
-            waitJob(self.projectName, self.importVolume)
+        self.runRefine = String(self.doRunRefine()[-1].split()[-1])
+        self.currenJob.set(self.runRefine)
+        self._store(self)
 
-    # -------------------------- STEPS functions ------------------------------
+        while getJobStatus(self.projectName.get(), self.runRefine.get()) != 'completed':
+            waitJob(self.projectName.get(), self.importVolume.get())
+
     def createOutputStep(self):
         """
         Create the protocol output. Convert cryosparc file to Relion file
         """
-
-        get_job_streamlog(self.projectName, self.runRefine,
+        self._initializeUtilsVariables()
+        get_job_streamlog(self.projectName.get(), self.runRefine.get(),
                           self._getFileName('stream_log'))
 
         # Get the metadata information from stream.log
@@ -362,9 +367,9 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
                     idd = y['imgfiles'][2]['fileid']
                     itera = z[-3:]
 
-        csFile = os.path.join(self.projectPath, self.projectName, self.runRefine,
-                              ("cryosparc_" + self.projectName + "_" +
-                               self.runRefine+"_" + itera + "_particles.cs"))
+        csFile = os.path.join(self.projectPath, self.projectName.get(), self.runRefine.get(),
+                              ("cryosparc_" + self.projectName.get() + "_" +
+                               self.runRefine.get() + "_" + itera + "_particles.cs"))
 
         outputStarFn = self._getFileName('out_particles')
         argsList = [csFile, outputStarFn]
@@ -374,21 +379,21 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
         convertCs2Star(args)
 
         # Link the folder on SSD to scipion directory
-        os.system("ln -s " + self.projectPath + "/" + self.projectName + '/' +
-                  self.runRefine + " " + self._getExtraPath())
+        os.system("ln -s " + self.projectPath + "/" + self.projectName.get() + '/' +
+                  self.runRefine.get() + " " + self._getExtraPath())
 
-        fnVol = os.path.join(self._getExtraPath(), self.runRefine,
-                             ("cryosparc_" + self.projectName + "_" +
-                              self.runRefine + "_" + itera + "_volume_map.mrc"))
+        fnVol = os.path.join(self._getExtraPath(), self.runRefine.get(),
+                             ("cryosparc_" + self.projectName.get() + "_" +
+                              self.runRefine.get() + "_" + itera + "_volume_map.mrc"))
 
-        half1 = os.path.join(self._getExtraPath(), self.runRefine,
-                             ("cryosparc_" + self.projectName + "_" +
-                              self.runRefine + "_" + itera +
+        half1 = os.path.join(self._getExtraPath(), self.runRefine.get(),
+                             ("cryosparc_" + self.projectName.get() + "_" +
+                              self.runRefine.get() + "_" + itera +
                               "_volume_map_half_A.mrc"))
 
-        half2 = os.path.join(self._getExtraPath(), self.runRefine,
-                             ("cryosparc_" + self.projectName + "_" +
-                              self.runRefine + "_" + itera +
+        half2 = os.path.join(self._getExtraPath(), self.runRefine.get(),
+                             ("cryosparc_" + self.projectName.get() + "_" +
+                              self.runRefine.get() + "_" + itera +
                               "_volume_map_half_B.mrc"))
 
         imgSet = self._getInputParticles()
@@ -402,9 +407,9 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
         self._fillDataFromIter(outImgSet)
 
         self._defineOutputs(outputVolume=vol)
-        self._defineSourceRelation(self.inputParticles, vol)
+        self._defineSourceRelation(self.inputParticles.get(), vol)
         self._defineOutputs(outputParticles=outImgSet)
-        self._defineTransformRelation(self.inputParticles, outImgSet)
+        self._defineTransformRelation(self.inputParticles.get(), outImgSet)
         # Need to get the host IP address if it is not stanalone installation
         os.system("wget 127.0.0.1:39000/file/" + idd + " -nd -P" +
                   self._getExtraPath())
@@ -426,6 +431,11 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
 
         self._defineOutputs(outputFSC=fsc)
         self._defineSourceRelation(vol, fsc)
+
+    def setAborted(self):
+        """ Set the status to aborted and updated the endTime. """
+        ProtRefine3D.setAborted(self)
+        killJob(str(self.projectName.get()), str(self.currenJob.get()))
 
     # --------------------------- INFO functions -------------------------------
     def _validate(self):
@@ -457,7 +467,7 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
         relionPlugin.setRelionAttributes(particle, row,
                                          md.RLN_PARTICLE_RANDOM_SUBSET)
 
-    def _importParticles(self):
+    def _initializeUtilsVariables(self):
         """
         Initialize all utils cryoSPARC variables
         """
@@ -470,26 +480,38 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
         self.projectPath = pwutils.join(self._ssd, self.projectDirName)
         self.projectDir = createProjectDir(self.projectPath)
 
+    def _importParticles(self):
+
+        self._initializeUtilsVariables()
         # create empty project or load an exists one
         folderPaths = getProjectPath(self.projectPath)
         if not folderPaths:
             self.a = createEmptyProject(self.projectPath, self.projectDirName)
             self.projectName = self.a[-1].split()[-1]
         else:
-            self.projectName = folderPaths[0]
+            self.projectName = str(folderPaths[0])
+
+        self.projectName = String(self.projectName)
+        self._store(self)
 
         # create empty workspace
         self.b = createEmptyWorkSpace(self.projectName, self.getRunName(),
                                       self.getObjComment())
-        self.workSpaceName = self.b[-1].split()[-1]
+        self.workSpaceName = String(self.b[-1].split()[-1])
+        self._store(self)
 
         print("Importing Particles")
 
         # import_particles_star
         self.c = self.doImportParticlesStar()
 
-        self.importedParticles = self.c[-1].split()[-1]
-        self.par = self.importedParticles + '.imported_particles'
+        self.importedParticles = String(self.c[-1].split()[-1])
+        self._store(self)
+
+        self.currenJob = String(self.importedParticles.get())
+        self._store(self)
+
+        self.par = String(self.importedParticles.get() + '.imported_particles')
 
     def doImportParticlesStar(self):
         """
@@ -514,6 +536,7 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
         """
         :return:
         """
+        print("Importing Volume")
 
         className = "import_volumes"
         params = {"volume_blob_path": str(self.vol_fn),
