@@ -377,6 +377,12 @@ class ProtCryoSparcInitialModel(ProtInitialVolume, ProtClassify3D):
 
         self._defineOutputs(outputVolumes=volumes)
         self._defineSourceRelation(self.inputParticles.get(), volumes)
+
+    def setAborted(self):
+        """ Set the status to aborted and updated the endTime. """
+        ProtInitialVolume.setAborted(self)
+        killJob(str(self.projectName.get()), str(self.currenJob.get()))
+
     
     # --------------------------- INFO functions -------------------------------
     def _validate(self):
