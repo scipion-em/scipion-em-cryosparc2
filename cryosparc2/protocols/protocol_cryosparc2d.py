@@ -35,6 +35,8 @@ import pyworkflow.em.metadata as md
 from pyworkflow.em.protocol import ProtClassify2D, SetOfClasses2D
 from pyworkflow.protocol.params import (PointerParam, BooleanParam, FloatParam,
                                         IntParam, Positive, StringParam)
+from pyworkflow.em.data import String
+
 from cryosparc2.convert import *
 from cryosparc2.utils import *
 from cryosparc2.constants import *
@@ -248,30 +250,35 @@ class ProtCryo2D(ProtClassify2D):
                                          outputDir=self._getExtraPath(),
                                          fillMagnification=True)
         self._importParticles()
-        while getJobStatus(self.projectName, self.importedParticles) != 'completed':
-            waitJob(self.projectName, self.importedParticles)
+        while getJobStatus(self.projectName.get(), self.importedParticles.get()) != 'completed':
+            waitJob(self.projectName.get(), self.importedParticles.get())
 
     def processStep(self):
         """
         Classify particles into multiples 2D classes
         """
         print(pwutils.greenStr("2D Classifications Started..."))
-        self.runClass2D = self.doRunClass2D()[-1].split()[-1]
-        while getJobStatus(self.projectName, self.runClass2D) != 'completed':
-            waitJob(self.projectName, self.runClass2D)
+        self.runClass2D = String(self.doRunClass2D()[-1].split()[-1])
+        self._store()
+        while getJobStatus(self.projectName.get(), self.runClass2D.get()) != 'completed':
+            waitJob(self.projectName.get(), self.runClass2D.get())
 
     def createOutputStep(self):
         """
         Create the protocol output. Convert cryosparc file to Relion file
         """
+        self._initializeUtilsVariables()
         print (pwutils.greenStr("Creating the output..."))
         _numberOfIter = str("_00" + str(self.numberOnlineEMIterator.get()))
         if self.numberOnlineEMIterator.get() > 9:
             _numberOfIter = str("_0" + str(self.numberOnlineEMIterator.get()))
 
-        csFile = os.path.join(self.projectPath, self.projectName, self.runClass2D,
-                              ("cryosparc_" + self.projectName+"_" +
-                               self.runClass2D + _numberOfIter + "_particles.cs"))
+        csFile = os.path.join(self.projectPath, self.projectName.get(),
+                              self.runClass2D.get(), ("cryosparc_" +
+                                                      self.projectName.get() +
+                                                      "_" + self.runClass2D.get() +
+                                                      _numberOfIter +
+                                                      "_particles.cs"))
 
         outputStarFn = self._getFileName('out_particles')
         argsList = [csFile, outputStarFn]
@@ -280,10 +287,10 @@ class ProtCryo2D(ProtClassify2D):
         args = parser.parse_args(argsList)
         convertCs2Star(args)
 
-        csFile = os.path.join(self.projectPath, self.projectName,
-                              self.runClass2D, ("cryosparc_" +
-                                                self.projectName + "_" +
-                                                self.runClass2D +
+        csFile = os.path.join(self.projectPath, self.projectName.get(),
+                              self.runClass2D.get(), ("cryosparc_" +
+                                                self.projectName.get() + "_" +
+                                                self.runClass2D.get() +
                                                 _numberOfIter +
                                                 "_class_averages.cs"))
 
@@ -295,8 +302,8 @@ class ProtCryo2D(ProtClassify2D):
         convertCs2Star(args)
 
         # Link the folder on SSD to scipion directory
-        os.system("ln -s " + self.projectPath + "/" + self.projectName + '/' +
-                  self.runClass2D + " " + self._getExtraPath())
+        os.system("ln -s " + self.projectPath + "/" + self.projectName.get() + '/' +
+                  self.runClass2D.get() + " " + self._getExtraPath())
 
         with open(self._getFileName('out_class'), 'r') as input_file, \
                 open(self._getFileName('out_class_m2'), 'w') as output_file:
@@ -333,7 +340,12 @@ class ProtCryo2D(ProtClassify2D):
         self._fillClassesFromLevel(classes2DSet)
   
         self._defineOutputs(outputClasses=classes2DSet)
-        self._defineSourceRelation(self.inputParticles, classes2DSet)
+        self._defineSourceRelation(self.inputParticles.get(), classes2DSet)
+
+    def setAborted(self):
+        """ Set the status to aborted and updated the endTime. """
+        ProtClassify2D.setAborted(self)
+        killJob(str(self.projectName.get()), str(self.currenJob.get()))
 
     # --------------------------- INFO functions -------------------------------
     def _validate(self):
@@ -407,7 +419,7 @@ class ProtCryo2D(ProtClassify2D):
             item.setAlignment2D()
             item.getRepresentative().setLocation(index, fn)
 
-    def _importParticles(self):
+    def _initializeUtilsVariables(self):
         """
         Initialize all utils cryoSPARC variables
         """
@@ -420,26 +432,38 @@ class ProtCryo2D(ProtClassify2D):
         self.projectPath = pwutils.join(self._ssd, self.projectDirName)
         self.projectDir = createProjectDir(self.projectPath)
 
+    def _importParticles(self):
+
+        self._initializeUtilsVariables()
         # create empty project or load an exists one
         folderPaths = getProjectPath(self.projectPath)
         if not folderPaths:
             self.a = createEmptyProject(self.projectPath, self.projectDirName)
             self.projectName = self.a[-1].split()[-1]
         else:
-            self.projectName = folderPaths[0]
+            self.projectName = str(folderPaths[0])
+
+        self.projectName = String(self.projectName)
+        self._store(self)
 
         # create empty workspace
         self.b = createEmptyWorkSpace(self.projectName, self.getRunName(),
                                       self.getObjComment())
-        self.workSpaceName = self.b[-1].split()[-1]
+        self.workSpaceName = String(self.b[-1].split()[-1])
+        self._store(self)
 
         print("Importing Particles")
 
         # import_particles_star
         self.c = self.doImportParticlesStar()
 
-        self.importedParticles = self.c[-1].split()[-1]
-        self.par = self.importedParticles + '.imported_particles'
+        self.importedParticles = String(self.c[-1].split()[-1])
+        self._store(self)
+
+        self.currenJob = String(self.importedParticles.get())
+        self._store(self)
+
+        self.par = String(self.importedParticles.get() + '.imported_particles')
 
     def doImportParticlesStar(self):
         """
