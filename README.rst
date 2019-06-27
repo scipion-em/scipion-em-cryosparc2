@@ -14,7 +14,7 @@ cryo-EM, along with a browser based user interface and command line tools.
 
 You will need to use `2.0.0 <https://scipion-em.github.io/docs/release-2.0.0/docs/scipion-modes/how-to-install.html>`_ version of Scipion to run these protocols.
 
-For now, is recommended that the plugin be installed in developer mode.
+For now, the plugin must be installed in developer mode.
 For that, follow these instructions:
 
 1. Clone or download the plugin repository
