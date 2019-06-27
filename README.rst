@@ -14,6 +14,10 @@ cryo-EM, along with a browser based user interface and command line tools.
 
 You will need to use `2.0.0 <https://scipion-em.github.io/docs/release-2.0.0/docs/scipion-modes/how-to-install.html>`_ version of Scipion to run these protocols.
 
+* **2D Classification**: Classify particles into multiple 2D classes to facilitate stack cleaning and removal of junk particles.  Also useful as a sanity check to investigate particle quality.
+* **3D Homogeneous Refinement**: Rapidly refine a single homogeneous structure to high-resolution and validate using the gold-standard FSC
+* **3D Ab-Initio Reconstruction**:  Reconstruct a single (homogeneous) or multiple (heterogeneous) 3-D maps from a set of particles, without any initial models or starting structures required.
+
 For now, the plugin must be installed in developer mode.
 For that, follow these instructions:
 
