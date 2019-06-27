@@ -45,9 +45,14 @@ For that, follow these instructions:
 
    .. code-block::
 
-       CRYOSPARC_DIR = <install_path>
-       CRYOSPARC_USER = <user name with which cryosparc was installed>
-       CRYOSSD_DIR = <path on the worker node to a writable directory residing on the local SSD>
+       # The root directory where cryoSPARC code and dependencies will be installed.
+       CRYOSPARC_DIR = <install_path>   
+       
+       # full name of the initial admin account to be created
+       CRYOSPARC_USER = <user_name>
+       
+       # path on the worker node to a writable directory residing on the local SSD
+       CRYOSSD_DIR = <ssd_path>
 
 
 
