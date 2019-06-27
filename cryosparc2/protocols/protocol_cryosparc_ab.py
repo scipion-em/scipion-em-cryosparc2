@@ -309,7 +309,7 @@ class ProtCryoSparcInitialModel(ProtInitialVolume, ProtClassify3D):
                                          outputDir=self._getExtraPath(),
                                          fillMagnification=True)
         self._importParticles()
-        while getJobStatus(self.projectName.get(), self.importedParticles.get()) != 'completed':
+        while getJobStatus(self.projectName.get(), self.importedParticles.get()) not in STOP_STATUSES:
             waitJob(self.projectName.get(), self.importedParticles.get())
 
     def processStep(self):
@@ -319,7 +319,7 @@ class ProtCryoSparcInitialModel(ProtInitialVolume, ProtClassify3D):
         self.currenJob.set(self.runAbinit)
         self._store(self)
 
-        while getJobStatus(self.projectName.get(), self.runAbinit.get()) != 'completed':
+        while getJobStatus(self.projectName.get(), self.runAbinit.get()) not in STOP_STATUSES:
             waitJob(self.projectName.get(), self.runAbinit.get())
 
     def createOutputStep(self):

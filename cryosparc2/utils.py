@@ -28,6 +28,13 @@ import os
 import commands
 import pyworkflow.utils as pwutils
 
+STATUS_FAILED = "failed"
+STATUS_ABORTED = "aborted"
+STATUS_COMPLETED = "completed"
+STATUS_KILLED = "killed"
+
+STOP_STATUSES = [STATUS_ABORTED, STATUS_COMPLETED, STATUS_FAILED, STATUS_KILLED]
+
 
 def getCryosparcDir():
     return os.environ['CRYOSPARC_DIR']
@@ -175,7 +182,11 @@ def get_job_streamlog(projectName, job, fileName):
 
 
 def killJob(projectName, job):
-
+    """
+     Kill a Job (if running)
+    :param projectName: the uid of the project that contains the job to delete
+    :param job: the uid of the job to delete
+    """
     kill_job_cmd = (getCryosparcProgram() +
                     ' %skill_job("%s", "%s")%s'
                     % ("'", projectName, job, "'"))

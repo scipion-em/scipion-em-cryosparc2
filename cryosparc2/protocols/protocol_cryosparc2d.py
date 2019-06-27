@@ -250,7 +250,7 @@ class ProtCryo2D(ProtClassify2D):
                                          outputDir=self._getExtraPath(),
                                          fillMagnification=True)
         self._importParticles()
-        while getJobStatus(self.projectName.get(), self.importedParticles.get()) != 'completed':
+        while getJobStatus(self.projectName.get(), self.importedParticles.get()) not in STOP_STATUSES:
             waitJob(self.projectName.get(), self.importedParticles.get())
 
     def processStep(self):
@@ -261,7 +261,7 @@ class ProtCryo2D(ProtClassify2D):
         self.runClass2D = String(self.doRunClass2D()[-1].split()[-1])
         self.currenJob.set(self.runClass2D.get())
         self._store(self)
-        while getJobStatus(self.projectName.get(), self.runClass2D.get()) != 'completed':
+        while getJobStatus(self.projectName.get(), self.runClass2D.get()) not in STOP_STATUSES:
             waitJob(self.projectName.get(), self.runClass2D.get())
 
     def createOutputStep(self):

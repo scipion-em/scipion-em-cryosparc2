@@ -331,10 +331,10 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
     def processStep(self):
         self.vol = self.importVolume.get() + '.imported_volume.map'
 
-        while getJobStatus(self.projectName.get(), self.importedParticles.get()) != 'completed':
+        while getJobStatus(self.projectName.get(), self.importedParticles.get()) not in STOP_STATUSES:
             waitJob(self.projectName.get(), self.importedParticles.get())
 
-        while getJobStatus(self.projectName.get(), self.importVolume.get()) != 'completed':
+        while getJobStatus(self.projectName.get(), self.importVolume.get()) not in STOP_STATUSES:
             waitJob(self.projectName.get(), self.importVolume.get())
 
         print("Refinement started...")
@@ -342,7 +342,7 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
         self.currenJob.set(self.runRefine.get())
         self._store(self)
 
-        while getJobStatus(self.projectName.get(), self.runRefine.get()) != 'completed':
+        while getJobStatus(self.projectName.get(), self.runRefine.get()) not in STOP_STATUSES:
             waitJob(self.projectName.get(), self.importVolume.get())
 
     def createOutputStep(self):
