@@ -281,6 +281,51 @@ class TestCryosparc3DRefinement(TestCryosparcBase):
         _checkAsserts(cryosparcProtGpu)
 
 
+class TestCryosparcNonUniformRefine3D(TestCryosparcBase):
+
+    @classmethod
+    def setUpClass(cls):
+        setupTestProject(cls)
+        setupTestProject(cls)
+        dataProject = 'grigorieff'
+        dataset = DataSet.getDataSet(dataProject)
+        TestCryosparcBase.setData()
+        particlesPattern = dataset.getFile('particles.sqlite')
+        cls.protImport = cls.runImportParticleCryoSPARC(cls.partFn2)
+
+    def testCryosparc3DRefinement(self):
+        def _runCryosparctest3DRefinement(label=''):
+            protNonUniform3DRefinement = self.newProtocol(ProtCryoSparcNonUniformRefine3D,
+                                                          numberOfMpi=4, numberOfThreads=1)
+
+            # Normalization after the imported particles
+            relionProtocol = self.newProtocol(
+                relionProtocols.ProtRelionPreprocessParticles,
+                doNormalize=True,
+                doScale=True, scaleSize=140,
+                doInvert=False)
+            relionProtocol.setObjLabel('relion: preprocess particles')
+            relionProtocol.inputParticles.set(self.protImport.outputParticles)
+            self.launchProtocol(relionProtocol)
+
+            importVolumeProt = self.runImportVolumesCryoSPARC(self.volFn)
+
+            protNonUniform3DRefinement.inputParticles.set(relionProtocol.outputParticles)
+            protNonUniform3DRefinement.referenceVolume.set(importVolumeProt.outputVolume)
+            protNonUniform3DRefinement.refine_symmetry.set('C1')
+            protNonUniform3DRefinement.setObjLabel(label)
+            self.launchProtocol(protNonUniform3DRefinement)
+            return protNonUniform3DRefinement
+
+        def _checkAsserts(cryosparcProt):
+            self.assertIsNotNone(cryosparcProt.outputVolume,
+                                 "There was a problem with Cryosparc Non-Uniform 3D refinement")
+
+        cryosparcProtGpu = _runCryosparctest3DRefinement(label="Cryosparc Non-Uniform 3D refinement")
+        _checkAsserts(cryosparcProtGpu)
+
+
+
 
 
 

@@ -150,7 +150,6 @@ class ProtCryoSparcNonUniformRefine3D(ProtCryoSparcRefine3D):
         form.addParam('locres_anneal_factor', FloatParam,
                       expertLevel=LEVEL_ADVANCED,
                       default=0.0,
-                      validators=[Positive],
                       label="Annealing factor",
                       help='Annealing factor to anneal towards global FSC. 0 '
                            'means no annealing and 1 locks to global FSC.')
