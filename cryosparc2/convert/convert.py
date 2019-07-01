@@ -33,8 +33,8 @@ def convertCs2Star(args):
     log = logging.getLogger('root')
     hdlr = logging.StreamHandler(sys.stdout)
     log.addHandler(hdlr)
-    log.setLevel(logging.getLevelName(args.loglevel.upper()))
-
+    #log.setLevel(logging.getLevelName(args.loglevel.upper()))
+    log.setLevel(logging.DEBUG)
     if args.input[0].endswith(".cs"):
         log.debug("Detected CryoSPARC 2+ .cs file")
         cs = np.load(args.input[0])
