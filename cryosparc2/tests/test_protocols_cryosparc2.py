@@ -293,8 +293,8 @@ class TestCryosparcNonUniformRefine3D(TestCryosparcBase):
         particlesPattern = dataset.getFile('particles.sqlite')
         cls.protImport = cls.runImportParticleCryoSPARC(cls.partFn2)
 
-    def testCryosparc3DRefinement(self):
-        def _runCryosparctest3DRefinement(label=''):
+    def testCryosparcNonUniformRefine3D(self):
+        def _runCryosparctestNonUniformRefine3D(label=''):
             protNonUniform3DRefinement = self.newProtocol(ProtCryoSparcNonUniformRefine3D,
                                                           numberOfMpi=4, numberOfThreads=1)
 
@@ -321,7 +321,7 @@ class TestCryosparcNonUniformRefine3D(TestCryosparcBase):
             self.assertIsNotNone(cryosparcProt.outputVolume,
                                  "There was a problem with Cryosparc Non-Uniform 3D refinement")
 
-        cryosparcProtGpu = _runCryosparctest3DRefinement(label="Cryosparc Non-Uniform 3D refinement")
+        cryosparcProtGpu = _runCryosparctestNonUniformRefine3D(label="Cryosparc Non-Uniform 3D refinement")
         _checkAsserts(cryosparcProtGpu)
 
 
