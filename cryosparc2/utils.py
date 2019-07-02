@@ -67,8 +67,11 @@ def getCryosparcSSD():
     if os.environ.get('CRYOSSD_DIR') is None:
         cryoSSD_Dir = os.path.join(str(getCryosparcDir()), 'cryo_ssd')
         os.mkdir(cryoSSD_Dir)
-    else:
+    elif os.path.exists(os.environ['CRYOSSD_DIR']):
         cryoSSD_Dir = os.environ['CRYOSSD_DIR']
+    else:
+        cryoSSD_Dir = os.path.join(str(getCryosparcDir()), 'cryo_ssd')
+        os.mkdir(cryoSSD_Dir)
     return cryoSSD_Dir
 
 
