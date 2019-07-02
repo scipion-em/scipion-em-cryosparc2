@@ -58,13 +58,12 @@ class Plugin(pyworkflow.em.Plugin):
 
     @classmethod
     def isVersionActive(cls):
-        return cls.getActiveVersion().startswith(V2_8)
+        return cls.getActiveVersion().startswith(V2_9)
 
     @classmethod
     def defineBinaries(cls, env):
 
-        pyemLibcmd = 'pip install git+https://github.com/asarnow/pyem'
-        env.addPipModule('pyem', version='0.4', pipCmd=pyemLibcmd)
+        env.addPipModule('pyem', version='0.4')
 
 
 pyworkflow.em.Domain.registerPlugin(__name__)
