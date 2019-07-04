@@ -519,7 +519,7 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
                                  abs_blob_path=None, psize_A=None)
         returns the new uid of the job that was created
         """
-        cmd = """ 'do_import_particles_star("%s","%s", "'+%s'", "'%s'", "'%s'", "'%s'")'"""
+        cmd = """ 'do_import_particles_star("%s","%s", "%s", "%s", "%s", "%s")'"""
         import_particles_cmd = (self._program + cmd % (
             self.projectName.get(), self.workSpaceName.get(),
             self._user,

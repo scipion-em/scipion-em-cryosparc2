@@ -103,10 +103,11 @@ def createEmptyProject(projectDir, projectTitle):
     """
 
     create_empty_project_cmd = (getCryosparcProgram() +
-                                ' %screate_empty_project("%s+%s%s", "%s", "%s")%s '
-                                % ("'", "'", str(getCryosparcUser()), "'",
+                                ' %screate_empty_project("%s", "%s", "%s")%s '
+                                % ("'", str(getCryosparcUser()),
                                    str(projectDir), str(projectTitle), "'"))
 
+    print(pwutils.greenStr(create_empty_project_cmd))
     return commands.getstatusoutput(create_empty_project_cmd)
 
 
@@ -122,9 +123,9 @@ def createProjectDir(project_container_dir):
               time it is used)
     """
     create_project_dir_cmd = (getCryosparcProgram() +
-                             ' %scheck_or_create_project_container_dir("%s%s%s")%s '
-                             % ("'", "'", project_container_dir, "'", "'"))
-
+                             ' %scheck_or_create_project_container_dir("%s")%s '
+                             % ("'", project_container_dir, "'"))
+    print(pwutils.greenStr(create_project_dir_cmd))
     return commands.getstatusoutput(create_project_dir_cmd)
 
 
@@ -136,10 +137,11 @@ def createEmptyWorkSpace(projectName, workspaceTitle, workspaceComment):
     returns the new uid of the workspace that was created
     """
     create_work_space_cmd = (getCryosparcProgram() +
-                             ' %screate_empty_workspace("%s", "%s+%s%s", "%s", "%s", "%s")%s '
-                             % ("'", projectName, "'", str(getCryosparcUser()),
-                                "'", "None", str(workspaceTitle),
+                             ' %screate_empty_workspace("%s", "%s", "%s", "%s", "%s")%s '
+                             % ("'", projectName, str(getCryosparcUser()),
+                                "None", str(workspaceTitle),
                                 str(workspaceComment), "'"))
+    print(pwutils.greenStr(create_work_space_cmd))
     return commands.getstatusoutput(create_work_space_cmd)
 
 
@@ -149,9 +151,9 @@ def doJob(jobType, projectName, workSpaceName, params, input_group_conect):
            input_group_connects={})
     """
     do_job_cmd = (getCryosparcProgram() +
-                  ' %sdo_job("%s","%s","%s", "%s+%s%s", %s, %s)%s' %
-                  ("'", jobType, projectName, workSpaceName, "'",
-                   getCryosparcUser(), "'", params, input_group_conect, "'"))
+                  ' %sdo_job("%s","%s","%s", "%s", %s, %s)%s' %
+                  ("'", jobType, projectName, workSpaceName, getCryosparcUser(),
+                   params, input_group_conect, "'"))
 
     print(pwutils.greenStr(do_job_cmd))
     return commands.getstatusoutput(do_job_cmd)
