@@ -301,14 +301,13 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
     def _insertAllSteps(self):
         self._defineFileNames()
         self._defineParamsName()
-        self._initializeUtilsVariables()
-        objId = self._getInputParticles().getObjId()
-        self._insertFunctionStep("convertInputStep", objId)
+        self._initializeCryosparcProject()
+        self._insertFunctionStep("convertInputStep")
         self._insertFunctionStep('processStep')
         self._insertFunctionStep('createOutputStep')
 
     # --------------------------- STEPS functions ------------------------------
-    def convertInputStep(self, particlesId):
+    def convertInputStep(self):
         """ Create the input file in STAR format as expected by Relion.
         If the input particles comes from Relion, just link the file.
         """
@@ -480,8 +479,10 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
         self.projectPath = pwutils.join(self._ssd, self.projectDirName)
         self.projectDir = createProjectDir(self.projectPath)
 
-    def _importParticles(self):
-
+    def _initializeCryosparcProject(self):
+        """
+        Initialize the cryoSPARC project and workspace
+        """
         self._initializeUtilsVariables()
         # create empty project or load an exists one
         folderPaths = getProjectPath(self.projectPath)
@@ -499,6 +500,8 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
                                       self.getObjComment())
         self.workSpaceName = String(self.b[-1].split()[-1])
         self._store(self)
+
+    def _importParticles(self):
 
         print("Importing Particles")
 

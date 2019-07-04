@@ -220,13 +220,7 @@ class ProtCryoSparcNonUniformRefine3D(ProtCryoSparcRefine3D):
 
     # --------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
-        self._defineFileNames()
-        self._defineParamsName()
-        self._initializeUtilsVariables()
-        objId = self._getInputParticles().getObjId()
-        self._insertFunctionStep("convertInputStep", objId)
-        self._insertFunctionStep('processStep')
-        self._insertFunctionStep('createOutputStep')
+        ProtCryoSparcRefine3D._insertAllSteps(self)
 
     def _defineParamsName(self):
         """ Define a list with all protocol parameters names"""
