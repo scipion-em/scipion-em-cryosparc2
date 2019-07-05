@@ -178,7 +178,6 @@ def getJobStatus(projectName, job):
                           % ("'", projectName, job, "'"))
 
     status = commands.getstatusoutput(get_job_status_cmd)
-    print(status)
     return status[-1].split()[-1]
 
 
