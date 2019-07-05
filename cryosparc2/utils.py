@@ -34,9 +34,12 @@ STATUS_COMPLETED = "completed"
 STATUS_KILLED = "killed"
 STATUS_RUNNING = "running"
 STATUS_QUEUED = "queued"
+STATUS_LAUNCHED = "launched"
+STATUS_STARTED = "started"
 
 STOP_STATUSES = [STATUS_ABORTED, STATUS_COMPLETED, STATUS_FAILED, STATUS_KILLED]
-ACTIVE_STATUSES = [STATUS_QUEUED, STATUS_RUNNING]
+ACTIVE_STATUSES = [STATUS_QUEUED, STATUS_RUNNING, STATUS_STARTED,
+                   STATUS_LAUNCHED]
 
 
 def getCryosparcDir():
@@ -78,7 +81,8 @@ def getCryosparcUser():
 def getCryosparcSSD():
     if os.environ.get('CRYOSSD_DIR') is None:
         cryoSSD_Dir = os.path.join(str(getCryosparcDir()), 'cryo_ssd')
-        os.mkdir(cryoSSD_Dir)
+        if not os.path.exists(cryoSSD_Dir):
+            os.mkdir(cryoSSD_Dir)
     elif os.path.exists(os.environ['CRYOSSD_DIR']):
         cryoSSD_Dir = os.environ['CRYOSSD_DIR']
     else:
@@ -173,7 +177,9 @@ def getJobStatus(projectName, job):
                           ' %sget_job_status("%s", "%s")%s'
                           % ("'", projectName, job, "'"))
 
-    return commands.getstatusoutput(get_job_status_cmd)[-1].split()[-1]
+    status = commands.getstatusoutput(get_job_status_cmd)
+    print(status)
+    return status[-1].split()[-1]
 
 
 def waitJob(projectName, job):
