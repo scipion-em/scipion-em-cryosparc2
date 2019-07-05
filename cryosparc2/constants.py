@@ -24,6 +24,17 @@
 # *  e-mail address 'scipion@cnb.csic.es'
 # *
 # **************************************************************************
+from pyworkflow.em.constants import (
+    SYM_CYCLIC, SYM_TETRAHEDRAL, SYM_OCTAHEDRAL, SYM_I222,
+    SYM_I222r)
+
+# Not yet release in Scipion, once is released this try /catch import can be removed
+try:
+    from pyworkflow.em.constants import SYM_DIHEDRAL_Y
+except:
+    from pyworkflow.em import SCIPION_SYM_NAME
+    SYM_DIHEDRAL_Y = 12
+    SCIPION_SYM_NAME[SYM_DIHEDRAL_Y] = "Dyn"
 
 CRYOSPARC_HOME = 'CRYOSPARC_HOME'
 
@@ -34,3 +45,13 @@ V2_9 = 'V2_9'
 
 # Suffix for all project
 suffix = 'ProjCryoSparc_'
+
+
+
+CS_SYM_NAME = {}
+CS_SYM_NAME[SYM_CYCLIC] = 'Cn'
+CS_SYM_NAME[SYM_DIHEDRAL_Y] = 'Dn'
+CS_SYM_NAME[SYM_TETRAHEDRAL] = 'T'
+CS_SYM_NAME[SYM_OCTAHEDRAL] = 'O'
+CS_SYM_NAME[SYM_I222] = 'I1'
+CS_SYM_NAME[SYM_I222r] = 'I2'

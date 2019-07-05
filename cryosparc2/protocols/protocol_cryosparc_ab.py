@@ -29,7 +29,7 @@
 import os
 import commands
 import pyworkflow.em.metadata as md
-from pyworkflow.em import ALIGN_PROJ
+from pyworkflow.em import ALIGN_PROJ, SCIPION_SYM_NAME
 from pyworkflow.protocol.params import (PointerParam, FloatParam,
                                         LabelParam, IntParam, Positive,
                                         EnumParam, StringParam,
@@ -227,11 +227,36 @@ class ProtCryoSparcInitialModel(ProtInitialVolume, ProtClassify3D):
                            'should have significant probability (used for '
                            'auto-tuning initial noise sigma-scale)')
 
-        form.addParam('abinit_symmetry', StringParam, default="C1",
-                      label='Symmetry:',
-                      help='Symmetry enforced (C, D, I, O, T). Eg. C1, D7, C4 '
-                           'etc. Enforcing symmetry above C1 is not '
-                           'recommended for ab-initio reconstruction')
+        form.addParam('symmetryGroup', EnumParam,
+                      choices=[CS_SYM_NAME[SYM_CYCLIC] +
+                               " (" + SCIPION_SYM_NAME[SYM_CYCLIC] + ")",
+                               CS_SYM_NAME[SYM_DIHEDRAL_Y] +
+                               " (" + SCIPION_SYM_NAME[SYM_DIHEDRAL_Y] + ")",
+                               CS_SYM_NAME[SYM_TETRAHEDRAL] +
+                               " (" + SCIPION_SYM_NAME[SYM_TETRAHEDRAL] + ")",
+                               CS_SYM_NAME[SYM_OCTAHEDRAL] +
+                               " (" + SCIPION_SYM_NAME[SYM_OCTAHEDRAL] + ")",
+                               CS_SYM_NAME[SYM_I222] +
+                               " (" + SCIPION_SYM_NAME[SYM_I222] + ")",
+                               CS_SYM_NAME[SYM_I222r] +
+                               " (" + SCIPION_SYM_NAME[SYM_I222r] + ")"],
+                      default=SYM_CYCLIC,
+                      label="Symmetry",
+                      help="Symmetry as defined by cryosparc. Please note that "
+                           "Dihedral symmetry in cryosparc is defined with respect"
+                           "to y axis (Dyn).\n"
+                           "If no symmetry is present, use _c1_."
+                      )
+        form.addParam('symmetryOrder', IntParam, default=1,
+                      condition='symmetryGroup==%d or symmetryGroup==%d' % (1, SYM_CYCLIC),
+                      label='Symmetry Order',
+                      help='Order of cyclic symmetry.')
+
+        # form.addParam('abinit_symmetry', StringParam, default="C1",
+        #               label='Symmetry:',
+        #               help='Symmetry enforced (C, D, I, O, T). Eg. C1, D7, C4 '
+        #                    'etc. Enforcing symmetry above C1 is not '
+        #                    'recommended for ab-initio reconstruction')
 
         form.addParam('abinit_r_grid', FloatParam, default=25,
                       expertLevel=LEVEL_ADVANCED,
