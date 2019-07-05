@@ -438,15 +438,14 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
 
     # --------------------------- INFO functions -------------------------------
     def _validate(self):
-        """ Should be overriden in subclasses to
-        return summary message for NORMAL EXECUTION.
-        """
         validateMsgs = cryosparcExist()
         if not validateMsgs:
             validateMsgs = isCryosparcRunning()
-        particles = self._getInputParticles()
-        if not particles.hasCTF():
-            validateMsgs.append("The Particles has not associated a CTF model")
+            if not validateMsgs:
+                particles = self._getInputParticles()
+                if not particles.hasCTF():
+                    validateMsgs.append("The Particles has not associated a "
+                                        "CTF model")
         return validateMsgs
     # -------------------------- UTILS functions ------------------------------
 

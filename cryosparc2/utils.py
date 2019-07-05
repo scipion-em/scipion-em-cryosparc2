@@ -56,9 +56,18 @@ def cryosparcExist():
     return msg
 
 
-#TODO create the way to check this
 def isCryosparcRunning():
+
     msg = []
+    create_empty_project_cmd = (getCryosparcProgram() +
+                                ' %stest_connection()%s ' % ("'", "'"))
+    test_conection = commands.getstatusoutput(create_empty_project_cmd)
+    status = test_conection[0]
+
+    if status != 0:
+        msg = ['Failed to establish a new connection with cryoSPARC. Please, '
+               'restart the cryoSPARC services.']
+
     return msg
 
 
@@ -107,7 +116,6 @@ def createEmptyProject(projectDir, projectTitle):
                                 % ("'", str(getCryosparcUser()),
                                    str(projectDir), str(projectTitle), "'"))
 
-    print(pwutils.greenStr(create_empty_project_cmd))
     return commands.getstatusoutput(create_empty_project_cmd)
 
 
@@ -125,7 +133,6 @@ def createProjectDir(project_container_dir):
     create_project_dir_cmd = (getCryosparcProgram() +
                              ' %scheck_or_create_project_container_dir("%s")%s '
                              % ("'", project_container_dir, "'"))
-    print(pwutils.greenStr(create_project_dir_cmd))
     return commands.getstatusoutput(create_project_dir_cmd)
 
 
@@ -141,7 +148,6 @@ def createEmptyWorkSpace(projectName, workspaceTitle, workspaceComment):
                              % ("'", projectName, str(getCryosparcUser()),
                                 "None", str(workspaceTitle),
                                 str(workspaceComment), "'"))
-    print(pwutils.greenStr(create_work_space_cmd))
     return commands.getstatusoutput(create_work_space_cmd)
 
 
@@ -198,5 +204,4 @@ def killJob(projectName, job):
     kill_job_cmd = (getCryosparcProgram() +
                     ' %skill_job("%s", "%s")%s'
                     % ("'", projectName, job, "'"))
-    print(kill_job_cmd)
     commands.getstatusoutput(kill_job_cmd)
