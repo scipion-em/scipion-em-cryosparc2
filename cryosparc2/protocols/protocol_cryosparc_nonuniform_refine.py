@@ -47,7 +47,7 @@ class ProtCryoSparcNonUniformRefine3D(ProtCryoSparcRefine3D):
 
         # ------------[Non-uniform Refinement 2]-----------------
 
-        form.addSection(label='Non-uniform Refinement 2')
+        form.addSection(label='Advanced Refinement')
 
         form.addParam('refine_locproc_start_res', FloatParam,
                       expertLevel=LEVEL_ADVANCED,

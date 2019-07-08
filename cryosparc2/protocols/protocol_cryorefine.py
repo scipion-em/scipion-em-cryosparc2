@@ -80,7 +80,7 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
 
         # --------------[Homogeneous Refinement]---------------------------
 
-        form.addSection(label='Homogeneous Refinement')
+        form.addSection(label='Refinement')
         # form.addParam('refine_N', IntParam, default=None,
         #               expertLevel=LEVEL_ADVANCED,
         #               label="Refinement box size (Voxels)",
