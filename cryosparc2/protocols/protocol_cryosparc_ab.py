@@ -547,7 +547,6 @@ class ProtCryoSparcInitialModel(ProtInitialVolume, ProtClassify3D):
                 if paramName != 'abinit_symmetry':
                     params[str(paramName)] = str(self.getAttributeValue(paramName))
                 else:
-                    print(self.symmetryGroup.get(), self.symmetryOrder.get())
                     symetryValue = getSymmetry(self.symmetryGroup.get(),
                                                self.symmetryOrder.get())
 

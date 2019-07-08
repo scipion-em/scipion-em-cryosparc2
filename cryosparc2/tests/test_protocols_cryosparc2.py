@@ -270,7 +270,8 @@ class TestCryosparc3DRefinement(TestCryosparcBase):
 
             prot3DRefinement.inputParticles.set(relionProtocol.outputParticles)
             prot3DRefinement.referenceVolume.set(importVolumeProt.outputVolume)
-            prot3DRefinement.refine_symmetry.set('C1')
+            prot3DRefinement.symmetryGroup.set(SYM_CYCLIC)
+            prot3DRefinement.symmetryOrder.set(1)
             prot3DRefinement.setObjLabel(label)
             self.launchProtocol(prot3DRefinement)
             return prot3DRefinement
@@ -314,7 +315,8 @@ class TestCryosparcNonUniformRefine3D(TestCryosparcBase):
 
             protNonUniform3DRefinement.inputParticles.set(relionProtocol.outputParticles)
             protNonUniform3DRefinement.referenceVolume.set(importVolumeProt.outputVolume)
-            protNonUniform3DRefinement.refine_symmetry.set('C1')
+            protNonUniform3DRefinement.symmetryGroup.set(SYM_CYCLIC)
+            protNonUniform3DRefinement.symmetryOrder.set(1)
             protNonUniform3DRefinement.setObjLabel(label)
             self.launchProtocol(protNonUniform3DRefinement)
             return protNonUniform3DRefinement

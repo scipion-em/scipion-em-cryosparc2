@@ -88,10 +88,11 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
         #                    'null, use the full image size. Otherwise images '
         #                    'are automatically downsampled')
 
-        form.addParam('refine_symmetry', StringParam, default='C1',
-                      label="Symmetry",
-                      help='Symmetry String (C, D, I, O, T). E.g. C1, D7, C4, '
-                           'etc')
+        addSymmetryParam(form)
+        # form.addParam('refine_symmetry', StringParam, default='C1',
+        #               label="Symmetry",
+        #               help='Symmetry String (C, D, I, O, T). E.g. C1, D7, C4, '
+        #                    'etc')
 
         form.addParam('refine_symmetry_do_align', BooleanParam, default=True,
                       label="Do symmetry alignment",
@@ -588,7 +589,13 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
         params = {}
 
         for paramName in self._paramsName:
-            params[str(paramName)] = str(self.getAttributeValue(paramName))
+            if paramName != 'refine_symmetry':
+                params[str(paramName)] = str(self.getAttributeValue(paramName))
+            else:
+                symetryValue = getSymmetry(self.symmetryGroup.get(),
+                                           self.symmetryOrder.get())
+
+                params[str(paramName)] = symetryValue
 
         return doJob(className, self.projectName.get(), self.workSpaceName.get(),
                      str(params).replace('\'', '"'),
