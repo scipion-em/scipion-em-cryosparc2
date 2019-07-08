@@ -29,7 +29,7 @@
 import os
 import commands
 import pyworkflow.em.metadata as md
-from pyworkflow.em import ALIGN_PROJ, SCIPION_SYM_NAME
+from pyworkflow.em import ALIGN_PROJ
 from pyworkflow.protocol.params import (PointerParam, FloatParam,
                                         LabelParam, IntParam, Positive,
                                         EnumParam, StringParam,
@@ -219,7 +219,8 @@ class ProtCryoSparcInitialModel(ProtInitialVolume, ProtClassify3D):
                       label='Class similarity anneal end iter:',
                       help='Finish point for annealing the similarity factor')
 
-        form.addParam('abinit_target_initial_ess_fraction', FloatParam, default=0.011,
+        form.addParam('abinit_target_initial_ess_fraction', FloatParam,
+                      default=0.011,
                       expertLevel=LEVEL_ADVANCED,
                       validators=[Positive],
                       label='Target 3D ESS Fraction:',
@@ -227,30 +228,7 @@ class ProtCryoSparcInitialModel(ProtInitialVolume, ProtClassify3D):
                            'should have significant probability (used for '
                            'auto-tuning initial noise sigma-scale)')
 
-        form.addParam('symmetryGroup', EnumParam,
-                      choices=[CS_SYM_NAME[SYM_CYCLIC] +
-                               " (" + SCIPION_SYM_NAME[SYM_CYCLIC] + ")",
-                               CS_SYM_NAME[SYM_DIHEDRAL_Y] +
-                               " (" + SCIPION_SYM_NAME[SYM_DIHEDRAL_Y] + ")",
-                               CS_SYM_NAME[SYM_TETRAHEDRAL] +
-                               " (" + SCIPION_SYM_NAME[SYM_TETRAHEDRAL] + ")",
-                               CS_SYM_NAME[SYM_OCTAHEDRAL] +
-                               " (" + SCIPION_SYM_NAME[SYM_OCTAHEDRAL] + ")",
-                               CS_SYM_NAME[SYM_I222] +
-                               " (" + SCIPION_SYM_NAME[SYM_I222] + ")",
-                               CS_SYM_NAME[SYM_I222r] +
-                               " (" + SCIPION_SYM_NAME[SYM_I222r] + ")"],
-                      default=SYM_CYCLIC,
-                      label="Symmetry",
-                      help="Symmetry as defined by cryosparc. Please note that "
-                           "Dihedral symmetry in cryosparc is defined with respect"
-                           "to y axis (Dyn).\n"
-                           "If no symmetry is present, use _c1_."
-                      )
-        form.addParam('symmetryOrder', IntParam, default=1,
-                      condition='symmetryGroup==%d or symmetryGroup==%d' % (1, SYM_CYCLIC),
-                      label='Symmetry Order',
-                      help='Order of cyclic symmetry.')
+        addSymmetryParam(form)
 
         # form.addParam('abinit_symmetry', StringParam, default="C1",
         #               label='Symmetry:',
@@ -311,7 +289,6 @@ class ProtCryoSparcInitialModel(ProtInitialVolume, ProtClassify3D):
 
         form.addParam('compute_use_ssd', BooleanParam, default=True,
                       label='Cache particle images on SSD:')
-
 
     # --------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
@@ -567,7 +544,14 @@ class ProtCryoSparcInitialModel(ProtInitialVolume, ProtClassify3D):
 
         if self.hasExpert():
             for paramName in self._paramsName:
-                params[str(paramName)] = str(self.getAttributeValue(paramName))
+                if paramName != 'abinit_symmetry':
+                    params[str(paramName)] = str(self.getAttributeValue(paramName))
+                else:
+                    print(self.symmetryGroup.get(), self.symmetryOrder.get())
+                    symetryValue = getSymmetry(self.symmetryGroup.get(),
+                                               self.symmetryOrder.get())
+
+                    params[str(paramName)] = symetryValue
 
         return doJob(className, self.projectName.get(), self.workSpaceName.get(),
                      str(params).replace('\'', '"'),

@@ -27,6 +27,11 @@
 import os
 import commands
 import pyworkflow.utils as pwutils
+from pyworkflow.em import SCIPION_SYM_NAME
+from pyworkflow.em.constants import (SYM_CYCLIC, SYM_TETRAHEDRAL,
+                                     SYM_OCTAHEDRAL, SYM_I222, SYM_I222r)
+from pyworkflow.protocol.params import EnumParam, IntParam, Positive
+from cryosparc2.constants import CS_SYM_NAME, SYM_DIHEDRAL_Y
 
 STATUS_FAILED = "failed"
 STATUS_ABORTED = "aborted"
@@ -210,3 +215,47 @@ def killJob(projectName, job):
                     ' %skill_job("%s", "%s")%s'
                     % ("'", projectName, job, "'"))
     commands.getstatusoutput(kill_job_cmd)
+
+
+def addSymmetryParam(form):
+    form.addParam('symmetryGroup', EnumParam,
+                  choices=[CS_SYM_NAME[SYM_CYCLIC] +
+                           " (" + SCIPION_SYM_NAME[SYM_CYCLIC] + ")",
+                           CS_SYM_NAME[SYM_DIHEDRAL_Y] +
+                           " (" + SCIPION_SYM_NAME[SYM_DIHEDRAL_Y] + ")",
+                           CS_SYM_NAME[SYM_TETRAHEDRAL] +
+                           " (" + SCIPION_SYM_NAME[SYM_TETRAHEDRAL] + ")",
+                           CS_SYM_NAME[SYM_OCTAHEDRAL] +
+                           " (" + SCIPION_SYM_NAME[SYM_OCTAHEDRAL] + ")",
+                           CS_SYM_NAME[SYM_I222] +
+                           " (" + SCIPION_SYM_NAME[SYM_I222] + ")",
+                           CS_SYM_NAME[SYM_I222r] +
+                           " (" + SCIPION_SYM_NAME[SYM_I222r] + ")"],
+                  default=SYM_CYCLIC,
+                  label="Symmetry",
+                  help="Symmetry as defined by cryosparc. Please note that "
+                       "Dihedral symmetry in cryosparc is defined with respect"
+                       "to y axis (Dyn).\n"
+                       "If no symmetry is present, use C1. Enforcing symmetry "
+                       "above C1 is not recommended for ab-initio reconstruction"
+                  )
+    form.addParam('symmetryOrder', IntParam, default=1,
+                  condition='symmetryGroup==%d or symmetryGroup==%d' %
+                            (SYM_DIHEDRAL_Y - 11, SYM_CYCLIC),
+                  label='Symmetry Order',
+                  validators=[Positive],
+                  help='Order of cyclic symmetry.')
+
+
+def getSymmetry(symmetryGroup, symmetryOrder):
+
+    if symmetryGroup == 1:
+        symmetry = CS_SYM_NAME[SYM_DIHEDRAL_Y][0] + str(symmetryOrder)
+    else:
+        symmetry = CS_SYM_NAME[symmetryGroup][0]
+        if symmetryGroup == SYM_CYCLIC:
+            symmetry = symmetry + str(symmetryOrder)
+        elif (symmetryGroup == SYM_I222 or
+              symmetryGroup == SYM_I222r):
+            symmetry += CS_SYM_NAME[symmetryGroup][1]
+    return symmetry

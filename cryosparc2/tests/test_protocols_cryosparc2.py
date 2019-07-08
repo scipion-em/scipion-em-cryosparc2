@@ -30,6 +30,7 @@ from pyworkflow.tests import *
 from pyworkflow.utils import importFromPlugin
 
 from cryosparc2.protocols import *
+from cryosparc2.constants import *
 
 relionProtocols = importFromPlugin('relion.protocols', doRaise=True)
 
@@ -221,7 +222,8 @@ class TestCryosparc3DInitialModel(TestCryosparcBase):
 
             protInitialModel.inputParticles.set(relionProtocol.outputParticles)
             protInitialModel.abinit_K.set(1)
-            protInitialModel.abinit_symmetry.set('C1')
+            protInitialModel.symmetryGroup.set(SYM_CYCLIC)
+            protInitialModel.symmetryOrder.set(1)
             protInitialModel.setObjLabel(label)
             self.launchProtocol(protInitialModel)
             return protInitialModel
