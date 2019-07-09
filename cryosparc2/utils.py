@@ -48,15 +48,24 @@ ACTIVE_STATUSES = [STATUS_QUEUED, STATUS_RUNNING, STATUS_STARTED,
 
 
 def getCryosparcDir():
+    """
+    Get the root directory where cryoSPARC code and dependencies are installed.
+    """
     return os.environ['CRYOSPARC_DIR']
 
 
 def getCryosparcProgram():
+    """
+    Get the cryosparc program to launch any command
+    """
     return os.path.join(getCryosparcDir(),
                         'cryosparc2_master/bin/cryosparcm cli')
 
 
 def cryosparcExist():
+    """
+    Determine if cryosparc software exist
+    """
     msg = []
     if not os.path.exists(getCryosparcDir()):
        msg.append(('The cryoSPARC software do not exist in %s. Please install it')
@@ -65,11 +74,13 @@ def cryosparcExist():
 
 
 def isCryosparcRunning():
-
+    """
+    Determine if cryosparc services are running
+    """
     msg = []
-    create_empty_project_cmd = (getCryosparcProgram() +
+    test_conection_cmd = (getCryosparcProgram() +
                                 ' %stest_connection()%s ' % ("'", "'"))
-    test_conection = commands.getstatusoutput(create_empty_project_cmd)
+    test_conection = commands.getstatusoutput(test_conection_cmd)
     status = test_conection[0]
 
     if status != 0:
@@ -80,10 +91,17 @@ def isCryosparcRunning():
 
 
 def getCryosparcUser():
+    """
+    Get the full name of the initial admin account
+    """
     return os.environ['CRYOSPARC_USER']
 
 
 def getCryosparcSSD():
+    """
+    Get the path on the worker node to a writable directory residing on the
+    local SSD
+    """
     if os.environ.get('CRYOSSD_DIR') is None:
         cryoSSD_Dir = os.path.join(str(getCryosparcDir()), 'cryo_ssd')
         if not os.path.exists(cryoSSD_Dir):
@@ -99,8 +117,8 @@ def getCryosparcSSD():
 def getProjectPath(projectDir):
     """
     Gets all projects of given path .
-    folderPath -- Folder path to get subfolders.
-    returns -- Set with all subfolders.
+    projectDir: Folder path to get subfolders.
+    returns: Set with all subfolders.
     """
     folderPaths = os.listdir(projectDir)
     return folderPaths
@@ -218,6 +236,11 @@ def killJob(projectName, job):
 
 
 def addSymmetryParam(form):
+    """
+    Add the symmetry param with the conventions
+    :param form:
+    :return:
+    """
     form.addParam('symmetryGroup', EnumParam,
                   choices=[CS_SYM_NAME[SYM_CYCLIC] +
                            " (" + SCIPION_SYM_NAME[SYM_CYCLIC] + ")",
@@ -248,7 +271,9 @@ def addSymmetryParam(form):
 
 
 def getSymmetry(symmetryGroup, symmetryOrder):
-
+    """
+    Get the symmetry(string) taking into account the symmetry convention
+    """
     if symmetryGroup == 1:
         symmetry = CS_SYM_NAME[SYM_DIHEDRAL_Y][0] + str(symmetryOrder)
     else:
