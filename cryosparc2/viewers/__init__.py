@@ -24,60 +24,6 @@
 # *  e-mail address 'scipion@cnb.csic.es'
 # *
 # **************************************************************************
-from pyworkflow.em.constants import (
-    SYM_CYCLIC, SYM_TETRAHEDRAL, SYM_OCTAHEDRAL, SYM_I222,
-    SYM_I222r)
 
-# Not yet release in Scipion, once is released this try /catch import can be removed
-try:
-    from pyworkflow.em.constants import SYM_DIHEDRAL_Y
-except:
-    from pyworkflow.em import SCIPION_SYM_NAME
-    SYM_DIHEDRAL_Y = 12
-    SCIPION_SYM_NAME[SYM_DIHEDRAL_Y] = "Dyn"
-
-CRYOSPARC_HOME = 'CRYOSPARC_HOME'
-
-# Supported versions:
-V2_5 = 'V2_5'
-V2_8 = 'V2_8'
-V2_9 = 'V2_9'
-
-# Suffix for all project
-suffix = 'ProjCryoSparc_'
-
-
-# Symmetry dict
-CS_SYM_NAME = {}
-CS_SYM_NAME[SYM_CYCLIC] = 'Cn'
-CS_SYM_NAME[SYM_DIHEDRAL_Y] = 'Dn'
-CS_SYM_NAME[SYM_TETRAHEDRAL] = 'T'
-CS_SYM_NAME[SYM_OCTAHEDRAL] = 'O'
-CS_SYM_NAME[SYM_I222] = 'I1'
-CS_SYM_NAME[SYM_I222r] = 'I2'
-
-
-# Viewer constants
-LAST_ITER = 0
-ALL_ITERS = 1
-SELECTED_ITERS = 2
-
-ANGDIST_2DPLOT = 0
-ANGDIST_CHIMERA = 1
-
-
-#VOLUME_SLICES = 0
-VOLUME_CHIMERA = 0
-VOLUME_CRYOSPARC = 1
-
-FSC_UNMASK = 0
-FSC_SPHERICALMASK = 1
-FSC_LOOSEMASK = 2
-FSC_TIGHTMASK = 3
-FSC_CORRECTEDMASK = 4
-FSC_ALL = 5
-
-HALF_EVEN = 0
-HALF_ODD = 1
-FULL_MAP = 2
-ALL_MAPS = 3
+from viewer_2Dclassify import CryosPARCViewer2D
+from viewer_refinement import CryosPARCViewer3DRefinement

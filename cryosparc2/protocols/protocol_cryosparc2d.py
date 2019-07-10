@@ -51,6 +51,7 @@ class ProtCryo2D(ProtClassify2D):
         investigate particle quality.
     """
     _label = 'perform Cryosparc2D'
+    IS_2D = True
     
     def __init__(self, **args):
         ProtClassify2D.__init__(self, **args)

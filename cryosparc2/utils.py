@@ -235,6 +235,14 @@ def killJob(projectName, job):
     commands.getstatusoutput(kill_job_cmd)
 
 
+def getSystemInfo():
+    """
+    Get the cryoSPARC system information
+    """
+    system_info_cmd = (getCryosparcProgram() + ' %sget_system_info()%s') % ("'", "'")
+    return commands.getstatusoutput(system_info_cmd)
+
+
 def addSymmetryParam(form):
     """
     Add the symmetry param with the conventions
