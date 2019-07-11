@@ -37,7 +37,7 @@ _logo = 'cryosparc2_logo.png'
 
 class Plugin(pyworkflow.em.Plugin):
     _homeVar = CRYOSPARC_HOME
-    _supportedVersions = [V2_5, V2_8]
+    _supportedVersions = [V2_5, V2_8, V2_9]
 
     @classmethod
     def _defineVariables(cls):
