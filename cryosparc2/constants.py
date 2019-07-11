@@ -69,6 +69,7 @@ ANGDIST_CHIMERA = 1
 #VOLUME_SLICES = 0
 VOLUME_CHIMERA = 0
 VOLUME_CRYOSPARC = 1
+DATA_VIEWER = 0
 
 FSC_UNMASK = 0
 FSC_SPHERICALMASK = 1
@@ -81,3 +82,7 @@ HALF_EVEN = 0
 HALF_ODD = 1
 FULL_MAP = 2
 ALL_MAPS = 3
+
+OBJCMD_CLASSAVG_PROJS = 'Show class-averages/projections'
+OBJCMD_PROJS = 'Show only projections'
+OBJCMD_INITVOL = 'Show initial random volume'

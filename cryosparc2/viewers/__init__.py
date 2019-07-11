@@ -27,3 +27,4 @@
 
 from viewer_2Dclassify import CryosPARCViewer2D
 from viewer_refinement import CryosPARCViewer3DRefinement
+from viewer_initialmodel import CryosPARCViewerInitialModel
