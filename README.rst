@@ -2,25 +2,21 @@
 cryoSPARC2 plugin
 =================
 
-
-**Installation**
-=======================
-
 This plugin allows to use cryoSPARC2 programs within the Scipion framework
 
 `CryoSPARC <https://cryosparc.com/>`_ is a backend and frontend software system
 that provides data processing and image analysis capabilities for single particle
 cryo-EM, along with a browser based user interface and command line tools.
 
-
-**Install the plugin**
-=======================
-
 You will need to use `2.0.0 <https://scipion-em.github.io/docs/release-2.0.0/docs/scipion-modes/how-to-install.html>`_ version of Scipion to run these protocols.
 
 * **2D Classification**: Classify particles into multiple 2D classes to facilitate stack cleaning and removal of junk particles.  Also useful as a sanity check to investigate particle quality.
-* **3D Homogeneous Refinement**: Rapidly refine a single homogeneous structure to high-resolution and validate using the gold-standard FSC
 * **3D Ab-Initio Reconstruction**:  Reconstruct a single (homogeneous) or multiple (heterogeneous) 3-D maps from a set of particles, without any initial models or starting structures required.
+* **3D Homogeneous Refinement**: Rapidly refine a single homogeneous structure to high-resolution and validate using the gold-standard FSC
+* **3D Non uniform Refinement**: Apply non-uniform refinement to acheive higher resolution and map quality
+
+**Installing the plugin**
+=========================
 
 In order to install the plugin follow these instructions:
 
@@ -61,7 +57,7 @@ cryoSPARC v2 when new versions become available.
 
 
 
-**To install in develpment mode**
+**To install in development mode**
 
 - Clone or download the plugin repository
 
