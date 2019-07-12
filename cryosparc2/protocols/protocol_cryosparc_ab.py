@@ -179,8 +179,10 @@ class ProtCryoSparcInitialModel(ProtInitialVolume, ProtClassify3D):
                       help='When to switch to final number of images per '
                            'minibatch')
 
-        form.addParam('abinit_noise_model', StringParam, default="symmetric",
-                      label='Noise model (white, symmetric or coloured:',
+        form.addParam('abinit_noise_model', EnumParam,
+                      choices=['symmetric', 'white', 'coloured'],
+                      default=0,
+                      label='Noise model:',
                       help='Noise model to use. Valid options are white, '
                            'coloured or symmetric. Symmetric is the default, '
                            'meaning coloured with radial symmetry')
@@ -544,13 +546,14 @@ class ProtCryoSparcInitialModel(ProtInitialVolume, ProtClassify3D):
 
         if self.hasExpert():
             for paramName in self._paramsName:
-                if paramName != 'abinit_symmetry':
+                if paramName != 'abinit_symmetry' and paramName != 'abinit_noise_model':
                     params[str(paramName)] = str(self.getAttributeValue(paramName))
-                else:
+                elif paramName == 'abinit_symmetry':
                     symetryValue = getSymmetry(self.symmetryGroup.get(),
                                                self.symmetryOrder.get())
-
                     params[str(paramName)] = symetryValue
+                elif paramName == 'abinit_noise_model':
+                    params[str(paramName)] = str(NOISE_MODEL_CHOICES[self.abinit_noise_model.get()])
 
         return doJob(className, self.projectName.get(), self.workSpaceName.get(),
                      str(params).replace('\'', '"'),

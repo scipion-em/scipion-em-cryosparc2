@@ -139,13 +139,13 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
         #               expertLevel=LEVEL_ADVANCED,
         #               label="Particle MW (KDa)")
 
-        form.addParam('refine_FSC_weight', StringParam, default='fsc_loosemask',
-                      expertLevel=LEVEL_ADVANCED,
-                      label="FSC Weighting")
+        # form.addParam('refine_FSC_weight', StringParam, default='fsc_loosemask',
+        #               expertLevel=LEVEL_ADVANCED,
+        #               label="FSC Weighting")
 
-        form.addParam('refine_bnb_params', StringParam, default='3D',
-                      expertLevel=LEVEL_ADVANCED,
-                      label="BnB Params")
+        # form.addParam('refine_bnb_params', StringParam, default='3D',
+        #               expertLevel=LEVEL_ADVANCED,
+        #               label="BnB Params")
 
         form.addParam('refine_clip', BooleanParam, default=False,
                       expertLevel=LEVEL_ADVANCED,
@@ -209,8 +209,10 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
                       label="Scale min/use start iter",
                       help='Iteration to start minimizing over per-particle scale')
 
-        form.addParam('refine_noise_model', StringParam, default='symmetric',
-                      label="Noise model (white, symmetric or coloured)",
+        form.addParam('refine_noise_model', EnumParam,
+                      choices=['symmetric', 'white', 'coloured'],
+                      default=0,
+                      label="Noise model:",
                       help='Noise model to be used. Valid options are white, '
                            'coloured or symmetric. Symmetric is the default, '
                            'meaning coloured with radial symmetry')
@@ -244,9 +246,11 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
                            'affects computational performance. 1000 is a good '
                            'number, but try 4000 if you have lots of RAM')
 
-        form.addParam('refine_mask', StringParam, default='dynamic',
+        form.addParam('refine_mask', EnumParam,
+                      choices=['dynamic', 'static', 'null'],
+                      default=0,
                       expertLevel=LEVEL_ADVANCED,
-                      label="Mask (dynamic, static, null)",
+                      label="Mask:",
                       help='Type of masking to use. Either "dynamic", '
                            '"static", or "null"')
 
@@ -557,7 +561,6 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
                             'refine_num_final_iterations',
                             'refine_res_init',
                             'refine_res_gsfsc_split',
-                            'refine_FSC_weight', 'refine_bnb_params',
                             'refine_clip',
                             'refine_window', 'refine_skip_premult',
                             'refine_ignore_dc',
@@ -589,13 +592,19 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
         params = {}
 
         for paramName in self._paramsName:
-            if paramName != 'refine_symmetry':
+            if (paramName != 'refine_symmetry' and
+                    paramName != 'refine_noise_model' and
+                    paramName != 'refine_mask'):
                 params[str(paramName)] = str(self.getAttributeValue(paramName))
-            else:
+            elif paramName == 'refine_symmetry':
                 symetryValue = getSymmetry(self.symmetryGroup.get(),
                                            self.symmetryOrder.get())
 
                 params[str(paramName)] = symetryValue
+            elif paramName == 'refine_noise_model':
+                params[str(paramName)] = str(NOISE_MODEL_CHOICES[self.refine_noise_model.get()])
+            elif paramName == 'refine_mask':
+                params[str(paramName)] = str(REFINE_MASK_CHOICES[self.refine_mask.get()])
 
         return doJob(className, self.projectName.get(), self.workSpaceName.get(),
                      str(params).replace('\'', '"'),

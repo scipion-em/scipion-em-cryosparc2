@@ -56,6 +56,15 @@ CS_SYM_NAME[SYM_OCTAHEDRAL] = 'O'
 CS_SYM_NAME[SYM_I222] = 'I1'
 CS_SYM_NAME[SYM_I222r] = 'I2'
 
+NOISE_MODEL_CHOICES = ['symmetric',
+                       'white',
+                       'coloured']
+REFINE_MASK_CHOICES = ['dynamic',
+                       'static',
+                       'null']
+
+COMPUTE_FACILITY_CHOICES = ['GPU',
+                            'CPU']
 
 # Viewer constants
 LAST_ITER = 0

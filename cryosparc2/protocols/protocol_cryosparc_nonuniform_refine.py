@@ -30,6 +30,7 @@ from pyworkflow.protocol.params import (FloatParam, IntParam,
                                         LEVEL_ADVANCED)
 from cryosparc2.protocols import ProtCryoSparcRefine3D
 from cryosparc2.utils import *
+from cryosparc2.constants import *
 
 relionPlugin = pwutils.importFromPlugin("relion.convert", doRaise=True)
 
@@ -140,9 +141,10 @@ class ProtCryoSparcNonUniformRefine3D(ProtCryoSparcRefine3D):
                       help='Cap local resolution estimate below global '
                            'resolution estimate')
 
-        form.addParam('locres_compute_facility', StringParam,
+        form.addParam('locres_compute_facility', EnumParam,
+                      choices=['GPU', 'CPU'],
                       expertLevel=LEVEL_ADVANCED,
-                      default='GPU',
+                      default=0,
                       label="Use GPU or CPU for computation",
                       help='he computation facility to use for local processing. '
                            'Options are \'CPU\' and \'GPU\'. Leave as default')
@@ -256,13 +258,23 @@ class ProtCryoSparcNonUniformRefine3D(ProtCryoSparcRefine3D):
         params = {}
 
         for paramName in self._paramsName:
-            if paramName != 'refine_symmetry':
+            if (paramName != 'refine_symmetry' and
+                    paramName != 'refine_noise_model' and
+                    paramName != 'locres_compute_facility' and
+                    paramName != 'refine_mask'):
                 params[str(paramName)] = str(self.getAttributeValue(paramName))
-            else:
+            elif paramName == 'refine_symmetry':
                 symetryValue = getSymmetry(self.symmetryGroup.get(),
                                            self.symmetryOrder.get())
-
                 params[str(paramName)] = symetryValue
+            elif paramName == 'refine_noise_model':
+                params[str(paramName)] = str(
+                    NOISE_MODEL_CHOICES[self.refine_noise_model.get()])
+            elif paramName == 'refine_mask':
+                params[str(paramName)] = str(
+                    REFINE_MASK_CHOICES[self.refine_mask.get()])
+            elif paramName == 'locres_compute_facility':
+                params[str(paramName)] = str(COMPUTE_FACILITY_CHOICES[self.locres_compute_facility.get()])
 
         return doJob(className, self.projectName.get(), self.workSpaceName.get(),
                      str(params).replace('\'', '"'),
