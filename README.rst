@@ -10,7 +10,7 @@ cryo-EM, along with a browser based user interface and command line tools.
 
 
 **Install this plugin**
------------------------
+=======================
 
 You will need to use `2.0.0 <https://scipion-em.github.io/docs/release-2.0.0/docs/scipion-modes/how-to-install.html>`_ version of Scipion to run these protocols.
 
@@ -21,20 +21,36 @@ You will need to use `2.0.0 <https://scipion-em.github.io/docs/release-2.0.0/doc
 For now, the plugin must be installed in developer mode.
 For that, follow these instructions:
 
-1. Clone or download the plugin repository
+1. **Install the plugin**
+
+
+- **Stable version**
+
+.. code-block::
+
+      scipion installp -p scipion-em-cryosparc2
+
+OR
+
+  - through the **plugin manager GUI** by launching Scipion and following **Configuration** >> **Plugins**
+
+
+- **Developer's version**
+
+- Clone or download the plugin repository
 
 .. code-block::
 
             git clone https://github.com/scipion-em/scipion-em-cryosparc2.git
 
-2. Install the plugin in developer mode.
+- Install the plugin in developer mode.
 
 .. code-block::
 
     scipion installp -p local/path/to/scipion-em-cryosparc2 --devel
 
 
-3. Install **CryoSPARC software**
+2. Install **CryoSPARC software**
 
     CryoSPARC v2 software will *NOT* be installed automatically with the plugin. The
     independent installation of CryoSPARC software suite by the user is required
@@ -45,7 +61,7 @@ For that, follow these instructions:
     These cover workstation and cluster installs, file configuration and how to update
     cryoSPARC v2 when new versions become available.
 
-4. Add the following variables in the ``scipion.conf`` file:
+3. Add the following variables in the ``scipion.conf`` file:
 
    .. code-block::
 
