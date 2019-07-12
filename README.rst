@@ -27,30 +27,30 @@ In order to install the plugin follow these instructions:
 1. **Install the plugin**
 
 
-**Stable version**
+    **Stable version**
+
+        .. code-block::
+
+              scipion installp -p scipion-em-cryosparc2
+
+    OR
+
+        through the **plugin manager GUI** by launching Scipion and following **Configuration** >> **Plugins**
+
+
+    **Developer's version**
+
+    - Clone or download the plugin repository
 
     .. code-block::
 
-          scipion installp -p scipion-em-cryosparc2
+                git clone https://github.com/scipion-em/scipion-em-cryosparc2.git
 
-OR
+    - Install the plugin in developer mode.
 
-    through the **plugin manager GUI** by launching Scipion and following **Configuration** >> **Plugins**
+    .. code-block::
 
-
-**Developer's version**
-
-- Clone or download the plugin repository
-
-.. code-block::
-
-            git clone https://github.com/scipion-em/scipion-em-cryosparc2.git
-
-- Install the plugin in developer mode.
-
-.. code-block::
-
-    scipion installp -p local/path/to/scipion-em-cryosparc2 --devel
+        scipion installp -p local/path/to/scipion-em-cryosparc2 --devel
 
 
 2. Install **CryoSPARC software**
