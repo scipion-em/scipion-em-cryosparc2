@@ -26,21 +26,16 @@
 # **************************************************************************
 
 """
-
 @article{Punjani2017,
   Title                    = "cryoSPARC: algorithms for rapid unsupervised cryo-EM structure determination.",
   Author                   = "Punjani, A., Rubinstein, J.L., Fleet, D.J. & Brubaker, M.A.",
   Journal                  = "Nature Methods",
   Year                     = "2017",
-  Month                    = "",
   Number                   = "14",
   Pages                    = "290-296",
   Volume                   = "166",
-  Doi                      = "",
-  Keywords                 = "",
-  Pii                      = "",
-  Pmid                     = "",
-  url                      = "https://www.nature.com/articles/nmeth.4169"
+  Doi                      = "http://doi.org/10.1038/nmeth.4169",
+  url                      = "http://www.nature.com/articles/nmeth.4169"
 }
 
 @article{Brubaker2017,
@@ -48,15 +43,10 @@
   Author                   = "Brubaker, M.A., Punjani, A & Fleet, D.J.",
   Journal                  = "IEEE Trans. Pattern Anal. Mach. Intell.",
   Year                     = "2017",
-  Month                    = "",
   Number                   = "39",
   Pages                    = "706-718",
-  Volume                   = "",
-  Doi                      = "",
-  Keywords                 = "",
-  Pii                      = "",
-  Pmid                     = "",
-  url                      = "https://ieeexplore.ieee.org/document/7740877"
+  Doi                      = "http://ieeexplore.ieee.org/document/7740877",
+  url                      = "http://ieeexplore.ieee.org/document/7740877"
 }
 
 """
