@@ -311,7 +311,8 @@ class ProtCryoSparcInitialModel(ProtInitialVolume, ProtClassify3D):
         relionPlugin.writeSetOfParticles(imgSet,
                                          self._getFileName('input_particles'),
                                          outputDir=self._getExtraPath(),
-                                         fillMagnification=True)
+                                         fillMagnification=True,
+                                         fillRandomSubset=True)
         self._importParticles()
         while getJobStatus(self.projectName.get(), self.importedParticles.get()) not in STOP_STATUSES:
             waitJob(self.projectName.get(), self.importedParticles.get())

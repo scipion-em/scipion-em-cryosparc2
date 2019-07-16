@@ -1,0 +1,400 @@
+# **************************************************************************
+# *
+# * Authors: Yunior C. Fonseca Reyna    (cfonseca@cnb.csic.es)
+# *
+# *
+# * Unidad de  Bioinformatica of Centro Nacional de Biotecnologia , CSIC
+# *
+# * This program is free software; you can redistribute it and/or modify
+# * it under the terms of the GNU General Public License as published by
+# * the Free Software Foundation; either version 2 of the License, or
+# * (at your option) any later version.
+# *
+# * This program is distributed in the hope that it will be useful,
+# * but WITHOUT ANY WARRANTY; without even the implied warranty of
+# * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# * GNU General Public License for more details.
+# *
+# * You should have received a copy of the GNU General Public License
+# * along with this program; if not, write to the Free Software
+# * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
+# * 02111-1307  USA
+# *
+# *  All comments concerning this program package may be sent to the
+# *  e-mail address 'scipion@cnb.csic.es'
+# *
+# **************************************************************************
+
+import sys
+import pyworkflow.em.metadata as md
+
+from pyworkflow.em.protocol import ProtOperateParticles
+from pyworkflow.protocol.params import (PointerParam, BooleanParam, FloatParam,
+                                        LEVEL_ADVANCED)
+from pyworkflow.em import ALIGN_PROJ
+from pyworkflow.em.data import String, Volume
+
+from cryosparc2.convert import *
+from cryosparc2.utils import *
+from cryosparc2.constants import *
+
+relionPlugin = pwutils.importFromPlugin("relion.convert", doRaise=True)
+
+
+class ProtCryoSparcSubtract(ProtOperateParticles):
+    """ Signal subtraction protocol of cryoSPARC.
+        Subtract projections of a masked volume from particles.
+        """
+    _label = 'subtract projection'
+
+    def _initialize(self):
+        self._createFilenameTemplates()
+
+    def _createFilenameTemplates(self):
+        """ Centralize how files are called. """
+        myDict = {
+            'input_particles': self._getPath('input_particles.star'),
+            'out_particles': self._getExtraPath('output_particle.star')
+        }
+        self._updateFilenamesDict(myDict)
+
+    def _defineParams(self, form):
+        form.addSection(label='Input')
+        form.addParam('inputParticles', PointerParam,
+                      pointerClass='SetOfParticles',
+                      pointerCondition='hasAlignmentProj',
+                      label="Input particles", important=True,
+                      help='Select the experimental particles.')
+        form.addParam('refVolume', PointerParam, pointerClass='Volume',
+                      label="Input map to be projected",
+                      important=True,
+                      help='Provide the input volume that will be used to '
+                           'calculate projections, which will be subtracted '
+                           'from the experimental particles. Make sure this '
+                           'map was calculated by RELION from the same '
+                           'particles as above, and preferably with those '
+                           'orientations, as it is crucial that the absolute '
+                           'greyscale is the same as in the experimental '
+                           'particles.')
+        form.addParam('refMask', PointerParam, pointerClass='VolumeMask',
+                      label='Mask to be applied to this map',
+                      allowsNull=False,
+                      help="Provide a soft mask where the protein density "
+                           "you wish to subtract from the experimental "
+                           "particles is white (1) and the rest of the "
+                           "protein and the solvent is black (0). "
+                           "That is: *the mask should INCLUDE the part of the "
+                           "volume that you wish to SUBTRACT.*")
+
+        form.addParallelSection(threads=1, mpi=1)
+
+        # -----------[Particles Subtraction]------------------------
+        form.addSection(label="Particle Subtraction")
+
+        # form.addParam('n_particles', IntParam, default=-1,
+        #               label='Number of particles to subtract:',
+        #               help='Leave as -1 to process all particles.')
+
+        form.addParam('inner_radius', FloatParam, default=0.85,
+                      validators=[Positive],
+                      label='Inner radius of reference window',
+                      help='Inner radius of the windowing applied to the '
+                           'particles used to generate the input structure.')
+
+        form.addParam('outer_radius', FloatParam, default=0.99,
+                      validators=[Positive],
+                      label='Outer radius of reference window',
+                      help='Outer radius of the windowing applied to the '
+                           'particles used to generate the input structure')
+
+        form.addParam('use_premult', BooleanParam, default=True,
+                      expertLevel=LEVEL_ADVANCED,
+                      label="Use premultiplier for scaling",
+                      help="Premultiplier to scale initial real space mode")
+
+        form.addParam('use_halfmaps', BooleanParam, default=True,
+                      expertLevel=LEVEL_ADVANCED,
+                      label="Use halfmaps for Gold-Standard Subtraction",
+                      help="Subtract each halfmap from particles used to "
+                           "generate it. Disabling this parameter breaks the "
+                           "assumptions of gold-standard FSC calculation.")
+
+        form.addParam('lpf_volume', FloatParam, default=0.0,
+                      label='Low-pass Filter Input Structure (A)',
+                      help='Apply a lowpass filter to the specified reoslution '
+                           'in Angstroms to the input volume before subtraction.'
+                           'Leave 0.0 to ignore a lowpass filter')
+
+        form.addParam('mask_threshold', FloatParam, default=0.0,
+                      label='Mask threshold',
+                      help='The threshold of binarization of the mask. Must be '
+                           'set to dilate or pad. Leave 0.0 to skip mask processing.')
+
+        form.addParam('mask_fill_holes', BooleanParam, default=False,
+                      label="Fill holes",
+                      help="Fill the holes in the binarized mask")
+
+        # form.addParam('mask_dilator', FloatParam, default=0.0,
+        #               label='Mask Dilation Radius',
+        #               help='The radius of the spherical mask used to dilate '
+        #                    'the mask. Leave 0 to skip dilation.')
+        #
+        # form.addParam('mask_pad', FloatParam, default=0.0,
+        #               label='Cosine padding width',
+        #               help='The width of the cosine-padded region at the edge'
+        #                    'of the mask. Leave 0 to skip padding.')
+
+        # --------------[Compute settings]---------------------------
+
+        form.addSection(label='Compute settings')
+
+        form.addParam('compute_use_ssd', BooleanParam, default=True,
+                      label='Cache particle images on SSD:')
+
+    # --------------------------- INSERT steps functions -----------------------
+    def _insertAllSteps(self):
+        self._createFilenameTemplates()
+        self._defineParamsName()
+        self._initializeCryosparcProject()
+        self._insertFunctionStep("convertInputStep")
+        self._insertFunctionStep('processStep')
+        self._insertFunctionStep('createOutputStep')
+
+    # --------------------------- STEPS functions ------------------------------
+    def convertInputStep(self):
+        """ Create the input file in STAR format as expected by Relion.
+        If the input particles comes from Relion, just link the file.
+        """
+        imgSet = self._getInputParticles()
+        # Create links to binary files and write the relion .star file
+        relionPlugin.writeSetOfParticles(imgSet,
+                                         self._getFileName('input_particles'),
+                                         outputDir=self._getExtraPath(),
+                                         fillMagnification=True,
+                                         fillRandomSubset=True)
+        self._importParticles()
+
+        self.vol_fn = os.path.join(os.getcwd(),
+                                   relionPlugin.convertBinaryVol(self.refVolume.get(),
+                                                                 self._getTmpPath()))
+        self.importVolume = self.doImportVolumes(self.vol_fn, 'map',
+                                                 'Importing volume...')
+        self.importVolume = String(self.importVolume[-1].split()[-1])
+        self.currenJob.set(self.importVolume.get())
+        self._store(self)
+
+        if self.refMask.get() is not None:
+            self.maskFn = os.path.join(os.getcwd(),
+                                       relionPlugin.convertBinaryVol(self.refMask.get(),
+                                                                     self._getTmpPath()))
+
+        self.importMask = self.doImportVolumes(self.maskFn, 'mask', 'Importing mask... ')
+        self.importMask = String(self.importMask[-1].split()[-1])
+        self.currenJob.set(self.importMask.get())
+        self._store(self)
+
+    def processStep(self):
+        self.vol = self.importVolume.get() + '.imported_volume.map'
+        self.mask = self.importMask.get() + '.imported_mask.mask'
+
+        while getJobStatus(self.projectName.get(), self.importedParticles.get()) not in STOP_STATUSES:
+            waitJob(self.projectName.get(), self.importedParticles.get())
+
+        while getJobStatus(self.projectName.get(), self.importVolume.get()) not in STOP_STATUSES:
+            waitJob(self.projectName.get(), self.importVolume.get())
+
+        while getJobStatus(self.projectName.get(), self.importMask.get()) not in STOP_STATUSES:
+            waitJob(self.projectName.get(), self.importMask.get())
+
+        print("Particles Subtraction started...")
+        self.runPartStract = String(self.doPartStract()[-1].split()[-1])
+        self.currenJob.set(self.runPartStract.get())
+        self._store(self)
+
+        while getJobStatus(self.projectName.get(), self.runPartStract.get()) not in STOP_STATUSES:
+            waitJob(self.projectName.get(), self.importVolume.get())
+
+    def createOutputStep(self):
+        """
+        Create the protocol output. Convert cryosparc file to Relion file
+        """
+        self._initializeUtilsVariables()
+        outputStarFn = self._getFileName('out_particles')
+
+        csFile = os.path.join(self.projectPath, self.projectName.get(),
+                              self.runPartStract.get(),
+                              "subtracted_particles.cs")
+
+        argsList = [csFile, outputStarFn]
+
+        parser = defineArgs()
+        args = parser.parse_args(argsList)
+        convertCs2Star(args)
+
+        os.system("ln -s " + self.projectPath + "/" + self.projectName.get() + '/' +
+                  self.runPartStract.get() + " " + self._getExtraPath())
+
+        imgSet = self._getInputParticles()
+        outImgSet = self._createSetOfParticles()
+
+        outImgSet.copyInfo(imgSet)
+        self._fillDataFromIter(outImgSet)
+
+        self._defineOutputs(outputParticles=outImgSet)
+        self._defineTransformRelation(imgSet, outImgSet)
+
+    def _fillDataFromIter(self, imgSet):
+        outImgsFn = self._getFileName('out_particles')
+        imgSet.setAlignmentProj()
+        imgSet.copyItems(self._getInputParticles(),
+                         updateItemCallback=self._updateItem,
+                         itemDataIterator=md.iterRows(outImgsFn))
+
+    def _createItemMatrix(self, particle, row):
+        relionPlugin.createItemMatrix(particle, row, align=ALIGN_PROJ)
+        relionPlugin.setRelionAttributes(particle, row,
+                                         md.RLN_PARTICLE_RANDOM_SUBSET)
+
+    def _updateItem(self, item, row):
+        newFn = row.getValue(md.RLN_IMAGE_NAME)
+        index, file = relionPlugin.convert.relionToLocation(newFn)
+        item.setLocation((index, self._getExtraPath(file)))
+
+    def setAborted(self):
+        """ Set the status to aborted and updated the endTime. """
+        ProtOperateParticles.setAborted(self)
+        killJob(str(self.projectName.get()), str(self.currenJob.get()))
+
+    # --------------------------- INFO functions -------------------------------
+    def _validate(self):
+        """ Should be overwritten in subclasses to
+               return summary message for NORMAL EXECUTION.
+               """
+        errors = []
+        self._validateDim(self._getInputParticles(), self.refVolume.get(),
+                          errors, 'Input particles', 'Input volume')
+        return errors
+
+    def _getInputParticles(self):
+        return self.inputParticles.get()
+
+    def _initializeUtilsVariables(self):
+        """
+        Initialize all utils cryoSPARC variables
+        """
+        self._program = getCryosparcProgram()
+        self._user = getCryosparcUser()
+        self._ssd = getCryosparcSSD()
+
+        # Create a cryoSPARC project dir
+        self.projectDirName = suffix + self.getProject().getShortName()
+        self.projectPath = pwutils.join(self._ssd, self.projectDirName)
+        self.projectDir = createProjectDir(self.projectPath)
+
+    def _initializeCryosparcProject(self):
+        """
+        Initialize the cryoSPARC project and workspace
+        """
+        self._initializeUtilsVariables()
+        # create empty project or load an exists one
+        folderPaths = getProjectPath(self.projectPath)
+        if not folderPaths:
+            self.a = createEmptyProject(self.projectPath, self.projectDirName)
+            self.projectName = self.a[-1].split()[-1]
+        else:
+            self.projectName = str(folderPaths[0])
+
+        self.projectName = String(self.projectName)
+        self._store(self)
+
+        # create empty workspace
+        self.b = createEmptyWorkSpace(self.projectName, self.getRunName(),
+                                      self.getObjComment())
+        self.workSpaceName = String(self.b[-1].split()[-1])
+        self._store(self)
+
+    def _importParticles(self):
+
+        print("Importing particles...")
+
+        # import_particles_star
+        self.c = self.doImportParticlesStar()
+
+        self.importedParticles = String(self.c[-1].split()[-1])
+        self._store(self)
+
+        self.currenJob = String(self.importedParticles.get())
+        self._store(self)
+
+        self.par = String(self.importedParticles.get() + '.imported_particles')
+
+    def doImportParticlesStar(self):
+        """
+        do_import_particles_star(puid, wuid, uuid, abs_star_path,
+                                 abs_blob_path=None, psize_A=None)
+        returns the new uid of the job that was created
+        """
+        className = "import_particles"
+        params = {"particle_meta_path": str(os.path.join(os.getcwd(), self._getFileName('input_particles'))),
+                  "particle_blob_path": os.path.join(os.getcwd(), self._getExtraPath(), 'input'),
+                  "psize_A": str(self._getInputParticles().getSamplingRate())}
+
+        return doJob(className, self.projectName, self.workSpaceName,
+                     str(params).replace('\'', '"'), '{}')
+
+    def doImportVolumes(self, refVolume, volType, msg):
+        """
+        :return:
+        """
+        print(msg)
+        className = "import_volumes"
+        params = {"volume_blob_path": str(refVolume),
+                  "volume_out_name": str(volType),
+                  "volume_psize": str(self._getInputParticles().getSamplingRate())}
+
+        return doJob(className, self.projectName, self.workSpaceName,
+                     str(params).replace('\'', '"'), '{}')
+
+    def _defineParamsName(self):
+        """ Define a list with all protocol parameters names"""
+        self._paramsName = ['inner_radius',
+                            'outer_radius',
+                            'use_premult',
+                            'use_halfmaps',
+                            'lpf_volume',
+                            'mask_threshold',
+                            'mask_fill_holes',
+                            'compute_use_ssd']
+
+    def doPartStract(self):
+        """
+        :return:
+        """
+        className = "particle_subtract"
+        input_group_conect = {"particles": str(self.par),
+                              "volume": str(self.vol),
+                              "mask": str(self.mask)}
+        # {'particles' : 'JXX.imported_particles' }
+        params = {}
+
+        for paramName in self._paramsName:
+            if paramName != 'lpf_volume' and paramName != 'mask_threshold':
+                params[str(paramName)] = str(self.getAttributeValue(paramName))
+            elif paramName == 'lpf_volume':
+                if float(self.getAttributeValue(paramName)) > 0:
+                    params[str(paramName)] = str(self.getAttributeValue(paramName))
+            elif paramName == 'mask_threshold':
+                if int(self.getAttributeValue(paramName)) > 0:
+                    params[str(paramName)] = str(self.getAttributeValue(paramName))
+
+        return doJob(className, self.projectName.get(), self.workSpaceName.get(),
+                     str(params).replace('\'', '"'),
+                     str(input_group_conect).replace('\'', '"'))
+
+
+
+
+
+
+
+

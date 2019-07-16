@@ -321,7 +321,8 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
         relionPlugin.writeSetOfParticles(imgSet,
                                          self._getFileName('input_particles'),
                                          outputDir=self._getExtraPath(),
-                                         fillMagnification=True)
+                                         fillMagnification=True,
+                                         fillRandomSubset=True)
 
         self._importParticles()
         self.vol_fn = os.path.join(os.getcwd(),
