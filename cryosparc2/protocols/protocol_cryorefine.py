@@ -453,6 +453,29 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
                     validateMsgs.append("The Particles has not associated a "
                                         "CTF model")
         return validateMsgs
+
+    def _summary(self):
+        summary = []
+        if (not hasattr(self, 'outputVolume') or
+                not hasattr(self, 'outputParticles') or
+                not hasattr(self, 'outputFSC')):
+            summary.append("Output objects not ready yet.")
+        else:
+            summary.append("Input Particles: %s" %
+                           self.getObjectTag('inputParticles'))
+            summary.append("Input Volume: %s" %
+                           self.getObjectTag('referenceVolume'))
+            summary.append("Symmetry: %s" %
+                           getSymmetry(self.symmetryGroup.get(),
+                                       self.symmetryOrder.get())
+                           )
+            summary.append("------------------------------------------")
+            summary.append("Output particles %s" %
+                           self.getObjectTag('outputParticles'))
+            summary.append("Output volume %s" %
+                           self.getObjectTag('outputVolume'))
+        return summary
+
     # -------------------------- UTILS functions ------------------------------
 
     def _getInputParticles(self):

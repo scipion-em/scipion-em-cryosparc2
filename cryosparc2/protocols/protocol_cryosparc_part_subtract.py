@@ -275,6 +275,31 @@ class ProtCryoSparcSubtract(ProtOperateParticles):
                           errors, 'Input particles', 'Input volume')
         return errors
 
+    def _summary(self):
+        summary = []
+        if not hasattr(self, 'outputParticles'):
+            summary.append("Output Particles not ready yet.")
+        else:
+            summary.append("Input Particles: %s" %
+                           self.getObjectTag('inputParticles'))
+            summary.append("Reference Volume: %s" %
+                           self.getObjectTag('refVolume'))
+            summary.append("Reference Mask: %s" %
+                           self.getObjectTag('refMask'))
+
+            summary.append("Inner radius of the window: %s" %
+                           str(self.inner_radius.get()))
+
+            summary.append("Outer radius of the window: %s" %
+                           str(self.outer_radius.get()))
+
+            summary.append("--------------------------------------------------")
+            summary.append("Output particles %s" %
+                           self.getObjectTag('outputParticles'))
+        return summary
+
+    # ---------------Utils Functions-----------------------------------------------------------
+
     def _getInputParticles(self):
         return self.inputParticles.get()
 

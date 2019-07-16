@@ -401,6 +401,27 @@ class ProtCryoSparcInitialModel(ProtInitialVolume, ProtClassify3D):
                                         "CTF model")
         return validateMsgs
 
+    def _summary(self):
+        summary = []
+        if (not hasattr(self, 'outputVolumes') or
+            not hasattr(self, 'outputClasses')):
+            summary.append("Output objects not ready yet.")
+        else:
+            summary.append("Input Particles: %s" %
+                           self.getObjectTag('inputParticles'))
+            summary.append("Number of Ab-Initio classes: %s" %
+                           str(self.abinit_K.get()))
+
+            summary.append("Symmetry: %s" %
+                           getSymmetry(self.symmetryGroup.get(),
+                                       self.symmetryOrder.get()))
+            summary.append("------------------------------------------")
+            summary.append("Output volume %s" %
+                           self.getObjectTag('outputVolumes'))
+            summary.append("Output classes %s" %
+                           self.getObjectTag('outputClasses'))
+
+        return summary
     # --------------------------- UTILS functions ---------------------------
 
     def _getInputParticles(self):
