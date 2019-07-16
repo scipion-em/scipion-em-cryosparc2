@@ -14,6 +14,7 @@ You will need to use `2.0.0 <https://scipion-em.github.io/docs/release-2.0.0/doc
 * **3D Ab-Initio Reconstruction**:  Reconstruct a single (homogeneous) or multiple (heterogeneous) 3-D maps from a set of particles, without any initial models or starting structures required.
 * **3D Homogeneous Refinement**: Rapidly refine a single homogeneous structure to high-resolution and validate using the gold-standard FSC
 * **3D Non uniform Refinement**: Apply non-uniform refinement to acheive higher resolution and map quality
+* **Particle Subtraction**: Subtract projections of a masked volume from particles
 
 **Installing the plugin**
 =========================
