@@ -329,6 +329,68 @@ class TestCryosparcNonUniformRefine3D(TestCryosparcBase):
         _checkAsserts(cryosparcProtGpu)
 
 
+class TestCryosparcParticlesSubtract(TestCryosparcBase):
+
+    @classmethod
+    def setUpClass(cls):
+        setupTestProject(cls)
+        setupTestProject(cls)
+        dataProject = 'grigorieff'
+        dataset = DataSet.getDataSet(dataProject)
+        TestCryosparcBase.setData()
+        particlesPattern = dataset.getFile('particles.sqlite')
+        cls.protImport = cls.runImportParticleCryoSPARC(cls.partFn2)
+
+    def testCryosparcParticlesSubtract(self):
+        def _runCryosparctestParticlesSubtract(label=''):
+
+            protParticlesSubtract = self.newProtocol(ProtCryoSparcSubtract,
+                                                numberOfMpi=4,
+                                                numberOfThreads=1)
+
+            # Normalization after the imported particles
+            relionProtocol = self.newProtocol(
+                relionProtocols.ProtRelionPreprocessParticles,
+                doNormalize=True,
+                doScale=True, scaleSize=140,
+                doInvert=False)
+            relionProtocol.setObjLabel('relion: preprocess particles')
+            relionProtocol.inputParticles.set(self.protImport.outputParticles)
+            self.launchProtocol(relionProtocol)
+
+            importVolumeProt = self.runImportVolumesCryoSPARC(self.volFn)
+
+            prot3DRefinement = self.newProtocol(ProtCryoSparcRefine3D,
+                                                numberOfMpi=4,
+                                                numberOfThreads=1)
+            prot3DRefinement.inputParticles.set(relionProtocol.outputParticles)
+            prot3DRefinement.referenceVolume.set(importVolumeProt.outputVolume)
+            prot3DRefinement.symmetryGroup.set(SYM_CYCLIC)
+            prot3DRefinement.symmetryOrder.set(1)
+            self.launchProtocol(prot3DRefinement)
+
+            protRelionCreate3DMask = self.newProtocol(
+                relionProtocols.ProtRelionCreateMask3D,
+                initialLowPassFilterA=20)
+            protRelionCreate3DMask.inputVolume.set(prot3DRefinement.outputVolume)
+            protRelionCreate3DMask.setObjLabel('relion: create 3d mask')
+            self.launchProtocol(protRelionCreate3DMask)
+
+            protParticlesSubtract.inputParticles.set(prot3DRefinement.outputParticles)
+            protParticlesSubtract.refVolume.set(prot3DRefinement.outputVolume)
+            protParticlesSubtract.refMask.set(protRelionCreate3DMask.outputMask)
+            self.launchProtocol(protParticlesSubtract)
+
+            return protParticlesSubtract
+
+        def _checkAsserts(cryosparcProt):
+            self.assertIsNotNone(cryosparcProt.outputParticles,
+                                 "There was a problem with Cryosparc subtract projection")
+
+        cryosparcProtGpu = _runCryosparctestParticlesSubtract(label="Cryosparc Subtract projection")
+        _checkAsserts(cryosparcProtGpu)
+
+
 
 
 
