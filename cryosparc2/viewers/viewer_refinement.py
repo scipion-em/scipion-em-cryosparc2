@@ -31,7 +31,7 @@ from pyworkflow.protocol.constants import *
 from pyworkflow.protocol.params import (LabelParam, FloatParam)
 from pyworkflow.viewer import ProtocolViewer, DESKTOP_TKINTER, WEB_DJANGO
 from pyworkflow.em.viewers import (ChimeraView, EmPlotter, ChimeraClientView,
-                                   ObjectView,)
+                                   ObjectView)
 from cryosparc2.protocols import (ProtCryoSparcNonUniformRefine3D,
                                   ProtCryoSparcRefine3D)
 
