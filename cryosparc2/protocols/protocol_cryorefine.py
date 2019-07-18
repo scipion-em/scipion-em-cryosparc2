@@ -75,18 +75,30 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
                        help='Initial reference 3D map, it should have the same '
                             'dimensions and the same pixel size as your input '
                             'particles.')
+        form.addParam('refMask', PointerParam, pointerClass='VolumeMask',
+                      default=None,
+                      label='Mask to be applied to this map(Optional)',
+                      allowsNull=True,
+                      help='A volume mask containing a (soft) mask with '
+                           'the same dimensions as the reference(s), '
+                           'and values between 0 and 1, with 1 being 100% '
+                           'protein and 0 being 100% solvent. The '
+                           'reconstructed reference map will be multiplied '
+                           'by this mask. If no mask is given, a soft '
+                           'spherical mask based on the <radius> of the '
+                           'mask for the experimental images will be '
+                           'applied.')
 
         form.addParallelSection(threads=1, mpi=1)
 
         # --------------[Homogeneous Refinement]---------------------------
 
         form.addSection(label='Refinement')
-        # form.addParam('refine_N', IntParam, default=None,
-        #               expertLevel=LEVEL_ADVANCED,
-        #               label="Refinement box size (Voxels)",
-        #               help='The volume size to use for refinement. If this is '
-        #                    'null, use the full image size. Otherwise images '
-        #                    'are automatically downsampled')
+        form.addParam('refine_N', IntParam, default=0,
+                      label="Refinement box size (Voxels)",
+                      help='The volume size to use for refinement. If this is '
+                           '0, use the full image size. Otherwise images '
+                           'are automatically downsampled')
 
         addSymmetryParam(form)
         # form.addParam('refine_symmetry', StringParam, default='C1',
@@ -328,10 +340,29 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
         self.vol_fn = os.path.join(os.getcwd(),
                                    relionPlugin.convertBinaryVol(self.referenceVolume.get(),
                                                                  self._getTmpPath()))
-        self.importVolume = self.doImportVolumes()
+        self.importVolume = self.doImportVolumes(self.vol_fn, 'map',
+                                                 'Importing volume...')
         self.importVolume = String(self.importVolume[-1].split()[-1])
         self.currenJob.set(self.importVolume.get())
         self._store(self)
+
+        if self.refMask.get() is not None:
+            self.maskFn = os.path.join(os.getcwd(),
+                                       relionPlugin.convertBinaryVol(
+                                           self.refMask.get(),
+                                           self._getTmpPath()))
+
+            self.importMask = self.doImportVolumes(self.maskFn, 'mask',
+                                                   'Importing mask... ')
+            self.importMask = String(self.importMask[-1].split()[-1])
+            self.currenJob.set(self.importMask.get())
+            self._store(self)
+            self.mask = self.importMask.get() + '.imported_mask.mask'
+            while getJobStatus(self.projectName.get(),
+                               self.importMask.get()) not in STOP_STATUSES:
+                waitJob(self.projectName.get(), self.importMask.get())
+        else:
+            self.mask = None
 
     def processStep(self):
         self.vol = self.importVolume.get() + '.imported_volume.map'
@@ -563,23 +594,24 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
         print(pwutils.greenStr(import_particles_cmd))
         return commands.getstatusoutput(import_particles_cmd)
 
-    def doImportVolumes(self):
+    def doImportVolumes(self, refVolume, volType, msg):
         """
         :return:
         """
-        print("Importing Volume")
-
+        print(msg)
         className = "import_volumes"
-        params = {"volume_blob_path": str(self.vol_fn),
-                  "volume_out_name": "map",
-                  "volume_psize": str(self._getInputParticles().getSamplingRate())}
+        params = {"volume_blob_path": str(refVolume),
+                  "volume_out_name": str(volType),
+                  "volume_psize": str(
+                      self._getInputParticles().getSamplingRate())}
 
         return doJob(className, self.projectName, self.workSpaceName,
                      str(params).replace('\'', '"'), '{}')
 
     def _defineParamsName(self):
         """ Define a list with all protocol parameters names"""
-        self._paramsName = ['refine_symmetry',
+        self._paramsName = ['refine_N',
+                            'refine_symmetry',
                             'refine_symmetry_do_align',
                             'refine_do_init_scale_est',
                             'refine_num_final_iterations',
@@ -610,16 +642,26 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
         :return:
         """
         className = "homo_refine"
-        input_group_conect = {"particles": str(self.par),
-                              "volume": str(self.vol)}
+        if self.mask is not None:
+            input_group_conect = {"particles": str(self.par),
+                                  "volume": str(self.vol),
+                                  "mask": str(self.mask)}
+        else:
+            input_group_conect = {"particles": str(self.par),
+                                  "volume": str(self.vol)}
         # {'particles' : 'JXX.imported_particles' }
         params = {}
 
         for paramName in self._paramsName:
             if (paramName != 'refine_symmetry' and
                     paramName != 'refine_noise_model' and
-                    paramName != 'refine_mask'):
+                    paramName != 'refine_mask' and
+                    paramName != 'refine_N'):
                 params[str(paramName)] = str(self.getAttributeValue(paramName))
+            elif (paramName == 'refine_N' and
+                  int(self.getAttributeValue(paramName)) > 0):
+                params[str(paramName)] = str(self.getAttributeValue(paramName))
+
             elif paramName == 'refine_symmetry':
                 symetryValue = getSymmetry(self.symmetryGroup.get(),
                                            self.symmetryOrder.get())
