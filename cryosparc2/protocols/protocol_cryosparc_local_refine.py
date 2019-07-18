@@ -49,9 +49,9 @@ class ProtCryoSparcLocalRefine(ProtOperateParticles):
     _label = 'Local refinement'
 
     def _initialize(self):
-        self._createFilenameTemplates()
+        self._defineFileNames()
 
-    def _createFilenameTemplates(self):
+    def _defineFileNames(self):
         """ Centralize how files are called. """
         myDict = {
             'input_particles': self._getPath('input_particles.star'),
@@ -317,7 +317,7 @@ class ProtCryoSparcLocalRefine(ProtOperateParticles):
 
     # --------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
-        self._createFilenameTemplates()
+        self._defineFileNames()
         self._defineParamsName()
         self._initializeCryosparcProject()
         self._insertFunctionStep("convertInputStep")

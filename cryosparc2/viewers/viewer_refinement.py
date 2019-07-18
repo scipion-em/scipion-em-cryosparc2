@@ -33,7 +33,8 @@ from pyworkflow.viewer import ProtocolViewer, DESKTOP_TKINTER, WEB_DJANGO
 from pyworkflow.em.viewers import (ChimeraView, EmPlotter, ChimeraClientView,
                                    ObjectView)
 from cryosparc2.protocols import (ProtCryoSparcNonUniformRefine3D,
-                                  ProtCryoSparcRefine3D)
+                                  ProtCryoSparcRefine3D,
+                                  ProtCryoSparcLocalRefine)
 
 from cryosparc2.constants import *
 from cryosparc2.utils import *
@@ -42,7 +43,8 @@ from cryosparc2.utils import *
 class CryosPARCViewer3DRefinement(ProtocolViewer):
     """ Visualization of e2refine_easy results. """
 
-    _targets = [ProtCryoSparcRefine3D, ProtCryoSparcNonUniformRefine3D]
+    _targets = [ProtCryoSparcRefine3D, ProtCryoSparcNonUniformRefine3D,
+                ProtCryoSparcLocalRefine]
     _environments = [DESKTOP_TKINTER, WEB_DJANGO]
     _label = 'viewer Refinement'
 
