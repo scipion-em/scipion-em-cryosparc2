@@ -261,11 +261,16 @@ class ProtCryoSparcNonUniformRefine3D(ProtCryoSparcRefine3D):
             if (paramName != 'refine_symmetry' and
                     paramName != 'refine_noise_model' and
                     paramName != 'locres_compute_facility' and
-                    paramName != 'refine_mask'):
+                    paramName != 'refine_mask' and
+                    paramName != 'refine_N'):
+                params[str(paramName)] = str(self.getAttributeValue(paramName))
+            elif (paramName == 'refine_N' and
+                  int(self.getAttributeValue(paramName)) > 0):
                 params[str(paramName)] = str(self.getAttributeValue(paramName))
             elif paramName == 'refine_symmetry':
                 symetryValue = getSymmetry(self.symmetryGroup.get(),
                                            self.symmetryOrder.get())
+
                 params[str(paramName)] = symetryValue
             elif paramName == 'refine_noise_model':
                 params[str(paramName)] = str(

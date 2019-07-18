@@ -95,6 +95,7 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
 
         form.addSection(label='Refinement')
         form.addParam('refine_N', IntParam, default=0,
+                      expertLevel=LEVEL_ADVANCED,
                       label="Refinement box size (Voxels)",
                       help='The volume size to use for refinement. If this is '
                            '0, use the full image size. Otherwise images '
