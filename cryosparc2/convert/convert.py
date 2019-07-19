@@ -27,6 +27,11 @@ import pandas as pd
 from glob import glob
 from pyem import metadata
 from pyem import star
+import pyworkflow.em.metadata as md
+import pyworkflow.utils as pwutils
+from pyworkflow.em import ALIGN_PROJ
+
+relionConvert = pwutils.importFromPlugin("relion.convert", doRaise=True)
 
 
 def convertCs2Star(args):
@@ -127,6 +132,22 @@ def defineArgs():
     parser.add_argument("--loglevel", "-l", type=str, default="WARNING",
                         help="Logging level and debug output")
     return parser
+
+
+def addRandomSubset(img, imgRow):
+    halve = 1 + (img.getObjId() % 2)
+    imgRow.setValue(md.RLN_PARTICLE_RANDOM_SUBSET, int(halve))
+
+
+def writeSetOfParticles(imgSet, fileName, extraPath):
+    args = {'outputDir': extraPath,
+            'fillMagnification': True,
+            'fillRandomSubset': True}
+
+    if imgSet.hasAlignmentProj() and imgSet.getAttributeValue("_rlnRandomSubset") is None:
+        args['postprocessImageRow'] = addRandomSubset
+
+    relionConvert.writeSetOfParticles(imgSet, fileName, **args)
 
 
 if __name__ == "__main__":

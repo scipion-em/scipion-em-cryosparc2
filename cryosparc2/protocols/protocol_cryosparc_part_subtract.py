@@ -25,20 +25,17 @@
 # *
 # **************************************************************************
 
-import sys
-import pyworkflow.em.metadata as md
-
 from pyworkflow.em.protocol import ProtOperateParticles
 from pyworkflow.protocol.params import (PointerParam, BooleanParam, FloatParam,
                                         LEVEL_ADVANCED)
-from pyworkflow.em import ALIGN_PROJ
-from pyworkflow.em.data import String, Volume
+from pyworkflow.em.data import String
 
 from cryosparc2.convert import *
+from cryosparc2.convert.convert import writeSetOfParticles
 from cryosparc2.utils import *
 from cryosparc2.constants import *
 
-relionPlugin = pwutils.importFromPlugin("relion.convert", doRaise=True)
+relionConvert = pwutils.importFromPlugin("relion.convert", doRaise=True)
 
 
 class ProtCryoSparcSubtract(ProtOperateParticles):
@@ -166,17 +163,16 @@ class ProtCryoSparcSubtract(ProtOperateParticles):
         If the input particles comes from Relion, just link the file.
         """
         imgSet = self._getInputParticles()
+
         # Create links to binary files and write the relion .star file
-        relionPlugin.writeSetOfParticles(imgSet,
-                                         self._getFileName('input_particles'),
-                                         outputDir=self._getExtraPath(),
-                                         fillMagnification=True,
-                                         fillRandomSubset=True)
+        writeSetOfParticles(imgSet, self._getFileName('input_particles'),
+                            self._getExtraPath())
+
         self._importParticles()
 
         self.vol_fn = os.path.join(os.getcwd(),
-                                   relionPlugin.convertBinaryVol(self.refVolume.get(),
-                                                                 self._getTmpPath()))
+                                   relionConvert.convertBinaryVol(self.refVolume.get(),
+                                                                  self._getTmpPath()))
         self.importVolume = self.doImportVolumes(self.vol_fn, 'map',
                                                  'Importing volume...')
         self.importVolume = String(self.importVolume[-1].split()[-1])
@@ -185,8 +181,8 @@ class ProtCryoSparcSubtract(ProtOperateParticles):
 
         if self.refMask.get() is not None:
             self.maskFn = os.path.join(os.getcwd(),
-                                       relionPlugin.convertBinaryVol(self.refMask.get(),
-                                                                     self._getTmpPath()))
+                                       relionConvert.convertBinaryVol(self.refMask.get(),
+                                                                      self._getTmpPath()))
 
         self.importMask = self.doImportVolumes(self.maskFn, 'mask', 'Importing mask... ')
         self.importMask = String(self.importMask[-1].split()[-1])
@@ -235,8 +231,8 @@ class ProtCryoSparcSubtract(ProtOperateParticles):
                   self.runPartStract.get() + " " + self._getExtraPath())
 
         imgSet = self._getInputParticles()
-        outImgSet = self._createSetOfParticles()
 
+        outImgSet = self._createSetOfParticles()
         outImgSet.copyInfo(imgSet)
         self._fillDataFromIter(outImgSet)
 
@@ -244,20 +240,15 @@ class ProtCryoSparcSubtract(ProtOperateParticles):
         self._defineTransformRelation(imgSet, outImgSet)
 
     def _fillDataFromIter(self, imgSet):
-        outImgsFn = self._getFileName('out_particles')
-        imgSet.setAlignmentProj()
-        imgSet.copyItems(self._getInputParticles(),
-                         updateItemCallback=self._updateItem,
-                         itemDataIterator=md.iterRows(outImgsFn))
 
-    def _createItemMatrix(self, particle, row):
-        relionPlugin.createItemMatrix(particle, row, align=ALIGN_PROJ)
-        relionPlugin.setRelionAttributes(particle, row,
-                                         md.RLN_PARTICLE_RANDOM_SUBSET)
+        outImgsFn = self._getFileName('out_particles')
+        relionConvert.readSetOfParticles(outImgsFn, imgSet,
+                                          postprocessImageRow=self._updateItem,
+                                          alignType=ALIGN_PROJ)
 
     def _updateItem(self, item, row):
         newFn = row.getValue(md.RLN_IMAGE_NAME)
-        index, file = relionPlugin.convert.relionToLocation(newFn)
+        index, file = relionConvert.convert.relionToLocation(newFn)
         item.setLocation((index, self._getExtraPath(file)))
 
     def setAborted(self):

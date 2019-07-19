@@ -25,21 +25,17 @@
 # *
 # **************************************************************************
 
-import sys
 import ast
-import pyworkflow.em.metadata as md
-
 from pyworkflow.em.protocol import ProtOperateParticles
 from pyworkflow.protocol.params import (PointerParam, BooleanParam, FloatParam,
                                         LEVEL_ADVANCED)
-from pyworkflow.em import ALIGN_PROJ
 from pyworkflow.em.data import String, Volume, FSC
 
 from cryosparc2.convert import *
 from cryosparc2.utils import *
 from cryosparc2.constants import *
 
-relionPlugin = pwutils.importFromPlugin("relion.convert", doRaise=True)
+relionConvert = pwutils.importFromPlugin("relion.convert", doRaise=True)
 
 
 class ProtCryoSparcLocalRefine(ProtOperateParticles):
@@ -331,16 +327,13 @@ class ProtCryoSparcLocalRefine(ProtOperateParticles):
         """
         imgSet = self._getInputParticles()
         # Create links to binary files and write the relion .star file
-        relionPlugin.writeSetOfParticles(imgSet,
-                                         self._getFileName('input_particles'),
-                                         outputDir=self._getExtraPath(),
-                                         fillMagnification=True,
-                                         fillRandomSubset=True)
+        writeSetOfParticles(imgSet, self._getFileName('input_particles'),
+                            self._getExtraPath())
         self._importParticles()
 
         self.vol_fn = os.path.join(os.getcwd(),
-                                   relionPlugin.convertBinaryVol(self.refVolume.get(),
-                                                                 self._getTmpPath()))
+                                   relionConvert.convertBinaryVol(self.refVolume.get(),
+                                                                  self._getTmpPath()))
         self.importVolume = self.doImportVolumes(self.vol_fn, 'map',
                                                  'Importing volume...')
         self.importVolume = String(self.importVolume[-1].split()[-1])
@@ -349,7 +342,7 @@ class ProtCryoSparcLocalRefine(ProtOperateParticles):
 
         if self.refMask.get() is not None:
             self.maskFn = os.path.join(os.getcwd(),
-                                       relionPlugin.convertBinaryVol(
+                                       relionConvert.convertBinaryVol(
                                            self.refMask.get(),
                                            self._getTmpPath()))
 
@@ -508,9 +501,9 @@ class ProtCryoSparcLocalRefine(ProtOperateParticles):
                                                       sortByLabel=md.RLN_IMAGE_ID))
 
     def _createItemMatrix(self, particle, row):
-        relionPlugin.createItemMatrix(particle, row, align=ALIGN_PROJ)
-        relionPlugin.setRelionAttributes(particle, row,
-                                         md.RLN_PARTICLE_RANDOM_SUBSET)
+        relionConvert.createItemMatrix(particle, row, align=ALIGN_PROJ)
+        relionConvert.setRelionAttributes(particle, row,
+                                          md.RLN_PARTICLE_RANDOM_SUBSET)
 
     def _getInputParticles(self):
         return self.inputParticles.get()

@@ -25,4 +25,4 @@
 # *
 # **************************************************************************
 
-from convert import convertCs2Star, defineArgs
+from convert import *

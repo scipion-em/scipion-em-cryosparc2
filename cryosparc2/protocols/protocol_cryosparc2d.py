@@ -26,22 +26,17 @@
 # *
 # **************************************************************************
 
-import sys
-import os
-import commands
 import pyworkflow.em as em
-import pyworkflow.em.metadata as md
 
-from pyworkflow.em.protocol import ProtClassify2D, SetOfClasses2D
-from pyworkflow.protocol.params import (PointerParam, BooleanParam, FloatParam,
-                                        IntParam, Positive, StringParam)
+from pyworkflow.em.protocol import ProtClassify2D
+from pyworkflow.protocol.params import PointerParam, BooleanParam, FloatParam
 from pyworkflow.em.data import String
 
 from cryosparc2.convert import *
 from cryosparc2.utils import *
 from cryosparc2.constants import *
 
-relionPlugin = pwutils.importFromPlugin("relion.convert", doRaise=True)
+relionConvert = pwutils.importFromPlugin("relion.convert", doRaise=True)
 
 
 class ProtCryo2D(ProtClassify2D):
@@ -246,11 +241,9 @@ class ProtCryo2D(ProtClassify2D):
         """
         print(pwutils.greenStr("Importing Particles..."))
         imgSet = self._getInputParticles()
-        relionPlugin.writeSetOfParticles(imgSet,
-                                         self._getFileName('input_particles'),
-                                         outputDir=self._getExtraPath(),
-                                         fillMagnification=True,
-                                         fillRandomSubset=True)
+        writeSetOfParticles(imgSet, self._getFileName('input_particles'),
+                            self._getExtraPath())
+
         self._importParticles()
         while getJobStatus(self.projectName.get(), self.importedParticles.get()) not in STOP_STATUSES:
             waitJob(self.projectName.get(), self.importedParticles.get())
@@ -396,7 +389,7 @@ class ProtCryo2D(ProtClassify2D):
         mdClasses = md.MetaData(filename)
 
         for classNumber, row in enumerate(md.iterRows(mdClasses)):
-            index, fn = relionPlugin.relionToLocation(row.getValue('rlnImageName'))
+            index, fn = relionConvert.relionToLocation(row.getValue('rlnImageName'))
             # Store info indexed by id, we need to store the row.clone() since
             # the same reference is used for iteration
             self._classesInfo[classNumber + 1] = (index, fn, row.clone())
@@ -415,7 +408,7 @@ class ProtCryo2D(ProtClassify2D):
 
     def _updateParticle(self, item, row):
         item.setClassId(row.getValue(md.RLN_PARTICLE_CLASS))
-        item.setTransform(relionPlugin.rowToAlignment(row, em.ALIGN_2D))
+        item.setTransform(relionConvert.rowToAlignment(row, em.ALIGN_2D))
         
     def _updateClass(self, item):
         classId = item.getObjId()

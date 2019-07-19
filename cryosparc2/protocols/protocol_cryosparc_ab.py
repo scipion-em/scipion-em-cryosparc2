@@ -26,14 +26,7 @@
 # *
 # **************************************************************************
 
-import os
-import commands
-import pyworkflow.em.metadata as md
-from pyworkflow.em import ALIGN_PROJ
-from pyworkflow.protocol.params import (PointerParam, FloatParam,
-                                        LabelParam, IntParam, Positive,
-                                        EnumParam, StringParam,
-                                        BooleanParam, PathParam,
+from pyworkflow.protocol.params import (PointerParam, FloatParam, BooleanParam,
                                         LEVEL_ADVANCED)
 from pyworkflow.em.data import String
 from pyworkflow.em.protocol import ProtInitialVolume, ProtClassify3D
@@ -41,7 +34,7 @@ from cryosparc2.convert import *
 from cryosparc2.utils import *
 from cryosparc2.constants import *
 
-relionPlugin = pwutils.importFromPlugin("relion.convert", doRaise=True)
+relionConvert = pwutils.importFromPlugin("relion.convert", doRaise=True)
 
 
 class ProtCryoSparcInitialModel(ProtInitialVolume, ProtClassify3D):
@@ -308,11 +301,8 @@ class ProtCryoSparcInitialModel(ProtInitialVolume, ProtClassify3D):
         """
         print(pwutils.greenStr("Importing Particles..."))
         imgSet = self._getInputParticles()
-        relionPlugin.writeSetOfParticles(imgSet,
-                                         self._getFileName('input_particles'),
-                                         outputDir=self._getExtraPath(),
-                                         fillMagnification=True,
-                                         fillRandomSubset=True)
+        writeSetOfParticles(imgSet, self._getFileName('input_particles'),
+                            self._getExtraPath())
         self._importParticles()
         while getJobStatus(self.projectName.get(), self.importedParticles.get()) not in STOP_STATUSES:
             waitJob(self.projectName.get(), self.importedParticles.get())
@@ -436,7 +426,7 @@ class ProtCryoSparcInitialModel(ProtInitialVolume, ProtClassify3D):
         modelStar = md.MetaData(filename)
 
         for classNumber, row in enumerate(md.iterRows(modelStar)):
-            index, fn = relionPlugin.relionToLocation(row.getValue('rlnReferenceImage'))
+            index, fn = relionConvert.relionToLocation(row.getValue('rlnReferenceImage'))
             # Store info indexed by id, we need to store the row.clone() since
             # the same reference is used for iteration
             self._classesInfo[classNumber+1] = (index, fn, row.clone())
@@ -452,7 +442,7 @@ class ProtCryoSparcInitialModel(ProtInitialVolume, ProtClassify3D):
 
     def _updateParticle(self, item, row):
         item.setClassId(row.getValue(md.RLN_PARTICLE_CLASS))
-        item.setTransform(relionPlugin.rowToAlignment(row, ALIGN_PROJ))
+        item.setTransform(relionConvert.rowToAlignment(row, ALIGN_PROJ))
 
     def _updateClass(self, item):
         classId = item.getObjId()

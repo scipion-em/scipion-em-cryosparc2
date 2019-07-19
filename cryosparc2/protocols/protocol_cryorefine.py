@@ -26,19 +26,15 @@
 # *
 # **************************************************************************
 
-import pyworkflow.em.metadata as md
-import pyworkflow as pw
-from pyworkflow.protocol.params import (PointerParam, FloatParam, IntParam,
-                                        StringParam, Positive, BooleanParam,
+from pyworkflow.protocol.params import (PointerParam, FloatParam, BooleanParam,
                                         LEVEL_ADVANCED)
 from pyworkflow.em.data import Volume, FSC, String
 from pyworkflow.em.protocol import ProtRefine3D
-from pyworkflow.em import ALIGN_PROJ
 from cryosparc2.convert import *
 from cryosparc2.utils import *
 from cryosparc2.constants import *
 
-relionPlugin = pwutils.importFromPlugin("relion.convert", doRaise=True)
+relionConvert = pwutils.importFromPlugin("relion.convert", doRaise=True)
 
 import os
 import commands
@@ -331,16 +327,13 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
         """
         imgSet = self._getInputParticles()
         # Create links to binary files and write the relion .star file
-        relionPlugin.writeSetOfParticles(imgSet,
-                                         self._getFileName('input_particles'),
-                                         outputDir=self._getExtraPath(),
-                                         fillMagnification=True,
-                                         fillRandomSubset=True)
+        writeSetOfParticles(imgSet, self._getFileName('input_particles'),
+                            self._getExtraPath())
 
         self._importParticles()
         self.vol_fn = os.path.join(os.getcwd(),
-                                   relionPlugin.convertBinaryVol(self.referenceVolume.get(),
-                                                                 self._getTmpPath()))
+                                   relionConvert.convertBinaryVol(self.referenceVolume.get(),
+                                                                  self._getTmpPath()))
         self.importVolume = self.doImportVolumes(self.vol_fn, 'map',
                                                  'Importing volume...')
         self.importVolume = String(self.importVolume[-1].split()[-1])
@@ -349,7 +342,7 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
 
         if self.refMask.get() is not None:
             self.maskFn = os.path.join(os.getcwd(),
-                                       relionPlugin.convertBinaryVol(
+                                       relionConvert.convertBinaryVol(
                                            self.refMask.get(),
                                            self._getTmpPath()))
 
@@ -524,9 +517,9 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
                                                       sortByLabel=md.RLN_IMAGE_ID))
 
     def _createItemMatrix(self, particle, row):
-        relionPlugin.createItemMatrix(particle, row, align=ALIGN_PROJ)
-        relionPlugin.setRelionAttributes(particle, row,
-                                         md.RLN_PARTICLE_RANDOM_SUBSET)
+        relionConvert.createItemMatrix(particle, row, align=ALIGN_PROJ)
+        relionConvert.setRelionAttributes(particle, row,
+                                          md.RLN_PARTICLE_RANDOM_SUBSET)
 
     def _initializeUtilsVariables(self):
         """

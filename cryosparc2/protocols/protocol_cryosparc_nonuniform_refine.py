@@ -25,14 +25,12 @@
 # *
 # **************************************************************************
 
-from pyworkflow.protocol.params import (FloatParam, IntParam,
-                                        StringParam, Positive, BooleanParam,
+from pyworkflow.protocol.params import (FloatParam, StringParam,
+                                        BooleanParam,
                                         LEVEL_ADVANCED)
 from cryosparc2.protocols import ProtCryoSparcRefine3D
 from cryosparc2.utils import *
 from cryosparc2.constants import *
-
-relionPlugin = pwutils.importFromPlugin("relion.convert", doRaise=True)
 
 
 class ProtCryoSparcNonUniformRefine3D(ProtCryoSparcRefine3D):
