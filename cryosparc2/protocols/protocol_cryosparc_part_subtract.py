@@ -75,6 +75,7 @@ class ProtCryoSparcSubtract(ProtOperateParticles):
                            'particles.')
         form.addParam('refMask', PointerParam, pointerClass='VolumeMask',
                       label='Mask to be applied to this map',
+                      important=True,
                       allowsNull=False,
                       help="Provide a soft mask where the protein density "
                            "you wish to subtract from the experimental "
@@ -163,52 +164,35 @@ class ProtCryoSparcSubtract(ProtOperateParticles):
         If the input particles comes from Relion, just link the file.
         """
         imgSet = self._getInputParticles()
-
         # Create links to binary files and write the relion .star file
         writeSetOfParticles(imgSet, self._getFileName('input_particles'),
                             self._getExtraPath())
-
         self._importParticles()
 
         self.vol_fn = os.path.join(os.getcwd(),
-                                   relionConvert.convertBinaryVol(self.refVolume.get(),
-                                                                  self._getTmpPath()))
+                                   relionConvert.convertBinaryVol(
+                                       self.refVolume.get(),
+                                       self._getTmpPath()))
         self.importVolume = self.doImportVolumes(self.vol_fn, 'map',
                                                  'Importing volume...')
-        self.importVolume = String(self.importVolume[-1].split()[-1])
-        self.currenJob.set(self.importVolume.get())
         self._store(self)
 
         if self.refMask.get() is not None:
             self.maskFn = os.path.join(os.getcwd(),
-                                       relionConvert.convertBinaryVol(self.refMask.get(),
-                                                                      self._getTmpPath()))
+                                       relionConvert.convertBinaryVol(
+                                           self.refMask.get(),
+                                           self._getTmpPath()))
 
-        self.importMask = self.doImportVolumes(self.maskFn, 'mask', 'Importing mask... ')
-        self.importMask = String(self.importMask[-1].split()[-1])
-        self.currenJob.set(self.importMask.get())
+        self.importMask = self.doImportVolumes(self.maskFn, 'mask',
+                                               'Importing mask... ')
         self._store(self)
 
     def processStep(self):
         self.vol = self.importVolume.get() + '.imported_volume.map'
         self.mask = self.importMask.get() + '.imported_mask.mask'
 
-        while getJobStatus(self.projectName.get(), self.importedParticles.get()) not in STOP_STATUSES:
-            waitJob(self.projectName.get(), self.importedParticles.get())
-
-        while getJobStatus(self.projectName.get(), self.importVolume.get()) not in STOP_STATUSES:
-            waitJob(self.projectName.get(), self.importVolume.get())
-
-        while getJobStatus(self.projectName.get(), self.importMask.get()) not in STOP_STATUSES:
-            waitJob(self.projectName.get(), self.importMask.get())
-
         print("Particles Subtraction started...")
-        self.runPartStract = String(self.doPartStract()[-1].split()[-1])
-        self.currenJob.set(self.runPartStract.get())
-        self._store(self)
-
-        while getJobStatus(self.projectName.get(), self.runPartStract.get()) not in STOP_STATUSES:
-            waitJob(self.projectName.get(), self.importVolume.get())
+        self.doPartStract()
 
     def createOutputStep(self):
         """
@@ -342,6 +326,16 @@ class ProtCryoSparcSubtract(ProtOperateParticles):
         self.currenJob = String(self.importedParticles.get())
         self._store(self)
 
+        while getJobStatus(self.projectName.get(),
+                           self.importedParticles.get()) not in STOP_STATUSES:
+            waitJob(self.projectName.get(), self.importedParticles.get())
+
+        if getJobStatus(self.projectName.get(),
+                        self.importedParticles.get()) != STATUS_COMPLETED:
+            raise Exception("An error occurred importing the particles. "
+                            "Please, go to cryosPARC software for more "
+                            "details.")
+
         self.par = String(self.importedParticles.get() + '.imported_particles')
 
     def doImportParticlesStar(self):
@@ -368,8 +362,24 @@ class ProtCryoSparcSubtract(ProtOperateParticles):
                   "volume_out_name": str(volType),
                   "volume_psize": str(self._getInputParticles().getSamplingRate())}
 
-        return doJob(className, self.projectName, self.workSpaceName,
-                     str(params).replace('\'', '"'), '{}')
+        self.v = doJob(className, self.projectName, self.workSpaceName,
+                       str(params).replace('\'', '"'), '{}')
+
+        importedVolume = String(self.v[-1].split()[-1])
+        self.currenJob.set(importedVolume.get())
+        self._store(self)
+
+        while getJobStatus(self.projectName.get(),
+                           importedVolume.get()) not in STOP_STATUSES:
+            waitJob(self.projectName.get(), importedVolume.get())
+
+        if getJobStatus(self.projectName.get(),
+                        importedVolume.get()) != STATUS_COMPLETED:
+            raise Exception("An error occurred importing the volume. "
+                            "Please, go to cryosPARC software for more "
+                            "details.")
+
+        return importedVolume
 
     def _defineParamsName(self):
         """ Define a list with all protocol parameters names"""
@@ -403,9 +413,23 @@ class ProtCryoSparcSubtract(ProtOperateParticles):
                 if int(self.getAttributeValue(paramName)) > 0:
                     params[str(paramName)] = str(self.getAttributeValue(paramName))
 
-        return doJob(className, self.projectName.get(), self.workSpaceName.get(),
+        doPartStract = doJob(className, self.projectName.get(), self.workSpaceName.get(),
                      str(params).replace('\'', '"'),
                      str(input_group_conect).replace('\'', '"'))
+
+        self.runPartStract = String(doPartStract[-1].split()[-1])
+        self.currenJob.set(self.runPartStract.get())
+        self._store(self)
+
+        while getJobStatus(self.projectName.get(),
+                           self.runPartStract.get()) not in STOP_STATUSES:
+            waitJob(self.projectName.get(), self.importVolume.get())
+
+        if getJobStatus(self.projectName.get(),
+                        self.runPartStract.get()) != STATUS_COMPLETED:
+            raise Exception("An error occurred in the particles subtraction process. "
+                            "Please, go to cryosPARC software for more "
+                            "details.")
 
 
 

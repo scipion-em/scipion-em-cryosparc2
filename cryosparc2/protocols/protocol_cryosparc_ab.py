@@ -304,18 +304,11 @@ class ProtCryoSparcInitialModel(ProtInitialVolume, ProtClassify3D):
         writeSetOfParticles(imgSet, self._getFileName('input_particles'),
                             self._getExtraPath())
         self._importParticles()
-        while getJobStatus(self.projectName.get(), self.importedParticles.get()) not in STOP_STATUSES:
-            waitJob(self.projectName.get(), self.importedParticles.get())
 
     def processStep(self):
 
         print(pwutils.greenStr("Ab Initial Model Generation Started..."))
-        self.runAbinit = String(self.doRunAbinit()[-1].split()[-1])
-        self.currenJob.set(self.runAbinit)
-        self._store(self)
-
-        while getJobStatus(self.projectName.get(), self.runAbinit.get()) not in STOP_STATUSES:
-            waitJob(self.projectName.get(), self.runAbinit.get())
+        self.doRunAbinit()
 
     def createOutputStep(self):
         """
@@ -500,6 +493,16 @@ class ProtCryoSparcInitialModel(ProtInitialVolume, ProtClassify3D):
         self.currenJob = String(self.importedParticles.get())
         self._store(self)
 
+        while getJobStatus(self.projectName.get(),
+                           self.importedParticles.get()) not in STOP_STATUSES:
+            waitJob(self.projectName.get(), self.importedParticles.get())
+
+        if getJobStatus(self.projectName.get(),
+                        self.importedParticles.get()) != STATUS_COMPLETED:
+            raise Exception("An error occurred importing the particles. "
+                            "Please, go to cryosPARC software for more "
+                            "details.")
+
         self.par = String(self.importedParticles.get() + '.imported_particles')
 
     def doImportParticlesStar(self):
@@ -567,7 +570,21 @@ class ProtCryoSparcInitialModel(ProtInitialVolume, ProtClassify3D):
                 elif paramName == 'abinit_noise_model':
                     params[str(paramName)] = str(NOISE_MODEL_CHOICES[self.abinit_noise_model.get()])
 
-        return doJob(className, self.projectName.get(), self.workSpaceName.get(),
+        runAbinit = doJob(className, self.projectName.get(), self.workSpaceName.get(),
                      str(params).replace('\'', '"'),
                      str(input_group_conect).replace('\'', '"'))
+
+        self.runAbinit = String(runAbinit[-1].split()[-1])
+        self.currenJob.set(self.runAbinit)
+        self._store(self)
+
+        while getJobStatus(self.projectName.get(),
+                           self.runAbinit.get()) not in STOP_STATUSES:
+            waitJob(self.projectName.get(), self.runAbinit.get())
+
+        if getJobStatus(self.projectName.get(),
+                        self.runAbinit.get()) != STATUS_COMPLETED:
+            raise Exception("An error occurred in the initial volume process. "
+                            "Please, go to cryosPARC software for more "
+                            "details.")
 

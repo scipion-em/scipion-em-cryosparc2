@@ -26,7 +26,7 @@
 # **************************************************************************
 
 from pyworkflow.protocol.params import (FloatParam, StringParam,
-                                        BooleanParam,
+                                        BooleanParam, String,
                                         LEVEL_ADVANCED)
 from cryosparc2.protocols import ProtCryoSparcRefine3D
 from cryosparc2.utils import *
@@ -279,9 +279,24 @@ class ProtCryoSparcNonUniformRefine3D(ProtCryoSparcRefine3D):
             elif paramName == 'locres_compute_facility':
                 params[str(paramName)] = str(COMPUTE_FACILITY_CHOICES[self.locres_compute_facility.get()])
 
-        return doJob(className, self.projectName.get(), self.workSpaceName.get(),
-                     str(params).replace('\'', '"'),
-                     str(input_group_conect).replace('\'', '"'))
+        doRefine = doJob(className, self.projectName.get(),
+                         self.workSpaceName.get(),
+                         str(params).replace('\'', '"'),
+                         str(input_group_conect).replace('\'', '"'))
+
+        self.runRefine = String(doRefine[-1].split()[-1])
+        self.currenJob.set(self.runRefine.get())
+        self._store(self)
+
+        while getJobStatus(self.projectName.get(),
+                           self.runRefine.get()) not in STOP_STATUSES:
+            waitJob(self.projectName.get(), self.runRefine.get())
+
+        if getJobStatus(self.projectName.get(),
+                        self.runRefine.get()) != STATUS_COMPLETED:
+            raise Exception("An error occurred in the Refinement process. "
+                            "Please, go to cryosPARC software for more "
+                            "details.")
 
 
 

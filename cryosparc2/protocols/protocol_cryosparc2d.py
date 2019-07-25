@@ -251,19 +251,7 @@ class ProtCryo2D(ProtClassify2D):
         Classify particles into multiples 2D classes
         """
         print(pwutils.greenStr("2D Classifications Started..."))
-        self.runClass2D = String(self.doRunClass2D()[-1].split()[-1])
-
-        while getJobStatus(self.projectName.get(),
-                           self.runClass2D.get()) not in STOP_STATUSES:
-            waitJob(self.projectName.get(), self.runClass2D.get())
-
-        if getJobStatus(self.projectName.get(),
-                        self.runClass2D.get()) != STATUS_COMPLETED:
-            raise Exception("An error occurred in the 2D classification process. "
-                            "Please, go to cryosPARC software for more "
-                            "details.")
-        self.currenJob.set(self.runClass2D.get())
-        self._store(self)
+        self.doRunClass2D()
 
     def createOutputStep(self):
         """
@@ -536,6 +524,22 @@ class ProtCryo2D(ProtClassify2D):
                   "compute_use_ssd": str(self.cacheParticlesSSD.get()),
                   "compute_num_gpus": str(self.numberGPU.get())}
 
-        return doJob(className, self.projectName.get(), self.workSpaceName.get(),
-                     str(params).replace('\'', '"'),
-                     str(input_group_conect).replace('\'', '"'))
+        runClass2D = doJob(className, self.projectName.get(),
+                           self.workSpaceName.get(),
+                           str(params).replace('\'', '"'),
+                           str(input_group_conect).replace('\'', '"'))
+
+        self.runClass2D = String(runClass2D[-1].split()[-1])
+        self.currenJob.set(self.runClass2D.get())
+        self._store(self)
+        while getJobStatus(self.projectName.get(),
+                           self.runClass2D.get()) not in STOP_STATUSES:
+            waitJob(self.projectName.get(), self.runClass2D.get())
+
+        if getJobStatus(self.projectName.get(),
+                        self.runClass2D.get()) != STATUS_COMPLETED:
+            raise Exception(
+                "An error occurred in the 2D classification process. "
+                "Please, go to cryosPARC software for more "
+                "details.")
+
