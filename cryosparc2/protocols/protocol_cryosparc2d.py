@@ -245,8 +245,6 @@ class ProtCryo2D(ProtClassify2D):
                             self._getExtraPath())
 
         self._importParticles()
-        while getJobStatus(self.projectName.get(), self.importedParticles.get()) not in STOP_STATUSES:
-            waitJob(self.projectName.get(), self.importedParticles.get())
 
     def processStep(self):
         """
@@ -254,10 +252,18 @@ class ProtCryo2D(ProtClassify2D):
         """
         print(pwutils.greenStr("2D Classifications Started..."))
         self.runClass2D = String(self.doRunClass2D()[-1].split()[-1])
+
+        while getJobStatus(self.projectName.get(),
+                           self.runClass2D.get()) not in STOP_STATUSES:
+            waitJob(self.projectName.get(), self.runClass2D.get())
+
+        if getJobStatus(self.projectName.get(),
+                        self.runClass2D.get()) != STATUS_COMPLETED:
+            raise Exception("An error occurred in the 2D classification process. "
+                            "Please, go to cryosPARC software for more "
+                            "details.")
         self.currenJob.set(self.runClass2D.get())
         self._store(self)
-        while getJobStatus(self.projectName.get(), self.runClass2D.get()) not in STOP_STATUSES:
-            waitJob(self.projectName.get(), self.runClass2D.get())
 
     def createOutputStep(self):
         """
@@ -464,6 +470,16 @@ class ProtCryo2D(ProtClassify2D):
 
         self.currenJob = String(self.importedParticles.get())
         self._store(self)
+
+        while getJobStatus(self.projectName.get(),
+                           self.importedParticles.get()) not in STOP_STATUSES:
+            waitJob(self.projectName.get(), self.importedParticles.get())
+
+        if getJobStatus(self.projectName.get(),
+                        self.importedParticles.get()) != STATUS_COMPLETED:
+            raise Exception("An error occurred importing the particles. "
+                           "Please, go to cryosPARC software for more "
+                           "details.")
 
         self.par = String(self.importedParticles.get() + '.imported_particles')
 
