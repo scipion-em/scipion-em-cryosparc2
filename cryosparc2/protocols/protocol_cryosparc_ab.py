@@ -419,7 +419,7 @@ class ProtCryoSparcInitialModel(ProtInitialVolume, ProtClassify3D):
         modelStar = md.MetaData(filename)
 
         for classNumber, row in enumerate(md.iterRows(modelStar)):
-            index, fn = relionToLocation(row.getValue('rlnReferenceImage'))
+            index, fn = cryosparcToLocation(row.getValue('rlnReferenceImage'))
             # Store info indexed by id, we need to store the row.clone() since
             # the same reference is used for iteration
             self._classesInfo[classNumber+1] = (index, fn, row.clone())

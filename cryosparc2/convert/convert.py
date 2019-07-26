@@ -30,6 +30,7 @@ from glob import glob
 from os.path import join
 from pyem import metadata
 from pyem import star
+from pyworkflow.em.data import ObjectWrap, String, Integer
 import pyworkflow.em.metadata as md
 import pyworkflow.utils as pwutils
 from cryosparc2.constants import *
@@ -145,9 +146,9 @@ def addRandomSubset(img, imgRow):
     imgRow.setValue(md.RLN_PARTICLE_RANDOM_SUBSET, int(halve))
 
 
-def relionToLocation(filename):
+def cryosparcToLocation(filename):
     """ Return a location (index, filename) given
-    a Relion filename with the index@filename structure. """
+    a cryoSPARC filename with the index@filename structure. """
     if '@' in filename:
         indexStr, fn = filename.split('@')
         return int(indexStr), str(fn)
@@ -214,7 +215,7 @@ def imageToRow(img, imgRow, imgLabel=md.RLN_IMAGE_NAME, **kwargs):
     filesDict = kwargs.get('filesDict', {})
     filename = filesDict.get(fn, fn)
 
-    imgRow.setValue(imgLabel, locationToRelion(index, filename))
+    imgRow.setValue(imgLabel, locationTocCryosparc(index, filename))
 
     if kwargs.get('writeCtf', True) and img.hasCTF():
         ctfModelToRow(img.getCTF(), imgRow)
@@ -256,9 +257,9 @@ def ctfModelToRow(ctfModel, ctfRow):
     objectToRow(ctfModel, ctfRow, CTF_DICT, extraLabels=CTF_EXTRA_LABELS)
 
 
-def locationToRelion(index, filename):
+def locationTocCryosparc(index, filename):
     """ Convert an index and filename location
-    to a string with @ as expected in Relion.
+    to a string with @ as expected in cryoSPARC.
     """
     if index != pw.em.NO_INDEX:
         return "%06d@%s" % (index, filename)
@@ -361,7 +362,7 @@ def setRowId(mdRow, obj, label=md.RLN_IMAGE_ID):
 
 
 def convertBinaryVol(vol, outputDir):
-    """ Convert binary volume to a format read by Relion.
+    """ Convert binary volume to a format read by Cryosparc.
     Params:
         vol: input volume object to be converted.
         outputDir: where to put the converted file(s)
@@ -426,7 +427,7 @@ def rowToAlignment(alignmentRow, alignType):
     return alignment
 
 
-def setRelionAttributes(obj, objRow, *labels):
+def setCryosparcAttributes(obj, objRow, *labels):
     """ Set an attribute to obj from a label that is not
     basic ones. The new attribute will be named _rlnLabelName
     and the datatype will be set correctly.
@@ -499,7 +500,7 @@ def convertBinaryFiles(imgSet, outputDir, extension='mrcs'):
         return newFn
 
     def convertStack(fn):
-        """ Convert from a format that is not read by Relion
+        """ Convert from a format that is not read by Cryosparc
         to an spider stack.
         """
         newFn = getUniqueFileName(fn, 'mrc')
@@ -541,7 +542,7 @@ def writeSetOfParticles(imgSet, starFile, outputDir, **kwargs):
     args = {'fillMagnification': True,
             'fillRandomSubset': True}
 
-    args.update(kwargs)
+    # args.update(kwargs)
 
     if imgSet.hasAlignmentProj() and imgSet.getAttributeValue("_rlnRandomSubset") is None:
         args['postprocessImageRow'] = addRandomSubset
@@ -568,6 +569,154 @@ def writeSetOfParticles(imgSet, starFile, outputDir, **kwargs):
     blockName = kwargs.get('blockName', 'Particles')
     partMd.write('%s@%s' % (blockName, starFile))
 
+
+def rowToCtfModel(ctfRow):
+    """ Create a CTFModel from a row of a meta """
+    if ctfRow.containsAll(CTF_DICT):
+        ctfModel = pw.em.CTFModel()
+
+        rowToObject(ctfRow, ctfModel, CTF_DICT, extraLabels=CTF_EXTRA_LABELS)
+        if ctfRow.hasLabel(md.RLN_CTF_PHASESHIFT):
+            ctfModel.setPhaseShift(ctfRow.getValue(md.RLN_CTF_PHASESHIFT, 0))
+        ctfModel.standardize()
+        setPsdFiles(ctfModel, ctfRow)
+    else:
+        ctfModel = None
+
+    return ctfModel
+
+
+def setPsdFiles(ctfModel, ctfRow):
+    """ Set the PSD files of CTF estimation related
+    to this ctfModel. The values will be read from
+    the ctfRow if present.
+    """
+    for attr, label in CTF_PSD_DICT.iteritems():
+        if ctfRow.containsLabel(label):
+            setattr(ctfModel, attr, String(ctfRow.getValue(label)))
+
+def rowToObject(row, obj, attrDict, extraLabels=[]):
+    """ This function will convert from a XmippMdRow to an EMObject.
+    Params:
+        row: the XmippMdRow instance (input)
+        obj: the EMObject instance (output)
+        attrDict: dictionary with the map between obj attributes(keys) and
+            row MDLabels in Xmipp (values).
+        extraLabels: a list with extra labels that could be included
+            as properties with the label name such as: _rlnSomeThing
+    """
+    obj.setEnabled(row.getValue(md.RLN_IMAGE_ENABLED, 1) > 0)
+
+    for attr, label in attrDict.iteritems():
+        value = row.getValue(label)
+        if not hasattr(obj, attr):
+            setattr(obj, attr, ObjectWrap(value))
+        else:
+            getattr(obj, attr).set(value)
+
+    attrLabels = attrDict.values()
+
+    for label in extraLabels:
+        if label not in attrLabels and row.hasLabel(label):
+            labelStr = md.label2Str(label)
+            setattr(obj, '_' + labelStr, row.getValueAsObject(label))
+
+
+def setObjId(obj, mdRow, label=md.RLN_IMAGE_ID):
+    obj.setObjId(mdRow.getValue(label, None))
+
+
+def rowToParticle(partRow, particleClass=pw.em.Particle, **kwargs):
+    """ Create a Particle from a row of a meta """
+    img = particleClass()
+
+    # Provide a hook to be used if something is needed to be
+    # done for special cases before converting image to row
+    preprocessImageRow = kwargs.get('preprocessImageRow', None)
+    if preprocessImageRow:
+        preprocessImageRow(img, partRow)
+
+    # Decompose Relion filename
+    index, filename = cryosparcToLocation(partRow.getValue(md.RLN_IMAGE_NAME))
+    img.setLocation(index, filename)
+
+    if partRow.containsLabel(md.RLN_PARTICLE_CLASS):
+        img.setClassId(partRow.getValue(md.RLN_PARTICLE_CLASS))
+
+    if kwargs.get('readCtf', True):
+        img.setCTF(rowToCtfModel(partRow))
+
+    # alignment is mandatory at this point, it should be check
+    # and detected defaults if not passed at readSetOf.. level
+    alignType = kwargs.get('alignType')
+
+    if alignType != pw.em.ALIGN_NONE:
+        img.setTransform(rowToAlignment(partRow, alignType))
+
+    if kwargs.get('readAcquisition', True):
+        img.setAcquisition(rowToAcquisition(partRow))
+
+    if kwargs.get('magnification', None):
+        img.getAcquisition().setMagnification(kwargs.get("magnification"))
+
+    setObjId(img, partRow)
+    # Read some extra labels
+    rowToObject(partRow, img, {},
+                extraLabels=IMAGE_EXTRA_LABELS + kwargs.get('extraLabels', []))
+
+    img.setCoordinate(rowToCoordinate(partRow))
+
+    # copy micId if available from row to particle
+    if partRow.hasLabel(md.RLN_MICROGRAPH_ID):
+        img.setMicId(partRow.getValue(md.RLN_MICROGRAPH_ID))
+
+    # copy particleId if available from row to particle
+    if partRow.hasLabel(md.RLN_PARTICLE_ID):
+        img._rlnParticleId = Integer(partRow.getValue(md.RLN_PARTICLE_ID))
+
+    # Provide a hook to be used if something is needed to be
+    # done for special cases before converting image to row
+    postprocessImageRow = kwargs.get('postprocessImageRow', None)
+    if postprocessImageRow:
+        postprocessImageRow(img, partRow)
+    return img
+
+
+def rowToCoordinate(coordRow):
+    """ Create a Coordinate from a row of a meta """
+    # Check that all required labels are present in the row
+    if coordRow.containsAll(COOR_DICT):
+        coord = pw.em.Coordinate()
+        rowToObject(coordRow, coord, COOR_DICT, extraLabels=COOR_EXTRA_LABELS)
+
+        micName = None
+
+        if coordRow.hasLabel(md.RLN_MICROGRAPH_ID):
+            micId = int(coordRow.getValue(md.RLN_MICROGRAPH_ID))
+            coord.setMicId(micId)
+            # If RLN_MICROGRAPH_NAME is not present, use the id as a name
+            micName = micId
+
+        if coordRow.hasLabel(md.RLN_MICROGRAPH_NAME):
+            micName = coordRow.getValue(md.RLN_MICROGRAPH_NAME)
+
+        coord.setMicName(micName)
+
+    else:
+        coord = None
+
+    return coord
+
+
+def rowToAcquisition(acquisitionRow):
+    """ Create an acquisition from a row of a meta """
+    if acquisitionRow.containsAll(ACQUISITION_DICT):
+        acquisition = pw.em.Acquisition()
+        rowToObject(acquisitionRow, acquisition, ACQUISITION_DICT)
+    else:
+        acquisition = None
+
+    return acquisition
 
 def readSetOfParticles(filename, partSet, **kwargs):
     """read from Relion image meta

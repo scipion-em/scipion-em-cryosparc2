@@ -36,7 +36,7 @@ from cryosparc2.convert import *
 from cryosparc2.utils import *
 from cryosparc2.constants import *
 
-relionConvert = pwutils.importFromPlugin("relion.convert", doRaise=True)
+# relionConvert = pwutils.importFromPlugin("relion.convert", doRaise=True)
 
 
 class ProtCryo2D(ProtClassify2D):
@@ -383,7 +383,7 @@ class ProtCryo2D(ProtClassify2D):
         mdClasses = md.MetaData(filename)
 
         for classNumber, row in enumerate(md.iterRows(mdClasses)):
-            index, fn = relionConvert.relionToLocation(row.getValue('rlnImageName'))
+            index, fn = cryosparcToLocation(row.getValue('rlnImageName'))
             # Store info indexed by id, we need to store the row.clone() since
             # the same reference is used for iteration
             self._classesInfo[classNumber + 1] = (index, fn, row.clone())
@@ -402,7 +402,7 @@ class ProtCryo2D(ProtClassify2D):
 
     def _updateParticle(self, item, row):
         item.setClassId(row.getValue(md.RLN_PARTICLE_CLASS))
-        item.setTransform(relionConvert.rowToAlignment(row, em.ALIGN_2D))
+        item.setTransform(rowToAlignment(row, em.ALIGN_2D))
         
     def _updateClass(self, item):
         classId = item.getObjId()

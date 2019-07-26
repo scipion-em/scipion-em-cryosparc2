@@ -232,7 +232,7 @@ class ProtCryoSparcSubtract(ProtOperateParticles):
 
     def _updateItem(self, item, row):
         newFn = row.getValue(md.RLN_IMAGE_NAME)
-        index, file = relionToLocation(newFn)
+        index, file = cryosparcToLocation(newFn)
         item.setLocation((index, self._getExtraPath(file)))
 
     def setAborted(self):

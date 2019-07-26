@@ -499,7 +499,7 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
 
     def _createItemMatrix(self, particle, row):
         createItemMatrix(particle, row, align=ALIGN_PROJ)
-        setRelionAttributes(particle, row,
+        setCryosparcAttributes(particle, row,
                                           md.RLN_PARTICLE_RANDOM_SUBSET)
 
     def _initializeUtilsVariables(self):

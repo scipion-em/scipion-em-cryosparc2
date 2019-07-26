@@ -487,7 +487,7 @@ class ProtCryoSparcLocalRefine(ProtOperateParticles):
 
     def _createItemMatrix(self, particle, row):
         createItemMatrix(particle, row, align=ALIGN_PROJ)
-        setRelionAttributes(particle, row, md.RLN_PARTICLE_RANDOM_SUBSET)
+        setCryosparcAttributes(particle, row, md.RLN_PARTICLE_RANDOM_SUBSET)
 
     def _getInputParticles(self):
         return self.inputParticles.get()
