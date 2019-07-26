@@ -538,14 +538,18 @@ def convertBinaryFiles(imgSet, outputDir, extension='mrcs'):
     return filesDict
 
 
-def writeSetOfParticles(imgSet, starFile, outputDir, **kwargs):
-    args = {'fillMagnification': True,
+def writeSetOfParticles(imgSet, fileName, extraPath):
+    args = {'outputDir': extraPath,
+            'fillMagnification': True,
             'fillRandomSubset': True}
-
-    # args.update(kwargs)
 
     if imgSet.hasAlignmentProj() and imgSet.getAttributeValue("_rlnRandomSubset") is None:
         args['postprocessImageRow'] = addRandomSubset
+
+    cryosPARCwriteSetOfParticles(imgSet, fileName, **args)
+
+
+def cryosPARCwriteSetOfParticles(imgSet, starFile, outputDir, **kwargs):
 
     if outputDir is not None:
         filesDict = convertBinaryFiles(imgSet, outputDir)
