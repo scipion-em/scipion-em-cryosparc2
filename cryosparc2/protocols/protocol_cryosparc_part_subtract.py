@@ -24,7 +24,7 @@
 # *  e-mail address 'scipion@cnb.csic.es'
 # *
 # **************************************************************************
-
+from pyworkflow.em import ALIGN_PROJ
 from pyworkflow.em.protocol import ProtOperateParticles
 from pyworkflow.protocol.params import (PointerParam, BooleanParam, FloatParam,
                                         LEVEL_ADVANCED)
@@ -35,7 +35,7 @@ from cryosparc2.convert.convert import writeSetOfParticles
 from cryosparc2.utils import *
 from cryosparc2.constants import *
 
-relionConvert = pwutils.importFromPlugin("relion.convert", doRaise=True)
+# relionConvert = pwutils.importFromPlugin("relion.convert", doRaise=True)
 
 
 class ProtCryoSparcSubtract(ProtOperateParticles):
@@ -170,7 +170,7 @@ class ProtCryoSparcSubtract(ProtOperateParticles):
         self._importParticles()
 
         self.vol_fn = os.path.join(os.getcwd(),
-                                   relionConvert.convertBinaryVol(
+                                   convertBinaryVol(
                                        self.refVolume.get(),
                                        self._getTmpPath()))
         self.importVolume = self.doImportVolumes(self.vol_fn, 'map',
@@ -179,7 +179,7 @@ class ProtCryoSparcSubtract(ProtOperateParticles):
 
         if self.refMask.get() is not None:
             self.maskFn = os.path.join(os.getcwd(),
-                                       relionConvert.convertBinaryVol(
+                                       convertBinaryVol(
                                            self.refMask.get(),
                                            self._getTmpPath()))
 
@@ -226,13 +226,13 @@ class ProtCryoSparcSubtract(ProtOperateParticles):
     def _fillDataFromIter(self, imgSet):
 
         outImgsFn = self._getFileName('out_particles')
-        relionConvert.readSetOfParticles(outImgsFn, imgSet,
+        readSetOfParticles(outImgsFn, imgSet,
                                           postprocessImageRow=self._updateItem,
                                           alignType=ALIGN_PROJ)
 
     def _updateItem(self, item, row):
         newFn = row.getValue(md.RLN_IMAGE_NAME)
-        index, file = relionConvert.convert.relionToLocation(newFn)
+        index, file = relionToLocation(newFn)
         item.setLocation((index, self._getExtraPath(file)))
 
     def setAborted(self):

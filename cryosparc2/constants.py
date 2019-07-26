@@ -24,6 +24,8 @@
 # *  e-mail address 'scipion@cnb.csic.es'
 # *
 # **************************************************************************
+from collections import OrderedDict
+import pyworkflow.em.metadata as md
 from pyworkflow.em.constants import (
     SYM_CYCLIC, SYM_TETRAHEDRAL, SYM_OCTAHEDRAL, SYM_I222,
     SYM_I222r)
@@ -95,3 +97,62 @@ ALL_MAPS = 3
 OBJCMD_CLASSAVG_PROJS = 'Show class-averages/projections'
 OBJCMD_PROJS = 'Show only projections'
 OBJCMD_INITVOL = 'Show initial random volume'
+
+COOR_EXTRA_LABELS = [
+    # Additional autopicking-related metadata
+    md.RLN_PARTICLE_AUTOPICK_FOM,
+    md.RLN_PARTICLE_CLASS,
+    md.RLN_ORIENT_PSI
+]
+
+COOR_DICT = OrderedDict([
+    ("_x", md.RLN_IMAGE_COORD_X),
+    ("_y", md.RLN_IMAGE_COORD_Y)
+])
+
+# Some extra labels
+IMAGE_EXTRA_LABELS = [
+    md.RLN_SELECT_PARTICLES_ZSCORE,
+    md.RLN_IMAGE_FRAME_NR
+]
+
+
+CTF_DICT = OrderedDict([
+    ("_defocusU", md.RLN_CTF_DEFOCUSU),
+    ("_defocusV", md.RLN_CTF_DEFOCUSV),
+    ("_defocusAngle", md.RLN_CTF_DEFOCUS_ANGLE)
+])
+
+CTF_PSD_DICT = OrderedDict([
+    ("_psdFile", md.RLN_CTF_IMAGE)
+])
+
+CTF_EXTRA_LABELS = [
+    md.RLN_CTF_FOM,
+    md.RLN_CTF_PHASESHIFT,
+    # In Relion the ctf also contains acquisition information
+    md.RLN_CTF_Q0,
+    md.RLN_CTF_CS,
+    md.RLN_CTF_VOLTAGE,
+    md.RLN_CTF_MAGNIFICATION,
+    md.RLN_CTF_DETECTOR_PIXEL_SIZE
+]
+
+# This dictionary will be used to map
+# between CTFModel properties and Xmipp labels
+
+ACQUISITION_DICT = OrderedDict([
+    ("_amplitudeContrast", md.RLN_CTF_Q0),
+    ("_sphericalAberration", md.RLN_CTF_CS),
+    ("_voltage", md.RLN_CTF_VOLTAGE),
+    ("_magnification", md.RLN_CTF_MAGNIFICATION)
+])
+
+ALIGNMENT_DICT = OrderedDict([
+    ("_rlnOriginX", md.RLN_ORIENT_ORIGIN_X),
+    ("_rlnOriginY", md.RLN_ORIENT_ORIGIN_Y),
+    ("_rlnOriginZ", md.RLN_ORIENT_ORIGIN_Z),
+    ("_rlnAngleRot", md.RLN_ORIENT_ROT),
+    ("_rlnAngleTilt", md.RLN_ORIENT_TILT),
+    ("_rlnAnglePsi", md.RLN_ORIENT_PSI),
+])

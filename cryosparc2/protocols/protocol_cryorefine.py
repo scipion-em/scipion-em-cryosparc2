@@ -25,7 +25,7 @@
 # *  e-mail address 'scipion@cnb.csic.es'
 # *
 # **************************************************************************
-
+from pyworkflow.em import ALIGN_PROJ
 from pyworkflow.protocol.params import (PointerParam, FloatParam, BooleanParam,
                                         LEVEL_ADVANCED)
 from pyworkflow.em.data import Volume, FSC, String
@@ -34,7 +34,7 @@ from cryosparc2.convert import *
 from cryosparc2.utils import *
 from cryosparc2.constants import *
 
-relionConvert = pwutils.importFromPlugin("relion.convert", doRaise=True)
+# relionConvert = pwutils.importFromPlugin("relion.convert", doRaise=True)
 
 import os
 import commands
@@ -333,17 +333,16 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
         self._importParticles()
 
         self.vol_fn = os.path.join(os.getcwd(),
-                                   relionConvert.convertBinaryVol(self.referenceVolume.get(),
-                                                                  self._getTmpPath()))
+                                   convertBinaryVol(self.referenceVolume.get(),
+                                                    self._getTmpPath()))
         self.importVolume = self.doImportVolumes(self.vol_fn, 'map',
                                                  'Importing volume...')
         self._store(self)
 
         if self.refMask.get() is not None:
             self.maskFn = os.path.join(os.getcwd(),
-                                       relionConvert.convertBinaryVol(
-                                           self.refMask.get(),
-                                           self._getTmpPath()))
+                                       convertBinaryVol(self.refMask.get(),
+                                                        self._getTmpPath()))
 
             self.importMask = self.doImportVolumes(self.maskFn, 'mask',
                                                    'Importing mask... ')
@@ -499,8 +498,8 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
                                                       sortByLabel=md.RLN_IMAGE_ID))
 
     def _createItemMatrix(self, particle, row):
-        relionConvert.createItemMatrix(particle, row, align=ALIGN_PROJ)
-        relionConvert.setRelionAttributes(particle, row,
+        createItemMatrix(particle, row, align=ALIGN_PROJ)
+        setRelionAttributes(particle, row,
                                           md.RLN_PARTICLE_RANDOM_SUBSET)
 
     def _initializeUtilsVariables(self):

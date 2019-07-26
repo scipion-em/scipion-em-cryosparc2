@@ -56,7 +56,7 @@ class ProtCryo2D(ProtClassify2D):
     def _defineFileNames(self):
         """ Centralize how files are called within the protocol. """
         myDict = {
-                  'input_particles': self._getPath('input_particles.star'),
+                  'input_particles': self._getTmpPath('input_particles.star'),
                   'out_particles': self._getPath() + '/output_particle.star',
                   'out_class': self._getPath() + '/output_class.star',
                   'out_class_m2': self._getPath() + '/output_class_m2.star'
@@ -242,7 +242,7 @@ class ProtCryo2D(ProtClassify2D):
         print(pwutils.greenStr("Importing Particles..."))
         imgSet = self._getInputParticles()
         writeSetOfParticles(imgSet, self._getFileName('input_particles'),
-                            self._getExtraPath())
+                            self._getTmpPath())
 
         self._importParticles()
 
@@ -484,7 +484,7 @@ class ProtCryo2D(ProtClassify2D):
             os.path.join(os.getcwd(),
             self._getFileName('input_particles')),
             os.path.join(os.getcwd(),
-            self._getExtraPath()),
+            self._getTmpPath()),
             str(self._getInputParticles().getSamplingRate())
         ))
         print(pwutils.greenStr(import_particles_cmd))

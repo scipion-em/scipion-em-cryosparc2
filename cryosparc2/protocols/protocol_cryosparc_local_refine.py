@@ -26,6 +26,8 @@
 # **************************************************************************
 
 import ast
+
+from pyworkflow.em import ALIGN_PROJ
 from pyworkflow.em.protocol import ProtOperateParticles
 from pyworkflow.protocol.params import (PointerParam, BooleanParam, FloatParam,
                                         LEVEL_ADVANCED)
@@ -35,7 +37,7 @@ from cryosparc2.convert import *
 from cryosparc2.utils import *
 from cryosparc2.constants import *
 
-relionConvert = pwutils.importFromPlugin("relion.convert", doRaise=True)
+# relionConvert = pwutils.importFromPlugin("relion.convert", doRaise=True)
 
 
 class ProtCryoSparcLocalRefine(ProtOperateParticles):
@@ -333,15 +335,15 @@ class ProtCryoSparcLocalRefine(ProtOperateParticles):
         self._importParticles()
 
         self.vol_fn = os.path.join(os.getcwd(),
-                                   relionConvert.convertBinaryVol(self.refVolume.get(),
-                                                                  self._getTmpPath()))
+                                   convertBinaryVol(self.refVolume.get(),
+                                                    self._getTmpPath()))
         self.importVolume = self.doImportVolumes(self.vol_fn, 'map',
                                                  'Importing volume...')
         self._store(self)
 
         if self.refMask.get() is not None:
             self.maskFn = os.path.join(os.getcwd(),
-                                       relionConvert.convertBinaryVol(
+                                       convertBinaryVol(
                                            self.refMask.get(),
                                            self._getTmpPath()))
 
@@ -484,9 +486,8 @@ class ProtCryoSparcLocalRefine(ProtOperateParticles):
                                                       sortByLabel=md.RLN_IMAGE_ID))
 
     def _createItemMatrix(self, particle, row):
-        relionConvert.createItemMatrix(particle, row, align=ALIGN_PROJ)
-        relionConvert.setRelionAttributes(particle, row,
-                                          md.RLN_PARTICLE_RANDOM_SUBSET)
+        createItemMatrix(particle, row, align=ALIGN_PROJ)
+        setRelionAttributes(particle, row, md.RLN_PARTICLE_RANDOM_SUBSET)
 
     def _getInputParticles(self):
         return self.inputParticles.get()

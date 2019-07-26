@@ -18,6 +18,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 from __future__ import print_function
+import numpy
+import os
 import argparse
 import json
 import logging
@@ -25,11 +27,15 @@ import sys
 import numpy as np
 import pandas as pd
 from glob import glob
+from os.path import join
 from pyem import metadata
 from pyem import star
 import pyworkflow.em.metadata as md
 import pyworkflow.utils as pwutils
-from pyworkflow.em import ALIGN_PROJ
+from cryosparc2.constants import *
+
+import pyworkflow as pw
+
 
 relionConvert = pwutils.importFromPlugin("relion.convert", doRaise=True)
 
@@ -139,16 +145,448 @@ def addRandomSubset(img, imgRow):
     imgRow.setValue(md.RLN_PARTICLE_RANDOM_SUBSET, int(halve))
 
 
-def writeSetOfParticles(imgSet, fileName, extraPath):
-    args = {'outputDir': extraPath,
-            'fillMagnification': True,
+def relionToLocation(filename):
+    """ Return a location (index, filename) given
+    a Relion filename with the index@filename structure. """
+    if '@' in filename:
+        indexStr, fn = filename.split('@')
+        return int(indexStr), str(fn)
+    else:
+        return pw.em.NO_INDEX, str(filename)
+
+def setOfImagesToMd(imgSet, imgMd, imgToFunc, **kwargs):
+    """ This function will fill Relion metadata from a SetOfMicrographs
+    Params:
+        imgSet: the set of images to be converted to metadata
+        md: metadata to be filled
+        rowFunc: this function can be used to setup the row before
+            adding to meta
+    """
+
+    if 'alignType' not in kwargs:
+        kwargs['alignType'] = imgSet.getAlignment()
+
+    for img in imgSet:
+        objId = imgMd.addObject()
+        imgRow = md.Row()
+        imgToFunc(img, imgRow, **kwargs)
+        imgRow.writeToMd(imgMd, objId)
+
+
+def particleToRow(part, partRow, **kwargs):
+    """ Set labels values from Particle to md row. """
+    coord = part.getCoordinate()
+    if coord is not None:
+        coordinateToRow(coord, partRow, copyId=False)
+    if part.hasMicId():
+        partRow.setValue(md.RLN_MICROGRAPH_ID, long(part.getMicId()))
+        # If the row does not contains the micrograph name
+        # use a fake micrograph name using id to relion
+        # could at least group for CTF using that
+        if not partRow.hasLabel(md.RLN_MICROGRAPH_NAME):
+            partRow.setValue(md.RLN_MICROGRAPH_NAME,
+                             'fake_micrograph_%06d.mrc' % part.getMicId())
+    if part.hasAttribute('_rlnParticleId'):
+        partRow.setValue(md.RLN_PARTICLE_ID, long(part._rlnParticleId.get()))
+
+    if kwargs.get('fillRandomSubset') and part.hasAttribute('_rlnRandomSubset'):
+        partRow.setValue(md.RLN_PARTICLE_RANDOM_SUBSET,
+                         int(part._rlnRandomSubset.get()))
+        if part.hasAttribute('_rlnBeamTiltX'):
+            partRow.setValue('rlnBeamTiltX',
+                         float(part._rlnBeamTiltX.get()))
+            partRow.setValue('rlnBeamTiltY',
+                         float(part._rlnBeamTiltY.get()))
+
+    imageToRow(part, partRow, md.RLN_IMAGE_NAME, **kwargs)
+
+
+def imageToRow(img, imgRow, imgLabel=md.RLN_IMAGE_NAME, **kwargs):
+    # Provide a hook to be used if something is needed to be
+    # done for special cases before converting image to row
+    preprocessImageRow = kwargs.get('preprocessImageRow', None)
+    if preprocessImageRow:
+        preprocessImageRow(img, imgRow)
+
+    setRowId(imgRow, img)  # Set the id in the metadata as MDL_ITEM_ID
+    index, fn = img.getLocation()
+    # check if the is a file mapping
+    filesDict = kwargs.get('filesDict', {})
+    filename = filesDict.get(fn, fn)
+
+    imgRow.setValue(imgLabel, locationToRelion(index, filename))
+
+    if kwargs.get('writeCtf', True) and img.hasCTF():
+        ctfModelToRow(img.getCTF(), imgRow)
+
+    # alignment is mandatory at this point, it should be check
+    # and detected defaults if not passed at readSetOf.. level
+    alignType = kwargs.get('alignType')
+
+    if alignType != pw.em.ALIGN_NONE and img.hasTransform():
+        alignmentToRow(img.getTransform(), imgRow, alignType)
+
+    if kwargs.get('writeAcquisition', True) and img.hasAcquisition():
+        acquisitionToRow(img.getAcquisition(), imgRow)
+
+    # Write all extra labels to the row
+    objectToRow(img, imgRow, {},
+                extraLabels=IMAGE_EXTRA_LABELS + kwargs.get('extraLabels', []))
+
+    # Provide a hook to be used if something is needed to be
+    # done for special cases before converting image to row
+    postprocessImageRow = kwargs.get('postprocessImageRow', None)
+    if postprocessImageRow:
+        postprocessImageRow(img, imgRow)
+
+
+def acquisitionToRow(acquisition, ctfRow):
+    """ Set labels values from acquisition to md row. """
+    objectToRow(acquisition, ctfRow, ACQUISITION_DICT)
+
+
+def ctfModelToRow(ctfModel, ctfRow):
+    """ Set labels values from ctfModel to md row. """
+    # Refresh phase shift!
+    phaseShift = ctfModel.getPhaseShift()
+
+    if phaseShift is not None:
+        ctfRow.setValue(md.RLN_CTF_PHASESHIFT, phaseShift)
+
+    objectToRow(ctfModel, ctfRow, CTF_DICT, extraLabels=CTF_EXTRA_LABELS)
+
+
+def locationToRelion(index, filename):
+    """ Convert an index and filename location
+    to a string with @ as expected in Relion.
+    """
+    if index != pw.em.NO_INDEX:
+        return "%06d@%s" % (index, filename)
+
+    return filename
+
+
+def alignmentToRow(alignment, alignmentRow, alignType):
+    """
+    is2D == True-> matrix is 2D (2D images alignment)
+            otherwise matrix is 3D (3D volume alignment or projection)
+    invTransform == True  -> for xmipp implies projection
+                          -> for xmipp implies alignment
+    """
+    is2D = alignType == pw.em.ALIGN_2D
+    is3D = alignType == pw.em.ALIGN_3D
+    inverseTransform = alignType == pw.em.ALIGN_PROJ
+    matrix = alignment.getMatrix()
+    shifts, angles = geometryFromMatrix(matrix, inverseTransform)
+
+    alignmentRow.setValue(md.RLN_ORIENT_ORIGIN_X, shifts[0])
+    alignmentRow.setValue(md.RLN_ORIENT_ORIGIN_Y, shifts[1])
+
+    if is2D:
+        angle = angles[0] + angles[2]
+        alignmentRow.setValue(md.RLN_ORIENT_PSI, -angle)
+
+        flip = bool(numpy.linalg.det(matrix[0:2, 0:2]) < 0)
+        if flip:
+            print
+            "FLIP in 2D not implemented"
+    elif is3D:
+        raise Exception("3D alignment conversion for Relion not implemented. "
+                        "It seems the particles were generated with an "
+                        "incorrect alignment type. You may either re-launch "
+                        "the protocol that generates the particles "
+                        "with angles or set 'Consider previous alignment?' "
+                        "to No")
+    else:
+        alignmentRow.setValue(md.RLN_ORIENT_ORIGIN_Z, shifts[2])
+        alignmentRow.setValue(md.RLN_ORIENT_ROT, angles[0])
+        alignmentRow.setValue(md.RLN_ORIENT_TILT, angles[1])
+        alignmentRow.setValue(md.RLN_ORIENT_PSI, angles[2])
+
+
+def geometryFromMatrix(matrix, inverseTransform):
+    from pyworkflow.em.convert.transformations import translation_from_matrix, euler_from_matrix
+
+    if inverseTransform:
+        from numpy.linalg import inv
+        matrix = inv(matrix)
+        shifts = -translation_from_matrix(matrix)
+    else:
+        shifts = translation_from_matrix(matrix)
+    angles = -numpy.rad2deg(euler_from_matrix(matrix, axes='szyz'))
+    return shifts, angles
+
+
+def coordinateToRow(coord, coordRow, copyId=True):
+    """ Set labels values from Coordinate coord to md row. """
+    if copyId:
+        setRowId(coordRow, coord)
+    objectToRow(coord, coordRow, COOR_DICT, extraLabels=COOR_EXTRA_LABELS)
+    if coord.getMicName():
+        micName = coord.getMicName()
+        coordRow.setValue(md.RLN_MICROGRAPH_NAME, str(micName.replace(" ", "")))
+    else:
+        if coord.getMicId():
+            coordRow.setValue(md.RLN_MICROGRAPH_NAME, str(coord.getMicId()))
+
+
+def objectToRow(obj, row, attrDict, extraLabels=[]):
+    """ This function will convert an EMObject into a XmippMdRow.
+    Params:
+        obj: the EMObject instance (input)
+        row: the XmippMdRow instance (output)
+        attrDict: dictionary with the map between obj attributes(keys) and
+            row MDLabels in Xmipp (values).
+        extraLabels: a list with extra labels that could be included
+            as _xmipp_labelName
+    """
+    row.setValue(md.RLN_IMAGE_ENABLED, obj.isEnabled())
+
+    for attr, label in attrDict.iteritems():
+        if hasattr(obj, attr):
+            valueType = md.label2Python(label)
+            row.setValue(label, valueType(getattr(obj, attr).get()))
+
+    attrLabels = attrDict.values()
+
+    for label in extraLabels:
+        attrName = '_' + md.label2Str(label)
+        if label not in attrLabels and hasattr(obj, attrName):
+            value = obj.getAttributeValue(attrName)
+            row.setValue(label, value)
+
+
+def setRowId(mdRow, obj, label=md.RLN_IMAGE_ID):
+    mdRow.setValue(label, long(obj.getObjId()))
+
+
+def convertBinaryVol(vol, outputDir):
+    """ Convert binary volume to a format read by Relion.
+    Params:
+        vol: input volume object to be converted.
+        outputDir: where to put the converted file(s)
+    Return:
+        new file name of the volume (converted or not).
+    """
+
+    ih = pw.em.ImageHandler()
+
+    # This approach can be extended when
+    # converting from a binary file format that
+    # is not read from Relion
+    def convertToMrc(fn):
+        """ Convert from a format that is not read by Relion
+        to mrc format.
+        """
+        newFn = join(outputDir, pw.utils.replaceBaseExt(fn, 'mrc'))
+        ih.convert(fn, newFn)
+        return newFn
+
+    ext = vol.getFileName()
+
+    if not ext.endswith('.mrc'):
+        fn = convertToMrc(vol.getFileName())
+    else:
+        fn = vol.getFileName()
+    return fn
+
+def createItemMatrix(item, row, align):
+    item.setTransform(rowToAlignment(row, alignType=align))
+
+
+def rowToAlignment(alignmentRow, alignType):
+    """
+    is2D == True-> matrix is 2D (2D images alignment)
+            otherwise matrix is 3D (3D volume alignment or projection)
+    invTransform == True  -> for xmipp implies projection
+    """
+    if alignType == pw.em.ALIGN_3D:
+        raise Exception("3D alignment conversion for Relion not implemented.")
+
+    is2D = alignType == pw.em.ALIGN_2D
+    inverseTransform = alignType == pw.em.ALIGN_PROJ
+    if alignmentRow.containsAny(ALIGNMENT_DICT):
+        alignment = pw.em.Transform()
+        angles = numpy.zeros(3)
+        shifts = numpy.zeros(3)
+        shifts[0] = alignmentRow.getValue(md.RLN_ORIENT_ORIGIN_X, 0.)
+        shifts[1] = alignmentRow.getValue(md.RLN_ORIENT_ORIGIN_Y, 0.)
+        if not is2D:
+            angles[0] = alignmentRow.getValue(md.RLN_ORIENT_ROT, 0.)
+            angles[1] = alignmentRow.getValue(md.RLN_ORIENT_TILT, 0.)
+            angles[2] = alignmentRow.getValue(md.RLN_ORIENT_PSI, 0.)
+            shifts[2] = alignmentRow.getValue(md.RLN_ORIENT_ORIGIN_Z, 0.)
+        else:
+            angles[2] = - alignmentRow.getValue(md.RLN_ORIENT_PSI, 0.)
+        M = matrixFromGeometry(shifts, angles, inverseTransform)
+        alignment.setMatrix(M)
+    else:
+        alignment = None
+
+    return alignment
+
+
+def setRelionAttributes(obj, objRow, *labels):
+    """ Set an attribute to obj from a label that is not
+    basic ones. The new attribute will be named _rlnLabelName
+    and the datatype will be set correctly.
+    """
+    for label in labels:
+        setattr(obj, '_%s' % md.label2Str(label),
+                objRow.getValueAsObject(label))
+
+
+def matrixFromGeometry(shifts, angles, inverseTransform):
+    """ Create the transformation matrix from a given
+    2D shifts in X and Y...and the 3 euler angles.
+    """
+    from pyworkflow.em.convert.transformations import euler_matrix
+    from numpy import deg2rad
+    radAngles = -deg2rad(angles)
+    M = euler_matrix(radAngles[0], radAngles[1], radAngles[2], 'szyz')
+    if inverseTransform:
+        from numpy.linalg import inv
+        M[:3, 3] = -shifts[:3]
+        M = inv(M)
+    else:
+        M[:3, 3] = shifts[:3]
+
+    return M
+
+
+def convertBinaryFiles(imgSet, outputDir, extension='mrcs'):
+    """ Convert binary images files to a format read by Cryosparc.
+    Params:
+        imgSet: input image set to be converted.
+        outputDir: where to put the converted file(s)
+    Return:
+        A dictionary with old-file as key and new-file as value
+        If empty, not conversion was done.
+    """
+    filesDict = {}
+    ih = pw.em.ImageHandler()
+    outputRoot = os.path.join(outputDir, 'input')
+    # Get the extension without the dot
+    stackFiles = imgSet.getFiles()
+    ext = pw.utils.getExt(next(iter(stackFiles)))[1:]
+    rootDir = pw.utils.commonPath(stackFiles)
+
+    def getUniqueFileName(fn, extension):
+        """ Get an unique file for either link or convert files.
+        It is possible that the base name overlap if they come
+        from different runs. (like particles.mrcs after relion preprocess)
+        """
+        newFn = join(outputRoot, pw.utils.replaceBaseExt(fn, extension))
+        newRoot = pw.utils.removeExt(newFn)
+
+        values = filesDict.values()
+        counter = 1
+
+        while newFn in values:
+            counter += 1
+            newFn = '%s_%05d.%s' % (newRoot, counter, extension)
+
+        return newFn
+
+    def createBinaryLink(fn):
+        """ Just create a link named .mrcs to cryosPARC understand
+        that it is a binary stack file and not a volume.
+        """
+        newFn = getUniqueFileName(fn, extension)
+        if not os.path.exists(newFn):
+            pw.utils.createLink(fn, newFn)
+            print("   %s -> %s" % (newFn, fn))
+        return newFn
+
+    def convertStack(fn):
+        """ Convert from a format that is not read by Relion
+        to an spider stack.
+        """
+        newFn = getUniqueFileName(fn, 'mrc')
+        ih.convertStack(fn, newFn)
+        print("   %s -> %s" % (newFn, fn))
+        return newFn
+
+    def replaceRoot(fn):
+        """ Link create to the root folder, so just replace that
+        in the name, no need to do anything else.
+        """
+        return fn.replace(rootDir, outputRoot)
+
+    if ext == extension:
+        print("convertBinaryFiles: creating soft links.")
+        print("   Root: %s -> %s" % (outputRoot, rootDir))
+        mapFunc = replaceRoot
+        pw.utils.createLink(rootDir, outputRoot)
+    elif ext == 'mrc' and extension == 'mrcs':
+        print("convertBinaryFiles: creating soft links (mrcs -> mrc).")
+        mapFunc = createBinaryLink
+    elif ext.endswith('hdf') or ext.endswith('stk'):  # assume eman .hdf format or .stk format
+        print("convertBinaryFiles: converting stacks. (%s -> %s)"
+              % (ext, extension))
+        mapFunc = convertStack
+    else:
+        mapFunc = None
+
+    if mapFunc is not None:
+        pw.utils.makePath(outputRoot)
+        for fn in stackFiles:
+            newFn = mapFunc(fn)  # convert or link
+            filesDict[fn] = newFn  # map new filename
+
+    return filesDict
+
+
+def writeSetOfParticles(imgSet, starFile, outputDir, **kwargs):
+    args = {'fillMagnification': True,
             'fillRandomSubset': True}
+
+    args.update(kwargs)
 
     if imgSet.hasAlignmentProj() and imgSet.getAttributeValue("_rlnRandomSubset") is None:
         args['postprocessImageRow'] = addRandomSubset
 
-    relionConvert.writeSetOfParticles(imgSet, fileName, **args)
+    if outputDir is not None:
+        filesDict = convertBinaryFiles(imgSet, outputDir)
+        kwargs['filesDict'] = filesDict
+    partMd = md.MetaData()
+    setOfImagesToMd(imgSet, partMd, particleToRow, **kwargs)
 
+    if kwargs.get('fillMagnification', False):
+        pixelSize = imgSet.getSamplingRate()
+        mag = imgSet.getAcquisition().getMagnification()
+        detectorPxSize = mag * pixelSize / 10000
+
+        partMd.fillConstant(md.RLN_CTF_MAGNIFICATION, mag)
+        partMd.fillConstant(md.RLN_CTF_DETECTOR_PIXEL_SIZE, detectorPxSize)
+    else:
+        # Remove Magnification from metadata to avoid wrong values of pixel size.
+        # In Relion if Magnification and DetectorPixelSize are in metadata,
+        # pixel size is ignored in the command line.
+        partMd.removeLabel(md.RLN_CTF_MAGNIFICATION)
+
+    blockName = kwargs.get('blockName', 'Particles')
+    partMd.write('%s@%s' % (blockName, starFile))
+
+
+def readSetOfParticles(filename, partSet, **kwargs):
+    """read from Relion image meta
+        filename: The metadata filename where the image are.
+        imgSet: the SetOfParticles that will be populated.
+        rowToParticle: this function will be used to convert the row to Object
+    """
+    imgMd = md.MetaData(filename)
+    # By default remove disabled items from metadata
+    # be careful if you need to preserve the original number of items
+    if kwargs.get('removeDisabled', True):
+        imgMd.removeDisabled()
+
+    for imgRow in md.iterRows(imgMd):
+        img = rowToParticle(imgRow, **kwargs)
+        partSet.append(img)
+
+    partSet.setHasCTF(img.hasCTF())
+    partSet.setAlignment(kwargs['alignType'])
 
 if __name__ == "__main__":
     parser = defineArgs()

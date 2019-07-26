@@ -25,7 +25,7 @@
 # *  e-mail address 'scipion@cnb.csic.es'
 # *
 # **************************************************************************
-
+from pyworkflow.em import ALIGN_PROJ
 from pyworkflow.protocol.params import (PointerParam, FloatParam, BooleanParam,
                                         LEVEL_ADVANCED)
 from pyworkflow.em.data import String
@@ -34,7 +34,7 @@ from cryosparc2.convert import *
 from cryosparc2.utils import *
 from cryosparc2.constants import *
 
-relionConvert = pwutils.importFromPlugin("relion.convert", doRaise=True)
+# relionConvert = pwutils.importFromPlugin("relion.convert", doRaise=True)
 
 
 class ProtCryoSparcInitialModel(ProtInitialVolume, ProtClassify3D):
@@ -419,7 +419,7 @@ class ProtCryoSparcInitialModel(ProtInitialVolume, ProtClassify3D):
         modelStar = md.MetaData(filename)
 
         for classNumber, row in enumerate(md.iterRows(modelStar)):
-            index, fn = relionConvert.relionToLocation(row.getValue('rlnReferenceImage'))
+            index, fn = relionToLocation(row.getValue('rlnReferenceImage'))
             # Store info indexed by id, we need to store the row.clone() since
             # the same reference is used for iteration
             self._classesInfo[classNumber+1] = (index, fn, row.clone())
@@ -435,7 +435,7 @@ class ProtCryoSparcInitialModel(ProtInitialVolume, ProtClassify3D):
 
     def _updateParticle(self, item, row):
         item.setClassId(row.getValue(md.RLN_PARTICLE_CLASS))
-        item.setTransform(relionConvert.rowToAlignment(row, ALIGN_PROJ))
+        item.setTransform(rowToAlignment(row, ALIGN_PROJ))
 
     def _updateClass(self, item):
         classId = item.getObjId()
