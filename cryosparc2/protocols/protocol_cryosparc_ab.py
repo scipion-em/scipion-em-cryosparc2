@@ -47,9 +47,9 @@ class ProtCryoSparcInitialModel(ProtInitialVolume, ProtClassify3D):
     def _defineFileNames(self):
         """ Centralize how files are called within the protocol. """
         myDict = {
-                  'input_particles': self._getPath('input_particles.star'),
-                  'out_particles': self._getPath() + '/output_particle.star',
-                  'out_class': self._getPath() + '/output_class.star'
+                  'input_particles': self._getTmpPath('input_particles.star'),
+                  'out_particles': self._getExtraPath() + '/output_particle.star',
+                  'out_class': self._getExtraPath() + '/output_class.star'
                   }
         self._updateFilenamesDict(myDict)
 
@@ -302,7 +302,7 @@ class ProtCryoSparcInitialModel(ProtInitialVolume, ProtClassify3D):
         print(pwutils.greenStr("Importing Particles..."))
         imgSet = self._getInputParticles()
         writeSetOfParticles(imgSet, self._getFileName('input_particles'),
-                            self._getExtraPath())
+                            self._getTmpPath())
         self._importParticles()
 
     def processStep(self):
@@ -371,6 +371,7 @@ class ProtCryoSparcInitialModel(ProtInitialVolume, ProtClassify3D):
         """ Set the status to aborted and updated the endTime. """
         ProtInitialVolume.setAborted(self)
         killJob(str(self.projectName.get()), str(self.currenJob.get()))
+        clearJob(str(self.projectName.get()), str(self.currenJob.get()))
 
     # --------------------------- INFO functions -------------------------------
     def _validate(self):
@@ -518,7 +519,7 @@ class ProtCryoSparcInitialModel(ProtInitialVolume, ProtClassify3D):
             os.path.join(os.getcwd(),
             self._getFileName('input_particles')),
             os.path.join(os.getcwd(),
-            self._getExtraPath()),
+            self._getTmpPath()),
             str(self._getInputParticles().getSamplingRate())
         ))
         print(pwutils.greenStr(import_particles_cmd))

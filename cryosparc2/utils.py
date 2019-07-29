@@ -226,11 +226,25 @@ def get_job_streamlog(projectName, job, fileName):
 def killJob(projectName, job):
     """
      Kill a Job (if running)
-    :param projectName: the uid of the project that contains the job to delete
-    :param job: the uid of the job to delete
+    :param projectName: the uid of the project that contains the job to kill
+    :param job: the uid of the job to kill
     """
     kill_job_cmd = (getCryosparcProgram() +
                     ' %skill_job("%s", "%s")%s'
+                    % ("'", projectName, job, "'"))
+    commands.getstatusoutput(kill_job_cmd)
+
+
+def clearJob(projectName, job):
+    """
+         Clear a Job (if queued) to get it back to builing state (do not clear
+         params or inputs)
+        :param projectName: the uid of the project that contains the job to clear
+        :param job: the uid of the job to clear
+        ** IMPORTANT: This method can be launch only if the job is queued
+        """
+    kill_job_cmd = (getCryosparcProgram() +
+                    ' %sclear_job("%s", "%s")%s'
                     % ("'", projectName, job, "'"))
     commands.getstatusoutput(kill_job_cmd)
 

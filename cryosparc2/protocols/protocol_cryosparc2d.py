@@ -57,9 +57,9 @@ class ProtCryo2D(ProtClassify2D):
         """ Centralize how files are called within the protocol. """
         myDict = {
                   'input_particles': self._getTmpPath('input_particles.star'),
-                  'out_particles': self._getPath() + '/output_particle.star',
-                  'out_class': self._getPath() + '/output_class.star',
-                  'out_class_m2': self._getPath() + '/output_class_m2.star'
+                  'out_particles': self._getExtraPath() + '/output_particle.star',
+                  'out_class': self._getExtraPath() + '/output_class.star',
+                  'out_class_m2': self._getExtraPath() + '/output_class_m2.star'
                   }
         self._updateFilenamesDict(myDict)
     
@@ -336,6 +336,7 @@ class ProtCryo2D(ProtClassify2D):
         """ Set the status to aborted and updated the endTime. """
         ProtClassify2D.setAborted(self)
         killJob(str(self.projectName.get()), str(self.currenJob.get()))
+        clearJob(str(self.projectName.get()), str(self.currenJob.get()))
 
     # --------------------------- INFO functions -------------------------------
     def _validate(self):

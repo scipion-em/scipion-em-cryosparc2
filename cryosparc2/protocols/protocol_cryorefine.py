@@ -52,7 +52,7 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
     def _defineFileNames(self):
         """ Centralize how files are called within the protocol. """
         myDict = {
-                  'input_particles': self._getPath('input_particles.star'),
+                  'input_particles': self._getTmpPath('input_particles.star'),
                   'out_particles': self._getPath() + '/output_particle.star',
                   'stream_log': self._getPath()+'/stream.log'
                   }
@@ -328,7 +328,7 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
         imgSet = self._getInputParticles()
         # Create links to binary files and write the relion .star file
         writeSetOfParticles(imgSet, self._getFileName('input_particles'),
-                            self._getExtraPath())
+                            self._getTmpPath())
 
         self._importParticles()
 
@@ -447,6 +447,7 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
         """ Set the status to aborted and updated the endTime. """
         ProtRefine3D.setAborted(self)
         killJob(str(self.projectName.get()), str(self.currenJob.get()))
+        clearJob(str(self.projectName.get()), str(self.currenJob.get()))
 
     # --------------------------- INFO functions -------------------------------
     def _validate(self):
@@ -575,7 +576,7 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
             os.path.join(os.getcwd(),
             self._getFileName('input_particles')),
             os.path.join(os.getcwd(),
-            self._getExtraPath()),
+            self._getTmpPath()),
             str(self._getInputParticles().getSamplingRate())
         ))
         print(pwutils.greenStr(import_particles_cmd))

@@ -50,7 +50,7 @@ class ProtCryoSparcSubtract(ProtOperateParticles):
     def _createFilenameTemplates(self):
         """ Centralize how files are called. """
         myDict = {
-            'input_particles': self._getPath('input_particles.star'),
+            'input_particles': self._getTmpPath('input_particles.star'),
             'out_particles': self._getExtraPath('output_particle.star')
         }
         self._updateFilenamesDict(myDict)
@@ -166,7 +166,7 @@ class ProtCryoSparcSubtract(ProtOperateParticles):
         imgSet = self._getInputParticles()
         # Create links to binary files and write the relion .star file
         writeSetOfParticles(imgSet, self._getFileName('input_particles'),
-                            self._getExtraPath())
+                            self._getTmpPath())
         self._importParticles()
 
         self.vol_fn = os.path.join(os.getcwd(),
@@ -239,6 +239,7 @@ class ProtCryoSparcSubtract(ProtOperateParticles):
         """ Set the status to aborted and updated the endTime. """
         ProtOperateParticles.setAborted(self)
         killJob(str(self.projectName.get()), str(self.currenJob.get()))
+        clearJob(str(self.projectName.get()), str(self.currenJob.get()))
 
     # --------------------------- INFO functions -------------------------------
     def _validate(self):
@@ -346,7 +347,7 @@ class ProtCryoSparcSubtract(ProtOperateParticles):
         """
         className = "import_particles"
         params = {"particle_meta_path": str(os.path.join(os.getcwd(), self._getFileName('input_particles'))),
-                  "particle_blob_path": os.path.join(os.getcwd(), self._getExtraPath(), 'input'),
+                  "particle_blob_path": os.path.join(os.getcwd(), self._getTmpPath(), 'input'),
                   "psize_A": str(self._getInputParticles().getSamplingRate())}
 
         return doJob(className, self.projectName, self.workSpaceName,

@@ -505,7 +505,7 @@ def convertBinaryFiles(imgSet, outputDir, extension='mrcs'):
         """
         newFn = getUniqueFileName(fn, 'mrc')
         ih.convertStack(fn, newFn)
-        print("   %s -> %s" % (newFn, fn))
+        print("   %s -> %s" % (fn, newFn))
         return newFn
 
     def replaceRoot(fn):
