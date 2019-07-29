@@ -232,6 +232,7 @@ def killJob(projectName, job):
     kill_job_cmd = (getCryosparcProgram() +
                     ' %skill_job("%s", "%s")%s'
                     % ("'", projectName, job, "'"))
+    print(pwutils.greenStr(kill_job_cmd))
     commands.getstatusoutput(kill_job_cmd)
 
 
@@ -243,10 +244,11 @@ def clearJob(projectName, job):
         :param job: the uid of the job to clear
         ** IMPORTANT: This method can be launch only if the job is queued
         """
-    kill_job_cmd = (getCryosparcProgram() +
+    clear_job_cmd = (getCryosparcProgram() +
                     ' %sclear_job("%s", "%s")%s'
                     % ("'", projectName, job, "'"))
-    commands.getstatusoutput(kill_job_cmd)
+    print(pwutils.greenStr(clear_job_cmd))
+    commands.getstatusoutput(clear_job_cmd)
 
 
 def getSystemInfo():
