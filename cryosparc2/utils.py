@@ -31,7 +31,9 @@ from pyworkflow.em import SCIPION_SYM_NAME
 from pyworkflow.em.constants import (SYM_CYCLIC, SYM_TETRAHEDRAL,
                                      SYM_OCTAHEDRAL, SYM_I222, SYM_I222r)
 from pyworkflow.protocol.params import EnumParam, IntParam, Positive
-from cryosparc2.constants import CS_SYM_NAME, SYM_DIHEDRAL_Y
+from cryosparc2.constants import (CS_SYM_NAME, SYM_DIHEDRAL_Y, CRYO_SSD,
+                                  CRYOSPARC_USER, CRYOSSD_DIR)
+
 
 STATUS_FAILED = "failed"
 STATUS_ABORTED = "aborted"
@@ -94,7 +96,7 @@ def getCryosparcUser():
     """
     Get the full name of the initial admin account
     """
-    return os.environ['CRYOSPARC_USER']
+    return os.environ[CRYOSPARC_USER]
 
 
 def getCryosparcSSD():
@@ -102,14 +104,14 @@ def getCryosparcSSD():
     Get the path on the worker node to a writable directory residing on the
     local SSD
     """
-    if os.environ.get('CRYOSSD_DIR') is None:
-        cryoSSD_Dir = os.path.join(str(getCryosparcDir()), 'cryo_ssd')
+    if os.environ.get(CRYOSSD_DIR) is None:
+        cryoSSD_Dir = os.path.join(str(getCryosparcDir()), CRYO_SSD)
         if not os.path.exists(cryoSSD_Dir):
             os.mkdir(cryoSSD_Dir)
-    elif os.path.exists(os.environ['CRYOSSD_DIR']):
-        cryoSSD_Dir = os.environ['CRYOSSD_DIR']
+    elif os.path.exists(os.environ[CRYOSSD_DIR]):
+        cryoSSD_Dir = os.environ[CRYOSSD_DIR]
     else:
-        cryoSSD_Dir = os.path.join(str(getCryosparcDir()), 'cryo_ssd')
+        cryoSSD_Dir = os.path.join(str(getCryosparcDir()), CRYO_SSD)
         os.mkdir(cryoSSD_Dir)
     return cryoSSD_Dir
 
