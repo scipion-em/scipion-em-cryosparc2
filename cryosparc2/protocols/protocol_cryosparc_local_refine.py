@@ -31,13 +31,11 @@ from pyworkflow.em import ALIGN_PROJ
 from pyworkflow.em.protocol import ProtOperateParticles
 from pyworkflow.protocol.params import (PointerParam, BooleanParam, FloatParam,
                                         LEVEL_ADVANCED)
-from pyworkflow.em.data import String, Volume, FSC
+from pyworkflow.em.data import Volume, FSC
 
 from cryosparc2.convert import *
 from cryosparc2.utils import *
 from cryosparc2.constants import *
-
-# relionConvert = pwutils.importFromPlugin("relion.convert", doRaise=True)
 
 
 class ProtCryoSparcLocalRefine(ProtOperateParticles):

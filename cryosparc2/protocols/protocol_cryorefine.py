@@ -28,13 +28,11 @@
 from pyworkflow.em import ALIGN_PROJ
 from pyworkflow.protocol.params import (PointerParam, FloatParam, BooleanParam,
                                         LEVEL_ADVANCED)
-from pyworkflow.em.data import Volume, FSC, String
+from pyworkflow.em.data import Volume, FSC
 from pyworkflow.em.protocol import ProtRefine3D
 from cryosparc2.convert import *
 from cryosparc2.utils import *
 from cryosparc2.constants import *
-
-# relionConvert = pwutils.importFromPlugin("relion.convert", doRaise=True)
 
 import os
 import commands

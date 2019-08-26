@@ -31,7 +31,6 @@ from os.path import join
 from pyem import metadata
 from pyem import star
 from pyworkflow.em.data import ObjectWrap, String, Integer
-import pyworkflow.em.metadata as md
 import pyworkflow.utils as pwutils
 from cryosparc2.constants import *
 
@@ -207,6 +206,7 @@ def cryosparcToLocation(filename):
         return int(indexStr), str(fn)
     else:
         return pw.em.NO_INDEX, str(filename)
+
 
 def setOfImagesToMd(imgSet, imgMd, imgToFunc, **kwargs):
     """ This function will fill Relion metadata from a SetOfMicrographs
@@ -444,6 +444,7 @@ def convertBinaryVol(vol, outputDir):
         fn = vol.getFileName()
     return fn
 
+
 def createItemMatrix(item, row, align):
     item.setTransform(rowToAlignment(row, alignType=align))
 
@@ -652,6 +653,7 @@ def setPsdFiles(ctfModel, ctfRow):
         if ctfRow.containsLabel(label):
             setattr(ctfModel, attr, String(ctfRow.getValue(label)))
 
+
 def rowToObject(row, obj, attrDict, extraLabels=[]):
     """ This function will convert from a XmippMdRow to an EMObject.
     Params:
@@ -775,6 +777,7 @@ def rowToAcquisition(acquisitionRow):
 
     return acquisition
 
+
 def readSetOfParticles(filename, partSet, **kwargs):
     """read from Relion image meta
         filename: The metadata filename where the image are.
@@ -793,6 +796,7 @@ def readSetOfParticles(filename, partSet, **kwargs):
 
     partSet.setHasCTF(img.hasCTF())
     partSet.setAlignment(kwargs['alignType'])
+
 
 if __name__ == "__main__":
     parser = defineArgs()

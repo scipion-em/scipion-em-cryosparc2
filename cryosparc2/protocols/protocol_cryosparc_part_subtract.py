@@ -28,14 +28,11 @@ from pyworkflow.em import ALIGN_PROJ
 from pyworkflow.em.protocol import ProtOperateParticles
 from pyworkflow.protocol.params import (PointerParam, BooleanParam, FloatParam,
                                         LEVEL_ADVANCED)
-from pyworkflow.em.data import String
 
 from cryosparc2.convert import *
 from cryosparc2.convert.convert import writeSetOfParticles
 from cryosparc2.utils import *
 from cryosparc2.constants import *
-
-# relionConvert = pwutils.importFromPlugin("relion.convert", doRaise=True)
 
 
 class ProtCryoSparcSubtract(ProtOperateParticles):

@@ -32,7 +32,7 @@ import webbrowser
 import pyworkflow.em.viewers.showj as showj
 from pyworkflow.protocol.params import LabelParam
 from pyworkflow.viewer import ProtocolViewer, DESKTOP_TKINTER
-from pyworkflow.em.viewers import (ObjectView, ClassesView, Classes3DView)
+from pyworkflow.em.viewers import (ObjectView)
 from cryosparc2.protocols import ProtCryoSparcSubtract
 
 from cryosparc2.constants import *

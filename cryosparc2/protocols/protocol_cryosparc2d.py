@@ -30,13 +30,10 @@ import pyworkflow.em as em
 
 from pyworkflow.em.protocol import ProtClassify2D
 from pyworkflow.protocol.params import PointerParam, BooleanParam, FloatParam
-from pyworkflow.em.data import String
 
 from cryosparc2.convert import *
 from cryosparc2.utils import *
 from cryosparc2.constants import *
-
-# relionConvert = pwutils.importFromPlugin("relion.convert", doRaise=True)
 
 
 class ProtCryo2D(ProtClassify2D):

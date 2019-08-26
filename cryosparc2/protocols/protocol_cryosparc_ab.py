@@ -28,13 +28,10 @@
 from pyworkflow.em import ALIGN_PROJ
 from pyworkflow.protocol.params import (PointerParam, FloatParam, BooleanParam,
                                         LEVEL_ADVANCED)
-from pyworkflow.em.data import String
 from pyworkflow.em.protocol import ProtInitialVolume, ProtClassify3D
 from cryosparc2.convert import *
 from cryosparc2.utils import *
 from cryosparc2.constants import *
-
-# relionConvert = pwutils.importFromPlugin("relion.convert", doRaise=True)
 
 
 class ProtCryoSparcInitialModel(ProtInitialVolume, ProtClassify3D):

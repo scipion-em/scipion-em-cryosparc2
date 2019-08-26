@@ -30,7 +30,8 @@ from pyworkflow.em.constants import (
     SYM_CYCLIC, SYM_TETRAHEDRAL, SYM_OCTAHEDRAL, SYM_I222,
     SYM_I222r)
 
-# Not yet release in Scipion, once is released this try /catch import can be removed
+# Not yet release in Scipion, once is released this try /catch import can be
+# removed
 try:
     from pyworkflow.em.constants import SYM_DIHEDRAL_Y
 except:
