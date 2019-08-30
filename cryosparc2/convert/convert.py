@@ -151,7 +151,7 @@ def convertCs2Star(args):
         df = star.transform_star(df, r, inplace=True)
 
     # Write Relion .star file with correct headers.
-    star.write_star(args.output, df, reindex=True)
+    star.write_star(args.output, df)
     log.info("Output fields: %s" % ", ".join(df.columns))
     return 0
 
