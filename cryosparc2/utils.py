@@ -32,7 +32,7 @@ from pyworkflow.em.constants import (SYM_CYCLIC, SYM_TETRAHEDRAL,
                                      SYM_OCTAHEDRAL, SYM_I222, SYM_I222r)
 from pyworkflow.protocol.params import EnumParam, IntParam, Positive
 from cryosparc2.constants import (CS_SYM_NAME, SYM_DIHEDRAL_Y, CRYO_SSD,
-                                  CRYOSPARC_USER, CRYOSSD_DIR)
+                                  CRYOSPARC_USER, CRYOSSD_DIR, CRYOSPARC_DIR)
 
 
 STATUS_FAILED = "failed"
@@ -53,15 +53,17 @@ def getCryosparcDir():
     """
     Get the root directory where cryoSPARC code and dependencies are installed.
     """
-    return os.environ['CRYOSPARC_DIR']
+    return os.environ.get(CRYOSPARC_DIR, None)
 
 
 def getCryosparcProgram():
     """
     Get the cryosparc program to launch any command
     """
-    return os.path.join(getCryosparcDir(),
-                        'cryosparc2_master/bin/cryosparcm cli')
+    if getCryosparcDir() is not None:
+        return os.path.join(getCryosparcDir(),
+                            'cryosparc2_master/bin/cryosparcm cli')
+    return None
 
 
 def cryosparcExist():
@@ -69,7 +71,7 @@ def cryosparcExist():
     Determine if cryosparc software exist
     """
     msg = []
-    if not os.path.exists(getCryosparcDir()):
+    if getCryosparcDir() is not None and not os.path.exists(getCryosparcDir()):
        msg.append(('The cryoSPARC software do not exist in %s. Please install it')
                   % str(os.environ['CRYOSPARC_DIR']))
     return msg
@@ -80,10 +82,12 @@ def isCryosparcRunning():
     Determine if cryosparc services are running
     """
     msg = []
-    test_conection_cmd = (getCryosparcProgram() +
-                                ' %stest_connection()%s ' % ("'", "'"))
-    test_conection = commands.getstatusoutput(test_conection_cmd)
-    status = test_conection[0]
+    status = -1
+    if getCryosparcProgram() is not None:
+        test_conection_cmd = (getCryosparcProgram() +
+                                    ' %stest_connection()%s ' % ("'", "'"))
+        test_conection = commands.getstatusoutput(test_conection_cmd)
+        status = test_conection[0]
 
     if status != 0:
         msg = ['Failed to establish a new connection with cryoSPARC. Please, '
@@ -96,7 +100,7 @@ def getCryosparcUser():
     """
     Get the full name of the initial admin account
     """
-    return os.environ[CRYOSPARC_USER]
+    return os.environ.get(CRYOSPARC_USER, None)
 
 
 def getCryosparcSSD():
