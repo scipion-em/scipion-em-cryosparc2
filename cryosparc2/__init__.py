@@ -64,7 +64,8 @@ class Plugin(pyworkflow.em.Plugin):
     def defineBinaries(cls, env):
         env.addPipModule('scipy-016', pipCmd=env._pipCmd % ('scipy', '0.16'),
                          target='scipy')
-        pyemLibcmd = 'pip install git+https://github.com/asarnow/pyem'
+        pyemLibcmd = 'pip install git+https://github.com/asarnow/pyem.git@d46691bcacae63043346e98cec9ff7b621ca1427'
+
         env.addPipModule('pyem', version='0.4', pipCmd=pyemLibcmd)
 
 
