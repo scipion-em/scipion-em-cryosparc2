@@ -29,7 +29,8 @@
 import pyworkflow.em as em
 
 from pyworkflow.em.protocol import ProtClassify2D
-from pyworkflow.protocol.params import PointerParam, BooleanParam, FloatParam
+from pyworkflow.protocol.params import (PointerParam, BooleanParam,
+                                        FloatParam, StringParam)
 
 from cryosparc2.convert import *
 from cryosparc2.utils import *
@@ -222,10 +223,14 @@ class ProtCryo2D(ProtClassify2D):
                       validators=[Positive],
                       label='Number of GPUs to parallelize',
                       help='Number of GPUs to use during classification')
+        form.addParam('compute_lane', StringParam, default='default',
+                      label='Lane name:',
+                      help='The scheduler lane name to add the protocol execution')
 
     # --------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
         self._defineFileNames()
+        self._defineParamsName()
         self._initializeCryosparcProject()
         self._insertFunctionStep("convertInputStep")
         self._insertFunctionStep('processStep')
@@ -446,14 +451,10 @@ class ProtCryo2D(ProtClassify2D):
 
     def _importParticles(self):
 
-        print("Importing Particles")
+        print("Importing Particles...")
 
         # import_particles_star
-        self.c = self.doImportParticlesStar()
-
-        self.importedParticles = String(self.c[-1].split()[-1])
-        self._store(self)
-
+        self.importedParticles = doImportParticlesStar(self)
         self.currenJob = String(self.importedParticles.get())
         self._store(self)
 
@@ -469,24 +470,9 @@ class ProtCryo2D(ProtClassify2D):
 
         self.par = String(self.importedParticles.get() + '.imported_particles')
 
-    def doImportParticlesStar(self):
-        """
-        do_import_particles_star(puid, wuid, uuid, abs_star_path,
-                                 abs_blob_path=None, psize_A=None)
-        returns the new uid of the job that was created
-        """
-        cmd = """ 'do_import_particles_star("%s","%s", "%s", "%s", "%s", "%s")'"""
-        import_particles_cmd = (self._program + cmd % (
-            self.projectName.get(), self.workSpaceName.get(),
-            self._user,
-            os.path.join(os.getcwd(),
-            self._getFileName('input_particles')),
-            os.path.join(os.getcwd(),
-            self._getTmpPath()),
-            str(self._getInputParticles().getSamplingRate())
-        ))
-        print(pwutils.greenStr(import_particles_cmd))
-        return commands.getstatusoutput(import_particles_cmd)
+    def _defineParamsName(self):
+        """ Define a list with all protocol parameters names"""
+        self.lane = str(self.getAttributeValue('compute_lane'))
 
     def doRunClass2D(self):
         """
@@ -522,10 +508,11 @@ class ProtCryo2D(ProtClassify2D):
                   "compute_use_ssd": str(self.cacheParticlesSSD.get()),
                   "compute_num_gpus": str(self.numberGPU.get())}
 
-        runClass2D = doJob(className, self.projectName.get(),
+        runClass2D = enqueueJob(className, self.projectName.get(),
                            self.workSpaceName.get(),
                            str(params).replace('\'', '"'),
-                           str(input_group_conect).replace('\'', '"'))
+                           str(input_group_conect).replace('\'', '"'),
+                           self.lane)
 
         self.runClass2D = String(runClass2D[-1].split()[-1])
         self.currenJob.set(self.runClass2D.get())

@@ -27,7 +27,7 @@
 # **************************************************************************
 from pyworkflow.em import ALIGN_PROJ
 from pyworkflow.protocol.params import (PointerParam, FloatParam, BooleanParam,
-                                        LEVEL_ADVANCED)
+                                        StringParam, LEVEL_ADVANCED)
 from pyworkflow.em.data import Volume, FSC
 from pyworkflow.em.protocol import ProtRefine3D
 from cryosparc2.convert import *
@@ -35,7 +35,6 @@ from cryosparc2.utils import *
 from cryosparc2.constants import *
 
 import os
-import commands
 import ast
 
 
@@ -308,6 +307,9 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
                       label='Cache particle images on SSD:',
                       help='Use the SSD to cache particles. Speeds up '
                            'processing significantly')
+        form.addParam('compute_lane', StringParam, default='default',
+                      label='Lane name:',
+                      help='The scheduler lane name to add the protocol execution')
 
     # --------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
@@ -333,8 +335,9 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
         self.vol_fn = os.path.join(os.getcwd(),
                                    convertBinaryVol(self.referenceVolume.get(),
                                                     self._getTmpPath()))
-        self.importVolume = self.doImportVolumes(self.vol_fn, 'map',
+        self.importVolume = doImportVolumes(self, self.vol_fn, 'map',
                                                  'Importing volume...')
+        self.currenJob.set(self.importVolume.get())
         self._store(self)
 
         if self.refMask.get() is not None:
@@ -342,8 +345,9 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
                                        convertBinaryVol(self.refMask.get(),
                                                         self._getTmpPath()))
 
-            self.importMask = self.doImportVolumes(self.maskFn, 'mask',
+            self.importMask = doImportVolumes(self, self.maskFn, 'mask',
                                                    'Importing mask... ')
+            self.currenJob.set(self.importMask.get())
             self._store(self)
             self.mask = self.importMask.get() + '.imported_mask.mask'
         else:
@@ -541,11 +545,7 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
         print("Importing Particles")
 
         # import_particles_star
-        self.c = self.doImportParticlesStar()
-
-        self.importedParticles = String(self.c[-1].split()[-1])
-        self._store(self)
-
+        self.importedParticles = doImportParticlesStar(self)
         self.currenJob = String(self.importedParticles.get())
         self._store(self)
 
@@ -561,54 +561,6 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
 
         self.par = String(self.importedParticles.get() + '.imported_particles')
 
-    def doImportParticlesStar(self):
-        """
-        do_import_particles_star(puid, wuid, uuid, abs_star_path,
-                                 abs_blob_path=None, psize_A=None)
-        returns the new uid of the job that was created
-        """
-        cmd = """ 'do_import_particles_star("%s","%s", "%s", "%s", "%s", "%s")'"""
-        import_particles_cmd = (self._program + cmd % (
-            self.projectName.get(), self.workSpaceName.get(),
-            self._user,
-            os.path.join(os.getcwd(),
-            self._getFileName('input_particles')),
-            os.path.join(os.getcwd(),
-            self._getTmpPath()),
-            str(self._getInputParticles().getSamplingRate())
-        ))
-        print(pwutils.greenStr(import_particles_cmd))
-        return commands.getstatusoutput(import_particles_cmd)
-
-    def doImportVolumes(self, refVolume, volType, msg):
-        """
-        :return:
-        """
-        print(msg)
-        className = "import_volumes"
-        params = {"volume_blob_path": str(refVolume),
-                  "volume_out_name": str(volType),
-                  "volume_psize": str(
-                      self._getInputParticles().getSamplingRate())}
-
-        self.v = doJob(className, self.projectName, self.workSpaceName,
-                     str(params).replace('\'', '"'), '{}')
-
-        importedVolume = String(self.v[-1].split()[-1])
-        self.currenJob.set(importedVolume.get())
-        self._store(self)
-
-        while getJobStatus(self.projectName.get(),
-                           importedVolume.get()) not in STOP_STATUSES:
-            waitJob(self.projectName.get(), importedVolume.get())
-
-        if getJobStatus(self.projectName.get(),
-                        importedVolume.get()) != STATUS_COMPLETED:
-            raise Exception("An error occurred importing the volume. "
-                           "Please, go to cryosPARC software for more "
-                           "details.")
-
-        return importedVolume
 
     def _defineParamsName(self):
         """ Define a list with all protocol parameters names"""
@@ -638,6 +590,7 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
                             'refine_dynamic_mask_start_res',
                             'refine_dynamic_mask_use_abs',
                             'compute_use_ssd']
+        self.lane = str(self.getAttributeValue('compute_lane'))
 
     def doRunRefine(self):
         """
@@ -674,10 +627,11 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
             elif paramName == 'refine_mask':
                 params[str(paramName)] = str(REFINE_MASK_CHOICES[self.refine_mask.get()])
 
-        doRefine = doJob(className, self.projectName.get(),
-                         self.workSpaceName.get(),
-                         str(params).replace('\'', '"'),
-                         str(input_group_conect).replace('\'', '"'))
+        doRefine = enqueueJob(className, self.projectName.get(),
+                              self.workSpaceName.get(),
+                              str(params).replace('\'', '"'),
+                              str(input_group_conect).replace('\'', '"'),
+                              self.lane)
 
         self.runRefine = String(doRefine[-1].split()[-1])
         self.currenJob.set(self.runRefine.get())

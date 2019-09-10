@@ -27,7 +27,7 @@
 # **************************************************************************
 from pyworkflow.em import ALIGN_PROJ
 from pyworkflow.protocol.params import (PointerParam, FloatParam, BooleanParam,
-                                        LEVEL_ADVANCED)
+                                        LEVEL_ADVANCED, StringParam)
 from pyworkflow.em.protocol import ProtInitialVolume, ProtClassify3D
 from cryosparc2.convert import *
 from cryosparc2.utils import *
@@ -281,6 +281,9 @@ class ProtCryoSparcInitialModel(ProtInitialVolume, ProtClassify3D):
 
         form.addParam('compute_use_ssd', BooleanParam, default=True,
                       label='Cache particle images on SSD:')
+        form.addParam('compute_lane', StringParam, default='default',
+                      label='Lane name:',
+                      help='The scheduler lane name to add the protocol execution')
 
     # --------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
@@ -483,11 +486,7 @@ class ProtCryoSparcInitialModel(ProtInitialVolume, ProtClassify3D):
         print("Importing Particles")
 
         # import_particles_star
-        self.c = self.doImportParticlesStar()
-
-        self.importedParticles = String(self.c[-1].split()[-1])
-        self._store(self)
-
+        self.importedParticles = doImportParticlesStar(self)
         self.currenJob = String(self.importedParticles.get())
         self._store(self)
 
@@ -502,25 +501,6 @@ class ProtCryoSparcInitialModel(ProtInitialVolume, ProtClassify3D):
                             "details.")
 
         self.par = String(self.importedParticles.get() + '.imported_particles')
-
-    def doImportParticlesStar(self):
-        """
-        do_import_particles_star(puid, wuid, uuid, abs_star_path,
-                                 abs_blob_path=None, psize_A=None)
-        returns the new uid of the job that was created
-        """
-        cmd = """ 'do_import_particles_star("%s","%s", "%s", "%s", "%s", "%s")'"""
-        import_particles_cmd = (self._program + cmd % (
-            self.projectName.get(), self.workSpaceName.get(),
-            self._user,
-            os.path.join(os.getcwd(),
-            self._getFileName('input_particles')),
-            os.path.join(os.getcwd(),
-            self._getTmpPath()),
-            str(self._getInputParticles().getSamplingRate())
-        ))
-        print(pwutils.greenStr(import_particles_cmd))
-        return commands.getstatusoutput(import_particles_cmd)
 
     def _defineParamsName(self):
         """ Define a list with all protocol parameters names"""
@@ -546,6 +526,7 @@ class ProtCryoSparcInitialModel(ProtInitialVolume, ProtClassify3D):
                            'abinit_init_radwn_cutoff',
                            'abinit_search_start_iter', 'abinit_use_engine',
                            'intermediate_plots', 'compute_use_ssd']
+        self.lane = str(self.getAttributeValue('compute_lane'))
 
     def doRunAbinit(self):
         """self._program + "  \'do_run_abinit(\"" + self.projectName +
@@ -568,9 +549,11 @@ class ProtCryoSparcInitialModel(ProtInitialVolume, ProtClassify3D):
                 elif paramName == 'abinit_noise_model':
                     params[str(paramName)] = str(NOISE_MODEL_CHOICES[self.abinit_noise_model.get()])
 
-        runAbinit = doJob(className, self.projectName.get(), self.workSpaceName.get(),
-                     str(params).replace('\'', '"'),
-                     str(input_group_conect).replace('\'', '"'))
+        runAbinit = enqueueJob(className, self.projectName.get(),
+                               self.workSpaceName.get(),
+                               str(params).replace('\'', '"'),
+                               str(input_group_conect).replace('\'', '"'),
+                               self.lane)
 
         self.runAbinit = String(runAbinit[-1].split()[-1])
         self.currenJob.set(self.runAbinit)

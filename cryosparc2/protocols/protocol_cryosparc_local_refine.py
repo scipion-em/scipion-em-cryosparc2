@@ -30,7 +30,7 @@ import ast
 from pyworkflow.em import ALIGN_PROJ
 from pyworkflow.em.protocol import ProtOperateParticles
 from pyworkflow.protocol.params import (PointerParam, BooleanParam, FloatParam,
-                                        LEVEL_ADVANCED)
+                                        StringParam, LEVEL_ADVANCED)
 from pyworkflow.em.data import Volume, FSC
 
 from cryosparc2.convert import *
@@ -311,6 +311,9 @@ class ProtCryoSparcLocalRefine(ProtOperateParticles):
 
         form.addParam('compute_use_ssd', BooleanParam, default=True,
                       label='Cache particle images on SSD:')
+        form.addParam('compute_lane', StringParam, default='default',
+                      label='Lane name:',
+                      help='The scheduler lane name to add the protocol execution')
 
     # --------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
@@ -335,8 +338,9 @@ class ProtCryoSparcLocalRefine(ProtOperateParticles):
         self.vol_fn = os.path.join(os.getcwd(),
                                    convertBinaryVol(self.refVolume.get(),
                                                     self._getTmpPath()))
-        self.importVolume = self.doImportVolumes(self.vol_fn, 'map',
-                                                 'Importing volume...')
+        self.importVolume = doImportVolumes(self, self.vol_fn, 'map',
+                                            'Importing volume...')
+        self.currenJob.set(self.importVolume.get())
         self._store(self)
 
         if self.refMask.get() is not None:
@@ -345,8 +349,9 @@ class ProtCryoSparcLocalRefine(ProtOperateParticles):
                                            self.refMask.get(),
                                            self._getTmpPath()))
 
-        self.importMask = self.doImportVolumes(self.maskFn, 'mask',
+        self.importMask = doImportVolumes(self, self.maskFn, 'mask',
                                                'Importing mask... ')
+        self.currenJob.set(self.importMask.get())
         self._store(self)
 
     def processStep(self):
@@ -538,11 +543,7 @@ class ProtCryoSparcLocalRefine(ProtOperateParticles):
         print("Importing particles...")
 
         # import_particles_star
-        self.c = self.doImportParticlesStar()
-
-        self.importedParticles = String(self.c[-1].split()[-1])
-        self._store(self)
-
+        self.importedParticles = doImportParticlesStar(self)
         self.currenJob = String(self.importedParticles.get())
         self._store(self)
 
@@ -557,49 +558,6 @@ class ProtCryoSparcLocalRefine(ProtOperateParticles):
                             "details.")
 
         self.par = String(self.importedParticles.get() + '.imported_particles')
-
-    def doImportParticlesStar(self):
-        """
-        do_import_particles_star(puid, wuid, uuid, abs_star_path,
-                                 abs_blob_path=None, psize_A=None)
-        returns the new uid of the job that was created
-        """
-        className = "import_particles"
-        params = {"particle_meta_path": str(os.path.join(os.getcwd(), self._getFileName('input_particles'))),
-                  "particle_blob_path": os.path.join(os.getcwd(), self._getTmpPath(), 'input'),
-                  "psize_A": str(self._getInputParticles().getSamplingRate())}
-
-        return doJob(className, self.projectName, self.workSpaceName,
-                     str(params).replace('\'', '"'), '{}')
-
-    def doImportVolumes(self, refVolume, volType, msg):
-        """
-        :return:
-        """
-        print(msg)
-        className = "import_volumes"
-        params = {"volume_blob_path": str(refVolume),
-                  "volume_out_name": str(volType),
-                  "volume_psize": str(self._getInputParticles().getSamplingRate())}
-
-        self.v = doJob(className, self.projectName, self.workSpaceName,
-                       str(params).replace('\'', '"'), '{}')
-
-        importedVolume = String(self.v[-1].split()[-1])
-        self.currenJob.set(importedVolume.get())
-        self._store(self)
-
-        while getJobStatus(self.projectName.get(),
-                           importedVolume.get()) not in STOP_STATUSES:
-            waitJob(self.projectName.get(), importedVolume.get())
-
-        if getJobStatus(self.projectName.get(),
-                        importedVolume.get()) != STATUS_COMPLETED:
-            raise Exception("An error occurred importing the volume. "
-                            "Please, go to cryosPARC software for more "
-                            "details.")
-
-        return importedVolume
 
     def _defineParamsName(self):
         """ Define a list with all protocol parameters names"""
@@ -626,6 +584,7 @@ class ProtCryoSparcLocalRefine(ProtOperateParticles):
                             'refine_dynamic_mask_thresh_factor',
                             'refine_dynamic_mask_near_ang',
                             'refine_dynamic_mask_far_ang']
+        self.lane = str(self.getAttributeValue('compute_lane'))
 
     def doLocalRefine(self):
         """
@@ -654,10 +613,12 @@ class ProtCryoSparcLocalRefine(ProtOperateParticles):
                 params[str(paramName)] = str(
                     REFINE_MASK_CHOICES[self.refine_mask.get()])
 
-        runLocalRefinement = doJob(className, self.projectName.get(),
-                                   self.workSpaceName.get(),
-                                   str(params).replace('\'', '"'),
-                                   str(input_group_conect).replace('\'', '"'))
+        runLocalRefinement = enqueueJob(className, self.projectName.get(),
+                                        self.workSpaceName.get(),
+                                        str(params).replace('\'', '"'),
+                                        str(input_group_conect).replace('\'',
+                                                                        '"'),
+                                        self.lane)
 
         self.runLocalRefinement = String(runLocalRefinement[-1].split()[-1])
         self.currenJob.set(self.runLocalRefinement.get())

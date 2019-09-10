@@ -279,10 +279,11 @@ class ProtCryoSparcNonUniformRefine3D(ProtCryoSparcRefine3D):
             elif paramName == 'locres_compute_facility':
                 params[str(paramName)] = str(COMPUTE_FACILITY_CHOICES[self.locres_compute_facility.get()])
 
-        doRefine = doJob(className, self.projectName.get(),
-                         self.workSpaceName.get(),
-                         str(params).replace('\'', '"'),
-                         str(input_group_conect).replace('\'', '"'))
+        doRefine = enqueueJob(className, self.projectName.get(),
+                              self.workSpaceName.get(),
+                              str(params).replace('\'', '"'),
+                              str(input_group_conect).replace('\'', '"'),
+                              self.lane)
 
         self.runRefine = String(doRefine[-1].split()[-1])
         self.currenJob.set(self.runRefine.get())

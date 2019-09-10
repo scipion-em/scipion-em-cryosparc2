@@ -27,7 +27,7 @@
 import os
 import commands
 import pyworkflow.utils as pwutils
-from pyworkflow.em import SCIPION_SYM_NAME
+from pyworkflow.em import SCIPION_SYM_NAME, String
 from pyworkflow.em.constants import (SYM_CYCLIC, SYM_TETRAHEDRAL,
                                      SYM_OCTAHEDRAL, SYM_I222, SYM_I222r)
 from pyworkflow.protocol.params import EnumParam, IntParam, Positive
@@ -184,6 +184,67 @@ def createEmptyWorkSpace(projectName, workspaceTitle, workspaceComment):
     return commands.getstatusoutput(create_work_space_cmd)
 
 
+def doImportParticlesStar(protocol):
+    """
+    do_import_particles_star(puid, wuid, uuid, abs_star_path,
+                             abs_blob_path=None, psize_A=None)
+    returns the new uid of the job that was created
+    """
+    className = "import_particles"
+    params = {"particle_meta_path": str(os.path.join(os.getcwd(),
+                                        protocol._getFileName('input_particles'))),
+              "particle_blob_path": str(os.path.join(os.getcwd(),
+                                        protocol._getTmpPath())),
+              "psize_A": str(protocol._getInputParticles().getSamplingRate())
+              }
+
+    p = enqueueJob(className, protocol.projectName, protocol.workSpaceName,
+                        str(params).replace('\'', '"'), '{}', protocol.lane)
+
+    import_particles = String(p[-1].split()[-1])
+
+    while getJobStatus(protocol.projectName.get(),
+                       import_particles.get()) not in STOP_STATUSES:
+        waitJob(protocol.projectName.get(), import_particles.get())
+
+    if getJobStatus(protocol.projectName.get(),
+                    import_particles.get()) != STATUS_COMPLETED:
+        raise Exception("An error occurred importing the volume. "
+                       "Please, go to cryosPARC software for more "
+                       "details.")
+
+    return import_particles
+
+
+def doImportVolumes(protocol, refVolume, volType, msg):
+    """
+    :return:
+    """
+    print(msg)
+    className = "import_volumes"
+    params = {"volume_blob_path": str(refVolume),
+              "volume_out_name": str(volType),
+              "volume_psize": str(
+                  protocol._getInputParticles().getSamplingRate())}
+
+    v = enqueueJob(className, protocol.projectName, protocol.workSpaceName,
+                 str(params).replace('\'', '"'), '{}', protocol.lane)
+
+    importedVolume = String(v[-1].split()[-1])
+
+    while getJobStatus(protocol.projectName.get(),
+                       importedVolume.get()) not in STOP_STATUSES:
+        waitJob(protocol.projectName.get(), importedVolume.get())
+
+    if getJobStatus(protocol.projectName.get(),
+                    importedVolume.get()) != STATUS_COMPLETED:
+        raise Exception("An error occurred importing the volume. "
+                       "Please, go to cryosPARC software for more "
+                       "details.")
+
+    return importedVolume
+
+
 def doJob(jobType, projectName, workSpaceName, params, input_group_conect):
     """
     do_job(job_type, puid='P1', wuid='W1', uuid='devuser', params={},
@@ -196,6 +257,30 @@ def doJob(jobType, projectName, workSpaceName, params, input_group_conect):
 
     print(pwutils.greenStr(do_job_cmd))
     return commands.getstatusoutput(do_job_cmd)
+
+
+def enqueueJob(jobType, projectName, workSpaceName, params, input_group_conect,
+               lane):
+    """
+    make_job(job_type, project_uid, workspace_uid, user_id,
+             created_by_job_uid=None, params={}, input_group_connects={})
+    """
+    make_job_cmd = (getCryosparcProgram() +
+                  ' %smake_job("%s","%s","%s", "%s", "None", %s, %s)%s' %
+                  ("'", jobType, projectName, workSpaceName, getCryosparcUser(),
+                   params, input_group_conect, "'"))
+
+    print(pwutils.greenStr(make_job_cmd))
+    make_job = commands.getstatusoutput(make_job_cmd)
+
+    enqueue_job_cmd = (getCryosparcProgram() +
+                       ' %senqueue_job("%s","%s","%s")%s' %
+                       ("'", projectName, String(make_job[-1].split()[-1]),
+                        lane, "'"))
+
+    print(pwutils.greenStr(enqueue_job_cmd))
+    commands.getstatusoutput(enqueue_job_cmd)
+    return make_job
 
 
 def getJobStatus(projectName, job):
