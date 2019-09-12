@@ -379,7 +379,7 @@ def addSymmetryParam(form):
                   )
     form.addParam('symmetryOrder', IntParam, default=1,
                   condition='symmetryGroup==%d or symmetryGroup==%d' %
-                            (SYM_DIHEDRAL_Y - 11, SYM_CYCLIC),
+                            (SYM_DIHEDRAL_Y-1, SYM_CYCLIC),
                   label='Symmetry Order',
                   validators=[Positive],
                   help='Order of cyclic symmetry.')
@@ -389,13 +389,12 @@ def getSymmetry(symmetryGroup, symmetryOrder):
     """
     Get the symmetry(string) taking into account the symmetry convention
     """
-    if symmetryGroup == 1:
-        symmetry = CS_SYM_NAME[SYM_DIHEDRAL_Y][0] + str(symmetryOrder)
-    else:
-        symmetry = CS_SYM_NAME[symmetryGroup][0]
-        if symmetryGroup == SYM_CYCLIC:
-            symmetry = symmetry + str(symmetryOrder)
-        elif (symmetryGroup == SYM_I222 or
-              symmetryGroup == SYM_I222r):
-            symmetry += CS_SYM_NAME[symmetryGroup][1]
-    return symmetry
+    symmetry = {
+        0: CS_SYM_NAME[SYM_CYCLIC][0] + str(symmetryOrder),  # Cn
+        1: CS_SYM_NAME[SYM_DIHEDRAL_Y][0] + str(symmetryOrder),  #Dn
+        2: CS_SYM_NAME[SYM_TETRAHEDRAL],  # T
+        3: CS_SYM_NAME[SYM_OCTAHEDRAL],  # O
+        4: CS_SYM_NAME[SYM_I222],  # I1
+        5: CS_SYM_NAME[SYM_I222r]  # I2
+    }
+    return symmetry.get(symmetryGroup, "C1")
