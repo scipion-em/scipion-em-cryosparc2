@@ -250,6 +250,11 @@ class CryosPARCViewer3DRefinement(ProtocolViewer):
         self.maxFrc = max(frc)
         self.minInv = min(resolution_inv)
         self.maxInv = max(resolution_inv)
+        self.sampligRate = self.protocol._getInputParticles().getSamplingRate()
+        factor = (2. *self.sampligRate * self.maxInv )
+        resolution_inv = [x/factor for x in resolution_inv]
+        self.minInv /= factor
+        self.maxInv /= factor
         a.plot(resolution_inv, frc)
         a.xaxis.set_major_formatter(self._plotFormatter)
         a.set_ylim([-0.1, 1.1])
@@ -268,7 +273,7 @@ class CryosPARCViewer3DRefinement(ProtocolViewer):
         """ Format function for Matplotlib formatter. """
         inv = 999.
         if value:
-            inv = value
+            inv = 1./value
         return "1/%0.2f" % inv
 
     def _getVolumeNames(self):
