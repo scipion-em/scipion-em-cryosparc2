@@ -31,6 +31,7 @@ from pyworkflow.utils import importFromPlugin
 
 from cryosparc2.protocols import *
 from cryosparc2.constants import *
+from cryosparc2.utils import calculateNewSamplingRate
 
 relionProtocols = importFromPlugin('relion.protocols', doRaise=True)
 
@@ -279,6 +280,8 @@ class TestCryosparc3DRefinement(TestCryosparcBase):
         def _checkAsserts(cryosparcProt):
             self.assertIsNotNone(cryosparcProt.outputVolume,
                                  "There was a problem with Cryosparc 3D refinement")
+            self.assertEqual(cryosparcProt.outputVolume.getSamplingRate(), 4,
+                             'Wrong sampling rate conversion for refined volume')
 
         cryosparcProtGpu = _runCryosparctest3DRefinement(label="Cryosparc 3D refinement")
         _checkAsserts(cryosparcProtGpu)
@@ -453,7 +456,16 @@ class TestCryosparcLocalRefine(TestCryosparcBase):
         _checkAsserts(cryosparcProtGpu)
 
 
+class TestUtils(BaseTest):
+    def testSamplingRateConvertion(self):
+        sr = calculateNewSamplingRate((2, 2, 2), 4, (4, 4, 4))
+        self.assertEqual(sr, 8, "Wrong sampling rate conversion 1")
 
+        sr = calculateNewSamplingRate((2, 2, 2), 1.5, (4, 4, 4))
+        self.assertEqual(sr, 3, "Wrong sampling rate conversion 2")
+
+        sr = calculateNewSamplingRate((3, 3, 3), 1.5, (4, 4, 4))
+        self.assertEqual(sr, 2, "Wrong sampling rate conversion 3")
 
 
 

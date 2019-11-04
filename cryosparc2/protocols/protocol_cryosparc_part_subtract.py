@@ -235,6 +235,9 @@ class ProtCryoSparcSubtract(ProtOperateParticles):
         newFn = row.getValue(md.RLN_IMAGE_NAME)
         index, file = cryosparcToLocation(newFn)
         item.setLocation((index, self._getExtraPath(file)))
+        item.setSamplingRate(calculateNewSamplingRate(item.getDim(),
+                                                 self._getInputParticles().getSamplingRate(),
+                                                 self._getInputParticles().getDim()))
 
     def setAborted(self):
         """ Set the status to aborted and updated the endTime. """

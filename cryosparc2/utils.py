@@ -398,3 +398,15 @@ def getSymmetry(symmetryGroup, symmetryOrder):
         5: CS_SYM_NAME[SYM_I222r]  # I2
     }
     return symmetry.get(symmetryGroup, "C1")
+
+
+def calculateNewSamplingRate(newDims, previousSR, previousDims):
+    """
+    :param newDims:
+    :param previousSR:
+    :param previousDims:
+    :return:
+    """
+    pX = previousDims[0]
+    nX = newDims[0]
+    return previousSR*pX/nX
