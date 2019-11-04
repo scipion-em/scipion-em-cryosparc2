@@ -379,7 +379,7 @@ def addSymmetryParam(form):
                   )
     form.addParam('symmetryOrder', IntParam, default=1,
                   condition='symmetryGroup==%d or symmetryGroup==%d' %
-                            (SYM_DIHEDRAL_Y-1, SYM_CYCLIC),
+                            (SYM_DIHEDRAL_Y-11, SYM_CYCLIC),
                   label='Symmetry Order',
                   validators=[Positive],
                   help='Order of cyclic symmetry.')
