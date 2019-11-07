@@ -412,7 +412,9 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
         imgSet = self._getInputParticles()
         vol = Volume()
         vol.setFileName(fnVol)
-        vol.setSamplingRate(imgSet.getSamplingRate())
+        vol.setSamplingRate(calculateNewSamplingRate(vol.getDim(),
+                                                     imgSet.getSamplingRate(),
+                                                     imgSet.getDim()))
         vol.setHalfMaps([half1, half2])
 
         outImgSet = self._createSetOfParticles()

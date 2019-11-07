@@ -379,7 +379,7 @@ def addSymmetryParam(form):
                   )
     form.addParam('symmetryOrder', IntParam, default=1,
                   condition='symmetryGroup==%d or symmetryGroup==%d' %
-                            (SYM_DIHEDRAL_Y-1, SYM_CYCLIC),
+                            (SYM_DIHEDRAL_Y-11, SYM_CYCLIC),
                   label='Symmetry Order',
                   validators=[Positive],
                   help='Order of cyclic symmetry.')
@@ -398,3 +398,15 @@ def getSymmetry(symmetryGroup, symmetryOrder):
         5: CS_SYM_NAME[SYM_I222r]  # I2
     }
     return symmetry.get(symmetryGroup, "C1")
+
+
+def calculateNewSamplingRate(newDims, previousSR, previousDims):
+    """
+    :param newDims:
+    :param previousSR:
+    :param previousDims:
+    :return:
+    """
+    pX = previousDims[0]
+    nX = newDims[0]
+    return previousSR*pX/nX

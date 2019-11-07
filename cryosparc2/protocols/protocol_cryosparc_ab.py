@@ -334,7 +334,7 @@ class ProtCryoSparcInitialModel(ProtInitialVolume, ProtClassify3D):
         os.system("ln -s " + self.projectPath + "/" + self.projectName.get() +
                   '/' + self.runAbinit.get() + " " + self._getExtraPath())
 
-        # Create model files for 3D classiffication
+        # Create model files for 3D classification
         with open(self._getFileName('out_class'), 'w') as output_file:
             output_file.write('\n')
             output_file.write('data_images')
@@ -357,12 +357,14 @@ class ProtCryoSparcInitialModel(ProtInitialVolume, ProtClassify3D):
 
         # create a SetOfVolumes and define its relations
         volumes = self._createSetOfVolumes()
-        volumes.setSamplingRate(imgSet.getSamplingRate())
+        vol = None
 
         for class3D in classes3D:
             vol = class3D.getRepresentative()
             vol.setObjId(class3D.getObjId())
             volumes.append(vol)
+
+        volumes.setSamplingRate(vol.getSamplingRate())
 
         self._defineOutputs(outputVolumes=volumes)
         self._defineSourceRelation(self.inputParticles.get(), volumes)
@@ -444,7 +446,11 @@ class ProtCryoSparcInitialModel(ProtInitialVolume, ProtClassify3D):
             index, fn, row = self._classesInfo[classId]
             fn += ":mrc"
             item.setAlignmentProj()
-            item.getRepresentative().setLocation(index, fn)
+            vol = item.getRepresentative()
+            vol.setLocation(index, fn)
+            vol.setSamplingRate(calculateNewSamplingRate(vol.getDim(),
+                                                          self._getInputParticles().getSamplingRate(),
+                                                          self._getInputParticles().getDim()))
 
     def _initializeUtilsVariables(self):
         """

@@ -406,13 +406,20 @@ class ProtCryo2D(ProtClassify2D):
     def _updateParticle(self, item, row):
         item.setClassId(row.getValue(md.RLN_PARTICLE_CLASS))
         item.setTransform(rowToAlignment(row, em.ALIGN_2D))
+        item.setSamplingRate(calculateNewSamplingRate(item.getDim(),
+                                                         self._getInputParticles().getSamplingRate(),
+                                                         self._getInputParticles().getDim()))
         
     def _updateClass(self, item):
         classId = item.getObjId()
         if classId in self._classesInfo:
             index, fn, row = self._classesInfo[classId]
             item.setAlignment2D()
-            item.getRepresentative().setLocation(index, fn)
+            class2D = item.getRepresentative()
+            class2D.setLocation(index, fn)
+            class2D.setSamplingRate(calculateNewSamplingRate(class2D.getDim(),
+                                                         self._getInputParticles().getSamplingRate(),
+                                                         self._getInputParticles().getDim()))
 
     def _initializeUtilsVariables(self):
         """
