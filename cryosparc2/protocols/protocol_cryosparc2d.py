@@ -400,11 +400,16 @@ class ProtCryo2D(ProtClassify2D):
 
         if not os.path.exists(scaledFile):
 
-            dims = self._getInputParticles().getDim()
-            csDim = em.ImageHandler.getDimensions(csAveragesFile)
+            inputSize = self._getInputParticles().getDim()[0]
+            csSize = em.ImageHandler.getDimensions(csAveragesFile)[0]
 
-            factor = dims[0] // csDim[0]
-            em.ImageHandler.scaleFourier(csAveragesFile, scaledFile, factor)
+            factor = inputSize/csSize
+
+            if factor == 1:
+                em.createLink(csAveragesFile, scaledFile)
+            else:
+                print ("Scaling CS averages file to match particle size (%s -_> %s)." % (csSize, inputSize))
+                em.ImageHandler.scaleFourier(csAveragesFile, scaledFile, factor)
 
         return scaledFile
 
