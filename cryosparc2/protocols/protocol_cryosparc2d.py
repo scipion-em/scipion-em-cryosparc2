@@ -37,7 +37,6 @@ from cryosparc2.convert import *
 from cryosparc2.utils import *
 from cryosparc2.constants import *
 
-
 class ProtCryo2D(ProtClassify2D):
     """ Wrapper to CryoSparc 2D clustering program.
         Classify particles into multiple 2D classes to facilitate stack cleaning
@@ -396,16 +395,25 @@ class ProtCryo2D(ProtClassify2D):
 
     def _getScaledAveragesFile(self, csAveragesFile):
 
+        # For the moment this is the best possible result, scaling from 128 to 300 does not render
+        # nice results apart that the factor turns to 299x299.
+        # But without this the representative subset is wrong.
+        return csAveragesFile
+
         scaledFile = self._getScaledAveragesFileName(csAveragesFile)
 
         if not os.path.exists(scaledFile):
 
             inputSize = self._getInputParticles().getDim()[0]
-            csSize = em.ImageHandler.getDimensions(csAveragesFile)[0]
+            csSize = em.ImageHandler().getDimensions(csAveragesFile)[0]
 
-            factor = inputSize/csSize
+            print ("Sizes (%s --> %s)." % (csSize, inputSize))
 
+            factor = csSize/float(inputSize)
+
+            print ("Factor: %s" % factor)
             if factor == 1:
+                print ("No binning detected: linking averages cs file.")
                 em.createLink(csAveragesFile, scaledFile)
             else:
                 print ("Scaling CS averages file to match particle size (%s -_> %s)." % (csSize, inputSize))
