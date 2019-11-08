@@ -398,7 +398,7 @@ class ProtCryo2D(ProtClassify2D):
         # For the moment this is the best possible result, scaling from 128 to 300 does not render
         # nice results apart that the factor turns to 299x299.
         # But without this the representative subset is wrong.
-        return csAveragesFile
+        # return csAveragesFile
 
         scaledFile = self._getScaledAveragesFileName(csAveragesFile)
 
@@ -407,17 +407,12 @@ class ProtCryo2D(ProtClassify2D):
             inputSize = self._getInputParticles().getDim()[0]
             csSize = em.ImageHandler().getDimensions(csAveragesFile)[0]
 
-            print ("Sizes (%s --> %s)." % (csSize, inputSize))
-
-            factor = csSize/float(inputSize)
-
-            print ("Factor: %s" % factor)
-            if factor == 1:
+            if csSize == inputSize:
                 print ("No binning detected: linking averages cs file.")
                 em.createLink(csAveragesFile, scaledFile)
             else:
                 print ("Scaling CS averages file to match particle size (%s -_> %s)." % (csSize, inputSize))
-                em.ImageHandler.scaleFourier(csAveragesFile, scaledFile, factor)
+                em.ImageHandler.scaleSpline(csAveragesFile, scaledFile, inputSize, inputSize)
 
         return scaledFile
 
