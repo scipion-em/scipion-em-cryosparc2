@@ -399,7 +399,12 @@ class ProtCryo2D(ProtClassify2D):
         scaledFile = self._getScaledAveragesFileName(csAveragesFile)
 
         if not os.path.exists(scaledFile):
-            em.ImageHandler.scaleFourier(csAveragesFile, scaledFile, 2)
+
+            dims = self._getInputParticles().getDim()
+            csDim = em.ImageHandler.getDimensions(csAveragesFile)
+
+            factor = dims[0] // csDim[0]
+            em.ImageHandler.scaleFourier(csAveragesFile, scaledFile, factor)
 
         return scaledFile
 
