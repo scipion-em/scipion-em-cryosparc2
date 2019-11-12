@@ -91,7 +91,8 @@ def isCryosparcRunning():
 
     if status != 0:
         msg = ['Failed to establish a new connection with cryoSPARC. Please, '
-               'restart the cryoSPARC services.']
+               'restart the cryoSPARC services. Run the "%s" program located in '
+               'the cryosparc_master/bin folder with "%s" parameter' % ("cryosparcm", "start")]
 
     return msg
 
