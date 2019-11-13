@@ -411,8 +411,8 @@ class ProtCryo2D(ProtClassify2D):
                 print ("No binning detected: linking averages cs file.")
                 em.createLink(csAveragesFile, scaledFile)
             else:
-                print ("Scaling CS averages file to match particle size (%s -_> %s)." % (csSize, inputSize))
-                em.ImageHandler.scaleSpline(csAveragesFile, scaledFile, inputSize, inputSize)
+                print ("Scaling CS averages file to match particle size (%s -> %s)." % (csSize, inputSize))
+                scaleSpline(csAveragesFile, scaledFile, inputSize, inputSize)
 
         return scaledFile
 
@@ -449,13 +449,9 @@ class ProtCryo2D(ProtClassify2D):
         """
         Initialize all utils cryoSPARC variables
         """
-        self._program = getCryosparcProgram()
-        self._user = getCryosparcUser()
-        self._ssd = getCryosparcSSD()
-
         # Create a cryoSPARC project dir
         self.projectDirName = suffix + self.getProject().getShortName()
-        self.projectPath = pwutils.join(self._ssd, self.projectDirName)
+        self.projectPath = pwutils.join(getCryosparcProjectsDir(), self.projectDirName)
         self.projectDir = createProjectDir(self.projectPath)
 
     def _initializeCryosparcProject(self):

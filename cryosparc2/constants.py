@@ -39,16 +39,18 @@ except:
     SYM_DIHEDRAL_Y = 12
     SCIPION_SYM_NAME[SYM_DIHEDRAL_Y] = "Dyn"
 
+# Root folder where cryosparc is installed, we will look here for the client
 CRYOSPARC_HOME = 'CRYOSPARC_HOME'
-CRYOSSD_DIR = 'CRYOSSD_DIR'
+CRYOSPARC_DIR = 'CRYOSPARC_DIR' # Legacy, replaced by CRYOSPARC_HOME
+# Optional: Folder where cryosparc projects will be created
+CRYO_PROJECTS_DIR = 'CRYO_PROJECTS_DIR'
 CRYOSPARC_USER = 'CRYOSPARC_USER'
-CRYO_SSD = 'cryo_ssd'
-CRYOSPARC_DIR = 'CRYOSPARC_DIR'
 
 # Supported versions:
 V2_5 = 'V2_5'
 V2_8 = 'V2_8'
 V2_9 = 'V2_9'
+V2_11 = 'V2_11'
 
 # Suffix for all project
 suffix = 'ProjCryoSparc_'
