@@ -27,12 +27,13 @@
 import os
 import commands
 import pyworkflow.utils as pwutils
+from cryosparc2 import Plugin
 from pyworkflow.em import SCIPION_SYM_NAME, String
 from pyworkflow.em.constants import (SYM_CYCLIC, SYM_TETRAHEDRAL,
                                      SYM_OCTAHEDRAL, SYM_I222, SYM_I222r)
 from pyworkflow.protocol.params import EnumParam, IntParam, Positive
-from cryosparc2.constants import (CS_SYM_NAME, SYM_DIHEDRAL_Y, CRYO_SSD,
-                                  CRYOSPARC_USER, CRYOSSD_DIR, CRYOSPARC_DIR)
+from cryosparc2.constants import (CS_SYM_NAME, SYM_DIHEDRAL_Y,
+                                  CRYOSPARC_USER, CRYO_PROJECTS_DIR, CRYOSPARC_DIR)
 
 
 STATUS_FAILED = "failed"
@@ -53,7 +54,7 @@ def getCryosparcDir():
     """
     Get the root directory where cryoSPARC code and dependencies are installed.
     """
-    return os.environ.get(CRYOSPARC_DIR, None)
+    return Plugin.getHome()
 
 
 def getCryosparcProgram():
@@ -73,7 +74,7 @@ def cryosparcExist():
     msg = []
     if getCryosparcDir() is not None and not os.path.exists(getCryosparcDir()):
        msg.append(('The cryoSPARC software do not exist in %s. Please install it')
-                  % str(os.environ['CRYOSPARC_DIR']))
+                  % str(os.environ[CRYOSPARC_DIR]))
     return msg
 
 
@@ -91,7 +92,8 @@ def isCryosparcRunning():
 
     if status != 0:
         msg = ['Failed to establish a new connection with cryoSPARC. Please, '
-               'restart the cryoSPARC services.']
+               'restart the cryoSPARC services. Run the "%s" program located in '
+               'the cryosparc_master/bin folder with "%s" parameter' % ("cryosparcm", "start")]
 
     return msg
 
@@ -103,22 +105,16 @@ def getCryosparcUser():
     return os.environ.get(CRYOSPARC_USER, None)
 
 
-def getCryosparcSSD():
+def getCryosparcProjectsDir():
     """
-    Get the path on the worker node to a writable directory residing on the
-    local SSD
+    Get the path on the worker node to a writable directory
     """
-    if os.environ.get(CRYOSSD_DIR) is None:
-        cryoSSD_Dir = os.path.join(str(getCryosparcDir()), CRYO_SSD)
-        if not os.path.exists(cryoSSD_Dir):
-            os.mkdir(cryoSSD_Dir)
-    elif os.path.exists(os.environ[CRYOSSD_DIR]):
-        cryoSSD_Dir = os.environ[CRYOSSD_DIR]
-    else:
-        cryoSSD_Dir = os.path.join(str(getCryosparcDir()), CRYO_SSD)
-        os.mkdir(cryoSSD_Dir)
-    return cryoSSD_Dir
+    cryoProject_Dir = Plugin.getVar(CRYO_PROJECTS_DIR)
 
+    if not os.path.exists(cryoProject_Dir):
+        os.mkdir(cryoProject_Dir)
+
+    return cryoProject_Dir
 
 def getProjectPath(projectDir):
     """
@@ -134,7 +130,7 @@ def getJobLog(projectDirName, projectName, job):
     """
     Return the job log
     """
-    return os.path.join(getCryosparcSSD(), projectDirName, projectName, job,
+    return os.path.join(getCryosparcProjectsDir(), projectDirName, projectName, job,
                         'job.log')
 
 
@@ -379,7 +375,7 @@ def addSymmetryParam(form):
                   )
     form.addParam('symmetryOrder', IntParam, default=1,
                   condition='symmetryGroup==%d or symmetryGroup==%d' %
-                            (SYM_DIHEDRAL_Y-11, SYM_CYCLIC),
+                            (SYM_DIHEDRAL_Y-1, SYM_CYCLIC),
                   label='Symmetry Order',
                   validators=[Positive],
                   help='Order of cyclic symmetry.')
@@ -410,3 +406,14 @@ def calculateNewSamplingRate(newDims, previousSR, previousDims):
     pX = previousDims[0]
     nX = newDims[0]
     return previousSR*pX/nX
+
+
+def scaleSpline(inputFn, outputFn, Xdim, Ydim):
+    """ Scale an image using splines. """
+    # TODO: Avoid using xmipp program for this
+
+    program = "xmipp_image_resize"
+    args = "-i %s -o %s --dim %d %d --interp spline" % (inputFn, outputFn, Xdim,
+                                                        Ydim)
+    xmipp3 = pwutils.importFromPlugin('xmipp3', doRaise=True)
+    xmipp3.Plugin.runXmippProgram(program, args)

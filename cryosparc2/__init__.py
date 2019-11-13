@@ -37,11 +37,15 @@ _logo = 'cryosparc2_logo.png'
 
 class Plugin(pyworkflow.em.Plugin):
     _homeVar = CRYOSPARC_HOME
-    _supportedVersions = [V2_5, V2_8, V2_9]
+    _pathVars = [CRYOSPARC_HOME]
+    _supportedVersions = [V2_5, V2_8, V2_9, V2_11]
 
     @classmethod
     def _defineVariables(cls):
-        pass
+        cls._defineVar(CRYOSPARC_HOME, os.environ.get(CRYOSPARC_DIR))
+        cls._defineVar(CRYO_PROJECTS_DIR,
+                              os.path.join(cls.getHome(),
+                                           "scipion_projects"))
 
     @classmethod
     def getEnviron(cls):

@@ -95,10 +95,6 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
                            'are automatically downsampled')
 
         addSymmetryParam(form)
-        # form.addParam('refine_symmetry', StringParam, default='C1',
-        #               label="Symmetry",
-        #               help='Symmetry String (C, D, I, O, T). E.g. C1, D7, C4, '
-        #                    'etc')
 
         form.addParam('refine_symmetry_do_align', BooleanParam, default=True,
                       label="Do symmetry alignment",
@@ -511,13 +507,9 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
         """
         Initialize all utils cryoSPARC variables
         """
-        self._program = getCryosparcProgram()
-        self._user = getCryosparcUser()
-        self._ssd = getCryosparcSSD()
-
         # Create a cryoSPARC project dir
         self.projectDirName = suffix + self.getProject().getShortName()
-        self.projectPath = pwutils.join(self._ssd, self.projectDirName)
+        self.projectPath = pwutils.join(getCryosparcProjectsDir(), self.projectDirName)
         self.projectDir = createProjectDir(self.projectPath)
 
     def _initializeCryosparcProject(self):

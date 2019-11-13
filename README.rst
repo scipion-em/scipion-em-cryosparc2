@@ -46,14 +46,16 @@ cryoSPARC v2 when new versions become available.
 
    .. code-block::
 
-       # The root directory where cryoSPARC code and dependencies will be installed.
-       CRYOSPARC_DIR = <install_path>   
+       # The root directory where cryoSPARC code and dependencies is installed.
+       CRYOSPARC_DIR = <install_path>   (CRYOSPARC_DIR will work for legacy reasons)
        
        # full name of the initial admin account to be created
        CRYOSPARC_USER = <user_name>
-       
-       # path on the worker node to a writable directory residing on the local SSD
-       CRYOSSD_DIR = <ssd_path>
+
+       # Optional variables
+
+       #Folder (available to all workers) where scipion will create cryosparc projects
+       CRYO_PROJECTS_DIR = <path> (default to <CRYOSPARC_DIR>/scipion_projects)
 
 
 

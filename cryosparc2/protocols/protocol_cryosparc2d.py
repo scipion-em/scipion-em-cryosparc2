@@ -31,11 +31,11 @@ import pyworkflow.em as em
 from pyworkflow.em.protocol import ProtClassify2D
 from pyworkflow.protocol.params import (PointerParam, BooleanParam,
                                         FloatParam, StringParam)
+from pyworkflow.utils import replaceExt
 
 from cryosparc2.convert import *
 from cryosparc2.utils import *
 from cryosparc2.constants import *
-
 
 class ProtCryo2D(ProtClassify2D):
     """ Wrapper to CryoSparc 2D clustering program.
@@ -43,7 +43,7 @@ class ProtCryo2D(ProtClassify2D):
         and removal of junk particles. Also useful as a sanity check to
         investigate particle quality.
     """
-    _label = 'perform Cryosparc2D'
+    _label = '2d classification'
     IS_2D = True
     
     def __init__(self, **args):
@@ -389,8 +389,36 @@ class ProtCryo2D(ProtClassify2D):
             index, fn = cryosparcToLocation(row.getValue('rlnImageName'))
             # Store info indexed by id, we need to store the row.clone() since
             # the same reference is used for iteration
-            self._classesInfo[classNumber + 1] = (index, fn, row.clone())
+            scaledFile = self._getScaledAveragesFile(fn)
+            self._classesInfo[classNumber + 1] = (index, scaledFile, row.clone())
         self._numClass = index
+
+    def _getScaledAveragesFile(self, csAveragesFile):
+
+        # For the moment this is the best possible result, scaling from 128 to 300 does not render
+        # nice results apart that the factor turns to 299x299.
+        # But without this the representative subset is wrong.
+        # return csAveragesFile
+
+        scaledFile = self._getScaledAveragesFileName(csAveragesFile)
+
+        if not os.path.exists(scaledFile):
+
+            inputSize = self._getInputParticles().getDim()[0]
+            csSize = em.ImageHandler().getDimensions(csAveragesFile)[0]
+
+            if csSize == inputSize:
+                print ("No binning detected: linking averages cs file.")
+                em.createLink(csAveragesFile, scaledFile)
+            else:
+                print ("Scaling CS averages file to match particle size (%s -> %s)." % (csSize, inputSize))
+                scaleSpline(csAveragesFile, scaledFile, inputSize, inputSize)
+
+        return scaledFile
+
+    def _getScaledAveragesFileName(self, csAveragesFile):
+
+        return replaceExt(csAveragesFile, "_scaled.mrc")
 
     def _fillClassesFromLevel(self, clsSet):
         """ Create the SetOfClasses2D from a given iteration. """
@@ -401,37 +429,29 @@ class ProtCryo2D(ProtClassify2D):
         clsSet.classifyItems(updateItemCallback=self._updateParticle,
                              updateClassCallback=self._updateClass,
                              itemDataIterator=md.iterRows(xmpMd,
-                                                          sortByLabel=md.MDL_ITEM_ID)) # relion style
+                             sortByLabel=md.MDL_ITEM_ID)) # relion style
 
     def _updateParticle(self, item, row):
         item.setClassId(row.getValue(md.RLN_PARTICLE_CLASS))
         item.setTransform(rowToAlignment(row, em.ALIGN_2D))
-        item.setSamplingRate(calculateNewSamplingRate(item.getDim(),
-                                                         self._getInputParticles().getSamplingRate(),
-                                                         self._getInputParticles().getDim()))
         
-    def _updateClass(self, item):
-        classId = item.getObjId()
+    def _updateClass(self, class2D):
+        classId = class2D.getObjId()
         if classId in self._classesInfo:
             index, fn, row = self._classesInfo[classId]
-            item.setAlignment2D()
-            class2D = item.getRepresentative()
-            class2D.setLocation(index, fn)
-            class2D.setSamplingRate(calculateNewSamplingRate(class2D.getDim(),
-                                                         self._getInputParticles().getSamplingRate(),
-                                                         self._getInputParticles().getDim()))
+            class2D.setAlignment2D()
+            sr = row.getValue('rlnDetectorPixelSize')
+            class2Drep = class2D.getRepresentative()
+            class2Drep.setLocation(index, fn)
+            class2Drep.setSamplingRate(sr)
 
     def _initializeUtilsVariables(self):
         """
         Initialize all utils cryoSPARC variables
         """
-        self._program = getCryosparcProgram()
-        self._user = getCryosparcUser()
-        self._ssd = getCryosparcSSD()
-
         # Create a cryoSPARC project dir
         self.projectDirName = suffix + self.getProject().getShortName()
-        self.projectPath = pwutils.join(self._ssd, self.projectDirName)
+        self.projectPath = pwutils.join(getCryosparcProjectsDir(), self.projectDirName)
         self.projectDir = createProjectDir(self.projectPath)
 
     def _initializeCryosparcProject(self):

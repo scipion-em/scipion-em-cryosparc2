@@ -222,12 +222,6 @@ class ProtCryoSparcInitialModel(ProtInitialVolume, ProtClassify3D):
 
         addSymmetryParam(form)
 
-        # form.addParam('abinit_symmetry', StringParam, default="C1",
-        #               label='Symmetry:',
-        #               help='Symmetry enforced (C, D, I, O, T). Eg. C1, D7, C4 '
-        #                    'etc. Enforcing symmetry above C1 is not '
-        #                    'recommended for ab-initio reconstruction')
-
         form.addParam('abinit_r_grid', FloatParam, default=25,
                       expertLevel=LEVEL_ADVANCED,
                       validators=[Positive],
@@ -456,13 +450,9 @@ class ProtCryoSparcInitialModel(ProtInitialVolume, ProtClassify3D):
         """
         Initialize all utils cryoSPARC variables
         """
-        self._program = getCryosparcProgram()
-        self._user = getCryosparcUser()
-        self._ssd = getCryosparcSSD()
-
         # Create a cryoSPARC project dir
         self.projectDirName = suffix + self.getProject().getShortName()
-        self.projectPath = pwutils.join(self._ssd, self.projectDirName)
+        self.projectPath = pwutils.join(getCryosparcProjectsDir(), self.projectDirName)
         self.projectDir = createProjectDir(self.projectPath)
 
     def _initializeCryosparcProject(self):
