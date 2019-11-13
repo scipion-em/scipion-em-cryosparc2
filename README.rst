@@ -58,9 +58,6 @@ cryoSPARC v2 when new versions become available.
        CRYO_PROJECTS_DIR = <path> (default to <CRYOSPARC_DIR>/scipion_projects)
 
 
-
-
-
 **To install in development mode**
 
 - Clone or download the plugin repository
