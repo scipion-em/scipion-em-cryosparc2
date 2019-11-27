@@ -202,18 +202,24 @@ class ProtCryoSparcSubtract(ProtOperateParticles):
         self._initializeUtilsVariables()
         outputStarFn = self._getFileName('out_particles')
 
+
+        csFileName = "subtracted_particles.cs"
         csFile = os.path.join(self.projectPath, self.projectName.get(),
-                              self.runPartStract.get(),
-                              "subtracted_particles.cs")
+                              self.runPartStract.get(), csFileName)
+
+        # Create the output folder
+        outputFolder = self._getExtraPath() + '/' + self.runPartStract.get()
+        os.system("mkdir " + outputFolder)
+
+        # Copy the particles to scipion output folder
+        os.system("cp -r " + csFile + " " + outputFolder)
+        csFile = os.path.join(outputFolder, csFileName)
 
         argsList = [csFile, outputStarFn]
 
         parser = defineArgs()
         args = parser.parse_args(argsList)
         convertCs2Star(args)
-
-        os.system("ln -s " + self.projectPath + "/" + self.projectName.get() + '/' +
-                  self.runPartStract.get() + " " + self._getExtraPath())
 
         imgSet = self._getInputParticles()
 

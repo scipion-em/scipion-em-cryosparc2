@@ -377,9 +377,18 @@ class ProtCryoSparcLocalRefine(ProtOperateParticles):
                     idd = y['imgfiles'][2]['fileid']
                     itera = z[-3:]
 
-        csFile = os.path.join(self.projectPath, self.projectName.get(), self.runLocalRefinement.get(),
-                              ("cryosparc_" + self.projectName.get() + "_" +
-                               self.runLocalRefinement.get() + "_" + itera + "_particles.cs"))
+        csParticlesName = ("cryosparc_" + self.projectName.get() + "_" +
+                           self.runLocalRefinement.get() + "_" + itera + "_particles.cs")
+        csFile = os.path.join(self.projectPath, self.projectName.get(),
+                              self.runLocalRefinement.get(), csParticlesName)
+
+        # Create the output folder
+        outputFolder = self._getExtraPath() + '/' + self.runLocalRefinement.get()
+        os.system("mkdir " + outputFolder)
+
+        # Copy the particles to scipion output folder
+        os.system("cp -r " + csFile + " " + outputFolder)
+        csFile = os.path.join(outputFolder, csParticlesName)
 
         outputStarFn = self._getFileName('out_particles')
         argsList = [csFile, outputStarFn]
@@ -388,23 +397,31 @@ class ProtCryoSparcLocalRefine(ProtOperateParticles):
         args = parser.parse_args(argsList)
         convertCs2Star(args)
 
-        # Link the folder on SSD to scipion directory
-        os.system("ln -s " + self.projectPath + "/" + self.projectName.get() + '/' +
-                  self.runLocalRefinement.get() + " " + self._getExtraPath())
+        fnVolName = ("cryosparc_" + self.projectName.get() + "_" +
+                     self.runLocalRefinement.get() + "_" + itera + "_volume_map.mrc")
+        half1Name = ("cryosparc_" + self.projectName.get() + "_" +
+                     self.runLocalRefinement.get() + "_" + itera +
+                     "_volume_map_half_A.mrc")
+        half2Name = ("cryosparc_" + self.projectName.get() + "_" +
+                     self.runLocalRefinement.get() + "_" + itera +
+                     "_volume_map_half_B.mrc")
 
-        fnVol = os.path.join(self._getExtraPath(), self.runLocalRefinement.get(),
-                             ("cryosparc_" + self.projectName.get() + "_" +
-                              self.runLocalRefinement.get() + "_" + itera + "_volume_map.mrc"))
+        fnVol = os.path.join(self.projectPath, self.projectName.get(),
+                             self.runLocalRefinement.get(), fnVolName)
+        half1 = os.path.join(self.projectPath, self.projectName.get(),
+                             self.runLocalRefinement.get(), half1Name)
+        half2 = os.path.join(self.projectPath, self.projectName.get(),
+                             self.runLocalRefinement.get(), half2Name)
 
-        half1 = os.path.join(self._getExtraPath(), self.runLocalRefinement.get(),
-                             ("cryosparc_" + self.projectName.get() + "_" +
-                              self.runLocalRefinement.get() + "_" + itera +
-                              "_volume_map_half_A.mrc"))
+        # Copy the volumes to extra folder
+        os.system("cp -r " + fnVol + " " + outputFolder)
+        fnVol = os.path.join(outputFolder, fnVolName)
 
-        half2 = os.path.join(self._getExtraPath(), self.runLocalRefinement.get(),
-                             ("cryosparc_" + self.projectName.get() + "_" +
-                              self.runLocalRefinement.get() + "_" + itera +
-                              "_volume_map_half_B.mrc"))
+        os.system("cp -r " + half1 + " " + outputFolder)
+        half1 = os.path.join(outputFolder, half1Name)
+
+        os.system("cp -r " + half2 + " " + outputFolder)
+        half2 = os.path.join(outputFolder, half2Name)
 
         imgSet = self._getInputParticles()
         vol = Volume()
