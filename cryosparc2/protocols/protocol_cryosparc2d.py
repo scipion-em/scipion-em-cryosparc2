@@ -265,12 +265,18 @@ class ProtCryo2D(ProtClassify2D):
         if self.numberOnlineEMIterator.get() > 9:
             _numberOfIter = str("_0" + str(self.numberOnlineEMIterator.get()))
 
+        csParticlesName = ("cryosparc_" + self.projectName.get() +
+                      "_" + self.runClass2D.get() + _numberOfIter +
+                      "_particles.cs")
         csFile = os.path.join(self.projectPath, self.projectName.get(),
-                              self.runClass2D.get(), ("cryosparc_" +
-                                                      self.projectName.get() +
-                                                      "_" + self.runClass2D.get() +
-                                                      _numberOfIter +
-                                                      "_particles.cs"))
+                              self.runClass2D.get(), csParticlesName)
+
+        outputFolder = self._getExtraPath() + '/' + self.runClass2D.get()
+        os.system("mkdir " + outputFolder)
+
+        # Copy the particles to scipion output folder
+        os.system("cp -r " + csFile + " " + outputFolder)
+        csFile = os.path.join(outputFolder, csParticlesName)
 
         outputStarFn = self._getFileName('out_particles')
         argsList = [csFile, outputStarFn]
@@ -279,12 +285,16 @@ class ProtCryo2D(ProtClassify2D):
         args = parser.parse_args(argsList)
         convertCs2Star(args)
 
+        csClassAveragesName = ("cryosparc_" + self.projectName.get() + "_" +
+                               self.runClass2D.get() + _numberOfIter +
+                               "_class_averages.cs")
+
         csFile = os.path.join(self.projectPath, self.projectName.get(),
-                              self.runClass2D.get(), ("cryosparc_" +
-                                                self.projectName.get() + "_" +
-                                                self.runClass2D.get() +
-                                                _numberOfIter +
-                                                "_class_averages.cs"))
+                              self.runClass2D.get(), csClassAveragesName)
+
+        # Copy the particles to scipion output folder
+        os.system("cp -r " + csFile + " " + outputFolder)
+        csFile = os.path.join(outputFolder, csClassAveragesName)
 
         outputClassFn = self._getFileName('out_class')
         argsList = [csFile, outputClassFn]
@@ -293,9 +303,16 @@ class ProtCryo2D(ProtClassify2D):
         args = parser.parse_args(argsList)
         convertCs2Star(args)
 
-        # Link the folder on SSD to scipion directory
-        os.system("ln -s " + self.projectPath + "/" + self.projectName.get() + '/' +
-                  self.runClass2D.get() + " " + self._getExtraPath())
+        # Copy the mrc file to scipion output folder
+        mrcFileName = ("cryosparc_" + self.projectName.get() + "_" +
+                       self.runClass2D.get() + _numberOfIter +
+                       "_class_averages.mrc")
+
+        csFile = os.path.join(self.projectPath, self.projectName.get(),
+                              self.runClass2D.get(), mrcFileName)
+
+        # Copy the particles to scipion output folder
+        os.system("cp -r " + csFile + " " + outputFolder)
 
         with open(self._getFileName('out_class'), 'r') as input_file, \
                 open(self._getFileName('out_class_m2'), 'w') as output_file:

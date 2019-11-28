@@ -311,11 +311,20 @@ class ProtCryoSparcInitialModel(ProtInitialVolume, ProtClassify3D):
         self._initializeUtilsVariables()
         print (pwutils.greenStr("Creating the output..."))
 
-        csFile = os.path.join(self.projectPath, self.projectName.get(),
-                              self.runAbinit.get(), ("cryosparc_" +
-                                                     self.projectName.get() +
-                                                     "_" + self.runAbinit.get() +
-                                                     "_final_particles.cs"))
+        csFileName = ("cryosparc_" +  self.projectName.get() + "_" +
+                      self.runAbinit.get() + "_final_particles.cs")
+
+        ouputsPath = os.path.join(self.projectPath, self.projectName.get(),
+                                  self.runAbinit.get())
+
+        # Create the output folder
+        outputFolder = self._getExtraPath() + '/' + self.runAbinit.get()
+        os.system("mkdir " + outputFolder)
+
+        # Copy the particles to scipion output folder
+        os.system("cp -r " + ouputsPath + "/" + "*final*" + " " + outputFolder)
+        csFile = os.path.join(outputFolder, csFileName)
+
 
         outputClassFn = self._getFileName('out_particles')
         argsList = [csFile, outputClassFn]
@@ -323,10 +332,6 @@ class ProtCryoSparcInitialModel(ProtInitialVolume, ProtClassify3D):
         parser = defineArgs()
         args = parser.parse_args(argsList)
         convertCs2Star(args)
-
-        # Link the folder on SSD to scipion directory
-        os.system("ln -s " + self.projectPath + "/" + self.projectName.get() +
-                  '/' + self.runAbinit.get() + " " + self._getExtraPath())
 
         # Create model files for 3D classification
         with open(self._getFileName('out_class'), 'w') as output_file:
