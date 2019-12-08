@@ -25,7 +25,7 @@
 # *
 # **************************************************************************
 import os
-import commands
+import subprocess
 import pyworkflow.utils as pwutils
 from cryosparc2 import Plugin
 from pwem.constants import SCIPION_SYM_NAME
@@ -87,7 +87,7 @@ def isCryosparcRunning():
     if getCryosparcProgram() is not None:
         test_conection_cmd = (getCryosparcProgram() +
                                     ' %stest_connection()%s ' % ("'", "'"))
-        test_conection = commands.getstatusoutput(test_conection_cmd)
+        test_conection = subprocess.getstatusoutput(test_conection_cmd)
         status = test_conection[0]
 
     if status != 0:
@@ -145,7 +145,7 @@ def createEmptyProject(projectDir, projectTitle):
                                 % ("'", str(getCryosparcUser()),
                                    str(projectDir), str(projectTitle), "'"))
 
-    return commands.getstatusoutput(create_empty_project_cmd)
+    return subprocess.getstatusoutput(create_empty_project_cmd)
 
 
 def createProjectDir(project_container_dir):
@@ -162,7 +162,7 @@ def createProjectDir(project_container_dir):
     create_project_dir_cmd = (getCryosparcProgram() +
                              ' %scheck_or_create_project_container_dir("%s")%s '
                              % ("'", project_container_dir, "'"))
-    return commands.getstatusoutput(create_project_dir_cmd)
+    return subprocess.getstatusoutput(create_project_dir_cmd)
 
 
 def createEmptyWorkSpace(projectName, workspaceTitle, workspaceComment):
@@ -177,7 +177,7 @@ def createEmptyWorkSpace(projectName, workspaceTitle, workspaceComment):
                              % ("'", projectName, str(getCryosparcUser()),
                                 "None", str(workspaceTitle),
                                 str(workspaceComment), "'"))
-    return commands.getstatusoutput(create_work_space_cmd)
+    return subprocess.getstatusoutput(create_work_space_cmd)
 
 
 def doImportParticlesStar(protocol):
@@ -252,7 +252,7 @@ def doJob(jobType, projectName, workSpaceName, params, input_group_conect):
                    params, input_group_conect, "'"))
 
     print(pwutils.greenStr(do_job_cmd))
-    return commands.getstatusoutput(do_job_cmd)
+    return subprocess.getstatusoutput(do_job_cmd)
 
 
 def enqueueJob(jobType, projectName, workSpaceName, params, input_group_conect,
@@ -267,7 +267,7 @@ def enqueueJob(jobType, projectName, workSpaceName, params, input_group_conect,
                    params, input_group_conect, "'"))
 
     print(pwutils.greenStr(make_job_cmd))
-    make_job = commands.getstatusoutput(make_job_cmd)
+    make_job = subprocess.getstatusoutput(make_job_cmd)
 
     enqueue_job_cmd = (getCryosparcProgram() +
                        ' %senqueue_job("%s","%s","%s")%s' %
@@ -275,7 +275,7 @@ def enqueueJob(jobType, projectName, workSpaceName, params, input_group_conect,
                         lane, "'"))
 
     print(pwutils.greenStr(enqueue_job_cmd))
-    commands.getstatusoutput(enqueue_job_cmd)
+    subprocess.getstatusoutput(enqueue_job_cmd)
     return make_job
 
 
@@ -287,7 +287,7 @@ def getJobStatus(projectName, job):
                           ' %sget_job_status("%s", "%s")%s'
                           % ("'", projectName, job, "'"))
 
-    status = commands.getstatusoutput(get_job_status_cmd)
+    status = subprocess.getstatusoutput(get_job_status_cmd)
     return status[-1].split()[-1]
 
 
@@ -298,7 +298,7 @@ def waitJob(projectName, job):
     wait_job_cmd = (getCryosparcProgram() +
                     ' %swait_job_complete("%s", "%s")%s'
                     % ("'", projectName, job, "'"))
-    commands.getstatusoutput(wait_job_cmd)
+    subprocess.getstatusoutput(wait_job_cmd)
 
 
 def get_job_streamlog(projectName, job, fileName):
@@ -307,7 +307,7 @@ def get_job_streamlog(projectName, job, fileName):
                              ' %sget_job_streamlog("%s", "%s")%s%s'
                              % ("'", projectName, job, "'", ">" + fileName))
 
-    commands.getstatusoutput(get_job_streamlog_cmd)
+    subprocess.getstatusoutput(get_job_streamlog_cmd)
 
 
 def killJob(projectName, job):
@@ -320,7 +320,7 @@ def killJob(projectName, job):
                     ' %skill_job("%s", "%s")%s'
                     % ("'", projectName, job, "'"))
     print(pwutils.greenStr(kill_job_cmd))
-    commands.getstatusoutput(kill_job_cmd)
+    subprocess.getstatusoutput(kill_job_cmd)
 
 
 def clearJob(projectName, job):
@@ -335,7 +335,7 @@ def clearJob(projectName, job):
                     ' %sclear_job("%s", "%s")%s'
                     % ("'", projectName, job, "'"))
     print(pwutils.greenStr(clear_job_cmd))
-    commands.getstatusoutput(clear_job_cmd)
+    subprocess.getstatusoutput(clear_job_cmd)
 
 
 def getSystemInfo():
@@ -343,7 +343,7 @@ def getSystemInfo():
     Get the cryoSPARC system information
     """
     system_info_cmd = (getCryosparcProgram() + ' %sget_system_info()%s') % ("'", "'")
-    return commands.getstatusoutput(system_info_cmd)
+    return subprocess.getstatusoutput(system_info_cmd)
 
 
 def addSymmetryParam(form):
