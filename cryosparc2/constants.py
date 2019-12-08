@@ -25,17 +25,17 @@
 # *
 # **************************************************************************
 from collections import OrderedDict
-import pyworkflow.em.metadata as md
-from pyworkflow.em.constants import (
+import pwem.metadata as md
+from pwem.constants import (
     SYM_CYCLIC, SYM_TETRAHEDRAL, SYM_OCTAHEDRAL, SYM_I222,
     SYM_I222r)
 
 # Not yet release in Scipion, once is released this try /catch import can be
 # removed
 try:
-    from pyworkflow.em.constants import SYM_DIHEDRAL_Y
+    from pwem.constants import SYM_DIHEDRAL_Y
 except:
-    from pyworkflow.em import SCIPION_SYM_NAME
+    from pwem import SCIPION_SYM_NAME
     SYM_DIHEDRAL_Y = 12
     SCIPION_SYM_NAME[SYM_DIHEDRAL_Y] = "Dyn"
 

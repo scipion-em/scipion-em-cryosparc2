@@ -28,10 +28,10 @@ import os
 import commands
 import pyworkflow.utils as pwutils
 from cryosparc2 import Plugin
-from pyworkflow.em import SCIPION_SYM_NAME, String
-from pyworkflow.em.constants import (SYM_CYCLIC, SYM_TETRAHEDRAL,
+from pwem.constants import SCIPION_SYM_NAME
+from pwem.constants import (SYM_CYCLIC, SYM_TETRAHEDRAL,
                                      SYM_OCTAHEDRAL, SYM_I222, SYM_I222r)
-from pyworkflow.protocol.params import EnumParam, IntParam, Positive
+from pyworkflow.protocol.params import EnumParam, IntParam, Positive, String
 from cryosparc2.constants import (CS_SYM_NAME, SYM_DIHEDRAL_Y,
                                   CRYOSPARC_USER, CRYO_PROJECTS_DIR, CRYOSPARC_DIR)
 

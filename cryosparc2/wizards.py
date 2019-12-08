@@ -24,11 +24,12 @@
 # *  e-mail address 'scipion@cnb.csic.es'
 # *
 # **************************************************************************
-from pyworkflow.em.wizard import *
-from protocols import ProtCryo2D
+from .protocols import ProtCryo2D
 
 
 # Suggested number of images per class
+from pyworkflow.wizard import Wizard
+
 IMAGES_PER_CLASS = 200
 
 
@@ -47,7 +48,6 @@ class ProtCryo2DNumberOfClassesWizard(Wizard):
                 numberOfClasses = int(protocol.inputParticles.get().getSize()/IMAGES_PER_CLASS)
 
         return numberOfClasses
-
 
     def show(self, form):
         form.setVar('numberOfClasses', self._getNumberOfClasses(form.protocol))

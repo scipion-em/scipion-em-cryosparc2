@@ -25,11 +25,10 @@
 # *  e-mail address 'scipion@cnb.csic.es'
 # *
 # **************************************************************************
-from pyworkflow.em import ALIGN_PROJ
 from pyworkflow.protocol.params import (PointerParam, FloatParam, BooleanParam,
                                         StringParam, LEVEL_ADVANCED)
-from pyworkflow.em.data import Volume, FSC
-from pyworkflow.em.protocol import ProtRefine3D
+from pwem.objects import Volume, FSC
+from pwem.protocols import ProtRefine3D
 from cryosparc2.convert import *
 from cryosparc2.utils import *
 from cryosparc2.constants import *

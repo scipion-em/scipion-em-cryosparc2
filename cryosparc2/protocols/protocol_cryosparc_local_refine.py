@@ -27,11 +27,10 @@
 
 import ast
 
-from pyworkflow.em import ALIGN_PROJ
-from pyworkflow.em.protocol import ProtOperateParticles
+from pwem.protocols import ProtOperateParticles
 from pyworkflow.protocol.params import (PointerParam, BooleanParam, FloatParam,
                                         StringParam, LEVEL_ADVANCED)
-from pyworkflow.em.data import Volume, FSC
+from pwem.objects import Volume, FSC
 
 from cryosparc2.convert import *
 from cryosparc2.utils import *

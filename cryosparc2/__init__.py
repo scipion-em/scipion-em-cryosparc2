@@ -26,16 +26,16 @@
 # **************************************************************************
 
 import os
-import pyworkflow.em
+import pwem
 from pyworkflow.utils import Environ
-from constants import *
+from .constants import *
 
 
 _references = ['Punjani2017', 'Brubaker2017']
 _logo = 'cryosparc2_logo.png'
 
 
-class Plugin(pyworkflow.em.Plugin):
+class Plugin(pwem.Plugin):
     _homeVar = CRYOSPARC_HOME
     _pathVars = [CRYOSPARC_HOME]
     _supportedVersions = [V2_5, V2_8, V2_9, V2_11]
@@ -73,4 +73,4 @@ class Plugin(pyworkflow.em.Plugin):
         env.addPipModule('pyem', version='0.4', pipCmd=pyemLibcmd)
 
 
-pyworkflow.em.Domain.registerPlugin(__name__)
+pwem.Domain.registerPlugin(__name__)

@@ -25,15 +25,13 @@
 # *
 # **************************************************************************
 
-from pyworkflow.em.protocol import *
+from pwem.protocols import *
 from pyworkflow.tests import *
-from pyworkflow.utils import importFromPlugin
+from pwem import Domain
 
 from cryosparc2.protocols import *
 from cryosparc2.constants import *
 from cryosparc2.utils import calculateNewSamplingRate
-
-relionProtocols = importFromPlugin('relion.protocols', doRaise=True)
 
 
 class TestCryosparcBase(BaseTest):
@@ -166,6 +164,8 @@ class TestCryosparcClassify2D(TestCryosparcBase):
                                       numberOfMpi=4, numberOfThreads=1)
 
             # Normalization after the imported particles
+            relionProtocols = Domain.importFromPlugin('relion.protocols',
+                                                      doRaise=True)
             relionProtocol = self.newProtocol(relionProtocols.ProtRelionPreprocessParticles,
                                         doNormalize=True,
                                         doScale=True, scaleSize=140,
@@ -212,6 +212,8 @@ class TestCryosparc3DInitialModel(TestCryosparcBase):
                                       numberOfMpi=4, numberOfThreads=1)
 
             # Normalization after the imported particles
+            relionProtocols = Domain.importFromPlugin('relion.protocols',
+                                                      doRaise=True)
             relionProtocol = self.newProtocol(
                 relionProtocols.ProtRelionPreprocessParticles,
                 doNormalize=True,
@@ -258,6 +260,8 @@ class TestCryosparc3DRefinement(TestCryosparcBase):
                                       numberOfMpi=4, numberOfThreads=1)
 
             # Normalization after the imported particles
+            relionProtocols = Domain.importFromPlugin('relion.protocols',
+                                                      doRaise=True)
             relionProtocol = self.newProtocol(
                 relionProtocols.ProtRelionPreprocessParticles,
                 doNormalize=True,
@@ -305,6 +309,8 @@ class TestCryosparcNonUniformRefine3D(TestCryosparcBase):
                                                           numberOfMpi=4, numberOfThreads=1)
 
             # Normalization after the imported particles
+            relionProtocols = Domain.importFromPlugin('relion.protocols',
+                                                      doRaise=True)
             relionProtocol = self.newProtocol(
                 relionProtocols.ProtRelionPreprocessParticles,
                 doNormalize=True,
@@ -352,6 +358,8 @@ class TestCryosparcParticlesSubtract(TestCryosparcBase):
                                                 numberOfThreads=1)
 
             # Normalization after the imported particles
+            relionProtocols = Domain.importFromPlugin('relion.protocols',
+                                                      doRaise=True)
             relionProtocol = self.newProtocol(
                 relionProtocols.ProtRelionPreprocessParticles,
                 doNormalize=True,
@@ -414,6 +422,8 @@ class TestCryosparcLocalRefine(TestCryosparcBase):
                                                 numberOfThreads=1)
 
             # Normalization after the imported particles
+            relionProtocols = Domain.importFromPlugin('relion.protocols',
+                                                      doRaise=True)
             relionProtocol = self.newProtocol(
                 relionProtocols.ProtRelionPreprocessParticles,
                 doNormalize=True,

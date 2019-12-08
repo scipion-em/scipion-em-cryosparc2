@@ -28,11 +28,17 @@ import numpy as np
 import pandas as pd
 from glob import glob
 from os.path import join
+
+from pwem.convert import ImageHandler
 from pyem import metadata
 from pyem import star
-from pyworkflow.em.data import ObjectWrap, String, Integer
+from pwem.objects import (String, Integer, Transform, Particle,
+                          Coordinate, Acquisition, CTFModel)
+from pyworkflow.object import ObjectWrap
 import pyworkflow.utils as pwutils
 from cryosparc2.constants import *
+import pwem.metadata as md
+from pwem.constants import *
 
 import pyworkflow as pw
 
@@ -205,7 +211,7 @@ def cryosparcToLocation(filename):
         indexStr, fn = filename.split('@')
         return int(indexStr), str(fn)
     else:
-        return pw.em.NO_INDEX, str(filename)
+        return NO_INDEX, str(filename)
 
 
 def setOfImagesToMd(imgSet, imgMd, imgToFunc, **kwargs):
@@ -233,7 +239,7 @@ def particleToRow(part, partRow, **kwargs):
     if coord is not None:
         coordinateToRow(coord, partRow, copyId=False)
     if part.hasMicId():
-        partRow.setValue(md.RLN_MICROGRAPH_ID, long(part.getMicId()))
+        partRow.setValue(md.RLN_MICROGRAPH_ID, int(part.getMicId()))
         # If the row does not contains the micrograph name
         # use a fake micrograph name using id to relion
         # could at least group for CTF using that
@@ -241,7 +247,7 @@ def particleToRow(part, partRow, **kwargs):
             partRow.setValue(md.RLN_MICROGRAPH_NAME,
                              'fake_micrograph_%06d.mrc' % part.getMicId())
     if part.hasAttribute('_rlnParticleId'):
-        partRow.setValue(md.RLN_PARTICLE_ID, long(part._rlnParticleId.get()))
+        partRow.setValue(md.RLN_PARTICLE_ID, int(part._rlnParticleId.get()))
 
     if kwargs.get('fillRandomSubset') and part.hasAttribute('_rlnRandomSubset'):
         partRow.setValue(md.RLN_PARTICLE_RANDOM_SUBSET,
@@ -277,14 +283,15 @@ def imageToRow(img, imgRow, imgLabel=md.RLN_IMAGE_NAME, **kwargs):
     # and detected defaults if not passed at readSetOf.. level
     alignType = kwargs.get('alignType')
 
-    if alignType != pw.em.ALIGN_NONE and img.hasTransform():
+    if alignType != ALIGN_NONE and img.hasTransform():
         alignmentToRow(img.getTransform(), imgRow, alignType)
 
     if kwargs.get('writeAcquisition', True) and img.hasAcquisition():
         acquisitionToRow(img.getAcquisition(), imgRow)
 
     # Write all extra labels to the row
-    objectToRow(img, imgRow, {},
+    dictLabel = {}
+    objectToRow(img, imgRow, dictLabel,
                 extraLabels=IMAGE_EXTRA_LABELS + kwargs.get('extraLabels', []))
 
     # Provide a hook to be used if something is needed to be
@@ -314,7 +321,7 @@ def locationTocCryosparc(index, filename):
     """ Convert an index and filename location
     to a string with @ as expected in cryoSPARC.
     """
-    if index != pw.em.NO_INDEX:
+    if index != NO_INDEX:
         return "%06d@%s" % (index, filename)
 
     return filename
@@ -327,9 +334,9 @@ def alignmentToRow(alignment, alignmentRow, alignType):
     invTransform == True  -> for xmipp implies projection
                           -> for xmipp implies alignment
     """
-    is2D = alignType == pw.em.ALIGN_2D
-    is3D = alignType == pw.em.ALIGN_3D
-    inverseTransform = alignType == pw.em.ALIGN_PROJ
+    is2D = alignType == ALIGN_2D
+    is3D = alignType == ALIGN_3D
+    inverseTransform = alignType == ALIGN_PROJ
     matrix = alignment.getMatrix()
     shifts, angles = geometryFromMatrix(matrix, inverseTransform)
 
@@ -342,8 +349,7 @@ def alignmentToRow(alignment, alignmentRow, alignType):
 
         flip = bool(numpy.linalg.det(matrix[0:2, 0:2]) < 0)
         if flip:
-            print
-            "FLIP in 2D not implemented"
+            print("FLIP in 2D not implemented")
     elif is3D:
         raise Exception("3D alignment conversion for Relion not implemented. "
                         "It seems the particles were generated with an "
@@ -359,7 +365,8 @@ def alignmentToRow(alignment, alignmentRow, alignType):
 
 
 def geometryFromMatrix(matrix, inverseTransform):
-    from pyworkflow.em.convert.transformations import translation_from_matrix, euler_from_matrix
+    from pwem.convert.transformations import (translation_from_matrix,
+                                              euler_from_matrix)
 
     if inverseTransform:
         from numpy.linalg import inv
@@ -384,7 +391,7 @@ def coordinateToRow(coord, coordRow, copyId=True):
             coordRow.setValue(md.RLN_MICROGRAPH_NAME, str(coord.getMicId()))
 
 
-def objectToRow(obj, row, attrDict, extraLabels=[]):
+def objectToRow(obj, row, attrDict, extraLabels=None):
     """ This function will convert an EMObject into a XmippMdRow.
     Params:
         obj: the EMObject instance (input)
@@ -396,7 +403,7 @@ def objectToRow(obj, row, attrDict, extraLabels=[]):
     """
     row.setValue(md.RLN_IMAGE_ENABLED, obj.isEnabled())
 
-    for attr, label in attrDict.iteritems():
+    for attr, label in attrDict.items():
         if hasattr(obj, attr):
             valueType = md.label2Python(label)
             row.setValue(label, valueType(getattr(obj, attr).get()))
@@ -411,7 +418,7 @@ def objectToRow(obj, row, attrDict, extraLabels=[]):
 
 
 def setRowId(mdRow, obj, label=md.RLN_IMAGE_ID):
-    mdRow.setValue(label, long(obj.getObjId()))
+    mdRow.setValue(label, int(obj.getObjId()))
 
 
 def convertBinaryVol(vol, outputDir):
@@ -423,7 +430,7 @@ def convertBinaryVol(vol, outputDir):
         new file name of the volume (converted or not).
     """
 
-    ih = pw.em.ImageHandler()
+    ih = ImageHandler()
 
     # This approach can be extended when
     # converting from a binary file format that
@@ -455,13 +462,13 @@ def rowToAlignment(alignmentRow, alignType):
             otherwise matrix is 3D (3D volume alignment or projection)
     invTransform == True  -> for xmipp implies projection
     """
-    if alignType == pw.em.ALIGN_3D:
+    if alignType == ALIGN_3D:
         raise Exception("3D alignment conversion for Relion not implemented.")
 
-    is2D = alignType == pw.em.ALIGN_2D
-    inverseTransform = alignType == pw.em.ALIGN_PROJ
+    is2D = alignType == ALIGN_2D
+    inverseTransform = alignType == ALIGN_PROJ
     if alignmentRow.containsAny(ALIGNMENT_DICT):
-        alignment = pw.em.Transform()
+        alignment = Transform()
         angles = numpy.zeros(3)
         shifts = numpy.zeros(3)
         shifts[0] = alignmentRow.getValue(md.RLN_ORIENT_ORIGIN_X, 0.)
@@ -495,7 +502,7 @@ def matrixFromGeometry(shifts, angles, inverseTransform):
     """ Create the transformation matrix from a given
     2D shifts in X and Y...and the 3 euler angles.
     """
-    from pyworkflow.em.convert.transformations import euler_matrix
+    from pwem.convert.transformations import euler_matrix
     from numpy import deg2rad
     radAngles = -deg2rad(angles)
     M = euler_matrix(radAngles[0], radAngles[1], radAngles[2], 'szyz')
@@ -519,7 +526,7 @@ def convertBinaryFiles(imgSet, outputDir, extension='mrcs'):
         If empty, not conversion was done.
     """
     filesDict = {}
-    ih = pw.em.ImageHandler()
+    ih = ImageHandler()
     outputRoot = os.path.join(outputDir, 'input')
     # Get the extension without the dot
     stackFiles = imgSet.getFiles()
@@ -631,7 +638,7 @@ def cryosPARCwriteSetOfParticles(imgSet, starFile, outputDir, **kwargs):
 def rowToCtfModel(ctfRow):
     """ Create a CTFModel from a row of a meta """
     if ctfRow.containsAll(CTF_DICT):
-        ctfModel = pw.em.CTFModel()
+        ctfModel = CTFModel()
 
         rowToObject(ctfRow, ctfModel, CTF_DICT, extraLabels=CTF_EXTRA_LABELS)
         if ctfRow.hasLabel(md.RLN_CTF_PHASESHIFT):
@@ -685,7 +692,7 @@ def setObjId(obj, mdRow, label=md.RLN_IMAGE_ID):
     obj.setObjId(mdRow.getValue(label, None))
 
 
-def rowToParticle(partRow, particleClass=pw.em.Particle, **kwargs):
+def rowToParticle(partRow, particleClass=Particle, **kwargs):
     """ Create a Particle from a row of a meta """
     img = particleClass()
 
@@ -709,7 +716,7 @@ def rowToParticle(partRow, particleClass=pw.em.Particle, **kwargs):
     # and detected defaults if not passed at readSetOf.. level
     alignType = kwargs.get('alignType')
 
-    if alignType != pw.em.ALIGN_NONE:
+    if alignType != ALIGN_NONE:
         img.setTransform(rowToAlignment(partRow, alignType))
 
     if kwargs.get('readAcquisition', True):
@@ -720,7 +727,8 @@ def rowToParticle(partRow, particleClass=pw.em.Particle, **kwargs):
 
     setObjId(img, partRow)
     # Read some extra labels
-    rowToObject(partRow, img, {},
+    extraLabel = {}
+    rowToObject(partRow, img, extraLabel,
                 extraLabels=IMAGE_EXTRA_LABELS + kwargs.get('extraLabels', []))
 
     img.setCoordinate(rowToCoordinate(partRow))
@@ -745,7 +753,7 @@ def rowToCoordinate(coordRow):
     """ Create a Coordinate from a row of a meta """
     # Check that all required labels are present in the row
     if coordRow.containsAll(COOR_DICT):
-        coord = pw.em.Coordinate()
+        coord = Coordinate()
         rowToObject(coordRow, coord, COOR_DICT, extraLabels=COOR_EXTRA_LABELS)
 
         micName = None
@@ -770,7 +778,7 @@ def rowToCoordinate(coordRow):
 def rowToAcquisition(acquisitionRow):
     """ Create an acquisition from a row of a meta """
     if acquisitionRow.containsAll(ACQUISITION_DICT):
-        acquisition = pw.em.Acquisition()
+        acquisition = Acquisition()
         rowToObject(acquisitionRow, acquisition, ACQUISITION_DICT)
     else:
         acquisition = None
