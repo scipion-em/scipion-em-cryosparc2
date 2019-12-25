@@ -27,15 +27,15 @@
 import sys
 import webbrowser
 
-import pyworkflow.em.viewers.showj as showj
+import pwem.viewers.showj as showj
 from pyworkflow.protocol.params import LabelParam
 from pyworkflow.viewer import ProtocolViewer, DESKTOP_TKINTER
-from pyworkflow.em.viewers import ( ClassesView, Classes3DView)
-from cryosparc2.protocols import ProtCryo2D
+from pwem.viewers import ClassesView, Classes3DView
 
-from cryosparc2.constants import *
-from cryosparc2.utils import *
-from cryosparc2 import Plugin
+from ..protocols import ProtCryo2D
+from ..constants import *
+from ..utils import *
+from .. import Plugin
 
 AX_X = 0
 AX_Y = 1
@@ -147,6 +147,3 @@ class CryosPARCViewer2D(ProtocolViewer):
                           viewParams=viewParams)
 
         return view
-
-
-
