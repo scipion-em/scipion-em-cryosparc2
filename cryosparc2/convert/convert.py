@@ -36,11 +36,11 @@ from pwem.objects import (String, Integer, Transform, Particle,
                           Coordinate, Acquisition, CTFModel)
 from pyworkflow.object import ObjectWrap
 import pyworkflow.utils as pwutils
-from cryosparc2.constants import *
 import pwem.metadata as md
 from pwem.constants import *
-
 import pyworkflow as pw
+
+from ..constants import *
 
 
 def convertCs2SQlite(args):
@@ -103,7 +103,7 @@ def convertCs2Star(args):
     log = logging.getLogger('root')
     hdlr = logging.StreamHandler(sys.stdout)
     log.addHandler(hdlr)
-    #log.setLevel(logging.getLevelName(args.loglevel.upper()))
+    # log.setLevel(logging.getLevelName(args.loglevel.upper()))
     log.setLevel(logging.DEBUG)
     if args.input[0].endswith(".cs"):
         log.debug("Detected CryoSPARC 2+ .cs file")
@@ -192,7 +192,8 @@ def defineArgs():
                         help="Keep paths from the Cryosparc 2+ cache when merging coordinates",
                         action="store_true")
     parser.add_argument("--transform",
-                        help="Apply rotation matrix or 3x4 rotation plus translation matrix to particles (Numpy format)",
+                        help="Apply rotation matrix or 3x4 rotation plus "
+                             "translation matrix to particles (Numpy format)",
                         type=str)
     parser.add_argument("--loglevel", "-l", type=str, default="WARNING",
                         help="Logging level and debug output")
@@ -254,9 +255,9 @@ def particleToRow(part, partRow, **kwargs):
                          int(part._rlnRandomSubset.get()))
         if part.hasAttribute('_rlnBeamTiltX'):
             partRow.setValue('rlnBeamTiltX',
-                         float(part._rlnBeamTiltX.get()))
+                             float(part._rlnBeamTiltX.get()))
             partRow.setValue('rlnBeamTiltY',
-                         float(part._rlnBeamTiltY.get()))
+                             float(part._rlnBeamTiltY.get()))
 
     imageToRow(part, partRow, md.RLN_IMAGE_NAME, **kwargs)
 
@@ -656,7 +657,7 @@ def setPsdFiles(ctfModel, ctfRow):
     to this ctfModel. The values will be read from
     the ctfRow if present.
     """
-    for attr, label in CTF_PSD_DICT.iteritems():
+    for attr, label in CTF_PSD_DICT.items():
         if ctfRow.containsLabel(label):
             setattr(ctfModel, attr, String(ctfRow.getValue(label)))
 
@@ -673,7 +674,7 @@ def rowToObject(row, obj, attrDict, extraLabels=[]):
     """
     obj.setEnabled(row.getValue(md.RLN_IMAGE_ENABLED, 1) > 0)
 
-    for attr, label in attrDict.iteritems():
+    for attr, label in attrDict.items():
         value = row.getValue(label)
         if not hasattr(obj, attr):
             setattr(obj, attr, ObjectWrap(value))

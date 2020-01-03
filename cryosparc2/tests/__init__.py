@@ -24,3 +24,5 @@
 # *  e-mail address 'scipion@cnb.csic.es'
 # *
 # **************************************************************************
+
+from .test_protocols_cryosparc2 import *

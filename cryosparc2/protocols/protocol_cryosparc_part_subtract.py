@@ -28,10 +28,10 @@ from pwem.protocols import ProtOperateParticles
 from pyworkflow.protocol.params import (PointerParam, BooleanParam, FloatParam,
                                         StringParam, LEVEL_ADVANCED)
 
-from cryosparc2.convert import *
-from cryosparc2.convert.convert import writeSetOfParticles
-from cryosparc2.utils import *
-from cryosparc2.constants import *
+from ..convert import *
+# from ..convert.convert import writeSetOfParticles
+from ..utils import *
+from ..constants import *
 
 
 class ProtCryoSparcSubtract(ProtOperateParticles):
@@ -147,6 +147,7 @@ class ProtCryoSparcSubtract(ProtOperateParticles):
         form.addParam('compute_lane', StringParam, default='default',
                       label='Lane name:',
                       help='The scheduler lane name to add the protocol execution')
+
     # --------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
         self._createFilenameTemplates()
@@ -172,7 +173,7 @@ class ProtCryoSparcSubtract(ProtOperateParticles):
                                        self.refVolume.get(),
                                        self._getTmpPath()))
         self.importVolume = doImportVolumes(self, self.vol_fn, 'map',
-                                                 'Importing volume...')
+                                            'Importing volume...')
         self.currenJob.set(self.importVolume.get())
         self._store(self)
 
@@ -183,7 +184,7 @@ class ProtCryoSparcSubtract(ProtOperateParticles):
                                            self._getTmpPath()))
 
         self.importMask = doImportVolumes(self, self.maskFn, 'mask',
-                                               'Importing mask... ')
+                                          'Importing mask... ')
         self.currenJob.set(self.importMask.get())
         self._store(self)
 
@@ -203,13 +204,11 @@ class ProtCryoSparcSubtract(ProtOperateParticles):
 
         # Create the output folder
         os.system("cp -r " + self.projectPath + "/" + self.projectName.get() + '/' +
-            self.runPartStract.get() + " " + self._getExtraPath())
+                  self.runPartStract.get() + " " + self._getExtraPath())
 
         csFileName = "subtracted_particles.cs"
         csFile = os.path.join(self._getExtraPath(), self.runPartStract.get(),
                               csFileName)
-
-
 
         argsList = [csFile, outputStarFn]
 
@@ -230,16 +229,16 @@ class ProtCryoSparcSubtract(ProtOperateParticles):
 
         outImgsFn = self._getFileName('out_particles')
         readSetOfParticles(outImgsFn, imgSet,
-                                          postprocessImageRow=self._updateItem,
-                                          alignType=ALIGN_PROJ)
+                           postprocessImageRow=self._updateItem,
+                           alignType=ALIGN_PROJ)
 
     def _updateItem(self, item, row):
         newFn = row.getValue(md.RLN_IMAGE_NAME)
         index, file = cryosparcToLocation(newFn)
         item.setLocation((index, self._getExtraPath(file)))
         item.setSamplingRate(calculateNewSamplingRate(item.getDim(),
-                                                 self._getInputParticles().getSamplingRate(),
-                                                 self._getInputParticles().getDim()))
+                                                      self._getInputParticles().getSamplingRate(),
+                                                      self._getInputParticles().getDim()))
 
     def setAborted(self):
         """ Set the status to aborted and updated the endTime. """

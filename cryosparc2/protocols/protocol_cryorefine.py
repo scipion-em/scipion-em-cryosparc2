@@ -29,9 +29,10 @@ from pyworkflow.protocol.params import (PointerParam, FloatParam, BooleanParam,
                                         StringParam, LEVEL_ADVANCED)
 from pwem.objects import Volume, FSC
 from pwem.protocols import ProtRefine3D
-from cryosparc2.convert import *
-from cryosparc2.utils import *
-from cryosparc2.constants import *
+
+from ..convert import *
+from ..utils import *
+from ..constants import *
 
 import os
 import ast
@@ -62,11 +63,11 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
                       validators=[Positive],
                       help='Select the input images from the project.')
         form.addParam('referenceVolume', PointerParam, pointerClass='Volume',
-                       important=True,
-                       label="Input volume",
-                       help='Initial reference 3D map, it should have the same '
-                            'dimensions and the same pixel size as your input '
-                            'particles.')
+                      important=True,
+                      label="Input volume",
+                      help='Initial reference 3D map, it should have the same '
+                           'dimensions and the same pixel size as your input '
+                           'particles.')
         form.addParam('refMask', PointerParam, pointerClass='VolumeMask',
                       default=None,
                       label='Mask to be applied to this map(Optional)',
@@ -331,7 +332,7 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
                                    convertBinaryVol(self.referenceVolume.get(),
                                                     self._getTmpPath()))
         self.importVolume = doImportVolumes(self, self.vol_fn, 'map',
-                                                 'Importing volume...')
+                                            'Importing volume...')
         self.currenJob.set(self.importVolume.get())
         self._store(self)
 
@@ -341,7 +342,7 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
                                                         self._getTmpPath()))
 
             self.importMask = doImportVolumes(self, self.maskFn, 'mask',
-                                                   'Importing mask... ')
+                                              'Importing mask... ')
             self.currenJob.set(self.importMask.get())
             self._store(self)
             self.mask = self.importMask.get() + '.imported_mask.mask'
@@ -369,7 +370,7 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
 
         # Find the ID of last iteration
         for y in x:
-            if y.has_key('text'):
+            if 'text' in y:
                 z = str(y['text'])
                 if z.startswith('FSC'):
                     idd = y['imgfiles'][2]['fileid']
@@ -417,7 +418,6 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
         os.system("cp -r " + half2 + " " + self._getExtraPath())
         half2 = os.path.join(self._getExtraPath(), half2Name)
 
-
         imgSet = self._getInputParticles()
         vol = Volume()
         vol.setFileName(fnVol)
@@ -440,9 +440,9 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
         os.system("mv " + self._getExtraPath() + "/" + idd + " " +
                   self._getExtraPath()+"/fsc.txt")
         # Convert into scipion fsc format
-        f=open(self._getExtraPath()+"/fsc.txt", "r")
-        lines=f.readlines()
-        wv=[]
+        f = open(self._getExtraPath()+"/fsc.txt", "r")
+        lines = f.readlines()
+        wv = []
         corr = []
         for x in lines[1:-1]:
             wv.append(str(float(x.split('\t')[0])/(int(self._getInputParticles().getDim()[0])*float(imgSet.getSamplingRate()))))
@@ -514,7 +514,7 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
     def _createItemMatrix(self, particle, row):
         createItemMatrix(particle, row, align=ALIGN_PROJ)
         setCryosparcAttributes(particle, row,
-                                          md.RLN_PARTICLE_RANDOM_SUBSET)
+                               md.RLN_PARTICLE_RANDOM_SUBSET)
 
     def _initializeUtilsVariables(self):
         """
@@ -563,11 +563,10 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
         if getJobStatus(self.projectName.get(),
                         self.importedParticles.get()) != STATUS_COMPLETED:
             raise Exception("An error occurred importing the particles. "
-                           "Please, go to cryosPARC software for more "
-                           "details.")
+                            "Please, go to cryosPARC software for more "
+                            "details.")
 
         self.par = String(self.importedParticles.get() + '.imported_particles')
-
 
     def _defineParamsName(self):
         """ Define a list with all protocol parameters names"""

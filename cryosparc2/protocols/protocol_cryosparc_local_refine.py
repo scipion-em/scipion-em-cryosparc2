@@ -32,9 +32,9 @@ from pyworkflow.protocol.params import (PointerParam, BooleanParam, FloatParam,
                                         StringParam, LEVEL_ADVANCED)
 from pwem.objects import Volume, FSC
 
-from cryosparc2.convert import *
-from cryosparc2.utils import *
-from cryosparc2.constants import *
+from ..convert import *
+from ..utils import *
+from ..constants import *
 
 
 class ProtCryoSparcLocalRefine(ProtOperateParticles):
@@ -88,7 +88,6 @@ class ProtCryoSparcLocalRefine(ProtOperateParticles):
 
         # -----------[Local Refinement]------------------------
         form.addSection(label="Naive local refinement")
-
 
         # form.addParam('fulcx', IntParam, default=0,
         #               label='Fulcrum, x-coordinate',
@@ -146,7 +145,6 @@ class ProtCryoSparcLocalRefine(ProtOperateParticles):
         form.addParam('n_iterations', IntParam, default=1,
                       validators=[Positive],
                       label='Override number of iterations')
-
 
         # -----[Non Uniform Refinement]----------------------------------------
 
@@ -343,7 +341,7 @@ class ProtCryoSparcLocalRefine(ProtOperateParticles):
                                            self._getTmpPath()))
 
         self.importMask = doImportVolumes(self, self.maskFn, 'mask',
-                                               'Importing mask... ')
+                                          'Importing mask... ')
         self.currenJob.set(self.importMask.get())
         self._store(self)
 
@@ -370,7 +368,7 @@ class ProtCryoSparcLocalRefine(ProtOperateParticles):
 
         # Find the ID of last iteration
         for y in x:
-            if y.has_key('text'):
+            if 'text' in y:
                 z = str(y['text'])
                 if z.startswith('FSC'):
                     idd = y['imgfiles'][2]['fileid']
@@ -460,13 +458,11 @@ class ProtCryoSparcLocalRefine(ProtOperateParticles):
         self._defineOutputs(outputFSC=fsc)
         self._defineSourceRelation(vol, fsc)
 
-
     def setAborted(self):
         """ Set the status to aborted and updated the endTime. """
         ProtOperateParticles.setAborted(self)
         killJob(str(self.projectName.get()), str(self.currenJob.get()))
         clearJob(str(self.projectName.get()), str(self.currenJob.get()))
-
 
     # --------------------------- INFO functions -------------------------------
     def _validate(self):

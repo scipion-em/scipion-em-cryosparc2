@@ -27,13 +27,15 @@
 import os
 import subprocess
 import pyworkflow.utils as pwutils
-from cryosparc2 import Plugin
 from pwem.constants import SCIPION_SYM_NAME
 from pwem.constants import (SYM_CYCLIC, SYM_TETRAHEDRAL,
-                                     SYM_OCTAHEDRAL, SYM_I222, SYM_I222r)
+                            SYM_OCTAHEDRAL, SYM_I222, SYM_I222r)
 from pyworkflow.protocol.params import EnumParam, IntParam, Positive, String
-from cryosparc2.constants import (CS_SYM_NAME, SYM_DIHEDRAL_Y,
-                                  CRYOSPARC_USER, CRYO_PROJECTS_DIR, CRYOSPARC_DIR)
+from pyworkflow.plugin import Domain
+
+from . import Plugin
+from .constants import (CS_SYM_NAME, SYM_DIHEDRAL_Y,
+                        CRYOSPARC_USER, CRYO_PROJECTS_DIR, CRYOSPARC_DIR)
 
 
 STATUS_FAILED = "failed"
@@ -73,8 +75,8 @@ def cryosparcExist():
     """
     msg = []
     if getCryosparcDir() is not None and not os.path.exists(getCryosparcDir()):
-       msg.append(('The cryoSPARC software do not exist in %s. Please install it')
-                  % str(os.environ[CRYOSPARC_DIR]))
+        msg.append('The cryoSPARC software do not exist in %s. Please install it'
+                   % str(os.environ[CRYOSPARC_DIR]))
     return msg
 
 
@@ -86,7 +88,7 @@ def isCryosparcRunning():
     status = -1
     if getCryosparcProgram() is not None:
         test_conection_cmd = (getCryosparcProgram() +
-                                    ' %stest_connection()%s ' % ("'", "'"))
+                              ' %stest_connection()%s ' % ("'", "'"))
         test_conection = subprocess.getstatusoutput(test_conection_cmd)
         status = test_conection[0]
 
@@ -115,6 +117,7 @@ def getCryosparcProjectsDir():
         os.mkdir(cryoProject_Dir)
 
     return cryoProject_Dir
+
 
 def getProjectPath(projectDir):
     """
@@ -160,8 +163,8 @@ def createProjectDir(project_container_dir):
               time it is used)
     """
     create_project_dir_cmd = (getCryosparcProgram() +
-                             ' %scheck_or_create_project_container_dir("%s")%s '
-                             % ("'", project_container_dir, "'"))
+                              ' %scheck_or_create_project_container_dir("%s")%s '
+                              % ("'", project_container_dir, "'"))
     return subprocess.getstatusoutput(create_project_dir_cmd)
 
 
@@ -195,7 +198,7 @@ def doImportParticlesStar(protocol):
               }
 
     p = enqueueJob(className, protocol.projectName, protocol.workSpaceName,
-                        str(params).replace('\'', '"'), '{}', protocol.lane)
+                   str(params).replace('\'', '"'), '{}', protocol.lane)
 
     import_particles = String(p[-1].split()[-1])
 
@@ -206,8 +209,8 @@ def doImportParticlesStar(protocol):
     if getJobStatus(protocol.projectName.get(),
                     import_particles.get()) != STATUS_COMPLETED:
         raise Exception("An error occurred importing the volume. "
-                       "Please, go to cryosPARC software for more "
-                       "details.")
+                        "Please, go to cryosPARC software for more "
+                        "details.")
 
     return import_particles
 
@@ -224,7 +227,7 @@ def doImportVolumes(protocol, refVolume, volType, msg):
                   protocol._getInputParticles().getSamplingRate())}
 
     v = enqueueJob(className, protocol.projectName, protocol.workSpaceName,
-                 str(params).replace('\'', '"'), '{}', protocol.lane)
+                   str(params).replace('\'', '"'), '{}', protocol.lane)
 
     importedVolume = String(v[-1].split()[-1])
 
@@ -235,8 +238,8 @@ def doImportVolumes(protocol, refVolume, volType, msg):
     if getJobStatus(protocol.projectName.get(),
                     importedVolume.get()) != STATUS_COMPLETED:
         raise Exception("An error occurred importing the volume. "
-                       "Please, go to cryosPARC software for more "
-                       "details.")
+                        "Please, go to cryosPARC software for more "
+                        "details.")
 
     return importedVolume
 
@@ -262,9 +265,9 @@ def enqueueJob(jobType, projectName, workSpaceName, params, input_group_conect,
              created_by_job_uid=None, params={}, input_group_connects={})
     """
     make_job_cmd = (getCryosparcProgram() +
-                  ' %smake_job("%s","%s","%s", "%s", "None", %s, %s)%s' %
-                  ("'", jobType, projectName, workSpaceName, getCryosparcUser(),
-                   params, input_group_conect, "'"))
+                    ' %smake_job("%s","%s","%s", "%s", "None", %s, %s)%s' %
+                    ("'", jobType, projectName, workSpaceName, getCryosparcUser(),
+                     params, input_group_conect, "'"))
 
     print(pwutils.greenStr(make_job_cmd))
     make_job = subprocess.getstatusoutput(make_job_cmd)
@@ -387,7 +390,7 @@ def getSymmetry(symmetryGroup, symmetryOrder):
     """
     symmetry = {
         0: CS_SYM_NAME[SYM_CYCLIC][0] + str(symmetryOrder),  # Cn
-        1: CS_SYM_NAME[SYM_DIHEDRAL_Y][0] + str(symmetryOrder),  #Dn
+        1: CS_SYM_NAME[SYM_DIHEDRAL_Y][0] + str(symmetryOrder),  # Dn
         2: CS_SYM_NAME[SYM_TETRAHEDRAL],  # T
         3: CS_SYM_NAME[SYM_OCTAHEDRAL],  # O
         4: CS_SYM_NAME[SYM_I222],  # I1
@@ -415,5 +418,5 @@ def scaleSpline(inputFn, outputFn, Xdim, Ydim):
     program = "xmipp_image_resize"
     args = "-i %s -o %s --dim %d %d --interp spline" % (inputFn, outputFn, Xdim,
                                                         Ydim)
-    xmipp3 = pwutils.importFromPlugin('xmipp3', doRaise=True)
+    xmipp3 = Domain.importFromPlugin('xmipp3', doRaise=True)
     xmipp3.Plugin.runXmippProgram(program, args)

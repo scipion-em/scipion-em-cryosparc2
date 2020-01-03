@@ -33,9 +33,9 @@ from pyworkflow.wizard import Wizard
 IMAGES_PER_CLASS = 200
 
 
-#===============================================================================
+# =============================================================================
 # NUMBER OF CLASSES
-#===============================================================================
+# =============================================================================
 class ProtCryo2DNumberOfClassesWizard(Wizard):
     _targets = [(ProtCryo2D, ['numberOfClasses'])]
 
@@ -44,10 +44,10 @@ class ProtCryo2DNumberOfClassesWizard(Wizard):
         numberOfClasses = 64
 
         if protocol.inputParticles.hasValue():
-            if (protocol.inputParticles.get().getSize() > IMAGES_PER_CLASS):
+            if protocol.inputParticles.get().getSize() > IMAGES_PER_CLASS:
                 numberOfClasses = int(protocol.inputParticles.get().getSize()/IMAGES_PER_CLASS)
 
         return numberOfClasses
 
-    def show(self, form):
+    def show(self, form, *args):
         form.setVar('numberOfClasses', self._getNumberOfClasses(form.protocol))

@@ -28,9 +28,10 @@
 from pyworkflow.protocol.params import (PointerParam, FloatParam, BooleanParam,
                                         LEVEL_ADVANCED, StringParam)
 from pwem.protocols import ProtInitialVolume, ProtClassify3D
-from cryosparc2.convert import *
-from cryosparc2.utils import *
-from cryosparc2.constants import *
+
+from ..convert import *
+from ..utils import *
+from ..constants import *
 
 
 class ProtCryoSparcInitialModel(ProtInitialVolume, ProtClassify3D):
@@ -40,6 +41,7 @@ class ProtCryoSparcInitialModel(ProtInitialVolume, ProtClassify3D):
     """
     _label = 'initial model'
     # --------------------------- DEFINE param functions ----------------------
+
     def _defineFileNames(self):
         """ Centralize how files are called within the protocol. """
         myDict = {
@@ -308,9 +310,9 @@ class ProtCryoSparcInitialModel(ProtInitialVolume, ProtClassify3D):
         Create the protocol output. Convert cryosparc file to Relion file
         """
         self._initializeUtilsVariables()
-        print (pwutils.greenStr("Creating the output..."))
+        print(pwutils.greenStr("Creating the output..."))
 
-        csFileName = ("cryosparc_" +  self.projectName.get() + "_" +
+        csFileName = ("cryosparc_" + self.projectName.get() + "_" +
                       self.runAbinit.get() + "_final_particles.cs")
 
         ouputsPath = os.path.join(self.projectPath, self.projectName.get(),
@@ -323,7 +325,6 @@ class ProtCryoSparcInitialModel(ProtInitialVolume, ProtClassify3D):
         # Copy the particles to scipion output folder
         os.system("cp -r " + ouputsPath + "/" + "*final*" + " " + outputFolder)
         csFile = os.path.join(outputFolder, csFileName)
-
 
         outputClassFn = self._getFileName('out_particles')
         argsList = [csFile, outputClassFn]
@@ -342,8 +343,8 @@ class ProtCryoSparcInitialModel(ProtInitialVolume, ProtClassify3D):
             output_file.write('_rlnReferenceImage')
             output_file.write('\n')
             for i in range(int(self.abinit_K.get())):
-                output_file.write("%02d"%(i+1)+"@"+self._getExtraPath() + "/" + self.runAbinit.get() + "/cryosparc_" +\
-                self.projectName.get() + "_"+self.runAbinit.get() + "_class_%02d"%i +
+                output_file.write("%02d" % (i+1)+"@"+self._getExtraPath() + "/" + self.runAbinit.get() + "/cryosparc_" +
+                                  self.projectName.get() + "_"+self.runAbinit.get() + "_class_%02d" % i +
                                   "_final_volume.mrc\n")
 
         imgSet = self._getInputParticles()
@@ -388,7 +389,7 @@ class ProtCryoSparcInitialModel(ProtInitialVolume, ProtClassify3D):
     def _summary(self):
         summary = []
         if (not hasattr(self, 'outputVolumes') or
-            not hasattr(self, 'outputClasses')):
+                not hasattr(self, 'outputClasses')):
             summary.append("Output objects not ready yet.")
         else:
             summary.append("Input Particles: %s" %
@@ -447,8 +448,8 @@ class ProtCryoSparcInitialModel(ProtInitialVolume, ProtClassify3D):
             vol = item.getRepresentative()
             vol.setLocation(index, fn)
             vol.setSamplingRate(calculateNewSamplingRate(vol.getDim(),
-                                                          self._getInputParticles().getSamplingRate(),
-                                                          self._getInputParticles().getDim()))
+                                                         self._getInputParticles().getSamplingRate(),
+                                                         self._getInputParticles().getDim()))
 
     def _initializeUtilsVariables(self):
         """
@@ -505,27 +506,27 @@ class ProtCryoSparcInitialModel(ProtInitialVolume, ProtClassify3D):
     def _defineParamsName(self):
         """ Define a list with all protocol parameters names"""
         self._paramsName = ['abinit_K', 'abinit_max_res', 'abinit_init_res',
-                           'abinit_num_init_iters', 'abinit_num_final_iters',
-                           'abinit_radwn_step', 'abinit_window',
-                           'abinit_center',
-                           'abinit_scale_mg_correct', 'abinit_scale_compute',
-                           'abinit_mom', 'abinit_sparsity',
-                           'abinit_minisize_init',
-                           'abinit_minisize', 'abinit_minisize_epsilon',
-                           'abinit_minisize_minp',
-                           'abinit_minisize_num_init_iters',
-                           'abinit_noise_model', 'abinit_noise_priorw',
-                           'abinit_noise_initw', 'abinit_class_anneal_beta',
-                           'abinit_class_anneal_start',
-                           'abinit_class_anneal_end',
-                           'abinit_target_initial_ess_fraction',
-                           'abinit_symmetry',
-                           'abinit_r_grid', 'abinit_high_lr_duration',
-                           'abinit_high_lr',
-                           'abinit_nonneg', 'abinit_ignore_dc',
-                           'abinit_init_radwn_cutoff',
-                           'abinit_search_start_iter', 'abinit_use_engine',
-                           'intermediate_plots', 'compute_use_ssd']
+                            'abinit_num_init_iters', 'abinit_num_final_iters',
+                            'abinit_radwn_step', 'abinit_window',
+                            'abinit_center',
+                            'abinit_scale_mg_correct', 'abinit_scale_compute',
+                            'abinit_mom', 'abinit_sparsity',
+                            'abinit_minisize_init',
+                            'abinit_minisize', 'abinit_minisize_epsilon',
+                            'abinit_minisize_minp',
+                            'abinit_minisize_num_init_iters',
+                            'abinit_noise_model', 'abinit_noise_priorw',
+                            'abinit_noise_initw', 'abinit_class_anneal_beta',
+                            'abinit_class_anneal_start',
+                            'abinit_class_anneal_end',
+                            'abinit_target_initial_ess_fraction',
+                            'abinit_symmetry',
+                            'abinit_r_grid', 'abinit_high_lr_duration',
+                            'abinit_high_lr',
+                            'abinit_nonneg', 'abinit_ignore_dc',
+                            'abinit_init_radwn_cutoff',
+                            'abinit_search_start_iter', 'abinit_use_engine',
+                            'intermediate_plots', 'compute_use_ssd']
         self.lane = str(self.getAttributeValue('compute_lane'))
 
     def doRunAbinit(self):

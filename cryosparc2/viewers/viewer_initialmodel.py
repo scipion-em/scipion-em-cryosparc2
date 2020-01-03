@@ -28,13 +28,13 @@
 import webbrowser
 
 from pyworkflow.viewer import (ProtocolViewer, DESKTOP_TKINTER, WEB_DJANGO)
-import pyworkflow.em.viewers.showj as showj
-from pyworkflow.em.viewers import ObjectView
+import pwem.viewers.showj as showj
+from pwem.viewers import ObjectView
 from pyworkflow.protocol.params import (LabelParam)
 
-from cryosparc2.constants import *
-from cryosparc2.utils import *
-from cryosparc2.protocols import ProtCryoSparcInitialModel
+from ..constants import *
+from ..utils import *
+from ..protocols import ProtCryoSparcInitialModel
 
 
 class CryosPARCViewerInitialModel(ProtocolViewer):
@@ -59,7 +59,7 @@ class CryosPARCViewerInitialModel(ProtocolViewer):
                        label='Display volume with',
                        help='*dataViewer*: display volumes as surface with Scipion.\n'
                             '*cryoSPARC: display volumes as surface with cryoSPARC')
-                      # '*slices*: display volumes as 2D slices along z axis.\n'
+        # '*slices*: display volumes as 2D slices along z axis.\n'
 
     def _getVisualizeDict(self):
         self._load()
@@ -75,9 +75,9 @@ class CryosPARCViewerInitialModel(ProtocolViewer):
         labels = 'enabled id _size _representative._filename '
 
         view.append(ObjectView(self._project, obj.strId(), fn,
-                                      viewParams={showj.MODE: showj.MODE_MD,
-                                                  showj.VISIBLE: labels,
-                                                  showj.RENDER: '_representative._filename'}))
+                               viewParams={showj.MODE: showj.MODE_MD,
+                                           showj.VISIBLE: labels,
+                                           showj.RENDER: '_representative._filename'}))
         return view
 
     def _visualizeVolumes(self, paramName=None):
@@ -124,16 +124,12 @@ class CryosPARCViewerInitialModel(ProtocolViewer):
                                           OBJCMD_INITVOL)
 
         view.append(ObjectView(self._project, obj.strId(), fn,
-                                          viewParams={showj.MODE: showj.MODE_MD,
-                                                      showj.VISIBLE: labels,
-                                                      showj.RENDER: '_filename',
-                                                      showj.OBJCMDS: objCommands}))
+                               viewParams={showj.MODE: showj.MODE_MD,
+                                           showj.VISIBLE: labels,
+                                           showj.RENDER: '_filename',
+                                           showj.OBJCMDS: objCommands}))
         return view
 
     def _load(self):
         """ Load the 3D classes and volumes for visualization mode. """
         self.protocol._defineFileNames()
-
-
-
-
