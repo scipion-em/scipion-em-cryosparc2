@@ -30,15 +30,8 @@ from pwem.constants import (
     SYM_CYCLIC, SYM_TETRAHEDRAL, SYM_OCTAHEDRAL, SYM_I222,
     SYM_I222r)
 
-# Not yet release in Scipion, once is released this try /catch import can be
-# removed
-try:
-    from pwem.constants import SYM_DIHEDRAL_Y
-except ImportError:
-    from pwem import SCIPION_SYM_NAME
-    SYM_DIHEDRAL_Y = 12
-    SCIPION_SYM_NAME[SYM_DIHEDRAL_Y] = "Dyn"
 
+from pwem.constants import SYM_DIHEDRAL_Y
 # Root folder where cryosparc is installed, we will look here for the client
 CRYOSPARC_HOME = 'CRYOSPARC_HOME'
 CRYOSPARC_DIR = 'CRYOSPARC_DIR'  # Legacy, replaced by CRYOSPARC_HOME

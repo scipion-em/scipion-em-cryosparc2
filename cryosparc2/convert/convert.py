@@ -392,7 +392,7 @@ def coordinateToRow(coord, coordRow, copyId=True):
             coordRow.setValue(md.RLN_MICROGRAPH_NAME, str(coord.getMicId()))
 
 
-def objectToRow(obj, row, attrDict, extraLabels=None):
+def objectToRow(obj, row, attrDict, extraLabels=[]):
     """ This function will convert an EMObject into a XmippMdRow.
     Params:
         obj: the EMObject instance (input)
