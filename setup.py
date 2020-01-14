@@ -200,4 +200,7 @@ setup(
         'Bug Reports': 'https://github.com/scipion-em/scipion-em-cryosparc2/issues',
         'Source': 'https://github.com/scipion-em/scipion-em-cryosparc2/',
     },
+    entry_points={
+        'pyworkflow.plugin': 'cryosparc2 = cryosparc2'
+    },
 )
