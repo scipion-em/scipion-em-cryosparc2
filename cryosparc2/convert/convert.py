@@ -532,7 +532,7 @@ def convertBinaryFiles(imgSet, outputDir, extension='mrcs'):
     # Get the extension without the dot
     stackFiles = imgSet.getFiles()
     ext = pw.utils.getExt(next(iter(stackFiles)))[1:]
-    rootDir = pw.utils.commonPath(stackFiles)
+    rootDir = pw.utils.commonPath(list(stackFiles))
 
     def getUniqueFileName(fn, extension):
         """ Get an unique file for either link or convert files.
