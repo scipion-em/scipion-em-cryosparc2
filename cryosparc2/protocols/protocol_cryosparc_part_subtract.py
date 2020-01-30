@@ -29,7 +29,6 @@ from pyworkflow.protocol.params import (PointerParam, BooleanParam, FloatParam,
                                         StringParam, LEVEL_ADVANCED)
 
 from ..convert import *
-# from ..convert.convert import writeSetOfParticles
 from ..utils import *
 from ..constants import *
 

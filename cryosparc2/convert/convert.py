@@ -29,7 +29,7 @@ import pandas as pd
 from glob import glob
 from os.path import join
 
-from pwem.convert import ImageHandler
+from pwem.emlib.image import ImageHandler
 from pyem import metadata
 from pyem import star
 from pwem.objects import (String, Integer, Transform, Particle,

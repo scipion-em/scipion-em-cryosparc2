@@ -25,7 +25,7 @@
 # *
 # **************************************************************************
 from collections import OrderedDict
-import pwem.metadata as md
+import pwem.emlib.metadata as md
 from pwem.constants import (
     SYM_CYCLIC, SYM_TETRAHEDRAL, SYM_OCTAHEDRAL, SYM_I222,
     SYM_I222r)
