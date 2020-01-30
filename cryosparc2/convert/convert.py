@@ -36,7 +36,6 @@ from pwem.objects import (String, Integer, Transform, Particle,
                           Coordinate, Acquisition, CTFModel)
 from pyworkflow.object import ObjectWrap
 import pyworkflow.utils as pwutils
-import pwem.metadata as md
 from pwem.constants import *
 import pyworkflow as pw
 
