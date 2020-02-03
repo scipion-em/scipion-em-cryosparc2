@@ -409,14 +409,3 @@ def calculateNewSamplingRate(newDims, previousSR, previousDims):
     pX = previousDims[0]
     nX = newDims[0]
     return previousSR*pX/nX
-
-
-def scaleSpline(inputFn, outputFn, Xdim, Ydim):
-    """ Scale an image using splines. """
-    # TODO: Avoid using xmipp program for this
-
-    program = "xmipp_image_resize"
-    args = "-i %s -o %s --dim %d %d --interp spline" % (inputFn, outputFn, Xdim,
-                                                        Ydim)
-    xmipp3 = Domain.importFromPlugin('xmipp3', doRaise=True)
-    xmipp3.Plugin.runXmippProgram(program, args)

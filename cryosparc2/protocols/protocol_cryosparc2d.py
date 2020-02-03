@@ -28,6 +28,7 @@
 
 
 from pwem.protocols import ProtClassify2D
+from pwem.emlib.image import ImageHandler
 from pyworkflow.protocol.params import (PointerParam, BooleanParam,
                                         FloatParam, StringParam)
 from pyworkflow.utils import replaceExt, createLink
@@ -429,7 +430,7 @@ class ProtCryo2D(ProtClassify2D):
                 createLink(csAveragesFile, scaledFile)
             else:
                 print("Scaling CS averages file to match particle size (%s -> %s)." % (csSize, inputSize))
-                scaleSpline(csAveragesFile, scaledFile, inputSize, inputSize)
+                ImageHandler.scaleSplines(csAveragesFile, scaledFile, inputSize)
 
         return scaledFile
 
