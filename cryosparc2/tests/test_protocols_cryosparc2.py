@@ -326,8 +326,7 @@ class TestCryosparcParticlesSubtract(TestCryosparcBase):
             xmippProtocols = Domain.importFromPlugin('xmipp3.protocols',
                                                      doRaise=True)
             protXmippCreate3DMask = self.newProtocol(
-                xmippProtocols.XmippProtCreateMask3D,
-                initialLowPassFilterA=20)
+                xmippProtocols.XmippProtCreateMask3D)
             protXmippCreate3DMask.inputVolume.set(prot3DRefinement.outputVolume)
             protXmippCreate3DMask.source = 0
             protXmippCreate3DMask.setObjLabel('xmipp: create 3d mask')
@@ -383,8 +382,7 @@ class TestCryosparcLocalRefine(TestCryosparcBase):
             xmippProtocols = Domain.importFromPlugin('xmipp3.protocols',
                                                      doRaise=True)
             protXmippCreate3DMask = self.newProtocol(
-                xmippProtocols.XmippProtCreateMask3D,
-                initialLowPassFilterA=20)
+                xmippProtocols.XmippProtCreateMask3D)
             protXmippCreate3DMask.inputVolume.set(prot3DRefinement.outputVolume)
             protXmippCreate3DMask.source = 0
             protXmippCreate3DMask.setObjLabel('xmipp: create 3d mask')
