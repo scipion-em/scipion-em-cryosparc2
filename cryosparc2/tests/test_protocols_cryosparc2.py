@@ -163,18 +163,7 @@ class TestCryosparcClassify2D(TestCryosparcBase):
                                       doCTF=False, maskDiameterA=340,
                                       numberOfMpi=4, numberOfThreads=1)
 
-            # Normalization after the imported particles
-            relionProtocols = Domain.importFromPlugin('relion.protocols',
-                                                      doRaise=True)
-            relionProtocol = self.newProtocol(relionProtocols.ProtRelionPreprocessParticles,
-                                              doNormalize=True,
-                                              doScale=True, scaleSize=140,
-                                              doInvert=False)
-            relionProtocol.setObjLabel('relion: preprocess particles')
-            relionProtocol.inputParticles.set(self.protImport.outputParticles)
-            self.launchProtocol(relionProtocol)
-
-            prot2D.inputParticles.set(relionProtocol.outputParticles)
+            prot2D.inputParticles.set(self.protImport.outputParticles)
             prot2D.numberOfClasses.set(5)
             prot2D.numberOnlineEMIterator.set(40)
             prot2D.setObjLabel(label)
@@ -211,19 +200,7 @@ class TestCryosparc3DInitialModel(TestCryosparcBase):
             protInitialModel = self.newProtocol(ProtCryoSparcInitialModel,
                                                 numberOfMpi=4, numberOfThreads=1)
 
-            # Normalization after the imported particles
-            relionProtocols = Domain.importFromPlugin('relion.protocols',
-                                                      doRaise=True)
-            relionProtocol = self.newProtocol(
-                relionProtocols.ProtRelionPreprocessParticles,
-                doNormalize=True,
-                doScale=True, scaleSize=140,
-                doInvert=False)
-            relionProtocol.setObjLabel('relion: preprocess particles')
-            relionProtocol.inputParticles.set(self.protImport.outputParticles)
-            self.launchProtocol(relionProtocol)
-
-            protInitialModel.inputParticles.set(relionProtocol.outputParticles)
+            protInitialModel.inputParticles.set(self.protImport.outputParticles)
             protInitialModel.abinit_K.set(1)
             protInitialModel.symmetryGroup.set(SYM_CYCLIC)
             protInitialModel.symmetryOrder.set(1)
@@ -259,21 +236,9 @@ class TestCryosparc3DRefinement(TestCryosparcBase):
             prot3DRefinement = self.newProtocol(ProtCryoSparcRefine3D,
                                                 numberOfMpi=4, numberOfThreads=1)
 
-            # Normalization after the imported particles
-            relionProtocols = Domain.importFromPlugin('relion.protocols',
-                                                      doRaise=True)
-            relionProtocol = self.newProtocol(
-                relionProtocols.ProtRelionPreprocessParticles,
-                doNormalize=True,
-                doScale=True, scaleSize=140,
-                doInvert=False)
-            relionProtocol.setObjLabel('relion: preprocess particles')
-            relionProtocol.inputParticles.set(self.protImport.outputParticles)
-            self.launchProtocol(relionProtocol)
-
             importVolumeProt = self.runImportVolumesCryoSPARC(self.volFn)
 
-            prot3DRefinement.inputParticles.set(relionProtocol.outputParticles)
+            prot3DRefinement.inputParticles.set(self.protImport.outputParticles)
             prot3DRefinement.referenceVolume.set(importVolumeProt.outputVolume)
             prot3DRefinement.symmetryGroup.set(SYM_CYCLIC)
             prot3DRefinement.symmetryOrder.set(1)
@@ -308,21 +273,9 @@ class TestCryosparcNonUniformRefine3D(TestCryosparcBase):
             protNonUniform3DRefinement = self.newProtocol(ProtCryoSparcNonUniformRefine3D,
                                                           numberOfMpi=4, numberOfThreads=1)
 
-            # Normalization after the imported particles
-            relionProtocols = Domain.importFromPlugin('relion.protocols',
-                                                      doRaise=True)
-            relionProtocol = self.newProtocol(
-                relionProtocols.ProtRelionPreprocessParticles,
-                doNormalize=True,
-                doScale=True, scaleSize=140,
-                doInvert=False)
-            relionProtocol.setObjLabel('relion: preprocess particles')
-            relionProtocol.inputParticles.set(self.protImport.outputParticles)
-            self.launchProtocol(relionProtocol)
-
             importVolumeProt = self.runImportVolumesCryoSPARC(self.volFn)
 
-            protNonUniform3DRefinement.inputParticles.set(relionProtocol.outputParticles)
+            protNonUniform3DRefinement.inputParticles.set(self.protImport.outputParticles)
             protNonUniform3DRefinement.referenceVolume.set(importVolumeProt.outputVolume)
             protNonUniform3DRefinement.symmetryGroup.set(SYM_CYCLIC)
             protNonUniform3DRefinement.symmetryOrder.set(1)
