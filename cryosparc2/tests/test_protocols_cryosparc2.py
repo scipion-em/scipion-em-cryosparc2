@@ -383,7 +383,6 @@ class TestCryosparcLocalRefine(TestCryosparcBase):
             protXmippCreate3DMask = self.newProtocol(
                 xmippProtocols.XmippProtCreateMask3D, source=0)
             protXmippCreate3DMask.inputVolume.set(prot3DRefinement.outputVolume)
-            protXmippCreate3DMask.source = 0
             protXmippCreate3DMask.setObjLabel('xmipp: create 3d mask')
             self.launchProtocol(protXmippCreate3DMask)
 
