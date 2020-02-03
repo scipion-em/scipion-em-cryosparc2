@@ -310,39 +310,31 @@ class TestCryosparcParticlesSubtract(TestCryosparcBase):
                                                      numberOfMpi=4,
                                                      numberOfThreads=1)
 
-            # Normalization after the imported particles
-            relionProtocols = Domain.importFromPlugin('relion.protocols',
-                                                      doRaise=True)
-            relionProtocol = self.newProtocol(
-                relionProtocols.ProtRelionPreprocessParticles,
-                doNormalize=True,
-                doScale=True, scaleSize=140,
-                doInvert=False)
-            relionProtocol.setObjLabel('relion: preprocess particles')
-            relionProtocol.inputParticles.set(self.protImport.outputParticles)
-            self.launchProtocol(relionProtocol)
-
             importVolumeProt = self.runImportVolumesCryoSPARC(self.volFn)
 
             prot3DRefinement = self.newProtocol(ProtCryoSparcRefine3D,
                                                 numberOfMpi=4,
                                                 numberOfThreads=1)
-            prot3DRefinement.inputParticles.set(relionProtocol.outputParticles)
+            prot3DRefinement.inputParticles.set(self.protImport.outputParticles)
             prot3DRefinement.referenceVolume.set(importVolumeProt.outputVolume)
             prot3DRefinement.symmetryGroup.set(SYM_CYCLIC)
             prot3DRefinement.symmetryOrder.set(1)
             self.launchProtocol(prot3DRefinement)
 
-            protRelionCreate3DMask = self.newProtocol(
-                relionProtocols.ProtRelionCreateMask3D,
+            # Create a 3D Mask using xmipp
+            xmippProtocols = Domain.importFromPlugin('xmipp3.protocols',
+                                                     doRaise=True)
+            protXmippCreate3DMask = self.newProtocol(
+                xmippProtocols.XmippProtCreateMask3D,
                 initialLowPassFilterA=20)
-            protRelionCreate3DMask.inputVolume.set(prot3DRefinement.outputVolume)
-            protRelionCreate3DMask.setObjLabel('relion: create 3d mask')
-            self.launchProtocol(protRelionCreate3DMask)
+            protXmippCreate3DMask.inputVolume.set(prot3DRefinement.outputVolume)
+            protXmippCreate3DMask.source = 0
+            protXmippCreate3DMask.setObjLabel('xmipp: create 3d mask')
+            self.launchProtocol(protXmippCreate3DMask)
 
             protParticlesSubtract.inputParticles.set(prot3DRefinement.outputParticles)
             protParticlesSubtract.refVolume.set(prot3DRefinement.outputVolume)
-            protParticlesSubtract.refMask.set(protRelionCreate3DMask.outputMask)
+            protParticlesSubtract.refMask.set(protXmippCreate3DMask.outputMask)
             self.launchProtocol(protParticlesSubtract)
 
             return protParticlesSubtract
@@ -374,39 +366,31 @@ class TestCryosparcLocalRefine(TestCryosparcBase):
                                                numberOfMpi=4,
                                                numberOfThreads=1)
 
-            # Normalization after the imported particles
-            relionProtocols = Domain.importFromPlugin('relion.protocols',
-                                                      doRaise=True)
-            relionProtocol = self.newProtocol(
-                relionProtocols.ProtRelionPreprocessParticles,
-                doNormalize=True,
-                doScale=True, scaleSize=140,
-                doInvert=False)
-            relionProtocol.setObjLabel('relion: preprocess particles')
-            relionProtocol.inputParticles.set(self.protImport.outputParticles)
-            self.launchProtocol(relionProtocol)
-
             importVolumeProt = self.runImportVolumesCryoSPARC(self.volFn)
 
             prot3DRefinement = self.newProtocol(ProtCryoSparcRefine3D,
                                                 numberOfMpi=4,
                                                 numberOfThreads=1)
-            prot3DRefinement.inputParticles.set(relionProtocol.outputParticles)
+            prot3DRefinement.inputParticles.set(self.protImport.outputParticles)
             prot3DRefinement.referenceVolume.set(importVolumeProt.outputVolume)
             prot3DRefinement.symmetryGroup.set(SYM_CYCLIC)
             prot3DRefinement.symmetryOrder.set(1)
             self.launchProtocol(prot3DRefinement)
 
-            protRelionCreate3DMask = self.newProtocol(
-                relionProtocols.ProtRelionCreateMask3D,
+            # Create a 3D Mask using xmipp
+            xmippProtocols = Domain.importFromPlugin('xmipp3.protocols',
+                                                     doRaise=True)
+            protXmippCreate3DMask = self.newProtocol(
+                xmippProtocols.XmippProtCreateMask3D,
                 initialLowPassFilterA=20)
-            protRelionCreate3DMask.inputVolume.set(prot3DRefinement.outputVolume)
-            protRelionCreate3DMask.setObjLabel('relion: create 3d mask')
-            self.launchProtocol(protRelionCreate3DMask)
+            protXmippCreate3DMask.inputVolume.set(prot3DRefinement.outputVolume)
+            protXmippCreate3DMask.source = 0
+            protXmippCreate3DMask.setObjLabel('xmipp: create 3d mask')
+            self.launchProtocol(protXmippCreate3DMask)
 
             protLocalRefine.inputParticles.set(prot3DRefinement.outputParticles)
             protLocalRefine.refVolume.set(prot3DRefinement.outputVolume)
-            protLocalRefine.refMask.set(protRelionCreate3DMask.outputMask)
+            protLocalRefine.refMask.set(protXmippCreate3DMask.outputMask)
             self.launchProtocol(protLocalRefine)
 
             return protLocalRefine
