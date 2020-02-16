@@ -157,7 +157,6 @@ def createProjectDir(project_container_dir):
      exist
     :param project_container_dir: the "root" directory in which to create the
                                   project (PXXX) directory
-    :param projectName: the name of the project
     :returns: str - the final path of the new project dir with shell variables
               still in the returned path (the path should be expanded every
               time it is used)
