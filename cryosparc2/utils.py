@@ -100,6 +100,15 @@ def isCryosparcRunning():
     return msg
 
 
+def isCompatibleVersion():
+    """
+        Get the cryosparc version and return if is supported by the plugin
+    """
+    supportedVersions = Plugin.getSupportedVersions()
+    system_info = getSystemInfo()
+    version = system_info['version'][0:-2].upper()
+    return version in supportedVersions
+
 def getCryosparcUser():
     """
     Get the full name of the initial admin account
@@ -342,7 +351,19 @@ def clearJob(projectName, job):
 
 def getSystemInfo():
     """
-    Get the cryoSPARC system information
+    Returns system-related information related to the cryosparc app
+    :returns: dict -- dictionary listing information about cryosparc environment
+    {
+        'master_hostname' : master_hostname,
+        'port_webapp' : os.environ['CRYOSPARC_HTTP_PORT'],
+        'port_mongo' : os.environ['CRYOSPARC_MONGO_PORT'],
+        'port_command_core' : os.environ['CRYOSPARC_COMMAND_CORE_PORT'],
+        'port_command_vis' : os.environ['CRYOSPARC_COMMAND_VIS_PORT'],
+        'port_command_proxy' : os.environ['CRYOSPARC_COMMAND_PROXY_PORT'],
+        'port_command_rtp' : os.environ['CRYOSPARC_COMMAND_RTP_PORT'],
+        'port_rtp_webapp' : os.environ['CRYOSPARC_HTTP_RTP_PORT'],
+        'version' : get_running_version(),
+    }
     """
     system_info_cmd = (getCryosparcProgram() + ' %sget_system_info()%s') % ("'", "'")
     return subprocess.getstatusoutput(system_info_cmd)

@@ -28,7 +28,6 @@
 
 
 from pwem.protocols import ProtClassify2D
-from pwem.emlib.image import ImageHandler
 from pyworkflow.protocol.params import (PointerParam, BooleanParam,
                                         FloatParam, StringParam)
 from pyworkflow.utils import replaceExt, createLink
