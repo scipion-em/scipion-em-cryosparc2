@@ -90,7 +90,6 @@ class ProtCryoSparcLocalRefine(ProtOperateParticles):
         # -----------[Local Refinement]------------------------
         form.addSection(label="Naive local refinement")
 
-
         # form.addParam('fulcx', IntParam, default=0,
         #               label='Fulcrum, x-coordinate',
         #               help='The fulcrum is the point around which the subvolume '
@@ -147,7 +146,6 @@ class ProtCryoSparcLocalRefine(ProtOperateParticles):
         form.addParam('n_iterations', IntParam, default=1,
                       validators=[Positive],
                       label='Override number of iterations')
-
 
         # -----[Non Uniform Refinement]----------------------------------------
 
@@ -344,7 +342,7 @@ class ProtCryoSparcLocalRefine(ProtOperateParticles):
                                            self._getTmpPath()))
 
         self.importMask = doImportVolumes(self, self.maskFn, 'mask',
-                                               'Importing mask... ')
+                                          'Importing mask... ')
         self.currenJob.set(self.importMask.get())
         self._store(self)
 
@@ -443,14 +441,15 @@ class ProtCryoSparcLocalRefine(ProtOperateParticles):
         os.system("wget 127.0.0.1:39000/file/" + idd + " -nd -P" +
                   self._getExtraPath())
         os.system("mv " + self._getExtraPath() + "/" + idd + " " +
-                  self._getExtraPath()+"/fsc.txt")
+                  self._getExtraPath() + "/fsc.txt")
         # Convert into scipion fsc format
-        f = open(self._getExtraPath()+"/fsc.txt", "r")
+        f = open(self._getExtraPath() + "/fsc.txt", "r")
         lines = f.readlines()
         wv = []
         corr = []
         for x in lines[1:-1]:
-            wv.append(str(float(x.split('\t')[0])/(int(self._getInputParticles().getDim()[0])*float(imgSet.getSamplingRate()))))
+            wv.append(str(float(x.split('\t')[0]) / (
+                        int(self._getInputParticles().getDim()[0]) * float(imgSet.getSamplingRate()))))
             corr.append(x.split('\t')[6])
         f.close()
 
@@ -461,13 +460,11 @@ class ProtCryoSparcLocalRefine(ProtOperateParticles):
         self._defineOutputs(outputFSC=fsc)
         self._defineSourceRelation(vol, fsc)
 
-
     def setAborted(self):
         """ Set the status to aborted and updated the endTime. """
         ProtOperateParticles.setAborted(self)
         killJob(str(self.projectName.get()), str(self.currenJob.get()))
         clearJob(str(self.projectName.get()), str(self.currenJob.get()))
-
 
     # --------------------------- INFO functions -------------------------------
     def _validate(self):
@@ -622,25 +619,17 @@ class ProtCryoSparcLocalRefine(ProtOperateParticles):
                 params[str(paramName)] = str(
                     REFINE_MASK_CHOICES[self.refine_mask.get()])
 
-        runLocalRefinement = enqueueJob(className, self.projectName.get(),
-                                        self.workSpaceName.get(),
-                                        str(params).replace('\'', '"'),
-                                        str(input_group_conect).replace('\'',
-                                                                        '"'),
-                                        self.lane)
+        self.runLocalRefinement = enqueueJob(className, self.projectName.get(),
+                                             self.workSpaceName.get(),
+                                             str(params).replace('\'', '"'),
+                                             str(input_group_conect).replace('\'',
+                                                                             '"'),
+                                             self.lane)
 
-        self.runLocalRefinement = String(runLocalRefinement[-1].split()[-1])
         self.currenJob.set(self.runLocalRefinement.get())
         self._store(self)
 
-        while getJobStatus(self.projectName.get(),
-                           self.runLocalRefinement.get()) not in STOP_STATUSES:
-            waitJob(self.projectName.get(), self.runLocalRefinement.get())
-
-        if getJobStatus(self.projectName.get(),
-                        self.runLocalRefinement.get()) != STATUS_COMPLETED:
-            raise Exception("An error occurred in the local refinement process. "
-                            "Please, go to cryosPARC software for more "
-                            "details.")
-
-
+        waitForCryosparc(self.projectName.get(), self.runLocalRefinement.get(),
+                         "An error occurred in the local refinement process. "
+                         "Please, go to cryosPARC software for more "
+                         "details.")

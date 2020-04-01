@@ -177,7 +177,7 @@ def createEmptyWorkSpace(projectName, workspaceTitle, workspaceComment):
                              % ("'", projectName, str(getCryosparcUser()),
                                 "None", str(workspaceTitle),
                                 str(workspaceComment), "'"))
-    return commands.getstatusoutput(create_work_space_cmd)
+    return runCmd(create_work_space_cmd)
 
 
 def doImportParticlesStar(protocol):
@@ -194,10 +194,9 @@ def doImportParticlesStar(protocol):
               "psize_A": str(protocol._getInputParticles().getSamplingRate())
               }
 
-    p = enqueueJob(className, protocol.projectName, protocol.workSpaceName,
+    import_particles = enqueueJob(className, protocol.projectName, protocol.workSpaceName,
                         str(params).replace('\'', '"'), '{}', protocol.lane)
 
-    import_particles = String(p[-1].split()[-1])
 
     waitForCryosparc(protocol.projectName.get(), import_particles.get(),
                      "An error occurred importing particles. "
@@ -218,20 +217,15 @@ def doImportVolumes(protocol, refVolume, volType, msg):
               "volume_psize": str(
                   protocol._getInputParticles().getSamplingRate())}
 
-    v = enqueueJob(className, protocol.projectName, protocol.workSpaceName,
+    importedVolume = enqueueJob(className, protocol.projectName, protocol.workSpaceName,
                  str(params).replace('\'', '"'), '{}', protocol.lane)
 
-    importedVolume = String(v[-1].split()[-1])
 
-    while getJobStatus(protocol.projectName.get(),
-                       importedVolume.get()) not in STOP_STATUSES:
-        waitJob(protocol.projectName.get(), importedVolume.get())
-
-    if getJobStatus(protocol.projectName.get(),
-                    importedVolume.get()) != STATUS_COMPLETED:
-        raise Exception("An error occurred importing the volume. "
-                       "Please, go to cryosPARC software for more "
-                       "details.")
+    waitForCryosparc(protocol.projectName.get(), importedVolume.get() ,
+                     "An error occurred importing the volume. "
+                     "Please, go to cryosPARC software for more "
+                     "details."
+                     )
 
     return importedVolume
 
@@ -266,7 +260,7 @@ def enqueueJob(jobType, projectName, workSpaceName, params, input_group_conect,
     exitCode, cmdOutput = runCmd(make_job_cmd)
 
     # Extract the jobId
-    jobId = String(cmdOutput[-1].split()[-1])
+    jobId = String(cmdOutput.split()[-1])
     print(pwutils.greenStr("Got %s for JobId" % jobId))
 
     # Queue the job
@@ -277,7 +271,7 @@ def enqueueJob(jobType, projectName, workSpaceName, params, input_group_conect,
 
     runCmd(enqueue_job_cmd)
 
-    return exitCode, cmdOutput
+    return jobId
 
 def runCmd(cmd):
     """ Runs a command and check its exit code. If different than 0 it raises an exception
@@ -306,7 +300,7 @@ def waitForCryosparc(projectName, jobId, failureMessage):
         if status not in STOP_STATUSES:
             waitJob(projectName, jobId)
         else:
-            continue
+            break
 
     if status != STATUS_COMPLETED:
         raise Exception(failureMessage)

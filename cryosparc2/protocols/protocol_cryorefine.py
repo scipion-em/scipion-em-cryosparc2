@@ -635,25 +635,19 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
             elif paramName == 'refine_mask':
                 params[str(paramName)] = str(REFINE_MASK_CHOICES[self.refine_mask.get()])
 
-        doRefine = enqueueJob(className, self.projectName.get(),
+        self.runRefine = enqueueJob(className, self.projectName.get(),
                               self.workSpaceName.get(),
                               str(params).replace('\'', '"'),
                               str(input_group_conect).replace('\'', '"'),
                               self.lane)
 
-        self.runRefine = String(doRefine[-1].split()[-1])
         self.currenJob.set(self.runRefine.get())
         self._store(self)
 
-        while getJobStatus(self.projectName.get(),
-                           self.runRefine.get()) not in STOP_STATUSES:
-            waitJob(self.projectName.get(), self.runRefine.get())
-
-        if getJobStatus(self.projectName.get(),
-                        self.runRefine.get()) != STATUS_COMPLETED:
-            raise Exception("An error occurred in the Refinement process. "
-                            "Please, go to cryosPARC software for more "
-                            "details.")
+        waitForCryosparc(self.projectName.get(), self.runRefine.get(),
+                         "An error occurred in the Refinement process. "
+                         "Please, go to cryosPARC software for more "
+                         "details.")
 
 
 
