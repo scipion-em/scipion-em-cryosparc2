@@ -25,6 +25,7 @@
 # *
 # **************************************************************************
 import os
+import ast
 import commands
 import pyworkflow.utils as pwutils
 from cryosparc2 import Plugin
@@ -107,7 +108,7 @@ def cryosparcValidate():
         validateMsgs = isCryosparcRunning()
         if not validateMsgs:
             version = getCryosparcInstalledVersion()
-            supportedVersions = sorted(Plugin.getSuportedVersions())
+            supportedVersions = sorted(Plugin.getSupportedVersions())
             if version > supportedVersions[-1]:
                 validateMsgs = ['The installed Cryosparc version is not '
                                 'compatible with the plugin. Please install '
@@ -122,7 +123,8 @@ def getCryosparcInstalledVersion():
     Get the cryosparc installed version
     """
     system_info = getSystemInfo()
-    version = system_info['version']
+    dictionary = ast.literal_eval(system_info[1])
+    version = str(dictionary['version'])
     return version
 
 def getCryosparcUser():
@@ -399,10 +401,22 @@ def clearJob(projectName, job):
 
 def getSystemInfo():
     """
-    Get the cryoSPARC system information
+    Returns system-related information related to the cryosparc app
+    :returns: dict -- dictionary listing information about cryosparc environment
+    {
+        'master_hostname' : master_hostname,
+        'port_webapp' : os.environ['CRYOSPARC_HTTP_PORT'],
+        'port_mongo' : os.environ['CRYOSPARC_MONGO_PORT'],
+        'port_command_core' : os.environ['CRYOSPARC_COMMAND_CORE_PORT'],
+        'port_command_vis' : os.environ['CRYOSPARC_COMMAND_VIS_PORT'],
+        'port_command_proxy' : os.environ['CRYOSPARC_COMMAND_PROXY_PORT'],
+        'port_command_rtp' : os.environ['CRYOSPARC_COMMAND_RTP_PORT'],
+        'port_rtp_webapp' : os.environ['CRYOSPARC_HTTP_RTP_PORT'],
+        'version' : get_running_version(),
+    }
     """
     system_info_cmd = (getCryosparcProgram() + ' %sget_system_info()%s') % ("'", "'")
-    return commands.getstatusoutput(system_info_cmd)
+    return runCmd(system_info_cmd)
 
 
 def addSymmetryParam(form):
