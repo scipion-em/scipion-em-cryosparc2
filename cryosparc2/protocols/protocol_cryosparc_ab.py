@@ -548,23 +548,16 @@ class ProtCryoSparcInitialModel(ProtInitialVolume, ProtClassify3D):
                 elif paramName == 'abinit_noise_model':
                     params[str(paramName)] = str(NOISE_MODEL_CHOICES[self.abinit_noise_model.get()])
 
-        runAbinit = enqueueJob(className, self.projectName.get(),
-                               self.workSpaceName.get(),
-                               str(params).replace('\'', '"'),
-                               str(input_group_conect).replace('\'', '"'),
-                               self.lane)
+        self.runAbinit = enqueueJob(className, self.projectName.get(),
+                                    self.workSpaceName.get(),
+                                    str(params).replace('\'', '"'),
+                                    str(input_group_conect).replace('\'', '"'),
+                                    self.lane)
 
-        self.runAbinit = String(runAbinit[-1].split()[-1])
-        self.currenJob.set(self.runAbinit)
+        self.currenJob.set(self.runAbinit.get())
         self._store(self)
 
-        while getJobStatus(self.projectName.get(),
-                           self.runAbinit.get()) not in STOP_STATUSES:
-            waitJob(self.projectName.get(), self.runAbinit.get())
-
-        if getJobStatus(self.projectName.get(),
-                        self.runAbinit.get()) != STATUS_COMPLETED:
-            raise Exception("An error occurred in the initial volume process. "
-                            "Please, go to cryosPARC software for more "
-                            "details.")
-
+        waitForCryosparc(self.projectName.get(), self.runPartStract.get(),
+                         "An error occurred in the initial volume process. "
+                         "Please, go to cryosPARC software for more "
+                         "details.")
