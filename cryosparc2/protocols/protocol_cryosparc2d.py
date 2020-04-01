@@ -502,15 +502,10 @@ class ProtCryo2D(ProtClassify2D):
         self.currenJob = String(self.importedParticles.get())
         self._store(self)
 
-        while getJobStatus(self.projectName.get(),
-                           self.importedParticles.get()) not in STOP_STATUSES:
-            waitJob(self.projectName.get(), self.importedParticles.get())
-
-        if getJobStatus(self.projectName.get(),
-                        self.importedParticles.get()) != STATUS_COMPLETED:
-            raise Exception("An error occurred importing the particles. "
-                           "Please, go to cryosPARC software for more "
-                           "details.")
+        waitForCryosparc(self.projectName.get(), self.importedParticles.get(),
+                                  "An error occurred importing the particles. "
+                                  "Please, go to cryosPARC software for more "
+                                  "details.")
 
         self.par = String(self.importedParticles.get() + '.imported_particles')
 
@@ -561,14 +556,9 @@ class ProtCryo2D(ProtClassify2D):
         self.runClass2D = String(runClass2D[-1].split()[-1])
         self.currenJob.set(self.runClass2D.get())
         self._store(self)
-        while getJobStatus(self.projectName.get(),
-                           self.runClass2D.get()) not in STOP_STATUSES:
-            waitJob(self.projectName.get(), self.runClass2D.get())
 
-        if getJobStatus(self.projectName.get(),
-                        self.runClass2D.get()) != STATUS_COMPLETED:
-            raise Exception(
-                "An error occurred in the 2D classification process. "
-                "Please, go to cryosPARC software for more "
-                "details.")
+        waitForCryosparc(self.projectName.get(), self.runClass2D.get(),
+                        "An error occurred in the 2D classification process. "
+                        "Please, go to cryosPARC software for more "
+                        "details.")
 

@@ -199,15 +199,10 @@ def doImportParticlesStar(protocol):
 
     import_particles = String(p[-1].split()[-1])
 
-    while getJobStatus(protocol.projectName.get(),
-                       import_particles.get()) not in STOP_STATUSES:
-        waitJob(protocol.projectName.get(), import_particles.get())
-
-    if getJobStatus(protocol.projectName.get(),
-                    import_particles.get()) != STATUS_COMPLETED:
-        raise Exception("An error occurred importing the volume. "
-                       "Please, go to cryosPARC software for more "
-                       "details.")
+    waitForCryosparc(protocol.projectName.get(), import_particles.get(),
+                     "An error occurred importing particles. "
+                     "Please, go to cryosPARC software for more "
+                     "details.")
 
     return import_particles
 
@@ -261,22 +256,63 @@ def enqueueJob(jobType, projectName, workSpaceName, params, input_group_conect,
     make_job(job_type, project_uid, workspace_uid, user_id,
              created_by_job_uid=None, params={}, input_group_connects={})
     """
+
+    # Make the job
     make_job_cmd = (getCryosparcProgram() +
                   ' %smake_job("%s","%s","%s", "%s", "None", %s, %s)%s' %
                   ("'", jobType, projectName, workSpaceName, getCryosparcUser(),
                    params, input_group_conect, "'"))
 
-    print(pwutils.greenStr(make_job_cmd))
-    make_job = commands.getstatusoutput(make_job_cmd)
+    exitCode, cmdOutput = runCmd(make_job_cmd)
 
+    # Extract the jobId
+    jobId = String(cmdOutput[-1].split()[-1])
+    print(pwutils.greenStr("Got %s for JobId" % jobId))
+
+    # Queue the job
     enqueue_job_cmd = (getCryosparcProgram() +
                        ' %senqueue_job("%s","%s","%s")%s' %
-                       ("'", projectName, String(make_job[-1].split()[-1]),
+                       ("'", projectName, jobId,
                         lane, "'"))
 
-    print(pwutils.greenStr(enqueue_job_cmd))
-    commands.getstatusoutput(enqueue_job_cmd)
-    return make_job
+    runCmd(enqueue_job_cmd)
+
+    return exitCode, cmdOutput
+
+def runCmd(cmd):
+    """ Runs a command and check its exit code. If different than 0 it raises an exception
+    :parameter cmd command to run"""
+
+
+    print(pwutils.greenStr("Running: %s" % cmd))
+    exitCode, cmdOutput = commands.getstatusoutput(cmd)
+
+    if exitCode != 0:
+        raise Exception("%s failed --> Exit code %s, message %s" % (cmd, exitCode, cmdOutput))
+
+    return exitCode, cmdOutput
+
+def waitForCryosparc(projectName, jobId, failureMessage):
+    """ Waits for cryosparc to finish or fail a job
+    :parameter projectName: Cryosparc project name
+    :parameter jobId: cryosparc job id
+    :parameter failureMessage: Message for the exception thrown in case job fails
+    :returns job Status
+    :raises Exception when parsing cryosparc's output looks wrong"""
+
+    # We might not need the while
+    # while getJobStatus(projectName,
+    #                   jobId) not in STOP_STATUSES:
+    status = getJobStatus(projectName, jobId)
+
+    if status not in STOP_STATUSES:
+        waitJob(projectName, jobId)
+        status = getJobStatus(projectName, jobId)
+
+    if status != STATUS_COMPLETED:
+        raise Exception(failureMessage)
+
+    return status
 
 
 def getJobStatus(projectName, job):
@@ -287,6 +323,7 @@ def getJobStatus(projectName, job):
                           ' %sget_job_status("%s", "%s")%s'
                           % ("'", projectName, job, "'"))
 
+    print(get_job_status_cmd)
     status = commands.getstatusoutput(get_job_status_cmd)
     return status[-1].split()[-1]
 
@@ -298,6 +335,7 @@ def waitJob(projectName, job):
     wait_job_cmd = (getCryosparcProgram() +
                     ' %swait_job_complete("%s", "%s")%s'
                     % ("'", projectName, job, "'"))
+    print(wait_job_cmd)
     commands.getstatusoutput(wait_job_cmd)
 
 
