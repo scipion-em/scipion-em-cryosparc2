@@ -250,10 +250,11 @@ class ProtCryoSparcSubtract(ProtOperateParticles):
         """ Should be overwritten in subclasses to
                return summary message for NORMAL EXECUTION.
                """
-        errors = []
-        self._validateDim(self._getInputParticles(), self.refVolume.get(),
-                          errors, 'Input particles', 'Input volume')
-        return errors
+        validateMsgs = cryosparcValidate()
+        if not validateMsgs:
+            self._validateDim(self._getInputParticles(), self.refVolume.get(),
+                              validateMsgs, 'Input particles', 'Input volume')
+        return validateMsgs
 
     def _summary(self):
         summary = []
@@ -371,30 +372,16 @@ class ProtCryoSparcSubtract(ProtOperateParticles):
                 if int(self.getAttributeValue(paramName)) > 0:
                     params[str(paramName)] = str(self.getAttributeValue(paramName))
 
-        doPartStract = enqueueJob(className, self.projectName.get(),
+        self.runPartStract = enqueueJob(className, self.projectName.get(),
                                   self.workSpaceName.get(),
                                   str(params).replace('\'', '"'),
                                   str(input_group_conect).replace('\'', '"'),
                                   self.lane)
 
-        self.runPartStract = String(doPartStract[-1].split()[-1])
         self.currenJob.set(self.runPartStract.get())
         self._store(self)
 
-        while getJobStatus(self.projectName.get(),
-                           self.runPartStract.get()) not in STOP_STATUSES:
-            waitJob(self.projectName.get(), self.importVolume.get())
-
-        if getJobStatus(self.projectName.get(),
-                        self.runPartStract.get()) != STATUS_COMPLETED:
-            raise Exception("An error occurred in the particles subtraction process. "
-                            "Please, go to cryosPARC software for more "
-                            "details.")
-
-
-
-
-
-
-
-
+        waitForCryosparc(self.projectName.get(), self.runPartStract.get(),
+                         "An error occurred in the particles subtraction process. "
+                         "Please, go to cryosPARC software for more "
+                         "details.")

@@ -376,14 +376,12 @@ class ProtCryoSparcInitialModel(ProtInitialVolume, ProtClassify3D):
 
     # --------------------------- INFO functions -------------------------------
     def _validate(self):
-        validateMsgs = cryosparcExist()
+        validateMsgs = cryosparcValidate()
         if not validateMsgs:
-            validateMsgs = isCryosparcRunning()
-            if not validateMsgs:
-                particles = self._getInputParticles()
-                if not particles.hasCTF():
-                    validateMsgs.append("The Particles has not associated a "
-                                        "CTF model")
+            particles = self._getInputParticles()
+            if not particles.hasCTF():
+                validateMsgs.append("The Particles has not associated a "
+                                    "CTF model")
         return validateMsgs
 
     def _summary(self):
@@ -550,23 +548,16 @@ class ProtCryoSparcInitialModel(ProtInitialVolume, ProtClassify3D):
                 elif paramName == 'abinit_noise_model':
                     params[str(paramName)] = str(NOISE_MODEL_CHOICES[self.abinit_noise_model.get()])
 
-        runAbinit = enqueueJob(className, self.projectName.get(),
+        self.runAbinit = enqueueJob(className, self.projectName.get(),
                                self.workSpaceName.get(),
                                str(params).replace('\'', '"'),
                                str(input_group_conect).replace('\'', '"'),
                                self.lane)
 
-        self.runAbinit = String(runAbinit[-1].split()[-1])
-        self.currenJob.set(self.runAbinit)
+        self.currenJob.set(self.runAbinit.get())
         self._store(self)
 
-        while getJobStatus(self.projectName.get(),
-                           self.runAbinit.get()) not in STOP_STATUSES:
-            waitJob(self.projectName.get(), self.runAbinit.get())
-
-        if getJobStatus(self.projectName.get(),
-                        self.runAbinit.get()) != STATUS_COMPLETED:
-            raise Exception("An error occurred in the initial volume process. "
+        waitForCryosparc(self.projectName.get(), self.runPartStract.get(),
+                         "An error occurred in the initial volume process. "
                             "Please, go to cryosPARC software for more "
                             "details.")
-

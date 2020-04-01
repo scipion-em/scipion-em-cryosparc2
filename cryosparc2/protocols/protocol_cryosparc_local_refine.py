@@ -469,10 +469,11 @@ class ProtCryoSparcLocalRefine(ProtOperateParticles):
         """ Should be overwritten in subclasses to
                return summary message for NORMAL EXECUTION.
                """
-        errors = []
-        self._validateDim(self._getInputParticles(), self.refVolume.get(),
-                          errors, 'Input particles', 'Input volume')
-        return errors
+        validateMsgs = cryosparcValidate()
+        if not validateMsgs:
+            self._validateDim(self._getInputParticles(), self.refVolume.get(),
+                              validateMsgs, 'Input particles', 'Input volume')
+        return validateMsgs
 
     def _summary(self):
         summary = []
@@ -617,25 +618,19 @@ class ProtCryoSparcLocalRefine(ProtOperateParticles):
                 params[str(paramName)] = str(
                     REFINE_MASK_CHOICES[self.refine_mask.get()])
 
-        runLocalRefinement = enqueueJob(className, self.projectName.get(),
-                                        self.workSpaceName.get(),
-                                        str(params).replace('\'', '"'),
-                                        str(input_group_conect).replace('\'',
-                                                                        '"'),
-                                        self.lane)
+        self.runLocalRefinement = enqueueJob(className, self.projectName.get(),
+                                             self.workSpaceName.get(),
+                                             str(params).replace('\'', '"'),
+                                             str(input_group_conect).replace('\'',
+                                                                             '"'),
+                                             self.lane)
 
-        self.runLocalRefinement = String(runLocalRefinement[-1].split()[-1])
         self.currenJob.set(self.runLocalRefinement.get())
         self._store(self)
 
-        while getJobStatus(self.projectName.get(),
-                           self.runLocalRefinement.get()) not in STOP_STATUSES:
-            waitJob(self.projectName.get(), self.runLocalRefinement.get())
-
-        if getJobStatus(self.projectName.get(),
-                        self.runLocalRefinement.get()) != STATUS_COMPLETED:
-            raise Exception("An error occurred in the local refinement process. "
-                            "Please, go to cryosPARC software for more "
-                            "details.")
+        waitForCryosparc(self.projectName.get(), self.runLocalRefinement.get(),
+                         "An error occurred in the local refinement process. "
+                         "Please, go to cryosPARC software for more "
+                         "details.")
 
 
