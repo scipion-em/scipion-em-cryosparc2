@@ -545,13 +545,11 @@ class ProtCryo2D(ProtClassify2D):
                   "compute_use_ssd": str(self.cacheParticlesSSD.get()),
                   "compute_num_gpus": str(self.numberGPU.get())}
 
-        runClass2D = enqueueJob(className, self.projectName.get(),
+        self.runClass2D = enqueueJob(className, self.projectName.get(),
                                 self.workSpaceName.get(),
                                 str(params).replace('\'', '"'),
                                 str(input_group_conect).replace('\'', '"'),
                                 self.lane)
-
-        self.runClass2D = String(runClass2D[-1].split()[-1])
         self.currenJob.set(self.runClass2D.get())
         self._store(self)
 
