@@ -27,6 +27,7 @@
 import os
 import ast
 import subprocess
+from pkg_resources import parse_version
 import pyworkflow.utils as pwutils
 from pwem.constants import SCIPION_SYM_NAME
 from pwem.constants import (SYM_CYCLIC, SYM_TETRAHEDRAL,
@@ -109,9 +110,12 @@ def cryosparcValidate():
     if not validateMsgs:
         validateMsgs = isCryosparcRunning()
         if not validateMsgs:
-            version = getCryosparcInstalledVersion()
-            supportedVersions = sorted(Plugin.getSupportedVersions())
-            if version > supportedVersions[-1]:
+            cryosparcVersion = getCryosparcInstalledVersion()
+            supportedVersions = Plugin.getSupportedVersions()
+
+            isCompatible = [version for version in supportedVersions
+                            if parse_version(version) > parse_version(cryosparcVersion)]
+            if not isCompatible:
                 validateMsgs = ['The installed Cryosparc version is not '
                                 'compatible with the plugin. Please install '
                                 'one of these versions: ' +
