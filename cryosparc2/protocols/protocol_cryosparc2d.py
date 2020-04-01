@@ -551,7 +551,7 @@ class ProtCryo2D(ProtClassify2D):
                            str(input_group_conect).replace('\'', '"'),
                            self.lane)
 
-        self.runClass2D = String(runClass2D[-1].split()[-1])
+        self.runClass2D = String(runClass2D)
         self.currenJob.set(self.runClass2D.get())
         self._store(self)
 
