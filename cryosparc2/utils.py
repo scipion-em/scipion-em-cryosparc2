@@ -114,7 +114,7 @@ def cryosparcValidate():
             supportedVersions = Plugin.getSupportedVersions()
 
             isCompatible = [version for version in supportedVersions
-                            if parse_version(version) > parse_version(cryosparcVersion)]
+                            if parse_version(version) >= parse_version(cryosparcVersion)]
             if not isCompatible:
                 validateMsgs = ['The installed Cryosparc version is not '
                                 'compatible with the plugin. Please install '
