@@ -25,6 +25,7 @@
 # *
 # **************************************************************************
 import os
+import ast
 import subprocess
 import pyworkflow.utils as pwutils
 from pwem.constants import SCIPION_SYM_NAME
@@ -109,7 +110,7 @@ def cryosparcValidate():
         validateMsgs = isCryosparcRunning()
         if not validateMsgs:
             version = getCryosparcInstalledVersion()
-            supportedVersions = sorted(Plugin.getSuportedVersions())
+            supportedVersions = sorted(Plugin.getSupportedVersions())
             if version > supportedVersions[-1]:
                 validateMsgs = ['The installed Cryosparc version is not '
                                 'compatible with the plugin. Please install '
@@ -124,7 +125,8 @@ def getCryosparcInstalledVersion():
     Get the cryosparc installed version
     """
     system_info = getSystemInfo()
-    version = system_info['version']
+    dictionary = ast.literal_eval(system_info[1])
+    version = str(dictionary['version'])
     return version
 
 def getCryosparcUser():
@@ -302,6 +304,7 @@ def enqueueJob(jobType, projectName, workSpaceName, params, input_group_conect,
 
     return jobId
 
+
 def runCmd(cmd):
     """ Runs a command and check its exit code. If different than 0 it raises an exception
     :parameter cmd command to run"""
@@ -314,6 +317,7 @@ def runCmd(cmd):
         raise Exception("%s failed --> Exit code %s, message %s" % (cmd, exitCode, cmdOutput))
 
     return exitCode, cmdOutput
+
 
 def waitForCryosparc(projectName, jobId, failureMessage):
     """ Waits for cryosparc to finish or fail a job
@@ -415,7 +419,7 @@ def getSystemInfo():
     }
     """
     system_info_cmd = (getCryosparcProgram() + ' %sget_system_info()%s') % ("'", "'")
-    return subprocess.getstatusoutput(system_info_cmd)
+    return runCmd(system_info_cmd)
 
 
 def addSymmetryParam(form):
