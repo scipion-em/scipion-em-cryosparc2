@@ -359,14 +359,12 @@ class ProtCryo2D(ProtClassify2D):
 
     # --------------------------- INFO functions -------------------------------
     def _validate(self):
-        validateMsgs = cryosparcExist()
+        validateMsgs = cryosparcValidate()
         if not validateMsgs:
-            validateMsgs = isCryosparcRunning()
-            if not validateMsgs:
-                particles = self._getInputParticles()
-                if not particles.hasCTF():
-                    validateMsgs.append("The Particles has not associated a "
-                                        "CTF model")
+            particles = self._getInputParticles()
+            if not particles.hasCTF():
+                validateMsgs.append("The Particles has not associated a "
+                                    "CTF model")
         return validateMsgs
 
     def _summary(self):

@@ -47,10 +47,10 @@ CRYO_PROJECTS_DIR = 'CRYO_PROJECTS_DIR'
 CRYOSPARC_USER = 'CRYOSPARC_USER'
 
 # Supported versions:
-V2_5 = 'V2_5'
-V2_8 = 'V2_8'
-V2_9 = 'V2_9'
-V2_11 = 'V2_11'
+V2_5 = 'v2.5.0'
+V2_8 = 'v2.8.0'
+V2_9 = 'v2.9.0'
+V2_11 = 'v2_11.0'
 
 # Suffix for all project
 suffix = 'ProjCryoSparc_'

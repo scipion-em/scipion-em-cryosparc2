@@ -253,10 +253,11 @@ class ProtCryoSparcSubtract(ProtOperateParticles):
         """ Should be overwritten in subclasses to
                return summary message for NORMAL EXECUTION.
                """
-        errors = []
-        self._validateDim(self._getInputParticles(), self.refVolume.get(),
-                          errors, 'Input particles', 'Input volume')
-        return errors
+        validateMsgs = cryosparcValidate()
+        if not validateMsgs:
+            self._validateDim(self._getInputParticles(), self.refVolume.get(),
+                              validateMsgs, 'Input particles', 'Input volume')
+        return validateMsgs
 
     def _summary(self):
         summary = []

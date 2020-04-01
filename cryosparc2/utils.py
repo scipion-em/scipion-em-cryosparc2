@@ -98,6 +98,33 @@ def isCryosparcRunning():
     return msg
 
 
+def cryosparcValidate():
+    """
+    Validates some cryo properties that must be satisfy
+    """
+    validateMsgs = cryosparcExist()
+    if not validateMsgs:
+        validateMsgs = isCryosparcRunning()
+        if not validateMsgs:
+            version = getCryosparcInstalledVersion()
+            supportedVersions = sorted(Plugin.getSuportedVersions())
+            if version > supportedVersions[-1]:
+                validateMsgs = ['The installed Cryosparc version is not '
+                                'compatible with the plugin. Please install '
+                                'one of these versions: ' +
+                                str(supportedVersions).replace('\'', '')]
+
+    return validateMsgs
+
+
+def getCryosparcInstalledVersion():
+    """
+    Get the cryosparc installed version
+    """
+    system_info = getSystemInfo()
+    version = system_info['version']
+    return version
+
 def getCryosparcUser():
     """
     Get the full name of the initial admin account
@@ -115,6 +142,7 @@ def getCryosparcProjectsDir():
         os.mkdir(cryoProject_Dir)
 
     return cryoProject_Dir
+
 
 def getProjectPath(projectDir):
     """
