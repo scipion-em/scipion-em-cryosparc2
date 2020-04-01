@@ -300,14 +300,13 @@ def waitForCryosparc(projectName, jobId, failureMessage):
     :returns job Status
     :raises Exception when parsing cryosparc's output looks wrong"""
 
-    # We might not need the while
-    # while getJobStatus(projectName,
-    #                   jobId) not in STOP_STATUSES:
-    status = getJobStatus(projectName, jobId)
-
-    if status not in STOP_STATUSES:
-        waitJob(projectName, jobId)
+    # While is needed here, cause waitJob has a timeout of 5 secs.
+    while True:
         status = getJobStatus(projectName, jobId)
+        if status not in STOP_STATUSES:
+            waitJob(projectName, jobId)
+        else:
+            continue
 
     if status != STATUS_COMPLETED:
         raise Exception(failureMessage)
