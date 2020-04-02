@@ -32,10 +32,12 @@ import pyworkflow.utils as pwutils
 from pwem.constants import SCIPION_SYM_NAME
 from pwem.constants import (SYM_CYCLIC, SYM_TETRAHEDRAL,
                             SYM_OCTAHEDRAL, SYM_I222, SYM_I222r)
-from pyworkflow.protocol.params import EnumParam, IntParam, Positive, String
+from pyworkflow.protocol.params import (EnumParam, IntParam, Positive, String,
+                                        BooleanParam, StringParam, NonEmpty,
+                                        NumericRangeParam)
 from . import Plugin
 from .constants import (CS_SYM_NAME, SYM_DIHEDRAL_Y, CRYOSPARC_USER,
-                        CRYO_PROJECTS_DIR, CRYOSPARC_DIR, v2_14_0)
+                        CRYO_PROJECTS_DIR, CRYOSPARC_DIR, V2_14_0, V2_13_0)
 
 
 STATUS_FAILED = "failed"
@@ -130,6 +132,7 @@ def getCryosparcInstalledVersion():
     dictionary = ast.literal_eval(system_info[1])
     version = str(dictionary['version'])
     return version
+
 
 def getCryosparcUser():
     """
@@ -278,7 +281,7 @@ def doJob(jobType, projectName, workSpaceName, params, input_group_conect):
 
 
 def enqueueJob(jobType, projectName, workSpaceName, params, input_group_conect,
-               lane):
+               lane, gpusToUse=False):
     """
     make_job(job_type, project_uid, workspace_uid, user_id,
              created_by_job_uid=None, params={}, input_group_connects={})
@@ -291,7 +294,7 @@ def enqueueJob(jobType, projectName, workSpaceName, params, input_group_conect,
                    params, input_group_conect, "'"))
 
     # Create a compatible job to versions >= v2.14.X
-    if parse_version(getCryosparcInstalledVersion()) >= parse_version(v2_14_0):
+    if parse_version(getCryosparcInstalledVersion()) >= parse_version(V2_14_0):
         make_job_cmd = (getCryosparcProgram() +
                         ' %smake_job("%s","%s","%s", "%s", "None", "None", %s, %s)%s' %
                         ("'", jobType, projectName, workSpaceName,
@@ -306,10 +309,18 @@ def enqueueJob(jobType, projectName, workSpaceName, params, input_group_conect,
     print(pwutils.greenStr("Got %s for JobId" % jobId))
 
     # Queue the job
-    enqueue_job_cmd = (getCryosparcProgram() +
-                       ' %senqueue_job("%s","%s","%s")%s' %
-                       ("'", projectName, jobId,
-                        lane, "'"))
+    if parse_version(getCryosparcInstalledVersion()) < parse_version(V2_13_0):
+        enqueue_job_cmd = (getCryosparcProgram() +
+                           ' %senqueue_job("%s","%s","%s")%s' %
+                           ("'", projectName, jobId,
+                            lane, "'"))
+    else:
+        if gpusToUse:
+            gpusToUse = gpusToUse.replace(' ', '')
+        enqueue_job_cmd = (getCryosparcProgram() +
+                           ' %senqueue_job("%s","%s","%s", False, [%s])%s' %
+                           ("'", projectName, jobId,
+                            lane, gpusToUse, "'"))
 
     runCmd(enqueue_job_cmd)
 
@@ -319,7 +330,6 @@ def enqueueJob(jobType, projectName, workSpaceName, params, input_group_conect,
 def runCmd(cmd):
     """ Runs a command and check its exit code. If different than 0 it raises an exception
     :parameter cmd command to run"""
-
 
     print(pwutils.greenStr("Running: %s" % cmd))
     exitCode, cmdOutput = subprocess.getstatusoutput(cmd)
@@ -431,6 +441,33 @@ def getSystemInfo():
     """
     system_info_cmd = (getCryosparcProgram() + ' %sget_system_info()%s') % ("'", "'")
     return runCmd(system_info_cmd)
+
+
+def addComputeSectionParams(form):
+    """
+    Add the compute settings section
+    """
+    form.addSection(label="Compute settings")
+    form.addParam('cacheParticlesSSD', BooleanParam, default=True,
+                  label='Cache particle images on SSD',
+                  help='Whether or not to copy particle images to the local '
+                       'SSD before running. The cache is persistent, so after '
+                       'caching once, particles should be available for '
+                       'subsequent jobs that require the same data. Not '
+                       'using an SSD can dramatically slow down processing.')
+
+    if parse_version(getCryosparcInstalledVersion()) >= parse_version(V2_13_0):
+        form.addParam('gpusToUse', NumericRangeParam, default='0',
+                      label='Which GPUs to use:', validators=[NonEmpty],
+                      help='This argument is necessary. By default, the '
+                           'protocol will attempt to launch on GPU 0. You can '
+                           'override the default allocation by providing a '
+                           'list of which GPUs (0,1,2,3, etc) to use. '
+                           'GPU are separated by ",". For example: "0,1,5"')
+
+    form.addParam('compute_lane', StringParam, default='default',
+                  label='Lane name:',
+                  help='The scheduler lane name to add the protocol execution')
 
 
 def addSymmetryParam(form):

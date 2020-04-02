@@ -29,7 +29,7 @@
 
 from pwem.protocols import ProtClassify2D
 from pyworkflow.protocol.params import (PointerParam, BooleanParam,
-                                        FloatParam, StringParam)
+                                        FloatParam, StringParam, NonEmpty)
 from pyworkflow.utils import replaceExt, createLink
 
 from ..convert import *
@@ -209,23 +209,7 @@ class ProtCryo2D(ProtClassify2D):
                       help='Force the use of a white noise model.')
 
         # ----------- [Compute settings] --------------------------------
-
-        form.addSection(label="Compute settings")
-        form.addParam('cacheParticlesSSD', BooleanParam, default=True,
-                      label='Cache particle images on SSD',
-                      help='Whether or not to copy particle images to the local '
-                           'SSD before running. The cache is persistent, so after '
-                           'caching once, particles should be available for '
-                           'subsequent jobs that require the same data. Not '
-                           'using an SSD can dramatically slow down processing.')
-
-        form.addParam('numberGPU', IntParam, default=1,
-                      validators=[Positive],
-                      label='Number of GPUs to parallelize',
-                      help='Number of GPUs to use during classification')
-        form.addParam('compute_lane', StringParam, default='default',
-                      label='Lane name:',
-                      help='The scheduler lane name to add the protocol execution')
+        addComputeSectionParams(form)
 
     # --------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
@@ -519,8 +503,15 @@ class ProtCryo2D(ProtClassify2D):
         returns: the new uid of the job that was created
         """
         className = "class_2D"
-        input_group_conect = {"particles": str(self.par)}
         # {'particles' : 'JXX.imported_particles' }
+        input_group_conect = {"particles": str(self.par)}
+
+        # Determinate the GPUs or the number of GPUs to use (in dependence of
+        # the cryosparc version)
+        try:
+            gpusToUse = self.gpusToUse.get()
+        except Exception:
+            gpusToUse = '0'
 
         params = {"class2D_K": str(self.numberOfClasses.get()),
                   "class2D_max_res": str(self.maximunResolution.get()),
@@ -543,13 +534,13 @@ class ProtCryo2D(ProtClassify2D):
                   "class2D_sigma_use_white": str(self.useWhiteNoiseModel.get()),
                   "intermediate_plots": str('False'),
                   "compute_use_ssd": str(self.cacheParticlesSSD.get()),
-                  "compute_num_gpus": str(self.numberGPU.get())}
+                  "compute_num_gpus": str(len(gpusToUse.split(',')))}
 
         self.runClass2D = enqueueJob(className, self.projectName.get(),
                                 self.workSpaceName.get(),
                                 str(params).replace('\'', '"'),
                                 str(input_group_conect).replace('\'', '"'),
-                                self.lane)
+                                self.lane, gpusToUse)
         self.currenJob.set(self.runClass2D.get())
         self._store(self)
 

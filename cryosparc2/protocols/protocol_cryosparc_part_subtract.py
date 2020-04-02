@@ -139,13 +139,7 @@ class ProtCryoSparcSubtract(ProtOperateParticles):
 
         # --------------[Compute settings]---------------------------
 
-        form.addSection(label='Compute settings')
-
-        form.addParam('compute_use_ssd', BooleanParam, default=True,
-                      label='Cache particle images on SSD:')
-        form.addParam('compute_lane', StringParam, default='default',
-                      label='Lane name:',
-                      help='The scheduler lane name to add the protocol execution')
+        addComputeSectionParams(form)
 
     # --------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
@@ -372,11 +366,18 @@ class ProtCryoSparcSubtract(ProtOperateParticles):
                 if int(self.getAttributeValue(paramName)) > 0:
                     params[str(paramName)] = str(self.getAttributeValue(paramName))
 
+        # Determinate the GPUs to use (in dependence of
+        # the cryosparc version)
+        try:
+            gpusToUse = self.gpusToUse.get()
+        except Exception:
+            gpusToUse = '0'
+
         self.runPartStract = enqueueJob(className, self.projectName.get(),
                                   self.workSpaceName.get(),
                                   str(params).replace('\'', '"'),
                                   str(input_group_conect).replace('\'', '"'),
-                                  self.lane)
+                                  self.lane, gpusToUse)
 
         self.currenJob.set(self.runPartStract.get())
         self._store(self)

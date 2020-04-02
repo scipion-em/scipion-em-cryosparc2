@@ -272,13 +272,7 @@ class ProtCryoSparcInitialModel(ProtInitialVolume, ProtClassify3D):
 
         # --------------[Compute settings]---------------------------
 
-        form.addSection(label='Compute settings')
-
-        form.addParam('compute_use_ssd', BooleanParam, default=True,
-                      label='Cache particle images on SSD:')
-        form.addParam('compute_lane', StringParam, default='default',
-                      label='Lane name:',
-                      help='The scheduler lane name to add the protocol execution')
+        addComputeSectionParams(form)
 
     # --------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
@@ -548,11 +542,19 @@ class ProtCryoSparcInitialModel(ProtInitialVolume, ProtClassify3D):
                 elif paramName == 'abinit_noise_model':
                     params[str(paramName)] = str(NOISE_MODEL_CHOICES[self.abinit_noise_model.get()])
 
+        # Determinate the GPUs to use (in dependence of
+        # the cryosparc version)
+        try:
+            gpusToUse = self.gpusToUse.get()
+        except Exception:
+            gpusToUse = '0'
+
         self.runAbinit = enqueueJob(className, self.projectName.get(),
                                self.workSpaceName.get(),
                                str(params).replace('\'', '"'),
                                str(input_group_conect).replace('\'', '"'),
-                               self.lane)
+                               self.lane,
+                               gpusToUse)
 
         self.currenJob.set(self.runAbinit.get())
         self._store(self)
