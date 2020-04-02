@@ -27,6 +27,7 @@
 import os
 import ast
 import commands
+from pkg_resources import parse_version
 import pyworkflow.utils as pwutils
 from cryosparc2 import Plugin
 from pyworkflow.em import SCIPION_SYM_NAME, String
@@ -34,7 +35,7 @@ from pyworkflow.em.constants import (SYM_CYCLIC, SYM_TETRAHEDRAL,
                                      SYM_OCTAHEDRAL, SYM_I222, SYM_I222r)
 from pyworkflow.protocol.params import EnumParam, IntParam, Positive
 from cryosparc2.constants import (CS_SYM_NAME, SYM_DIHEDRAL_Y,
-                                  CRYOSPARC_USER, CRYO_PROJECTS_DIR, CRYOSPARC_DIR)
+                                  CRYOSPARC_USER, CRYO_PROJECTS_DIR, CRYOSPARC_DIR, v2_14_0)
 
 
 STATUS_FAILED = "failed"
@@ -107,9 +108,12 @@ def cryosparcValidate():
     if not validateMsgs:
         validateMsgs = isCryosparcRunning()
         if not validateMsgs:
-            version = getCryosparcInstalledVersion()
-            supportedVersions = sorted(Plugin.getSupportedVersions())
-            if version > supportedVersions[-1]:
+            cryosparcVersion = getCryosparcInstalledVersion()
+            supportedVersions = Plugin.getSupportedVersions()
+
+            isCompatible = [version for version in supportedVersions
+                            if parse_version(version) >= parse_version(cryosparcVersion)]
+            if not isCompatible:
                 validateMsgs = ['The installed Cryosparc version is not '
                                 'compatible with the plugin. Please install '
                                 'one of these versions: ' +
@@ -281,11 +285,20 @@ def enqueueJob(jobType, projectName, workSpaceName, params, input_group_conect,
              created_by_job_uid=None, params={}, input_group_connects={})
     """
 
-    # Make the job
+    # Create a compatible job to versions < v2.14.X
     make_job_cmd = (getCryosparcProgram() +
                   ' %smake_job("%s","%s","%s", "%s", "None", %s, %s)%s' %
                   ("'", jobType, projectName, workSpaceName, getCryosparcUser(),
                    params, input_group_conect, "'"))
+
+    # Create a compatible job to versions >= v2.14.X
+    if parse_version(getCryosparcInstalledVersion()) >= parse_version(v2_14_0):
+        make_job_cmd = (getCryosparcProgram() +
+                        ' %smake_job("%s","%s","%s", "%s", "None", "None", %s, %s)%s' %
+                        ("'", jobType, projectName, workSpaceName,
+                         getCryosparcUser(),
+                         params, input_group_conect, "'"))
+
 
     exitCode, cmdOutput = runCmd(make_job_cmd)
 

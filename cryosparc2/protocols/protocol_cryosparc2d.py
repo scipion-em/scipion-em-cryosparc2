@@ -260,14 +260,14 @@ class ProtCryo2D(ProtClassify2D):
         Create the protocol output. Convert cryosparc file to Relion file
         """
         self._initializeUtilsVariables()
-        print (pwutils.greenStr("Creating the output..."))
+        print(pwutils.greenStr("Creating the output..."))
         _numberOfIter = str("_00" + str(self.numberOnlineEMIterator.get()))
         if self.numberOnlineEMIterator.get() > 9:
             _numberOfIter = str("_0" + str(self.numberOnlineEMIterator.get()))
 
         csParticlesName = ("cryosparc_" + self.projectName.get() +
-                      "_" + self.runClass2D.get() + _numberOfIter +
-                      "_particles.cs")
+                           "_" + self.runClass2D.get() + _numberOfIter +
+                           "_particles.cs")
         csFile = os.path.join(self.projectPath, self.projectName.get(),
                               self.runClass2D.get(), csParticlesName)
 
@@ -316,8 +316,8 @@ class ProtCryo2D(ProtClassify2D):
 
         with open(self._getFileName('out_class'), 'r') as input_file, \
                 open(self._getFileName('out_class_m2'), 'w') as output_file:
-            j = 0 #mutex lock
-            i = 0 #start
+            j = 0  # mutex lock
+            i = 0  # start
             k = 1
             l = 0
             for line in input_file:
@@ -331,14 +331,14 @@ class ProtCryo2D(ProtClassify2D):
                         if '@' in m:
                             break
                     output_file.write(" ".join(line.split()[:n]) + " " +
-                                      line.split()[n].split('@')[0] + '@'+
+                                      line.split()[n].split('@')[0] + '@' +
                                       self._getExtraPath() + "/" +
                                       line.split()[n].split('@')[1] + " " +
                                       " ".join(line.split()[n+1:])+"\n")
                     j = 1
                 else:
                     output_file.write(" ".join(line.split()[:n]) + " " +
-                                      line.split()[n].split('@')[0] + '@'+
+                                      line.split()[n].split('@')[0] + '@' +
                                       self._getExtraPath() + "/" +
                                       line.split()[n].split('@')[1] + " " +
                                       " ".join(line.split()[n+1:])+"\n")
@@ -423,10 +423,10 @@ class ProtCryo2D(ProtClassify2D):
             csSize = em.ImageHandler().getDimensions(csAveragesFile)[0]
 
             if csSize == inputSize:
-                print ("No binning detected: linking averages cs file.")
+                print("No binning detected: linking averages cs file.")
                 em.createLink(csAveragesFile, scaledFile)
             else:
-                print ("Scaling CS averages file to match particle size (%s -> %s)." % (csSize, inputSize))
+                print("Scaling CS averages file to match particle size (%s -> %s)." % (csSize, inputSize))
                 scaleSpline(csAveragesFile, scaledFile, inputSize, inputSize)
 
         return scaledFile
@@ -545,13 +545,11 @@ class ProtCryo2D(ProtClassify2D):
                   "compute_use_ssd": str(self.cacheParticlesSSD.get()),
                   "compute_num_gpus": str(self.numberGPU.get())}
 
-        runClass2D = enqueueJob(className, self.projectName.get(),
-                           self.workSpaceName.get(),
-                           str(params).replace('\'', '"'),
-                           str(input_group_conect).replace('\'', '"'),
-                           self.lane)
-
-        self.runClass2D = String(runClass2D)
+        self.runClass2D = enqueueJob(className, self.projectName.get(),
+                                self.workSpaceName.get(),
+                                str(params).replace('\'', '"'),
+                                str(input_group_conect).replace('\'', '"'),
+                                self.lane)
         self.currenJob.set(self.runClass2D.get())
         self._store(self)
 

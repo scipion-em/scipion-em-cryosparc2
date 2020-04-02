@@ -309,7 +309,7 @@ class ProtCryoSparcInitialModel(ProtInitialVolume, ProtClassify3D):
         Create the protocol output. Convert cryosparc file to Relion file
         """
         self._initializeUtilsVariables()
-        print (pwutils.greenStr("Creating the output..."))
+        print(pwutils.greenStr("Creating the output..."))
 
         csFileName = ("cryosparc_" +  self.projectName.get() + "_" +
                       self.runAbinit.get() + "_final_particles.cs")
@@ -324,7 +324,6 @@ class ProtCryoSparcInitialModel(ProtInitialVolume, ProtClassify3D):
         # Copy the particles to scipion output folder
         os.system("cp -r " + ouputsPath + "/" + "*final*" + " " + outputFolder)
         csFile = os.path.join(outputFolder, csFileName)
-
 
         outputClassFn = self._getFileName('out_particles')
         argsList = [csFile, outputClassFn]
@@ -344,7 +343,7 @@ class ProtCryoSparcInitialModel(ProtInitialVolume, ProtClassify3D):
             output_file.write('\n')
             for i in range(int(self.abinit_K.get())):
                 output_file.write("%02d"%(i+1)+"@"+self._getExtraPath() + "/" + self.runAbinit.get() + "/cryosparc_" +\
-                self.projectName.get() + "_"+self.runAbinit.get() + "_class_%02d"%i +
+                                  self.projectName.get() + "_"+self.runAbinit.get() + "_class_%02d"%i +
                                   "_final_volume.mrc\n")
 
         imgSet = self._getInputParticles()
@@ -557,7 +556,7 @@ class ProtCryoSparcInitialModel(ProtInitialVolume, ProtClassify3D):
         self.currenJob.set(self.runAbinit.get())
         self._store(self)
 
-        waitForCryosparc(self.projectName.get(), self.runPartStract.get(),
+        waitForCryosparc(self.projectName.get(), self.runAbinit.get(),
                          "An error occurred in the initial volume process. "
                          "Please, go to cryosPARC software for more "
                          "details.")
