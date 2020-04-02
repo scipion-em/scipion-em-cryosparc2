@@ -135,7 +135,7 @@ def getCryosparcUser():
     """
     Get the full name of the initial admin account
     """
-    return os.environ.get(CRYOSPARC_USER, None)
+    return os.path.basename(os.environ.get(CRYOSPARC_USER, ""))
 
 
 def getCryosparcProjectsDir():
