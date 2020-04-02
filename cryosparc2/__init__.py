@@ -40,7 +40,7 @@ class Plugin(pwem.Plugin):
     _homeVar = CRYOSPARC_HOME
     _pathVars = [CRYOSPARC_HOME]
     _supportedVersions = [V2_5_0, V2_8_0, V2_9_0, V2_11_0, V2_12_0, V2_12_2,
-                          V2_12_4, V2_13_0, V2_13_2]
+                          V2_12_4, V2_13_0, V2_13_2, v2_14_0, v2_14_2]
 
     @classmethod
     def _defineVariables(cls):

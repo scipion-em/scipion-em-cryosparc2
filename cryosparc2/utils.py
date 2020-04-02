@@ -33,11 +33,9 @@ from pwem.constants import SCIPION_SYM_NAME
 from pwem.constants import (SYM_CYCLIC, SYM_TETRAHEDRAL,
                             SYM_OCTAHEDRAL, SYM_I222, SYM_I222r)
 from pyworkflow.protocol.params import EnumParam, IntParam, Positive, String
-from pyworkflow.plugin import Domain
-
 from . import Plugin
-from .constants import (CS_SYM_NAME, SYM_DIHEDRAL_Y,
-                        CRYOSPARC_USER, CRYO_PROJECTS_DIR, CRYOSPARC_DIR)
+from .constants import (CS_SYM_NAME, SYM_DIHEDRAL_Y, CRYOSPARC_USER,
+                        CRYO_PROJECTS_DIR, CRYOSPARC_DIR, v2_14_0)
 
 
 STATUS_FAILED = "failed"
@@ -286,11 +284,20 @@ def enqueueJob(jobType, projectName, workSpaceName, params, input_group_conect,
              created_by_job_uid=None, params={}, input_group_connects={})
     """
 
-    # Make the job
+    # Create a compatible job to versions < v2.14.X
     make_job_cmd = (getCryosparcProgram() +
                   ' %smake_job("%s","%s","%s", "%s", "None", %s, %s)%s' %
                   ("'", jobType, projectName, workSpaceName, getCryosparcUser(),
                    params, input_group_conect, "'"))
+
+    # Create a compatible job to versions >= v2.14.X
+    if parse_version(getCryosparcInstalledVersion()) >= parse_version(v2_14_0):
+        make_job_cmd = (getCryosparcProgram() +
+                        ' %smake_job("%s","%s","%s", "%s", "None", "None", %s, %s)%s' %
+                        ("'", jobType, projectName, workSpaceName,
+                         getCryosparcUser(),
+                         params, input_group_conect, "'"))
+
 
     exitCode, cmdOutput = runCmd(make_job_cmd)
 
