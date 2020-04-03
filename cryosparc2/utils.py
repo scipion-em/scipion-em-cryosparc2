@@ -316,9 +316,9 @@ def enqueueJob(jobType, projectName, workSpaceName, params, input_group_conect,
                             lane, "'"))
     else:
         if gpusToUse:
-            gpusToUse = gpusToUse.replace(' ', '')
+            gpusToUse = '[' + gpusToUse.replace(' ', '') + ']'
         enqueue_job_cmd = (getCryosparcProgram() +
-                           ' %senqueue_job("%s","%s","%s", False, [%s])%s' %
+                           ' %senqueue_job("%s","%s","%s", False, %s)%s' %
                            ("'", projectName, jobId,
                             lane, gpusToUse, "'"))
 
