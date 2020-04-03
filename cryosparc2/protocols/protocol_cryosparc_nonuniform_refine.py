@@ -217,7 +217,6 @@ class ProtCryoSparcNonUniformRefine3D(ProtCryoSparcRefine3D):
         #               default=False,
         #               label="Retrieve statistic model of LocRes")
 
-
     # --------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
         ProtCryoSparcRefine3D._insertAllSteps(self)
@@ -279,11 +278,18 @@ class ProtCryoSparcNonUniformRefine3D(ProtCryoSparcRefine3D):
             elif paramName == 'locres_compute_facility':
                 params[str(paramName)] = str(COMPUTE_FACILITY_CHOICES[self.locres_compute_facility.get()])
 
+        # Determinate the GPUs to use (in dependence of
+        # the cryosparc version)
+        try:
+            gpusToUse = self.gpusToUse.get()
+        except Exception:
+            gpusToUse = False
+
         self.runRefine = enqueueJob(className, self.projectName.get(),
                               self.workSpaceName.get(),
                               str(params).replace('\'', '"'),
                               str(input_group_conect).replace('\'', '"'),
-                              self.lane)
+                              self.lane, gpusToUse)
 
         self.currenJob.set(self.runRefine.get())
         self._store(self)

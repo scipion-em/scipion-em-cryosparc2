@@ -298,14 +298,8 @@ class ProtCryoSparcLocalRefine(ProtOperateParticles):
                            'far distance the mask value becomes 0.0 (in A)')
 
         # --------------[Compute settings]---------------------------
-
-        form.addSection(label='Compute settings')
-
-        form.addParam('compute_use_ssd', BooleanParam, default=True,
-                      label='Cache particle images on SSD:')
-        form.addParam('compute_lane', StringParam, default='default',
-                      label='Lane name:',
-                      help='The scheduler lane name to add the protocol execution')
+        form.addSection(label="Compute settings")
+        addComputeSectionParams(form)
 
     # --------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
@@ -553,17 +547,6 @@ class ProtCryoSparcLocalRefine(ProtOperateParticles):
         self.importedParticles = doImportParticlesStar(self)
         self.currenJob = String(self.importedParticles.get())
         self._store(self)
-
-        while getJobStatus(self.projectName.get(),
-                           self.importedParticles.get()) not in STOP_STATUSES:
-            waitJob(self.projectName.get(), self.importedParticles.get())
-
-        if getJobStatus(self.projectName.get(),
-                        self.importedParticles.get()) != STATUS_COMPLETED:
-            raise Exception("An error occurred importing the particles. "
-                            "Please, go to cryosPARC software for more "
-                            "details.")
-
         self.par = String(self.importedParticles.get() + '.imported_particles')
 
     def _defineParamsName(self):
@@ -620,12 +603,19 @@ class ProtCryoSparcLocalRefine(ProtOperateParticles):
                 params[str(paramName)] = str(
                     REFINE_MASK_CHOICES[self.refine_mask.get()])
 
+        # Determinate the GPUs to use (in dependence of
+        # the cryosparc version)
+        try:
+            gpusToUse = self.gpusToUse.get()
+        except Exception:
+            gpusToUse = False
+
         self.runLocalRefinement = enqueueJob(className, self.projectName.get(),
                                              self.workSpaceName.get(),
                                              str(params).replace('\'', '"'),
                                              str(input_group_conect).replace('\'',
                                                                              '"'),
-                                             self.lane)
+                                             self.lane, gpusToUse)
 
         self.currenJob.set(self.runLocalRefinement.get())
         self._store(self)

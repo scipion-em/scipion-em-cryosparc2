@@ -296,16 +296,8 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
                            'than the threshold')
 
         # --------------[Compute settings]---------------------------
-
-        form.addSection(label='Compute settings')
-
-        form.addParam('compute_use_ssd', BooleanParam, default=True,
-                      label='Cache particle images on SSD:',
-                      help='Use the SSD to cache particles. Speeds up '
-                           'processing significantly')
-        form.addParam('compute_lane', StringParam, default='default',
-                      label='Lane name:',
-                      help='The scheduler lane name to add the protocol execution')
+        form.addSection(label="Compute settings")
+        addComputeSectionParams(form)
 
     # --------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
@@ -332,7 +324,7 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
                                    convertBinaryVol(self.referenceVolume.get(),
                                                     self._getTmpPath()))
         self.importVolume = doImportVolumes(self, self.vol_fn, 'map',
-                                                 'Importing volume...')
+                                            'Importing volume...')
         self.currenJob.set(self.importVolume.get())
         self._store(self)
 
@@ -342,7 +334,7 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
                                                         self._getTmpPath()))
 
             self.importMask = doImportVolumes(self, self.maskFn, 'mask',
-                                                   'Importing mask... ')
+                                              'Importing mask... ')
             self.currenJob.set(self.importMask.get())
             self._store(self)
             self.mask = self.importMask.get() + '.imported_mask.mask'
@@ -418,7 +410,6 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
         os.system("cp -r " + half2 + " " + self._getExtraPath())
         half2 = os.path.join(self._getExtraPath(), half2Name)
 
-
         imgSet = self._getInputParticles()
         vol = Volume()
         vol.setFileName(fnVol)
@@ -441,9 +432,9 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
         os.system("mv " + self._getExtraPath() + "/" + idd + " " +
                   self._getExtraPath()+"/fsc.txt")
         # Convert into scipion fsc format
-        f=open(self._getExtraPath()+"/fsc.txt", "r")
-        lines=f.readlines()
-        wv=[]
+        f = open(self._getExtraPath()+"/fsc.txt", "r")
+        lines = f.readlines()
+        wv = []
         corr = []
         for x in lines[1:-1]:
             wv.append(str(float(x.split('\t')[0])/(int(self._getInputParticles().getDim()[0])*float(imgSet.getSamplingRate()))))
@@ -513,7 +504,7 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
     def _createItemMatrix(self, particle, row):
         createItemMatrix(particle, row, align=ALIGN_PROJ)
         setCryosparcAttributes(particle, row,
-                                          md.RLN_PARTICLE_RANDOM_SUBSET)
+                               md.RLN_PARTICLE_RANDOM_SUBSET)
 
     def _initializeUtilsVariables(self):
         """
@@ -554,19 +545,7 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
         self.importedParticles = doImportParticlesStar(self)
         self.currenJob = String(self.importedParticles.get())
         self._store(self)
-
-        while getJobStatus(self.projectName.get(),
-                           self.importedParticles.get()) not in STOP_STATUSES:
-            waitJob(self.projectName.get(), self.importedParticles.get())
-
-        if getJobStatus(self.projectName.get(),
-                        self.importedParticles.get()) != STATUS_COMPLETED:
-            raise Exception("An error occurred importing the particles. "
-                           "Please, go to cryosPARC software for more "
-                           "details.")
-
         self.par = String(self.importedParticles.get() + '.imported_particles')
-
 
     def _defineParamsName(self):
         """ Define a list with all protocol parameters names"""
@@ -633,11 +612,18 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
             elif paramName == 'refine_mask':
                 params[str(paramName)] = str(REFINE_MASK_CHOICES[self.refine_mask.get()])
 
+        # Determinate the GPUs to use (in dependence of
+        # the cryosparc version)
+        try:
+            gpusToUse = self.gpusToUse.get()
+        except Exception:
+            gpusToUse = False
+
         self.runRefine = enqueueJob(className, self.projectName.get(),
                               self.workSpaceName.get(),
                               str(params).replace('\'', '"'),
                               str(input_group_conect).replace('\'', '"'),
-                              self.lane)
+                              self.lane, gpusToUse)
 
         self.currenJob.set(self.runRefine.get())
         self._store(self)

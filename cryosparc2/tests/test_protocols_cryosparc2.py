@@ -178,7 +178,6 @@ class TestCryosparcClassify2D(TestCryosparcBase):
             prot2D.numberOfClasses.set(5)
             prot2D.numberOnlineEMIterator.set(40)
             prot2D.setObjLabel(label)
-            prot2D.numberGPU.set(1)
             self.launchProtocol(prot2D)
             return prot2D
 
