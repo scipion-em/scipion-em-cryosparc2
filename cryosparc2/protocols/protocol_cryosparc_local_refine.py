@@ -604,7 +604,7 @@ class ProtCryoSparcLocalRefine(ProtOperateParticles):
         # Determinate the GPUs to use (in dependence of
         # the cryosparc version)
         try:
-            gpusToUse = self.gpusToUse.get()
+            gpusToUse = self.getGpuList()
         except Exception:
             gpusToUse = False
 

@@ -34,7 +34,7 @@ from pwem.constants import (SYM_CYCLIC, SYM_TETRAHEDRAL,
                             SYM_OCTAHEDRAL, SYM_I222, SYM_I222r)
 from pyworkflow.protocol.params import (EnumParam, IntParam, Positive, String,
                                         BooleanParam, StringParam, NonEmpty,
-                                        NumericRangeParam)
+                                        NumericRangeParam, GPU_LIST)
 from . import Plugin
 from .constants import (CS_SYM_NAME, SYM_DIHEDRAL_Y, CRYOSPARC_USER,
                         CRYO_PROJECTS_DIR, CRYOSPARC_DIR, V2_14_0, V2_13_0)
@@ -314,7 +314,7 @@ def enqueueJob(jobType, projectName, workSpaceName, params, input_group_conect,
                             lane, "'"))
     else:
         if gpusToUse:
-            gpusToUse = '[' + gpusToUse.replace(' ', '') + ']'
+            gpusToUse = str(gpusToUse)
         enqueue_job_cmd = (getCryosparcProgram() +
                            ' %senqueue_job("%s","%s","%s", False, %s)%s' %
                            ("'", projectName, jobId,
@@ -452,8 +452,8 @@ def addComputeSectionParams(form):
                        'using an SSD can dramatically slow down processing.')
 
     if parse_version(getCryosparcInstalledVersion()) >= parse_version(V2_13_0):
-        form.addParam('gpusToUse', NumericRangeParam, default='0',
-                      label='Which GPUs to use:', validators=[NonEmpty],
+        form.addHidden(GPU_LIST, StringParam, default='0',
+                      label='Choose GPU IDs:', validators=[NonEmpty],
                       help='This argument is necessary. By default, the '
                            'protocol will attempt to launch on GPU 0. You can '
                            'override the default allocation by providing a '
