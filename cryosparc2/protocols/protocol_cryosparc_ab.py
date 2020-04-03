@@ -271,7 +271,7 @@ class ProtCryoSparcInitialModel(ProtInitialVolume, ProtClassify3D):
                       label='Show plots from intermediate steps:')
 
         # --------------[Compute settings]---------------------------
-
+        form.addSection(label="Compute settings")
         addComputeSectionParams(form)
 
     # --------------------------- INSERT steps functions -----------------------
@@ -482,17 +482,6 @@ class ProtCryoSparcInitialModel(ProtInitialVolume, ProtClassify3D):
         self.importedParticles = doImportParticlesStar(self)
         self.currenJob = String(self.importedParticles.get())
         self._store(self)
-
-        while getJobStatus(self.projectName.get(),
-                           self.importedParticles.get()) not in STOP_STATUSES:
-            waitJob(self.projectName.get(), self.importedParticles.get())
-
-        if getJobStatus(self.projectName.get(),
-                        self.importedParticles.get()) != STATUS_COMPLETED:
-            raise Exception("An error occurred importing the particles. "
-                            "Please, go to cryosPARC software for more "
-                            "details.")
-
         self.par = String(self.importedParticles.get() + '.imported_particles')
 
     def _defineParamsName(self):
@@ -547,7 +536,7 @@ class ProtCryoSparcInitialModel(ProtInitialVolume, ProtClassify3D):
         try:
             gpusToUse = self.gpusToUse.get()
         except Exception:
-            gpusToUse = '0'
+            gpusToUse = False
 
         self.runAbinit = enqueueJob(className, self.projectName.get(),
                                self.workSpaceName.get(),

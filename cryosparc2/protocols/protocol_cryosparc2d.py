@@ -209,6 +209,7 @@ class ProtCryo2D(ProtClassify2D):
                       help='Force the use of a white noise model.')
 
         # ----------- [Compute settings] --------------------------------
+        form.addSection(label="Compute settings")
         addComputeSectionParams(form)
 
     # --------------------------- INSERT steps functions -----------------------
@@ -483,12 +484,6 @@ class ProtCryo2D(ProtClassify2D):
         self.importedParticles = doImportParticlesStar(self)
         self.currenJob = String(self.importedParticles.get())
         self._store(self)
-
-        waitForCryosparc(self.projectName.get(), self.importedParticles.get(),
-                                  "An error occurred importing the particles. "
-                                  "Please, go to cryosPARC software for more "
-                                  "details.")
-
         self.par = String(self.importedParticles.get() + '.imported_particles')
 
     def _defineParamsName(self):
@@ -510,8 +505,10 @@ class ProtCryo2D(ProtClassify2D):
         # the cryosparc version)
         try:
             gpusToUse = self.gpusToUse.get()
+            numberGPU = len(gpusToUse.split(','))
         except Exception:
-            gpusToUse = '0'
+            gpusToUse = False
+            numberGPU = 1
 
         params = {"class2D_K": str(self.numberOfClasses.get()),
                   "class2D_max_res": str(self.maximunResolution.get()),
@@ -534,7 +531,7 @@ class ProtCryo2D(ProtClassify2D):
                   "class2D_sigma_use_white": str(self.useWhiteNoiseModel.get()),
                   "intermediate_plots": str('False'),
                   "compute_use_ssd": str(self.cacheParticlesSSD.get()),
-                  "compute_num_gpus": str(len(gpusToUse.split(',')))}
+                  "compute_num_gpus": str(numberGPU)}
 
         self.runClass2D = enqueueJob(className, self.projectName.get(),
                                 self.workSpaceName.get(),

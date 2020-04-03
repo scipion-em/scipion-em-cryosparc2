@@ -233,7 +233,6 @@ def doImportParticlesStar(protocol):
     import_particles = enqueueJob(className, protocol.projectName, protocol.workSpaceName,
                         str(params).replace('\'', '"'), '{}', protocol.lane)
 
-
     waitForCryosparc(protocol.projectName.get(), import_particles.get(),
                      "An error occurred importing particles. "
                      "Please, go to cryosPARC software for more "
@@ -255,7 +254,6 @@ def doImportVolumes(protocol, refVolume, volType, msg):
 
     importedVolume = enqueueJob(className, protocol.projectName, protocol.workSpaceName,
                  str(params).replace('\'', '"'), '{}', protocol.lane)
-
 
     waitForCryosparc(protocol.projectName.get(), importedVolume.get() ,
                      "An error occurred importing the volume. "
@@ -300,7 +298,6 @@ def enqueueJob(jobType, projectName, workSpaceName, params, input_group_conect,
                         ("'", jobType, projectName, workSpaceName,
                          getCryosparcUser(),
                          params, input_group_conect, "'"))
-
 
     exitCode, cmdOutput = runCmd(make_job_cmd)
 
@@ -370,7 +367,6 @@ def getJobStatus(projectName, job):
                           ' %sget_job_status("%s", "%s")%s'
                           % ("'", projectName, job, "'"))
 
-    print(get_job_status_cmd)
     status = subprocess.getstatusoutput(get_job_status_cmd)
     return status[-1].split()[-1]
 
@@ -382,7 +378,6 @@ def waitJob(projectName, job):
     wait_job_cmd = (getCryosparcProgram() +
                     ' %swait_job_complete("%s", "%s")%s'
                     % ("'", projectName, job, "'"))
-    print(wait_job_cmd)
     subprocess.getstatusoutput(wait_job_cmd)
 
 
@@ -440,14 +435,13 @@ def getSystemInfo():
     }
     """
     system_info_cmd = (getCryosparcProgram() + ' %sget_system_info()%s') % ("'", "'")
-    return runCmd(system_info_cmd)
+    return subprocess.getstatusoutput(system_info_cmd)
 
 
 def addComputeSectionParams(form):
     """
     Add the compute settings section
     """
-    form.addSection(label="Compute settings")
     form.addParam('cacheParticlesSSD', BooleanParam, default=True,
                   label='Cache particle images on SSD',
                   help='Whether or not to copy particle images to the local '
