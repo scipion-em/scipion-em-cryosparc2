@@ -117,10 +117,12 @@ def cryosparcValidate():
             isCompatible = [version for version in supportedVersions
                             if parse_version(version) >= parse_version(cryosparcVersion)]
             if not isCompatible:
-                validateMsgs = ['The installed Cryosparc version is not '
-                                'compatible with the plugin. Please install '
-                                'one of these versions: ' +
-                                str(supportedVersions).replace('\'', '')]
+                msg = ('WARNING!!! The installed Cryosparc version is not '
+                       'compatible with the plugin. This can cause a '
+                       'malfunction of the protocol. Please install one of '
+                       'these versions: ' + str(supportedVersions).replace('\'',
+                                                                           ''))
+                print(pwutils.redStr(msg))
 
     return validateMsgs
 
