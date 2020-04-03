@@ -284,7 +284,7 @@ class ProtCryoSparcNonUniformRefine3D(ProtCryoSparcRefine3D):
         try:
             gpusToUse = self.gpusToUse.get()
         except Exception:
-            gpusToUse = '0'
+            gpusToUse = False
 
         self.runRefine = enqueueJob(className, self.projectName.get(),
                               self.workSpaceName.get(),
