@@ -90,7 +90,6 @@ class ProtCryoSparcLocalRefine(ProtOperateParticles):
         # -----------[Local Refinement]------------------------
         form.addSection(label="Naive local refinement")
 
-
         # form.addParam('fulcx', IntParam, default=0,
         #               label='Fulcrum, x-coordinate',
         #               help='The fulcrum is the point around which the subvolume '
@@ -147,7 +146,6 @@ class ProtCryoSparcLocalRefine(ProtOperateParticles):
         form.addParam('n_iterations', IntParam, default=1,
                       validators=[Positive],
                       label='Override number of iterations')
-
 
         # -----[Non Uniform Refinement]----------------------------------------
 
@@ -300,14 +298,8 @@ class ProtCryoSparcLocalRefine(ProtOperateParticles):
                            'far distance the mask value becomes 0.0 (in A)')
 
         # --------------[Compute settings]---------------------------
-
-        form.addSection(label='Compute settings')
-
-        form.addParam('compute_use_ssd', BooleanParam, default=True,
-                      label='Cache particle images on SSD:')
-        form.addParam('compute_lane', StringParam, default='default',
-                      label='Lane name:',
-                      help='The scheduler lane name to add the protocol execution')
+        form.addSection(label="Compute settings")
+        addComputeSectionParams(form)
 
     # --------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
@@ -344,7 +336,7 @@ class ProtCryoSparcLocalRefine(ProtOperateParticles):
                                            self._getTmpPath()))
 
         self.importMask = doImportVolumes(self, self.maskFn, 'mask',
-                                               'Importing mask... ')
+                                          'Importing mask... ')
         self.currenJob.set(self.importMask.get())
         self._store(self)
 
@@ -443,14 +435,15 @@ class ProtCryoSparcLocalRefine(ProtOperateParticles):
         os.system("wget 127.0.0.1:39000/file/" + idd + " -nd -P" +
                   self._getExtraPath())
         os.system("mv " + self._getExtraPath() + "/" + idd + " " +
-                  self._getExtraPath()+"/fsc.txt")
+                  self._getExtraPath() + "/fsc.txt")
         # Convert into scipion fsc format
-        f = open(self._getExtraPath()+"/fsc.txt", "r")
+        f = open(self._getExtraPath() + "/fsc.txt", "r")
         lines = f.readlines()
         wv = []
         corr = []
         for x in lines[1:-1]:
-            wv.append(str(float(x.split('\t')[0])/(int(self._getInputParticles().getDim()[0])*float(imgSet.getSamplingRate()))))
+            wv.append(str(float(x.split('\t')[0]) / (
+                        int(self._getInputParticles().getDim()[0]) * float(imgSet.getSamplingRate()))))
             corr.append(x.split('\t')[6])
         f.close()
 
@@ -461,23 +454,22 @@ class ProtCryoSparcLocalRefine(ProtOperateParticles):
         self._defineOutputs(outputFSC=fsc)
         self._defineSourceRelation(vol, fsc)
 
-
     def setAborted(self):
         """ Set the status to aborted and updated the endTime. """
         ProtOperateParticles.setAborted(self)
         killJob(str(self.projectName.get()), str(self.currenJob.get()))
         clearJob(str(self.projectName.get()), str(self.currenJob.get()))
 
-
     # --------------------------- INFO functions -------------------------------
     def _validate(self):
         """ Should be overwritten in subclasses to
                return summary message for NORMAL EXECUTION.
                """
-        errors = []
-        self._validateDim(self._getInputParticles(), self.refVolume.get(),
-                          errors, 'Input particles', 'Input volume')
-        return errors
+        validateMsgs = cryosparcValidate()
+        if not validateMsgs:
+            self._validateDim(self._getInputParticles(), self.refVolume.get(),
+                              validateMsgs, 'Input particles', 'Input volume')
+        return validateMsgs
 
     def _summary(self):
         summary = []
@@ -555,17 +547,6 @@ class ProtCryoSparcLocalRefine(ProtOperateParticles):
         self.importedParticles = doImportParticlesStar(self)
         self.currenJob = String(self.importedParticles.get())
         self._store(self)
-
-        while getJobStatus(self.projectName.get(),
-                           self.importedParticles.get()) not in STOP_STATUSES:
-            waitJob(self.projectName.get(), self.importedParticles.get())
-
-        if getJobStatus(self.projectName.get(),
-                        self.importedParticles.get()) != STATUS_COMPLETED:
-            raise Exception("An error occurred importing the particles. "
-                            "Please, go to cryosPARC software for more "
-                            "details.")
-
         self.par = String(self.importedParticles.get() + '.imported_particles')
 
     def _defineParamsName(self):
@@ -622,25 +603,24 @@ class ProtCryoSparcLocalRefine(ProtOperateParticles):
                 params[str(paramName)] = str(
                     REFINE_MASK_CHOICES[self.refine_mask.get()])
 
-        runLocalRefinement = enqueueJob(className, self.projectName.get(),
-                                        self.workSpaceName.get(),
-                                        str(params).replace('\'', '"'),
-                                        str(input_group_conect).replace('\'',
-                                                                        '"'),
-                                        self.lane)
+        # Determinate the GPUs to use (in dependence of
+        # the cryosparc version)
+        try:
+            gpusToUse = self.gpusToUse.get()
+        except Exception:
+            gpusToUse = False
 
-        self.runLocalRefinement = String(runLocalRefinement[-1].split()[-1])
+        self.runLocalRefinement = enqueueJob(className, self.projectName.get(),
+                                             self.workSpaceName.get(),
+                                             str(params).replace('\'', '"'),
+                                             str(input_group_conect).replace('\'',
+                                                                             '"'),
+                                             self.lane, gpusToUse)
+
         self.currenJob.set(self.runLocalRefinement.get())
         self._store(self)
 
-        while getJobStatus(self.projectName.get(),
-                           self.runLocalRefinement.get()) not in STOP_STATUSES:
-            waitJob(self.projectName.get(), self.runLocalRefinement.get())
-
-        if getJobStatus(self.projectName.get(),
-                        self.runLocalRefinement.get()) != STATUS_COMPLETED:
-            raise Exception("An error occurred in the local refinement process. "
-                            "Please, go to cryosPARC software for more "
-                            "details.")
-
-
+        waitForCryosparc(self.projectName.get(), self.runLocalRefinement.get(),
+                         "An error occurred in the local refinement process. "
+                         "Please, go to cryosPARC software for more "
+                         "details.")

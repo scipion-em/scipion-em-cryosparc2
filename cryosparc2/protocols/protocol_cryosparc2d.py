@@ -209,23 +209,8 @@ class ProtCryo2D(ProtClassify2D):
                       help='Force the use of a white noise model.')
 
         # ----------- [Compute settings] --------------------------------
-
         form.addSection(label="Compute settings")
-        form.addParam('cacheParticlesSSD', BooleanParam, default=True,
-                      label='Cache particle images on SSD',
-                      help='Whether or not to copy particle images to the local '
-                           'SSD before running. The cache is persistent, so after '
-                           'caching once, particles should be available for '
-                           'subsequent jobs that require the same data. Not '
-                           'using an SSD can dramatically slow down processing.')
-
-        form.addParam('numberGPU', IntParam, default=1,
-                      validators=[Positive],
-                      label='Number of GPUs to parallelize',
-                      help='Number of GPUs to use during classification')
-        form.addParam('compute_lane', StringParam, default='default',
-                      label='Lane name:',
-                      help='The scheduler lane name to add the protocol execution')
+        addComputeSectionParams(form)
 
     # --------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
@@ -260,14 +245,14 @@ class ProtCryo2D(ProtClassify2D):
         Create the protocol output. Convert cryosparc file to Relion file
         """
         self._initializeUtilsVariables()
-        print (pwutils.greenStr("Creating the output..."))
+        print(pwutils.greenStr("Creating the output..."))
         _numberOfIter = str("_00" + str(self.numberOnlineEMIterator.get()))
         if self.numberOnlineEMIterator.get() > 9:
             _numberOfIter = str("_0" + str(self.numberOnlineEMIterator.get()))
 
         csParticlesName = ("cryosparc_" + self.projectName.get() +
-                      "_" + self.runClass2D.get() + _numberOfIter +
-                      "_particles.cs")
+                           "_" + self.runClass2D.get() + _numberOfIter +
+                           "_particles.cs")
         csFile = os.path.join(self.projectPath, self.projectName.get(),
                               self.runClass2D.get(), csParticlesName)
 
@@ -316,8 +301,8 @@ class ProtCryo2D(ProtClassify2D):
 
         with open(self._getFileName('out_class'), 'r') as input_file, \
                 open(self._getFileName('out_class_m2'), 'w') as output_file:
-            j = 0 #mutex lock
-            i = 0 #start
+            j = 0  # mutex lock
+            i = 0  # start
             k = 1
             l = 0
             for line in input_file:
@@ -331,14 +316,14 @@ class ProtCryo2D(ProtClassify2D):
                         if '@' in m:
                             break
                     output_file.write(" ".join(line.split()[:n]) + " " +
-                                      line.split()[n].split('@')[0] + '@'+
+                                      line.split()[n].split('@')[0] + '@' +
                                       self._getExtraPath() + "/" +
                                       line.split()[n].split('@')[1] + " " +
                                       " ".join(line.split()[n+1:])+"\n")
                     j = 1
                 else:
                     output_file.write(" ".join(line.split()[:n]) + " " +
-                                      line.split()[n].split('@')[0] + '@'+
+                                      line.split()[n].split('@')[0] + '@' +
                                       self._getExtraPath() + "/" +
                                       line.split()[n].split('@')[1] + " " +
                                       " ".join(line.split()[n+1:])+"\n")
@@ -359,14 +344,12 @@ class ProtCryo2D(ProtClassify2D):
 
     # --------------------------- INFO functions -------------------------------
     def _validate(self):
-        validateMsgs = cryosparcExist()
+        validateMsgs = cryosparcValidate()
         if not validateMsgs:
-            validateMsgs = isCryosparcRunning()
-            if not validateMsgs:
-                particles = self._getInputParticles()
-                if not particles.hasCTF():
-                    validateMsgs.append("The Particles has not associated a "
-                                        "CTF model")
+            particles = self._getInputParticles()
+            if not particles.hasCTF():
+                validateMsgs.append("The Particles has not associated a "
+                                    "CTF model")
         return validateMsgs
 
     def _summary(self):
@@ -425,10 +408,10 @@ class ProtCryo2D(ProtClassify2D):
             csSize = em.ImageHandler().getDimensions(csAveragesFile)[0]
 
             if csSize == inputSize:
-                print ("No binning detected: linking averages cs file.")
+                print("No binning detected: linking averages cs file.")
                 em.createLink(csAveragesFile, scaledFile)
             else:
-                print ("Scaling CS averages file to match particle size (%s -> %s)." % (csSize, inputSize))
+                print("Scaling CS averages file to match particle size (%s -> %s)." % (csSize, inputSize))
                 scaleSpline(csAveragesFile, scaledFile, inputSize, inputSize)
 
         return scaledFile
@@ -501,17 +484,6 @@ class ProtCryo2D(ProtClassify2D):
         self.importedParticles = doImportParticlesStar(self)
         self.currenJob = String(self.importedParticles.get())
         self._store(self)
-
-        while getJobStatus(self.projectName.get(),
-                           self.importedParticles.get()) not in STOP_STATUSES:
-            waitJob(self.projectName.get(), self.importedParticles.get())
-
-        if getJobStatus(self.projectName.get(),
-                        self.importedParticles.get()) != STATUS_COMPLETED:
-            raise Exception("An error occurred importing the particles. "
-                           "Please, go to cryosPARC software for more "
-                           "details.")
-
         self.par = String(self.importedParticles.get() + '.imported_particles')
 
     def _defineParamsName(self):
@@ -526,8 +498,17 @@ class ProtCryo2D(ProtClassify2D):
         returns: the new uid of the job that was created
         """
         className = "class_2D"
-        input_group_conect = {"particles": str(self.par)}
         # {'particles' : 'JXX.imported_particles' }
+        input_group_conect = {"particles": str(self.par)}
+
+        # Determinate the GPUs or the number of GPUs to use (in dependence of
+        # the cryosparc version)
+        try:
+            gpusToUse = self.gpusToUse.get()
+            numberGPU = len(gpusToUse.split(','))
+        except Exception:
+            gpusToUse = False
+            numberGPU = 1
 
         params = {"class2D_K": str(self.numberOfClasses.get()),
                   "class2D_max_res": str(self.maximunResolution.get()),
@@ -550,25 +531,18 @@ class ProtCryo2D(ProtClassify2D):
                   "class2D_sigma_use_white": str(self.useWhiteNoiseModel.get()),
                   "intermediate_plots": str('False'),
                   "compute_use_ssd": str(self.cacheParticlesSSD.get()),
-                  "compute_num_gpus": str(self.numberGPU.get())}
+                  "compute_num_gpus": str(numberGPU)}
 
-        runClass2D = enqueueJob(className, self.projectName.get(),
-                           self.workSpaceName.get(),
-                           str(params).replace('\'', '"'),
-                           str(input_group_conect).replace('\'', '"'),
-                           self.lane)
-
-        self.runClass2D = String(runClass2D[-1].split()[-1])
+        self.runClass2D = enqueueJob(className, self.projectName.get(),
+                                self.workSpaceName.get(),
+                                str(params).replace('\'', '"'),
+                                str(input_group_conect).replace('\'', '"'),
+                                self.lane, gpusToUse)
         self.currenJob.set(self.runClass2D.get())
         self._store(self)
-        while getJobStatus(self.projectName.get(),
-                           self.runClass2D.get()) not in STOP_STATUSES:
-            waitJob(self.projectName.get(), self.runClass2D.get())
 
-        if getJobStatus(self.projectName.get(),
-                        self.runClass2D.get()) != STATUS_COMPLETED:
-            raise Exception(
-                "An error occurred in the 2D classification process. "
-                "Please, go to cryosPARC software for more "
-                "details.")
+        waitForCryosparc(self.projectName.get(), self.runClass2D.get(),
+                        "An error occurred in the 2D classification process. "
+                        "Please, go to cryosPARC software for more "
+                        "details.")
 
