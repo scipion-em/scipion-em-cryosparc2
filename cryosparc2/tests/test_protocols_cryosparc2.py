@@ -455,16 +455,6 @@ class TestCryosparcLocalRefine(TestCryosparcBase):
         _checkAsserts(cryosparcProtGpu)
 
 
-class TestUtils(BaseTest):
-    def testSamplingRateConvertion(self):
-        sr = calculateNewSamplingRate((2, 2, 2), 4, (4, 4, 4))
-        self.assertEqual(sr, 8, "Wrong sampling rate conversion 1")
-
-        sr = calculateNewSamplingRate((2, 2, 2), 1.5, (4, 4, 4))
-        self.assertEqual(sr, 3, "Wrong sampling rate conversion 2")
-
-        sr = calculateNewSamplingRate((3, 3, 3), 1.5, (4, 4, 4))
-        self.assertEqual(sr, 2, "Wrong sampling rate conversion 3")
 
 
 

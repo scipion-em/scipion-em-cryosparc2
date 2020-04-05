@@ -66,28 +66,29 @@ def getCryosparcProgram():
     """
     Get the cryosparc program to launch any command
     """
-    if getCryosparcDir() is not None:
-        return os.path.join(getCryosparcDir(),
+    csDir = getCryosparcDir()
+
+    if csDir is not None:
+        return os.path.join(csDir,
                             'cryosparc2_master/bin/cryosparcm cli')
+
     return None
 
 
-def cryosparcExist():
+def cryosparcExists():
     """
-    Determine if cryosparc software exist
+    Determine if scipion can find cryosparc
+    :returns True if found, False otherwise
     """
-    msg = []
-    if getCryosparcDir() is not None and not os.path.exists(getCryosparcDir()):
-       msg.append(('The cryoSPARC software do not exist in %s. Please install it')
-                  % str(os.environ[CRYOSPARC_DIR]))
-    return msg
+    csDir = getCryosparcDir()
+    return csDir is not None and os.path.exists(csDir)
 
 
 def isCryosparcRunning():
     """
     Determine if cryosparc services are running
+    :returns True if running, false otherwise
     """
-    msg = []
     status = -1
     if getCryosparcProgram() is not None:
         test_conection_cmd = (getCryosparcProgram() +
@@ -95,36 +96,43 @@ def isCryosparcRunning():
         test_conection = commands.getstatusoutput(test_conection_cmd)
         status = test_conection[0]
 
-    if status != 0:
-        msg = ['Failed to establish a new connection with cryoSPARC. Please, '
-               'restart the cryoSPARC services. Run the "%s" program located in '
-               'the cryosparc_master/bin folder with "%s" parameter' % ("cryosparcm", "start")]
-
-    return msg
+    return status == 0
 
 
 def cryosparcValidate():
     """
     Validates some cryo properties that must be satisfy
     """
-    validateMsgs = cryosparcExist()
-    if not validateMsgs:
-        validateMsgs = isCryosparcRunning()
-        if not validateMsgs:
-            cryosparcVersion = getCryosparcInstalledVersion()
-            supportedVersions = Plugin.getSupportedVersions()
+    if not cryosparcExists():
 
-            isCompatible = [version for version in supportedVersions
-                            if parse_version(version) >= parse_version(cryosparcVersion)]
-            if not isCompatible:
-                msg = ('WARNING!!! The installed Cryosparc version is not '
-                       'compatible with the plugin. This can cause a '
-                       'malfunction of the protocol. Please install one of '
-                       'these versions: ' + str(supportedVersions).replace('\'',
-                                                                           ''))
-                print(pwutils.redStr(msg))
+        return["cryoSPARC software not found at %s. Please, fill %s variable in scipion's config file."
+                   % (getCryosparcDir(), CRYOSPARC_DIR)]
 
-    return validateMsgs
+    if not isCryosparcRunning():
+
+        return ['Failed to establish a new connection with cryoSPARC. Please, '
+                'restart the cryoSPARC services. Run the "%s" program located in '
+                'the cryosparc_master/bin folder with "%s" parameter' % ("cryosparcm", "start")]
+
+    cryosparcVersion = parse_version(getCryosparcInstalledVersion())
+    supportedVersions = Plugin.getSupportedVersions()
+    minSupportedVersion = parse_version(supportedVersions[0])
+    maxSupportedVersion = parse_version(supportedVersions[-1])
+
+    # If version lower than first one
+    if minSupportedVersion > cryosparcVersion:
+        return ['The installed Cryosparc version is not '
+                'compatible with the plugin. This can cause a '
+                'malfunction of the protocol. Please install one of '
+                'these versions: ' + str(supportedVersions).replace('\'', '')]
+
+    elif maxSupportedVersion < cryosparcVersion:
+        print(pwutils.redStr("%s of cryosparc is newer than those we've tested %s. Instead of blocking the "
+                             "execution, we are allowing this to run assuming compatibility is not broken."
+                             "If it fails, please consider: A - upgrade the plugin, there might be an update, "
+                             "or B - downgrade cryosparc version." % (cryosparcVersion, str(supportedVersions).replace('\'', ''))))
+
+    return []
 
 
 def getCryosparcInstalledVersion():
@@ -452,7 +460,8 @@ def addComputeSectionParams(form):
                        'subsequent jobs that require the same data. Not '
                        'using an SSD can dramatically slow down processing.')
 
-    if parse_version(getCryosparcInstalledVersion()) >= parse_version(V2_13_0):
+    # Default behaviour to latest version
+    if (not isCryosparcRunning()) or (parse_version(getCryosparcInstalledVersion()) >= parse_version(V2_13_0)):
         form.addParam('gpusToUse', NumericRangeParam, default='0',
                       label='Which GPUs to use:', validators=[NonEmpty],
                       help='This argument is necessary. By default, the '
