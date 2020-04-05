@@ -490,13 +490,13 @@ def addComputeSectionParams(form):
 
     # Default behaviour to latest version
     if (not isCryosparcRunning()) or (parse_version(getCryosparcInstalledVersion()) >= parse_version(V2_13_0)):
-        form.addParam('gpusToUse', NumericRangeParam, default='0',
-                      label='Which GPUs to use:', validators=[NonEmpty],
-                      help='This argument is necessary. By default, the '
-                           'protocol will attempt to launch on GPU 0. You can '
-                           'override the default allocation by providing a '
-                           'list of which GPUs (0,1,2,3, etc) to use. '
-                           'GPU are separated by ",". For example: "0,1,5"')
+        form.addHidden(GPU_LIST, StringParam, default='0',
+                       label='Choose GPU IDs:', validators=[NonEmpty],
+                       help='This argument is necessary. By default, the '
+                            'protocol will attempt to launch on GPU 0. You can '
+                            'override the default allocation by providing a '
+                            'list of which GPUs (0,1,2,3, etc) to use. '
+                            'GPU are separated by ",". For example: "0,1,5"')
 
     form.addParam('compute_lane', StringParam, default='default',
                   label='Lane name:',
