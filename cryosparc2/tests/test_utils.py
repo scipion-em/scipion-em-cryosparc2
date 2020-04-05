@@ -46,7 +46,7 @@ class TestUtils(unittest.TestCase):
             with patch('cryosparc2.utils.isCryosparcRunning') as running:
                 running.return_value = False
                 result = cryosparcValidate()
-                self.assertTrue("Failed to establish" in result[0], "Validation did not detect CS not running")
+                self.assertTrue("connect" in result[0], "Validation did not detect CS not running")
 
                 running.return_value = True
 
@@ -64,7 +64,7 @@ class TestUtils(unittest.TestCase):
                     self.assertEqual(0, len(result), "Validation did not detectCS correct version.")
 
                     # Patch printing Warning function--> redStr
-                    with patch('pyworkflow.utils.redStr') as redStr:
+                    with patch('pyworkflow.utils.yellowStr') as redStr:
                         # Higher version
                         highV = "100.1.1"
                         getVersion.return_value = highV

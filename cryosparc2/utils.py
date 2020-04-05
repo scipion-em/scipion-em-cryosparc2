@@ -62,7 +62,7 @@ def getCryosparcDir():
     return Plugin.getHome()
 
 
-def getCryosparcProgram():
+def getCryosparcProgram(mode="cli"):
     """
     Get the cryosparc program to launch any command
     """
@@ -70,7 +70,7 @@ def getCryosparcProgram():
 
     if csDir is not None:
         return os.path.join(csDir,
-                            'cryosparc2_master/bin/cryosparcm cli')
+                            'cryosparc2_master/bin/cryosparcm %s' % mode)
 
     return None
 
@@ -110,9 +110,8 @@ def cryosparcValidate():
 
     if not isCryosparcRunning():
 
-        return ['Failed to establish a new connection with cryoSPARC. Please, '
-                'restart the cryoSPARC services. Run the "%s" program located in '
-                'the cryosparc_master/bin folder with "%s" parameter' % ("cryosparcm", "start")]
+        return ['Failed to connect to cryoSPARC. Please, make sure cryoSPARC is running.\n'
+                'Running: *%s* might fix this.' % getCryosparcProgram("start")]
 
     cryosparcVersion = parse_version(getCryosparcInstalledVersion())
     supportedVersions = Plugin.getSupportedVersions()
@@ -127,10 +126,13 @@ def cryosparcValidate():
                 'these versions: ' + str(supportedVersions).replace('\'', '')]
 
     elif maxSupportedVersion < cryosparcVersion:
-        print(pwutils.redStr("%s of cryosparc is newer than those we've tested %s. Instead of blocking the "
+        print(pwutils.yellowStr("cryoSPARC %s is newer than those we've tested %s. Instead of blocking the "
                              "execution, we are allowing this to run assuming compatibility is not broken."
-                             "If it fails, please consider: A - upgrade the plugin, there might be an update, "
-                             "or B - downgrade cryosparc version." % (cryosparcVersion, str(supportedVersions).replace('\'', ''))))
+                             "If it fails, please consider:\n A - upgrade the plugin, there might be an update.\n "
+                             "B - downgrade cryosparc version.\n C - Contact plugin maintainers"
+                             " at https://github.com/scipion-em/scipion-em-cryosparc2"
+                             % (cryosparcVersion, str(supportedVersions).replace('\'', ''))))
+
 
     return []
 
