@@ -45,9 +45,7 @@ class Plugin(pwem.Plugin):
     @classmethod
     def _defineVariables(cls):
         cls._defineVar(CRYOSPARC_HOME, os.environ.get(CRYOSPARC_DIR))
-        cls._defineVar(CRYO_PROJECTS_DIR,
-                       os.path.join(cls.getHome(),
-                                    "scipion_projects"))
+        cls._defineVar(CRYO_PROJECTS_DIR, "scipion_projects")
 
     @classmethod
     def getEnviron(cls):

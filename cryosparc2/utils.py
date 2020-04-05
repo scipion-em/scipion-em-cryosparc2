@@ -157,7 +157,8 @@ def getCryosparcProjectsDir():
     """
     Get the path on the worker node to a writable directory
     """
-    cryoProject_Dir = Plugin.getVar(CRYO_PROJECTS_DIR)
+    # Make a join in case is relative it will prepend getHome.
+    cryoProject_Dir = os.path.join(Plugin.getHome(), Plugin.getVar(CRYO_PROJECTS_DIR))
 
     if not os.path.exists(cryoProject_Dir):
         os.mkdir(cryoProject_Dir)
