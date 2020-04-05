@@ -49,5 +49,15 @@
   url                      = "http://ieeexplore.ieee.org/document/7740877"
 }
 
+@article{daniel_asarnow_2019_3576630,
+  author       = {Daniel Asarnow and Eugene Palovcak and Yifan Cheng},
+  title        = {asarnow/pyem: UCSF pyem v0.5},
+  month        = dec,
+  year         = 2019,
+  Journal    = {Zenodo},
+  version      = {v0.5},
+  doi          = {https://doi.org/10.5281/zenodo.3576630},
+  url          = {https://doi.org/10.5281/zenodo.3576630}
+}
 """
 
