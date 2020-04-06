@@ -24,17 +24,19 @@
 # *  e-mail address 'scipion@cnb.csic.es'
 # *
 # **************************************************************************
+import getpass
 import os
 import ast
 import subprocess
 from pkg_resources import parse_version
 import pyworkflow.utils as pwutils
+from pyworkflow.object import String
 from pwem.constants import SCIPION_SYM_NAME
 from pwem.constants import (SYM_CYCLIC, SYM_TETRAHEDRAL,
                             SYM_OCTAHEDRAL, SYM_I222, SYM_I222r)
-from pyworkflow.protocol.params import (EnumParam, IntParam, Positive, String,
+from pyworkflow.protocol.params import (EnumParam, IntParam, Positive,
                                         BooleanParam, StringParam, NonEmpty,
-                                        NumericRangeParam, GPU_LIST)
+                                        GPU_LIST)
 from . import Plugin
 from .constants import (CS_SYM_NAME, SYM_DIHEDRAL_Y, CRYOSPARC_USER,
                         CRYO_PROJECTS_DIR, CRYOSPARC_DIR, V2_14_0, V2_13_0)
@@ -165,6 +167,12 @@ def getCryosparcProjectsDir():
 
     return cryoProject_Dir
 
+def getProjectName(scipionProjectName):
+    """ returns the name of the cryosparc project based on
+    scipion project name and  a hash based on the user name"""
+
+    username = getpass.getuser()
+    return "%s-%s" % (scipionProjectName, username)
 
 def getProjectPath(projectDir):
     """
@@ -350,7 +358,6 @@ def runCmd(cmd, printCmd=True):
 
     return exitCode, cmdOutput
 
-
 def waitForCryosparc(projectName, jobId, failureMessage):
     """ Waits for cryosparc to finish or fail a job
     :parameter projectName: Cryosparc project name
@@ -464,7 +471,7 @@ def addComputeSectionParams(form):
                        'subsequent jobs that require the same data. Not '
                        'using an SSD can dramatically slow down processing.')
 
-    if parse_version(getCryosparcInstalledVersion()) >= parse_version(V2_13_0):
+    if (not isCryosparcRunning()) or parse_version(getCryosparcInstalledVersion()) >= parse_version(V2_13_0):
         form.addHidden(GPU_LIST, StringParam, default='0',
                       label='Choose GPU IDs:', validators=[NonEmpty],
                       help='This argument is necessary. By default, the '
