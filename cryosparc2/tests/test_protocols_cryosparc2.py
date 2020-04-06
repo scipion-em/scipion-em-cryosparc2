@@ -25,15 +25,13 @@
 # *
 # **************************************************************************
 
-from pyworkflow.em.protocol import *
+from pwem.protocols import *
 from pyworkflow.tests import *
-from pyworkflow.utils import importFromPlugin
+from pwem import Domain
 
-from cryosparc2.protocols import *
-from cryosparc2.constants import *
-from cryosparc2.utils import calculateNewSamplingRate
-
-relionProtocols = importFromPlugin('relion.protocols', doRaise=True)
+from ..protocols import *
+from ..constants import *
+from ..utils import calculateNewSamplingRate
 
 
 class TestCryosparcBase(BaseTest):
@@ -67,26 +65,26 @@ class TestCryosparcBase(BaseTest):
             kwargs.update({'samplingRateMode': 1,
                            'scannedPixelSize': scannedPixelSize})
 
-        cls.protImport = ProtImportMicrographs(**kwargs)
-        cls.launchProtocol(cls.protImport)
+        protImportMic = ProtImportMicrographs(**kwargs)
+        cls.launchProtocol(protImportMic)
 
         # Check that input micrographs have been imported
-        if cls.protImport.outputMicrographs is None:
+        if protImportMic.outputMicrographs is None:
             raise Exception('Import of micrograph: %s, failed. '
                             'outputMicrographs is None.' % pattern)
 
-        return cls.protImport
+        return protImportMic
 
     @classmethod
     def runImportVolumes(cls, pattern, samplingRate,
                          importFrom=ProtImportParticles.IMPORT_FROM_FILES):
-        """ Run an Import particles protocol. """
-        cls.protImport = cls.newProtocol(ProtImportVolumes,
+        """ Run an Import volumes protocol. """
+        protImportVol = cls.newProtocol(ProtImportVolumes,
                                          filesPath=pattern,
                                          samplingRate=samplingRate
                                          )
-        cls.launchProtocol(cls.protImport)
-        return cls.protImport
+        cls.launchProtocol(protImportVol)
+        return protImportVol
 
     @classmethod
     def runImportParticles(cls, pattern, samplingRate, checkStack=False,
@@ -97,7 +95,7 @@ class TestCryosparcBase(BaseTest):
         elif importFrom == ProtImportParticles.IMPORT_FROM_FILES:
             objLabel = 'from file (particles)'
 
-        cls.protImport = cls.newProtocol(ProtImportParticles,
+        protImportPart = cls.newProtocol(ProtImportParticles,
                                          objLabel=objLabel,
                                          filesPath=pattern,
                                          sqliteFile=pattern,
@@ -105,12 +103,12 @@ class TestCryosparcBase(BaseTest):
                                          checkStack=checkStack,
                                          importFrom=importFrom)
 
-        cls.launchProtocol(cls.protImport)
+        cls.launchProtocol(protImportPart)
         # Check that input images have been imported (a better way to do this?)
-        if cls.protImport.outputParticles is None:
+        if protImportPart.outputParticles is None:
             raise Exception('Import of images: %s, failed. '
                             'outputParticles is None.' % pattern)
-        return cls.protImport
+        return protImportPart
 
     @classmethod
     def runImportMicrographBPV(cls, pattern):
@@ -157,7 +155,7 @@ class TestCryosparcClassify2D(TestCryosparcBase):
         dataset = DataSet.getDataSet(dataProject)
         TestCryosparcBase.setData()
         particlesPattern = dataset.getFile('particles.sqlite')
-        cls.protImport = cls.runImportParticleCryoSPARC(cls.partFn2)
+        cls.protImportPart = cls.runImportParticleCryoSPARC(cls.partFn2)
 
     def testCryosparc2D(self):
         def _runCryosparcClassify2D(label=''):
@@ -165,16 +163,7 @@ class TestCryosparcClassify2D(TestCryosparcBase):
                                       doCTF=False, maskDiameterA=340,
                                       numberOfMpi=4, numberOfThreads=1)
 
-            # Normalization after the imported particles
-            relionProtocol = self.newProtocol(relionProtocols.ProtRelionPreprocessParticles,
-                                        doNormalize=True,
-                                        doScale=True, scaleSize=140,
-                                        doInvert=False)
-            relionProtocol.setObjLabel('relion: preprocess particles')
-            relionProtocol.inputParticles.set(self.protImport.outputParticles)
-            self.launchProtocol(relionProtocol)
-
-            prot2D.inputParticles.set(relionProtocol.outputParticles)
+            prot2D.inputParticles.set(self.protImportPart.outputParticles)
             prot2D.numberOfClasses.set(5)
             prot2D.numberOnlineEMIterator.set(40)
             prot2D.setObjLabel(label)
@@ -203,24 +192,14 @@ class TestCryosparc3DInitialModel(TestCryosparcBase):
         dataset = DataSet.getDataSet(dataProject)
         TestCryosparcBase.setData()
         particlesPattern = dataset.getFile('particles.sqlite')
-        cls.protImport = cls.runImportParticleCryoSPARC(cls.partFn2)
+        cls.protImportPart = cls.runImportParticleCryoSPARC(cls.partFn2)
 
     def testCryosparcInitialModel(self):
         def _runCryosparcInitialModel(label=''):
             protInitialModel = self.newProtocol(ProtCryoSparcInitialModel,
-                                      numberOfMpi=4, numberOfThreads=1)
+                                                numberOfMpi=4, numberOfThreads=1)
 
-            # Normalization after the imported particles
-            relionProtocol = self.newProtocol(
-                relionProtocols.ProtRelionPreprocessParticles,
-                doNormalize=True,
-                doScale=True, scaleSize=140,
-                doInvert=False)
-            relionProtocol.setObjLabel('relion: preprocess particles')
-            relionProtocol.inputParticles.set(self.protImport.outputParticles)
-            self.launchProtocol(relionProtocol)
-
-            protInitialModel.inputParticles.set(relionProtocol.outputParticles)
+            protInitialModel.inputParticles.set(self.protImportPart.outputParticles)
             protInitialModel.abinit_K.set(1)
             protInitialModel.symmetryGroup.set(SYM_CYCLIC)
             protInitialModel.symmetryOrder.set(1)
@@ -249,27 +228,16 @@ class TestCryosparc3DRefinement(TestCryosparcBase):
         dataset = DataSet.getDataSet(dataProject)
         TestCryosparcBase.setData()
         particlesPattern = dataset.getFile('particles.sqlite')
-        cls.protImport = cls.runImportParticleCryoSPARC(cls.partFn2)
+        cls.protImportPart = cls.runImportParticleCryoSPARC(cls.partFn2)
+        cls.protImportVol = cls.runImportVolumesCryoSPARC(cls.volFn)
 
     def testCryosparc3DRefinement(self):
         def _runCryosparctest3DRefinement(label=''):
             prot3DRefinement = self.newProtocol(ProtCryoSparcRefine3D,
-                                      numberOfMpi=4, numberOfThreads=1)
+                                                numberOfMpi=4, numberOfThreads=1)
 
-            # Normalization after the imported particles
-            relionProtocol = self.newProtocol(
-                relionProtocols.ProtRelionPreprocessParticles,
-                doNormalize=True,
-                doScale=True, scaleSize=140,
-                doInvert=False)
-            relionProtocol.setObjLabel('relion: preprocess particles')
-            relionProtocol.inputParticles.set(self.protImport.outputParticles)
-            self.launchProtocol(relionProtocol)
-
-            importVolumeProt = self.runImportVolumesCryoSPARC(self.volFn)
-
-            prot3DRefinement.inputParticles.set(relionProtocol.outputParticles)
-            prot3DRefinement.referenceVolume.set(importVolumeProt.outputVolume)
+            prot3DRefinement.inputParticles.set(self.protImportPart.outputParticles)
+            prot3DRefinement.referenceVolume.set(self.protImportVol.outputVolume)
             prot3DRefinement.symmetryGroup.set(SYM_CYCLIC)
             prot3DRefinement.symmetryOrder.set(1)
             prot3DRefinement.setObjLabel(label)
@@ -296,27 +264,18 @@ class TestCryosparcNonUniformRefine3D(TestCryosparcBase):
         dataset = DataSet.getDataSet(dataProject)
         TestCryosparcBase.setData()
         particlesPattern = dataset.getFile('particles.sqlite')
-        cls.protImport = cls.runImportParticleCryoSPARC(cls.partFn2)
+        cls.protImportPart = cls.runImportParticleCryoSPARC(cls.partFn2)
+        cls.protImportVolumeVol = cls.runImportVolumesCryoSPARC(cls.volFn)
 
     def testCryosparcNonUniformRefine3D(self):
         def _runCryosparctestNonUniformRefine3D(label=''):
             protNonUniform3DRefinement = self.newProtocol(ProtCryoSparcNonUniformRefine3D,
                                                           numberOfMpi=4, numberOfThreads=1)
 
-            # Normalization after the imported particles
-            relionProtocol = self.newProtocol(
-                relionProtocols.ProtRelionPreprocessParticles,
-                doNormalize=True,
-                doScale=True, scaleSize=140,
-                doInvert=False)
-            relionProtocol.setObjLabel('relion: preprocess particles')
-            relionProtocol.inputParticles.set(self.protImport.outputParticles)
-            self.launchProtocol(relionProtocol)
 
-            importVolumeProt = self.runImportVolumesCryoSPARC(self.volFn)
 
-            protNonUniform3DRefinement.inputParticles.set(relionProtocol.outputParticles)
-            protNonUniform3DRefinement.referenceVolume.set(importVolumeProt.outputVolume)
+            protNonUniform3DRefinement.inputParticles.set(self.protImportPart.outputParticles)
+            protNonUniform3DRefinement.referenceVolume.set(self.protImportVolumeVol.outputVolume)
             protNonUniform3DRefinement.symmetryGroup.set(SYM_CYCLIC)
             protNonUniform3DRefinement.symmetryOrder.set(1)
             protNonUniform3DRefinement.setObjLabel(label)
@@ -341,46 +300,39 @@ class TestCryosparcParticlesSubtract(TestCryosparcBase):
         dataset = DataSet.getDataSet(dataProject)
         TestCryosparcBase.setData()
         particlesPattern = dataset.getFile('particles.sqlite')
-        cls.protImport = cls.runImportParticleCryoSPARC(cls.partFn2)
+        cls.protImportPart = cls.runImportParticleCryoSPARC(cls.partFn2)
+        cls.protImportVol = cls.runImportVolumesCryoSPARC(cls.volFn)
 
     def testCryosparcParticlesSubtract(self):
         def _runCryosparctestParticlesSubtract(label=''):
 
             protParticlesSubtract = self.newProtocol(ProtCryoSparcSubtract,
-                                                numberOfMpi=4,
-                                                numberOfThreads=1)
+                                                     numberOfMpi=4,
+                                                     numberOfThreads=1)
 
-            # Normalization after the imported particles
-            relionProtocol = self.newProtocol(
-                relionProtocols.ProtRelionPreprocessParticles,
-                doNormalize=True,
-                doScale=True, scaleSize=140,
-                doInvert=False)
-            relionProtocol.setObjLabel('relion: preprocess particles')
-            relionProtocol.inputParticles.set(self.protImport.outputParticles)
-            self.launchProtocol(relionProtocol)
 
-            importVolumeProt = self.runImportVolumesCryoSPARC(self.volFn)
 
             prot3DRefinement = self.newProtocol(ProtCryoSparcRefine3D,
                                                 numberOfMpi=4,
                                                 numberOfThreads=1)
-            prot3DRefinement.inputParticles.set(relionProtocol.outputParticles)
-            prot3DRefinement.referenceVolume.set(importVolumeProt.outputVolume)
+            prot3DRefinement.inputParticles.set(self.protImportPart.outputParticles)
+            prot3DRefinement.referenceVolume.set(self.protImportVol.outputVolume)
             prot3DRefinement.symmetryGroup.set(SYM_CYCLIC)
             prot3DRefinement.symmetryOrder.set(1)
             self.launchProtocol(prot3DRefinement)
 
-            protRelionCreate3DMask = self.newProtocol(
-                relionProtocols.ProtRelionCreateMask3D,
-                initialLowPassFilterA=20)
-            protRelionCreate3DMask.inputVolume.set(prot3DRefinement.outputVolume)
-            protRelionCreate3DMask.setObjLabel('relion: create 3d mask')
-            self.launchProtocol(protRelionCreate3DMask)
+            # Create a 3D Mask using xmipp
+            xmippProtocols = Domain.importFromPlugin('xmipp3.protocols',
+                                                     doRaise=True)
+            protXmippCreate3DMask = self.newProtocol(
+                xmippProtocols.XmippProtCreateMask3D, source=0)
+            protXmippCreate3DMask.inputVolume.set(prot3DRefinement.outputVolume)
+            protXmippCreate3DMask.setObjLabel('xmipp: create 3d mask')
+            self.launchProtocol(protXmippCreate3DMask)
 
             protParticlesSubtract.inputParticles.set(prot3DRefinement.outputParticles)
             protParticlesSubtract.refVolume.set(prot3DRefinement.outputVolume)
-            protParticlesSubtract.refMask.set(protRelionCreate3DMask.outputMask)
+            protParticlesSubtract.refMask.set(protXmippCreate3DMask.outputMask)
             self.launchProtocol(protParticlesSubtract)
 
             return protParticlesSubtract
@@ -403,46 +355,39 @@ class TestCryosparcLocalRefine(TestCryosparcBase):
         dataset = DataSet.getDataSet(dataProject)
         TestCryosparcBase.setData()
         particlesPattern = dataset.getFile('particles.sqlite')
-        cls.protImport = cls.runImportParticleCryoSPARC(cls.partFn2)
+        cls.protImportPart = cls.runImportParticleCryoSPARC(cls.partFn2)
+        cls.protImportVol = cls.runImportVolumesCryoSPARC(cls.volFn)
 
     def testCryosparcLocalRefine(self):
         def _runCryosparctestLocalRefinet(label=''):
 
             protLocalRefine = self.newProtocol(ProtCryoSparcLocalRefine,
-                                                numberOfMpi=4,
-                                                numberOfThreads=1)
+                                               numberOfMpi=4,
+                                               numberOfThreads=1)
 
-            # Normalization after the imported particles
-            relionProtocol = self.newProtocol(
-                relionProtocols.ProtRelionPreprocessParticles,
-                doNormalize=True,
-                doScale=True, scaleSize=140,
-                doInvert=False)
-            relionProtocol.setObjLabel('relion: preprocess particles')
-            relionProtocol.inputParticles.set(self.protImport.outputParticles)
-            self.launchProtocol(relionProtocol)
 
-            importVolumeProt = self.runImportVolumesCryoSPARC(self.volFn)
 
             prot3DRefinement = self.newProtocol(ProtCryoSparcRefine3D,
                                                 numberOfMpi=4,
                                                 numberOfThreads=1)
-            prot3DRefinement.inputParticles.set(relionProtocol.outputParticles)
-            prot3DRefinement.referenceVolume.set(importVolumeProt.outputVolume)
+            prot3DRefinement.inputParticles.set(self.protImportPart.outputParticles)
+            prot3DRefinement.referenceVolume.set(self.protImportVol.outputVolume)
             prot3DRefinement.symmetryGroup.set(SYM_CYCLIC)
             prot3DRefinement.symmetryOrder.set(1)
             self.launchProtocol(prot3DRefinement)
 
-            protRelionCreate3DMask = self.newProtocol(
-                relionProtocols.ProtRelionCreateMask3D,
-                initialLowPassFilterA=20)
-            protRelionCreate3DMask.inputVolume.set(prot3DRefinement.outputVolume)
-            protRelionCreate3DMask.setObjLabel('relion: create 3d mask')
-            self.launchProtocol(protRelionCreate3DMask)
+            # Create a 3D Mask using xmipp
+            xmippProtocols = Domain.importFromPlugin('xmipp3.protocols',
+                                                     doRaise=True)
+            protXmippCreate3DMask = self.newProtocol(
+                xmippProtocols.XmippProtCreateMask3D, source=0)
+            protXmippCreate3DMask.inputVolume.set(prot3DRefinement.outputVolume)
+            protXmippCreate3DMask.setObjLabel('xmipp: create 3d mask')
+            self.launchProtocol(protXmippCreate3DMask)
 
             protLocalRefine.inputParticles.set(prot3DRefinement.outputParticles)
             protLocalRefine.refVolume.set(prot3DRefinement.outputVolume)
-            protLocalRefine.refMask.set(protRelionCreate3DMask.outputMask)
+            protLocalRefine.refMask.set(protXmippCreate3DMask.outputMask)
             self.launchProtocol(protLocalRefine)
 
             return protLocalRefine

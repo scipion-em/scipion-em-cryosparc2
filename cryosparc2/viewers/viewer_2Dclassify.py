@@ -27,15 +27,15 @@
 import sys
 import webbrowser
 
-import pyworkflow.em.viewers.showj as showj
+import pwem.viewers.showj as showj
 from pyworkflow.protocol.params import LabelParam
 from pyworkflow.viewer import ProtocolViewer, DESKTOP_TKINTER
-from pyworkflow.em.viewers import ( ClassesView, Classes3DView)
-from cryosparc2.protocols import ProtCryo2D
+from pwem.viewers import ClassesView, Classes3DView
 
-from cryosparc2.constants import *
-from cryosparc2.utils import *
-from cryosparc2 import Plugin
+from ..protocols import ProtCryo2D
+from ..constants import *
+from ..utils import *
+from .. import Plugin
 
 AX_X = 0
 AX_Y = 1
@@ -58,7 +58,7 @@ class CryosPARCViewer2D(ProtocolViewer):
     _label = 'viewer cryosPARC'
 
     def __init__(self, *args, **kwargs):
-        ProtocolViewer.__init__(self, *args, **kwargs)
+        ProtocolViewer.__init__(self, **kwargs)
         sys.path.append(Plugin.getVar(CRYOSPARC_HOME))
 
     def _defineParams(self, form):
@@ -66,9 +66,9 @@ class CryosPARCViewer2D(ProtocolViewer):
         form.addSection(label='Visualization')
         group = form.addGroup('Particles')
         group.addParam('displayClass2D', LabelParam,
-                      label='Display particle classes with Scipion')
+                       label='Display particle classes with Scipion')
         group.addParam('displayCryosPARC2D', LabelParam,
-                      label='Display particle classes with cryosPARC GUI')
+                       label='Display particle classes with cryosPARC GUI')
 
     def _getVisualizeDict(self):
         self._load()
@@ -100,7 +100,7 @@ class CryosPARCViewer2D(ProtocolViewer):
 
     def _showScipionClasses(self, paramName=None):
         views = []
-        if (getattr(self.protocol, 'outputClasses', None) is not None):
+        if getattr(self.protocol, 'outputClasses', None) is not None:
             fn = self.protocol.outputClasses.getFileName()
             v = self.createScipionView(fn)
             views.append(v)
@@ -131,22 +131,19 @@ class CryosPARCViewer2D(ProtocolViewer):
         self.protocol._defineFileNames()
 
     def createScipionView(self, filename):
-        labels =  'enabled id _size _representative._filename '
+        labels = 'enabled id _size _representative._filename '
         labels += '_rlnclassDistribution _rlnAccuracyRotations _rlnAccuracyTranslations'
         viewParams = {showj.ORDER: labels,
                       showj.VISIBLE: labels,
-                      showj.RENDER:'_representative._filename',
+                      showj.RENDER: '_representative._filename',
                       showj.SORT_BY: '_size desc',
                       showj.ZOOM: str(self._getZoom())
                       }
         inputParticlesId = self.protocol.inputParticles.get().strId()
         ViewClass = ClassesView if self.protocol.IS_2D else Classes3DView
         view = ViewClass(self._project,
-                          self.protocol.strId(), filename, other=inputParticlesId,
-                          env=self._env,
-                          viewParams=viewParams)
+                         self.protocol.strId(), filename, other=inputParticlesId,
+                         env=self._env,
+                         viewParams=viewParams)
 
         return view
-
-
-

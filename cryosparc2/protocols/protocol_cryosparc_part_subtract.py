@@ -24,15 +24,13 @@
 # *  e-mail address 'scipion@cnb.csic.es'
 # *
 # **************************************************************************
-from pyworkflow.em import ALIGN_PROJ
-from pyworkflow.em.protocol import ProtOperateParticles
+from pwem.protocols import ProtOperateParticles
 from pyworkflow.protocol.params import (PointerParam, BooleanParam, FloatParam,
                                         StringParam, LEVEL_ADVANCED)
 
-from cryosparc2.convert import *
-from cryosparc2.convert.convert import writeSetOfParticles
-from cryosparc2.utils import *
-from cryosparc2.constants import *
+from ..convert import *
+from ..utils import *
+from ..constants import *
 
 
 class ProtCryoSparcSubtract(ProtOperateParticles):
@@ -199,7 +197,7 @@ class ProtCryoSparcSubtract(ProtOperateParticles):
 
         # Create the output folder
         os.system("cp -r " + self.projectPath + "/" + self.projectName.get() + '/' +
-            self.runPartStract.get() + " " + self._getExtraPath())
+                  self.runPartStract.get() + " " + self._getExtraPath())
 
         csFileName = "subtracted_particles.cs"
         csFile = os.path.join(self._getExtraPath(), self.runPartStract.get(),

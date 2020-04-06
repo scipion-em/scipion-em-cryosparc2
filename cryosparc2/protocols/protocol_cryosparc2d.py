@@ -26,16 +26,16 @@
 # *
 # **************************************************************************
 
-import pyworkflow.em as em
 
-from pyworkflow.em.protocol import ProtClassify2D
+from pwem.protocols import ProtClassify2D
 from pyworkflow.protocol.params import (PointerParam, BooleanParam,
-                                        FloatParam, StringParam)
-from pyworkflow.utils import replaceExt
+                                        FloatParam, StringParam, NonEmpty)
+from pyworkflow.utils import replaceExt, createLink
 
-from cryosparc2.convert import *
-from cryosparc2.utils import *
-from cryosparc2.constants import *
+from ..convert import *
+from ..utils import *
+from ..constants import *
+
 
 class ProtCryo2D(ProtClassify2D):
     """ Wrapper to CryoSparc 2D clustering program.
@@ -405,14 +405,14 @@ class ProtCryo2D(ProtClassify2D):
         if not os.path.exists(scaledFile):
 
             inputSize = self._getInputParticles().getDim()[0]
-            csSize = em.ImageHandler().getDimensions(csAveragesFile)[0]
+            csSize = ImageHandler().getDimensions(csAveragesFile)[0]
 
             if csSize == inputSize:
                 print("No binning detected: linking averages cs file.")
-                em.createLink(csAveragesFile, scaledFile)
+                createLink(csAveragesFile, scaledFile)
             else:
                 print("Scaling CS averages file to match particle size (%s -> %s)." % (csSize, inputSize))
-                scaleSpline(csAveragesFile, scaledFile, inputSize, inputSize)
+                ImageHandler.scaleSplines(csAveragesFile, scaledFile, inputSize)
 
         return scaledFile
 
@@ -429,11 +429,11 @@ class ProtCryo2D(ProtClassify2D):
         clsSet.classifyItems(updateItemCallback=self._updateParticle,
                              updateClassCallback=self._updateClass,
                              itemDataIterator=md.iterRows(xmpMd,
-                             sortByLabel=md.MDL_ITEM_ID)) # relion style
+                                                          sortByLabel=md.MDL_ITEM_ID))  # relion style
 
     def _updateParticle(self, item, row):
         item.setClassId(row.getValue(md.RLN_PARTICLE_CLASS))
-        item.setTransform(rowToAlignment(row, em.ALIGN_2D))
+        item.setTransform(rowToAlignment(row, ALIGN_2D))
         
     def _updateClass(self, class2D):
         classId = class2D.getObjId()

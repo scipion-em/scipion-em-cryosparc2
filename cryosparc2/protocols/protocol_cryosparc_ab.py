@@ -25,13 +25,13 @@
 # *  e-mail address 'scipion@cnb.csic.es'
 # *
 # **************************************************************************
-from pyworkflow.em import ALIGN_PROJ
 from pyworkflow.protocol.params import (PointerParam, FloatParam, BooleanParam,
                                         LEVEL_ADVANCED, StringParam)
-from pyworkflow.em.protocol import ProtInitialVolume, ProtClassify3D
-from cryosparc2.convert import *
-from cryosparc2.utils import *
-from cryosparc2.constants import *
+from pwem.protocols import ProtInitialVolume, ProtClassify3D
+
+from ..convert import *
+from ..utils import *
+from ..constants import *
 
 
 class ProtCryoSparcInitialModel(ProtInitialVolume, ProtClassify3D):
@@ -337,8 +337,8 @@ class ProtCryoSparcInitialModel(ProtInitialVolume, ProtClassify3D):
             output_file.write('_rlnReferenceImage')
             output_file.write('\n')
             for i in range(int(self.abinit_K.get())):
-                output_file.write("%02d"%(i+1)+"@"+self._getExtraPath() + "/" + self.runAbinit.get() + "/cryosparc_" +\
-                                  self.projectName.get() + "_"+self.runAbinit.get() + "_class_%02d"%i +
+                output_file.write("%02d" % (i+1)+"@"+self._getExtraPath() + "/" + self.runAbinit.get() + "/cryosparc_" +
+                                  self.projectName.get() + "_"+self.runAbinit.get() + "_class_%02d" % i +
                                   "_final_volume.mrc\n")
 
         imgSet = self._getInputParticles()
@@ -381,7 +381,7 @@ class ProtCryoSparcInitialModel(ProtInitialVolume, ProtClassify3D):
     def _summary(self):
         summary = []
         if (not hasattr(self, 'outputVolumes') or
-            not hasattr(self, 'outputClasses')):
+                not hasattr(self, 'outputClasses')):
             summary.append("Output objects not ready yet.")
         else:
             summary.append("Input Particles: %s" %

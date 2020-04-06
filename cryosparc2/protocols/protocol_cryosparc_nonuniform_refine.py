@@ -26,11 +26,12 @@
 # **************************************************************************
 
 from pyworkflow.protocol.params import (FloatParam, StringParam,
-                                        BooleanParam, String,
+                                        BooleanParam,
                                         LEVEL_ADVANCED)
-from cryosparc2.protocols import ProtCryoSparcRefine3D
-from cryosparc2.utils import *
-from cryosparc2.constants import *
+
+from . import ProtCryoSparcRefine3D
+from ..utils import *
+from ..constants import *
 
 
 class ProtCryoSparcNonUniformRefine3D(ProtCryoSparcRefine3D):

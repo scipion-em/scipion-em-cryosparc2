@@ -27,21 +27,19 @@
 import getpass
 import os
 import ast
-from datetime import datetime
-
-import commands
+import subprocess
 from pkg_resources import parse_version
 import pyworkflow.utils as pwutils
-from cryosparc2 import Plugin
-from pyworkflow.em import SCIPION_SYM_NAME, String
-from pyworkflow.em.constants import (SYM_CYCLIC, SYM_TETRAHEDRAL,
-                                     SYM_OCTAHEDRAL, SYM_I222, SYM_I222r)
+from pyworkflow.object import String
+from pwem.constants import SCIPION_SYM_NAME
+from pwem.constants import (SYM_CYCLIC, SYM_TETRAHEDRAL,
+                            SYM_OCTAHEDRAL, SYM_I222, SYM_I222r)
 from pyworkflow.protocol.params import (EnumParam, IntParam, Positive,
-                                        BooleanParam, NumericRangeParam,
-                                        NonEmpty, StringParam, GPU_LIST)
-from cryosparc2.constants import (CS_SYM_NAME, SYM_DIHEDRAL_Y,CRYOSPARC_USER,
-                                  CRYO_PROJECTS_DIR, CRYOSPARC_DIR, V2_14_0,
-                                  V2_13_0)
+                                        BooleanParam, StringParam, NonEmpty,
+                                        GPU_LIST)
+from . import Plugin
+from .constants import (CS_SYM_NAME, SYM_DIHEDRAL_Y, CRYOSPARC_USER,
+                        CRYO_PROJECTS_DIR, CRYOSPARC_DIR, V2_14_0, V2_13_0)
 
 
 STATUS_FAILED = "failed"
@@ -95,8 +93,8 @@ def isCryosparcRunning():
     status = -1
     if getCryosparcProgram() is not None:
         test_conection_cmd = (getCryosparcProgram() +
-                                    ' %stest_connection()%s ' % ("'", "'"))
-        test_conection = commands.getstatusoutput(test_conection_cmd)
+                              ' %stest_connection()%s ' % ("'", "'"))
+        test_conection = subprocess.getstatusoutput(test_conection_cmd)
         status = test_conection[0]
 
     return status == 0
@@ -136,7 +134,6 @@ def cryosparcValidate():
                              " at https://github.com/scipion-em/scipion-em-cryosparc2"
                              % (cryosparcVersion, str(supportedVersions).replace('\'', ''))))
 
-
     return []
 
 
@@ -149,6 +146,7 @@ def getCryosparcInstalledVersion():
     version = str(dictionary['version'])
     return version
 
+
 def getCryosparcUser():
     """
     Get the full name of the initial admin account
@@ -160,7 +158,9 @@ def getCryosparcProjectsDir():
     """
     Get the path on the worker node to a writable directory
     """
-    cryoProject_Dir = Plugin.getVar(CRYO_PROJECTS_DIR)
+    # Make a join in case is relative it will prepend getHome.
+    cryoProject_Dir = os.path.join(Plugin.getHome(),
+                                   Plugin.getVar(CRYO_PROJECTS_DIR))
 
     if not os.path.exists(cryoProject_Dir):
         os.mkdir(cryoProject_Dir)
@@ -203,7 +203,7 @@ def createEmptyProject(projectDir, projectTitle):
                                 % ("'", str(getCryosparcUser()),
                                    str(projectDir), str(projectTitle), "'"))
 
-    return commands.getstatusoutput(create_empty_project_cmd)
+    return runCmd(create_empty_project_cmd, printCmd=False)
 
 
 def createProjectDir(project_container_dir):
@@ -212,15 +212,14 @@ def createProjectDir(project_container_dir):
      exist
     :param project_container_dir: the "root" directory in which to create the
                                   project (PXXX) directory
-    :param projectName: the name of the project
     :returns: str - the final path of the new project dir with shell variables
               still in the returned path (the path should be expanded every
               time it is used)
     """
     create_project_dir_cmd = (getCryosparcProgram() +
-                             ' %scheck_or_create_project_container_dir("%s")%s '
-                             % ("'", project_container_dir, "'"))
-    return commands.getstatusoutput(create_project_dir_cmd)
+                              ' %scheck_or_create_project_container_dir("%s")%s '
+                              % ("'", project_container_dir, "'"))
+    return runCmd(create_project_dir_cmd, printCmd=False)
 
 
 def createEmptyWorkSpace(projectName, workspaceTitle, workspaceComment):
@@ -235,7 +234,7 @@ def createEmptyWorkSpace(projectName, workspaceTitle, workspaceComment):
                              % ("'", projectName, str(getCryosparcUser()),
                                 "None", str(workspaceTitle),
                                 str(workspaceComment), "'"))
-    return runCmd(create_work_space_cmd)
+    return runCmd(create_work_space_cmd, printCmd=False)
 
 
 def doImportParticlesStar(protocol):
@@ -297,7 +296,7 @@ def doJob(jobType, projectName, workSpaceName, params, input_group_conect):
                    params, input_group_conect, "'"))
 
     print(pwutils.greenStr(do_job_cmd))
-    return commands.getstatusoutput(do_job_cmd)
+    return runCmd(do_job_cmd)
 
 
 def enqueueJob(jobType, projectName, workSpaceName, params, input_group_conect,
@@ -346,12 +345,13 @@ def enqueueJob(jobType, projectName, workSpaceName, params, input_group_conect,
     return jobId
 
 
-def runCmd(cmd):
+def runCmd(cmd, printCmd=True):
     """ Runs a command and check its exit code. If different than 0 it raises an exception
     :parameter cmd command to run"""
 
-    print(pwutils.greenStr("Running: %s" % cmd))
-    exitCode, cmdOutput = commands.getstatusoutput(cmd)
+    if printCmd:
+        print(pwutils.greenStr("Running: %s" % cmd))
+    exitCode, cmdOutput = subprocess.getstatusoutput(cmd)
 
     if exitCode != 0:
         raise Exception("%s failed --> Exit code %s, message %s" % (cmd, exitCode, cmdOutput))
@@ -388,8 +388,8 @@ def getJobStatus(projectName, job):
                           ' %sget_job_status("%s", "%s")%s'
                           % ("'", projectName, job, "'"))
 
-    status = commands.getstatusoutput(get_job_status_cmd)
-    return status[-1].split()[-1]
+    status = runCmd(get_job_status_cmd, printCmd=False)
+    return status[-1]
 
 
 def waitJob(projectName, job):
@@ -399,7 +399,7 @@ def waitJob(projectName, job):
     wait_job_cmd = (getCryosparcProgram() +
                     ' %swait_job_complete("%s", "%s")%s'
                     % ("'", projectName, job, "'"))
-    commands.getstatusoutput(wait_job_cmd)
+    runCmd(wait_job_cmd, printCmd=False)
 
 
 def get_job_streamlog(projectName, job, fileName):
@@ -408,7 +408,7 @@ def get_job_streamlog(projectName, job, fileName):
                              ' %sget_job_streamlog("%s", "%s")%s%s'
                              % ("'", projectName, job, "'", ">" + fileName))
 
-    commands.getstatusoutput(get_job_streamlog_cmd)
+    runCmd(get_job_streamlog_cmd, printCmd=False)
 
 
 def killJob(projectName, job):
@@ -421,7 +421,7 @@ def killJob(projectName, job):
                     ' %skill_job("%s", "%s")%s'
                     % ("'", projectName, job, "'"))
     print(pwutils.greenStr(kill_job_cmd))
-    commands.getstatusoutput(kill_job_cmd)
+    runCmd(kill_job_cmd)
 
 
 def clearJob(projectName, job):
@@ -436,7 +436,7 @@ def clearJob(projectName, job):
                     ' %sclear_job("%s", "%s")%s'
                     % ("'", projectName, job, "'"))
     print(pwutils.greenStr(clear_job_cmd))
-    commands.getstatusoutput(clear_job_cmd)
+    runCmd(clear_job_cmd, printCmd=False)
 
 
 def getSystemInfo():
@@ -456,7 +456,7 @@ def getSystemInfo():
     }
     """
     system_info_cmd = (getCryosparcProgram() + ' %sget_system_info()%s') % ("'", "'")
-    return commands.getstatusoutput(system_info_cmd)
+    return runCmd(system_info_cmd, printCmd=False)
 
 
 def addComputeSectionParams(form):
@@ -471,7 +471,7 @@ def addComputeSectionParams(form):
                        'subsequent jobs that require the same data. Not '
                        'using an SSD can dramatically slow down processing.')
 
-    if parse_version(getCryosparcInstalledVersion()) >= parse_version(V2_13_0):
+    if (not isCryosparcRunning()) or parse_version(getCryosparcInstalledVersion()) >= parse_version(V2_13_0):
         form.addHidden(GPU_LIST, StringParam, default='0',
                       label='Choose GPU IDs:', validators=[NonEmpty],
                       help='This argument is necessary. By default, the '
@@ -526,7 +526,7 @@ def getSymmetry(symmetryGroup, symmetryOrder):
     """
     symmetry = {
         0: CS_SYM_NAME[SYM_CYCLIC][0] + str(symmetryOrder),  # Cn
-        1: CS_SYM_NAME[SYM_DIHEDRAL_Y][0] + str(symmetryOrder),  #Dn
+        1: CS_SYM_NAME[SYM_DIHEDRAL_Y][0] + str(symmetryOrder),  # Dn
         2: CS_SYM_NAME[SYM_TETRAHEDRAL],  # T
         3: CS_SYM_NAME[SYM_OCTAHEDRAL],  # O
         4: CS_SYM_NAME[SYM_I222],  # I1
@@ -545,14 +545,3 @@ def calculateNewSamplingRate(newDims, previousSR, previousDims):
     pX = previousDims[0]
     nX = newDims[0]
     return previousSR*pX/nX
-
-
-def scaleSpline(inputFn, outputFn, Xdim, Ydim):
-    """ Scale an image using splines. """
-    # TODO: Avoid using xmipp program for this
-
-    program = "xmipp_image_resize"
-    args = "-i %s -o %s --dim %d %d --interp spline" % (inputFn, outputFn, Xdim,
-                                                        Ydim)
-    xmipp3 = pwutils.importFromPlugin('xmipp3', doRaise=True)
-    xmipp3.Plugin.runXmippProgram(program, args)

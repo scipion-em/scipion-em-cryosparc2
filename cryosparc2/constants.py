@@ -25,23 +25,16 @@
 # *
 # **************************************************************************
 from collections import OrderedDict
-import pyworkflow.em.metadata as md
-from pyworkflow.em.constants import (
+import pwem.emlib.metadata as md
+from pwem.constants import (
     SYM_CYCLIC, SYM_TETRAHEDRAL, SYM_OCTAHEDRAL, SYM_I222,
     SYM_I222r)
 
-# Not yet release in Scipion, once is released this try /catch import can be
-# removed
-try:
-    from pyworkflow.em.constants import SYM_DIHEDRAL_Y
-except:
-    from pyworkflow.em import SCIPION_SYM_NAME
-    SYM_DIHEDRAL_Y = 12
-    SCIPION_SYM_NAME[SYM_DIHEDRAL_Y] = "Dyn"
 
+from pwem.constants import SYM_DIHEDRAL_Y
 # Root folder where cryosparc is installed, we will look here for the client
 CRYOSPARC_HOME = 'CRYOSPARC_HOME'
-CRYOSPARC_DIR = 'CRYOSPARC_DIR' # Legacy, replaced by CRYOSPARC_HOME
+CRYOSPARC_DIR = 'CRYOSPARC_DIR'  # Legacy, replaced by CRYOSPARC_HOME
 # Optional: Folder where cryosparc projects will be created
 CRYO_PROJECTS_DIR = 'CRYO_PROJECTS_DIR'
 CRYOSPARC_USER = 'CRYOSPARC_USER'
@@ -60,7 +53,7 @@ V2_14_0 = 'v2.14.0'
 V2_14_2 = 'v2.14.2'
 
 # Symmetry dict
-CS_SYM_NAME = {}
+CS_SYM_NAME = dict()
 CS_SYM_NAME[SYM_CYCLIC] = 'Cn'
 CS_SYM_NAME[SYM_DIHEDRAL_Y] = 'Dn'
 CS_SYM_NAME[SYM_TETRAHEDRAL] = 'T'
@@ -87,7 +80,7 @@ ANGDIST_2DPLOT = 0
 ANGDIST_CHIMERA = 1
 
 
-#VOLUME_SLICES = 0
+# VOLUME_SLICES = 0
 VOLUME_CHIMERA = 0
 VOLUME_CRYOSPARC = 1
 DATA_VIEWER = 0

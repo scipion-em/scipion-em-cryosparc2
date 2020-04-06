@@ -27,15 +27,14 @@
 
 import ast
 
-from pyworkflow.em import ALIGN_PROJ
-from pyworkflow.em.protocol import ProtOperateParticles
+from pwem.protocols import ProtOperateParticles
 from pyworkflow.protocol.params import (PointerParam, BooleanParam, FloatParam,
                                         StringParam, LEVEL_ADVANCED)
-from pyworkflow.em.data import Volume, FSC
+from pwem.objects import Volume, FSC
 
-from cryosparc2.convert import *
-from cryosparc2.utils import *
-from cryosparc2.constants import *
+from ..convert import *
+from ..utils import *
+from ..constants import *
 
 
 class ProtCryoSparcLocalRefine(ProtOperateParticles):
@@ -363,7 +362,7 @@ class ProtCryoSparcLocalRefine(ProtOperateParticles):
 
         # Find the ID of last iteration
         for y in x:
-            if y.has_key('text'):
+            if 'text' in y:
                 z = str(y['text'])
                 if z.startswith('FSC'):
                     idd = y['imgfiles'][2]['fileid']

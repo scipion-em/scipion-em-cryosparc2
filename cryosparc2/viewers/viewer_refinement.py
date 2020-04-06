@@ -26,21 +26,21 @@
 # **************************************************************************
 import webbrowser
 
-import pyworkflow.em.viewers.showj as showj
+import pwem.viewers.showj as showj
 from pyworkflow.protocol.constants import *
 from pyworkflow.protocol.params import (LabelParam, FloatParam)
-from pyworkflow.viewer import ProtocolViewer, DESKTOP_TKINTER, WEB_DJANGO
-from pyworkflow.em.viewers import (ChimeraView, EmPlotter, ChimeraClientView,
-                                   ObjectView)
-from cryosparc2.protocols import (ProtCryoSparcNonUniformRefine3D,
-                                  ProtCryoSparcRefine3D,
-                                  ProtCryoSparcLocalRefine)
+from pyworkflow.viewer import DESKTOP_TKINTER, WEB_DJANGO
+from pwem.viewers import (ChimeraView, EmPlotter, ChimeraClientView,
+                          ObjectView, EmProtocolViewer)
 
-from cryosparc2.constants import *
-from cryosparc2.utils import *
+from ..protocols import (ProtCryoSparcNonUniformRefine3D,
+                         ProtCryoSparcRefine3D,
+                         ProtCryoSparcLocalRefine)
+from ..constants import *
+from ..utils import *
 
 
-class CryosPARCViewer3DRefinement(ProtocolViewer):
+class CryosPARCViewer3DRefinement(EmProtocolViewer):
     """ Visualization of e2refine_easy results. """
 
     _targets = [ProtCryoSparcRefine3D, ProtCryoSparcNonUniformRefine3D,
@@ -63,7 +63,7 @@ class CryosPARCViewer3DRefinement(ProtocolViewer):
                        label='Display volume with',
                        help='*chimera*: display volumes as surface with Chimera.\n'
                             '*cryoSPARC: display volumes as surface with cryoSPARC')
-                      # '*slices*: display volumes as 2D slices along z axis.\n'
+        # '*slices*: display volumes as 2D slices along z axis.\n'
 
         group = form.addGroup('Resolution')
 
@@ -94,7 +94,7 @@ class CryosPARCViewer3DRefinement(ProtocolViewer):
     def _showOutputParticles(self, paramName=None):
         views = []
 
-        if (getattr(self.protocol, 'outputParticles', None) is not None):
+        if getattr(self.protocol, 'outputParticles', None) is not None:
             fn = self.protocol.outputParticles.getFileName()
             v = self.createScipionPartView(fn)
             views.append(v)
@@ -251,7 +251,7 @@ class CryosPARCViewer3DRefinement(ProtocolViewer):
         self.minInv = min(resolution_inv)
         self.maxInv = max(resolution_inv)
         self.sampligRate = self.protocol._getInputParticles().getSamplingRate()
-        factor = (2. *self.sampligRate * self.maxInv )
+        factor = (2. * self.sampligRate * self.maxInv)
         resolution_inv = [x/factor for x in resolution_inv]
         self.minInv /= factor
         self.maxInv /= factor

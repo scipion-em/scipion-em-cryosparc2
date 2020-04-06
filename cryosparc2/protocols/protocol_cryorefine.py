@@ -25,14 +25,14 @@
 # *  e-mail address 'scipion@cnb.csic.es'
 # *
 # **************************************************************************
-from pyworkflow.em import ALIGN_PROJ
 from pyworkflow.protocol.params import (PointerParam, FloatParam, BooleanParam,
                                         StringParam, LEVEL_ADVANCED)
-from pyworkflow.em.data import Volume, FSC
-from pyworkflow.em.protocol import ProtRefine3D
-from cryosparc2.convert import *
-from cryosparc2.utils import *
-from cryosparc2.constants import *
+from pwem.objects import Volume, FSC
+from pwem.protocols import ProtRefine3D
+
+from ..convert import *
+from ..utils import *
+from ..constants import *
 
 import os
 import ast
@@ -63,11 +63,11 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
                       validators=[Positive],
                       help='Select the input images from the project.')
         form.addParam('referenceVolume', PointerParam, pointerClass='Volume',
-                       important=True,
-                       label="Input volume",
-                       help='Initial reference 3D map, it should have the same '
-                            'dimensions and the same pixel size as your input '
-                            'particles.')
+                      important=True,
+                      label="Input volume",
+                      help='Initial reference 3D map, it should have the same '
+                           'dimensions and the same pixel size as your input '
+                           'particles.')
         form.addParam('refMask', PointerParam, pointerClass='VolumeMask',
                       default=None,
                       label='Mask to be applied to this map(Optional)',
@@ -362,7 +362,7 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
 
         # Find the ID of last iteration
         for y in x:
-            if y.has_key('text'):
+            if 'text' in y:
                 z = str(y['text'])
                 if z.startswith('FSC'):
                     idd = y['imgfiles'][2]['fileid']

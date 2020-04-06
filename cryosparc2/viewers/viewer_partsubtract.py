@@ -29,15 +29,15 @@
 import sys
 import webbrowser
 
-import pyworkflow.em.viewers.showj as showj
+import pwem.viewers.showj as showj
 from pyworkflow.protocol.params import LabelParam
 from pyworkflow.viewer import ProtocolViewer, DESKTOP_TKINTER
-from pyworkflow.em.viewers import (ObjectView)
-from cryosparc2.protocols import ProtCryoSparcSubtract
+from pwem.viewers import ObjectView
 
-from cryosparc2.constants import *
-from cryosparc2.utils import *
-from cryosparc2 import Plugin
+from ..protocols import ProtCryoSparcSubtract
+from ..constants import *
+from ..utils import *
+from .. import Plugin
 
 
 class CryosPARCViewerPartSubtract(ProtocolViewer):
@@ -56,7 +56,7 @@ class CryosPARCViewerPartSubtract(ProtocolViewer):
     _label = 'viewer cryosPARC'
 
     def __init__(self, *args, **kwargs):
-        ProtocolViewer.__init__(self, *args, **kwargs)
+        ProtocolViewer.__init__(self, **kwargs)
         sys.path.append(Plugin.getVar(CRYOSPARC_HOME))
 
     def _defineParams(self, form):
@@ -64,9 +64,9 @@ class CryosPARCViewerPartSubtract(ProtocolViewer):
         form.addSection(label='Visualization')
         group = form.addGroup('Particles')
         group.addParam('displayDataViewer', LabelParam,
-                      label='Display particle classes with Scipion')
+                       label='Display particle classes with Scipion')
         group.addParam('displayCryosPARC2D', LabelParam,
-                      label='Display particle classes with cryosPARC GUI')
+                       label='Display particle classes with cryosPARC GUI')
 
     def _getVisualizeDict(self):
         self._load()

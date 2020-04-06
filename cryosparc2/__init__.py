@@ -26,16 +26,17 @@
 # **************************************************************************
 
 import os
-import pyworkflow.em
+import pwem
 from pyworkflow.utils import Environ
-from constants import *
+
+from .constants import *
 
 
 _references = ['Punjani2017', 'Brubaker2017', 'daniel_asarnow_2019_3576630']
 _logo = 'cryosparc2_logo.png'
 
 
-class Plugin(pyworkflow.em.Plugin):
+class Plugin(pwem.Plugin):
     _homeVar = CRYOSPARC_HOME
     _pathVars = [CRYOSPARC_HOME]
     _supportedVersions = [V2_5_0, V2_8_0, V2_9_0, V2_11_0, V2_12_0, V2_12_2,
@@ -44,9 +45,7 @@ class Plugin(pyworkflow.em.Plugin):
     @classmethod
     def _defineVariables(cls):
         cls._defineVar(CRYOSPARC_HOME, os.environ.get(CRYOSPARC_DIR))
-        cls._defineVar(CRYO_PROJECTS_DIR,
-                              os.path.join(cls.getHome(),
-                                           "scipion_projects"))
+        cls._defineVar(CRYO_PROJECTS_DIR, "scipion_projects")
 
     @classmethod
     def getEnviron(cls):
@@ -67,11 +66,5 @@ class Plugin(pyworkflow.em.Plugin):
 
     @classmethod
     def defineBinaries(cls, env):
-        env.addPipModule('scipy-016', pipCmd=env._pipCmd % ('scipy', '0.16'),
-                         target='scipy')
         pyemLibcmd = 'pip install git+https://github.com/asarnow/pyem.git@d46691bcacae63043346e98cec9ff7b621ca1427'
-
         env.addPipModule('pyem', version='0.4', pipCmd=pyemLibcmd)
-
-
-pyworkflow.em.Domain.registerPlugin(__name__)
