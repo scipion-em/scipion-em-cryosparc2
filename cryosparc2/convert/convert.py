@@ -186,7 +186,8 @@ def defineArgs():
                         help="Keep paths from the Cryosparc 2+ cache when merging coordinates",
                         action="store_true")
     parser.add_argument("--transform",
-                        help="Apply rotation matrix or 3x4 rotation plus translation matrix to particles (Numpy format)",
+                        help="Apply rotation matrix or 3x4 rotation plus "
+                             "translation matrix to particles (Numpy format)",
                         type=str)
     parser.add_argument("--loglevel", "-l", type=str, default="WARNING",
                         help="Logging level and debug output")

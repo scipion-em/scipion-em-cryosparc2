@@ -504,8 +504,8 @@ class ProtCryo2D(ProtClassify2D):
         # Determinate the GPUs or the number of GPUs to use (in dependence of
         # the cryosparc version)
         try:
-            gpusToUse = self.gpusToUse.get()
-            numberGPU = len(gpusToUse.split(','))
+            gpusToUse = self.getGpuList()
+            numberGPU = len(gpusToUse)
         except Exception:
             gpusToUse = False
             numberGPU = 1
