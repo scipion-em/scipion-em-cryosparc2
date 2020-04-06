@@ -24,8 +24,11 @@
 # *  e-mail address 'scipion@cnb.csic.es'
 # *
 # **************************************************************************
+import getpass
 import os
 import ast
+from datetime import datetime
+
 import commands
 from pkg_resources import parse_version
 import pyworkflow.utils as pwutils
@@ -164,6 +167,12 @@ def getCryosparcProjectsDir():
 
     return cryoProject_Dir
 
+def getProjectName(scipionProjectName):
+    """ returns the name of the cryosparc project based on
+    scipion project name and  a hash based on the user name"""
+
+    username = getpass.getuser()
+    return "%s-%s" % (scipionProjectName, username)
 
 def getProjectPath(projectDir):
     """

@@ -1,11 +1,23 @@
+import getpass
+import re
 import unittest
 from mock import patch
 
 from cryosparc2 import V2_14_2
-from cryosparc2.utils import cryosparcValidate, cryosparcExists, isCryosparcRunning, calculateNewSamplingRate
+from cryosparc2.utils import cryosparcValidate, cryosparcExists, isCryosparcRunning, calculateNewSamplingRate, \
+    getProjectName
 
 
 class TestUtils(unittest.TestCase):
+
+    def testProjectName(self):
+
+        scipionProjectName = "TestProject"
+
+        projectName = getProjectName(scipionProjectName)
+        user = getpass.getuser()
+        expected = scipionProjectName + "-" + user
+        self.assertEqual(projectName, expected, "Project name does not equals %s." % expected)
 
     def testExists(self):
 

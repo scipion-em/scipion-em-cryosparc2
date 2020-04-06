@@ -59,11 +59,6 @@ V2_13_2 = 'v2.13.2'
 V2_14_0 = 'v2.14.0'
 V2_14_2 = 'v2.14.2'
 
-
-# Suffix for all project
-suffix = 'ProjCryoSparc_'
-
-
 # Symmetry dict
 CS_SYM_NAME = {}
 CS_SYM_NAME[SYM_CYCLIC] = 'Cn'

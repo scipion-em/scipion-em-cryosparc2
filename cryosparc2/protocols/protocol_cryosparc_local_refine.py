@@ -513,7 +513,7 @@ class ProtCryoSparcLocalRefine(ProtOperateParticles):
         Initialize all utils cryoSPARC variables
         """
         # Create a cryoSPARC project dir
-        self.projectDirName = suffix + self.getProject().getShortName()
+        self.projectDirName = getProjectName(self.getProject().getShortName())
         self.projectPath = pwutils.join(getCryosparcProjectsDir(), self.projectDirName)
         self.projectDir = createProjectDir(self.projectPath)
 
