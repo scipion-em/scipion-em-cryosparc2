@@ -41,6 +41,7 @@ class ProtCryoSparcInitialModel(ProtInitialVolume, ProtClassify3D):
     """
     _label = 'initial model'
     # --------------------------- DEFINE param functions ----------------------
+
     def _defineFileNames(self):
         """ Centralize how files are called within the protocol. """
         myDict = {
@@ -270,14 +271,8 @@ class ProtCryoSparcInitialModel(ProtInitialVolume, ProtClassify3D):
                       label='Show plots from intermediate steps:')
 
         # --------------[Compute settings]---------------------------
-
-        form.addSection(label='Compute settings')
-
-        form.addParam('compute_use_ssd', BooleanParam, default=True,
-                      label='Cache particle images on SSD:')
-        form.addParam('compute_lane', StringParam, default='default',
-                      label='Lane name:',
-                      help='The scheduler lane name to add the protocol execution')
+        form.addSection(label="Compute settings")
+        addComputeSectionParams(form)
 
     # --------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
@@ -309,9 +304,9 @@ class ProtCryoSparcInitialModel(ProtInitialVolume, ProtClassify3D):
         Create the protocol output. Convert cryosparc file to Relion file
         """
         self._initializeUtilsVariables()
-        print (pwutils.greenStr("Creating the output..."))
+        print(pwutils.greenStr("Creating the output..."))
 
-        csFileName = ("cryosparc_" +  self.projectName.get() + "_" +
+        csFileName = ("cryosparc_" + self.projectName.get() + "_" +
                       self.runAbinit.get() + "_final_particles.cs")
 
         ouputsPath = os.path.join(self.projectPath, self.projectName.get(),
@@ -324,7 +319,6 @@ class ProtCryoSparcInitialModel(ProtInitialVolume, ProtClassify3D):
         # Copy the particles to scipion output folder
         os.system("cp -r " + ouputsPath + "/" + "*final*" + " " + outputFolder)
         csFile = os.path.join(outputFolder, csFileName)
-
 
         outputClassFn = self._getFileName('out_particles')
         argsList = [csFile, outputClassFn]
@@ -344,7 +338,7 @@ class ProtCryoSparcInitialModel(ProtInitialVolume, ProtClassify3D):
             output_file.write('\n')
             for i in range(int(self.abinit_K.get())):
                 output_file.write("%02d"%(i+1)+"@"+self._getExtraPath() + "/" + self.runAbinit.get() + "/cryosparc_" +\
-                self.projectName.get() + "_"+self.runAbinit.get() + "_class_%02d"%i +
+                                  self.projectName.get() + "_"+self.runAbinit.get() + "_class_%02d"%i +
                                   "_final_volume.mrc\n")
 
         imgSet = self._getInputParticles()
@@ -376,14 +370,12 @@ class ProtCryoSparcInitialModel(ProtInitialVolume, ProtClassify3D):
 
     # --------------------------- INFO functions -------------------------------
     def _validate(self):
-        validateMsgs = cryosparcExist()
+        validateMsgs = cryosparcValidate()
         if not validateMsgs:
-            validateMsgs = isCryosparcRunning()
-            if not validateMsgs:
-                particles = self._getInputParticles()
-                if not particles.hasCTF():
-                    validateMsgs.append("The Particles has not associated a "
-                                        "CTF model")
+            particles = self._getInputParticles()
+            if not particles.hasCTF():
+                validateMsgs.append("The Particles has not associated a "
+                                    "CTF model")
         return validateMsgs
 
     def _summary(self):
@@ -448,15 +440,15 @@ class ProtCryoSparcInitialModel(ProtInitialVolume, ProtClassify3D):
             vol = item.getRepresentative()
             vol.setLocation(index, fn)
             vol.setSamplingRate(calculateNewSamplingRate(vol.getDim(),
-                                                          self._getInputParticles().getSamplingRate(),
-                                                          self._getInputParticles().getDim()))
+                                                         self._getInputParticles().getSamplingRate(),
+                                                         self._getInputParticles().getDim()))
 
     def _initializeUtilsVariables(self):
         """
         Initialize all utils cryoSPARC variables
         """
         # Create a cryoSPARC project dir
-        self.projectDirName = suffix + self.getProject().getShortName()
+        self.projectDirName = getProjectName(self.getProject().getShortName())
         self.projectPath = pwutils.join(getCryosparcProjectsDir(), self.projectDirName)
         self.projectDir = createProjectDir(self.projectPath)
 
@@ -490,43 +482,32 @@ class ProtCryoSparcInitialModel(ProtInitialVolume, ProtClassify3D):
         self.importedParticles = doImportParticlesStar(self)
         self.currenJob = String(self.importedParticles.get())
         self._store(self)
-
-        while getJobStatus(self.projectName.get(),
-                           self.importedParticles.get()) not in STOP_STATUSES:
-            waitJob(self.projectName.get(), self.importedParticles.get())
-
-        if getJobStatus(self.projectName.get(),
-                        self.importedParticles.get()) != STATUS_COMPLETED:
-            raise Exception("An error occurred importing the particles. "
-                            "Please, go to cryosPARC software for more "
-                            "details.")
-
         self.par = String(self.importedParticles.get() + '.imported_particles')
 
     def _defineParamsName(self):
         """ Define a list with all protocol parameters names"""
         self._paramsName = ['abinit_K', 'abinit_max_res', 'abinit_init_res',
-                           'abinit_num_init_iters', 'abinit_num_final_iters',
-                           'abinit_radwn_step', 'abinit_window',
-                           'abinit_center',
-                           'abinit_scale_mg_correct', 'abinit_scale_compute',
-                           'abinit_mom', 'abinit_sparsity',
-                           'abinit_minisize_init',
-                           'abinit_minisize', 'abinit_minisize_epsilon',
-                           'abinit_minisize_minp',
-                           'abinit_minisize_num_init_iters',
-                           'abinit_noise_model', 'abinit_noise_priorw',
-                           'abinit_noise_initw', 'abinit_class_anneal_beta',
-                           'abinit_class_anneal_start',
-                           'abinit_class_anneal_end',
-                           'abinit_target_initial_ess_fraction',
-                           'abinit_symmetry',
-                           'abinit_r_grid', 'abinit_high_lr_duration',
-                           'abinit_high_lr',
-                           'abinit_nonneg', 'abinit_ignore_dc',
-                           'abinit_init_radwn_cutoff',
-                           'abinit_search_start_iter', 'abinit_use_engine',
-                           'intermediate_plots', 'compute_use_ssd']
+                            'abinit_num_init_iters', 'abinit_num_final_iters',
+                            'abinit_radwn_step', 'abinit_window',
+                            'abinit_center',
+                            'abinit_scale_mg_correct', 'abinit_scale_compute',
+                            'abinit_mom', 'abinit_sparsity',
+                            'abinit_minisize_init',
+                            'abinit_minisize', 'abinit_minisize_epsilon',
+                            'abinit_minisize_minp',
+                            'abinit_minisize_num_init_iters',
+                            'abinit_noise_model', 'abinit_noise_priorw',
+                            'abinit_noise_initw', 'abinit_class_anneal_beta',
+                            'abinit_class_anneal_start',
+                            'abinit_class_anneal_end',
+                            'abinit_target_initial_ess_fraction',
+                            'abinit_symmetry',
+                            'abinit_r_grid', 'abinit_high_lr_duration',
+                            'abinit_high_lr',
+                            'abinit_nonneg', 'abinit_ignore_dc',
+                            'abinit_init_radwn_cutoff',
+                            'abinit_search_start_iter', 'abinit_use_engine',
+                            'intermediate_plots', 'compute_use_ssd']
         self.lane = str(self.getAttributeValue('compute_lane'))
 
     def doRunAbinit(self):
@@ -550,23 +531,24 @@ class ProtCryoSparcInitialModel(ProtInitialVolume, ProtClassify3D):
                 elif paramName == 'abinit_noise_model':
                     params[str(paramName)] = str(NOISE_MODEL_CHOICES[self.abinit_noise_model.get()])
 
-        runAbinit = enqueueJob(className, self.projectName.get(),
+        # Determinate the GPUs to use (in dependence of
+        # the cryosparc version)
+        try:
+            gpusToUse = self.getGpuList()
+        except Exception:
+            gpusToUse = False
+
+        self.runAbinit = enqueueJob(className, self.projectName.get(),
                                self.workSpaceName.get(),
                                str(params).replace('\'', '"'),
                                str(input_group_conect).replace('\'', '"'),
-                               self.lane)
+                               self.lane,
+                               gpusToUse)
 
-        self.runAbinit = String(runAbinit[-1].split()[-1])
-        self.currenJob.set(self.runAbinit)
+        self.currenJob.set(self.runAbinit.get())
         self._store(self)
 
-        while getJobStatus(self.projectName.get(),
-                           self.runAbinit.get()) not in STOP_STATUSES:
-            waitJob(self.projectName.get(), self.runAbinit.get())
-
-        if getJobStatus(self.projectName.get(),
-                        self.runAbinit.get()) != STATUS_COMPLETED:
-            raise Exception("An error occurred in the initial volume process. "
-                            "Please, go to cryosPARC software for more "
-                            "details.")
-
+        waitForCryosparc(self.projectName.get(), self.runAbinit.get(),
+                         "An error occurred in the initial volume process. "
+                         "Please, go to cryosPARC software for more "
+                         "details.")

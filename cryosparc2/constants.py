@@ -47,14 +47,17 @@ CRYO_PROJECTS_DIR = 'CRYO_PROJECTS_DIR'
 CRYOSPARC_USER = 'CRYOSPARC_USER'
 
 # Supported versions:
-V2_5 = 'V2_5'
-V2_8 = 'V2_8'
-V2_9 = 'V2_9'
-V2_11 = 'V2_11'
-
-# Suffix for all project
-suffix = 'ProjCryoSparc_'
-
+V2_5_0 = 'v2.5.0'
+V2_8_0 = 'v2.8.0'
+V2_9_0 = 'v2.9.0'
+V2_11_0 = 'v2.11.0'
+V2_12_0 = 'v2.12.0'
+V2_12_2 = 'v2.12.2'
+V2_12_4 = 'v2.12.4'
+V2_13_0 = 'v2.13.0'
+V2_13_2 = 'v2.13.2'
+V2_14_0 = 'v2.14.0'
+V2_14_2 = 'v2.14.2'
 
 # Symmetry dict
 CS_SYM_NAME = {}

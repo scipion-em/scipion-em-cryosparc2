@@ -140,14 +140,9 @@ class ProtCryoSparcSubtract(ProtOperateParticles):
         #                    'of the mask. Leave 0 to skip padding.')
 
         # --------------[Compute settings]---------------------------
+        form.addSection(label="Compute settings")
+        addComputeSectionParams(form)
 
-        form.addSection(label='Compute settings')
-
-        form.addParam('compute_use_ssd', BooleanParam, default=True,
-                      label='Cache particle images on SSD:')
-        form.addParam('compute_lane', StringParam, default='default',
-                      label='Lane name:',
-                      help='The scheduler lane name to add the protocol execution')
     # --------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
         self._createFilenameTemplates()
@@ -173,7 +168,7 @@ class ProtCryoSparcSubtract(ProtOperateParticles):
                                        self.refVolume.get(),
                                        self._getTmpPath()))
         self.importVolume = doImportVolumes(self, self.vol_fn, 'map',
-                                                 'Importing volume...')
+                                            'Importing volume...')
         self.currenJob.set(self.importVolume.get())
         self._store(self)
 
@@ -184,7 +179,7 @@ class ProtCryoSparcSubtract(ProtOperateParticles):
                                            self._getTmpPath()))
 
         self.importMask = doImportVolumes(self, self.maskFn, 'mask',
-                                               'Importing mask... ')
+                                          'Importing mask... ')
         self.currenJob.set(self.importMask.get())
         self._store(self)
 
@@ -210,8 +205,6 @@ class ProtCryoSparcSubtract(ProtOperateParticles):
         csFile = os.path.join(self._getExtraPath(), self.runPartStract.get(),
                               csFileName)
 
-
-
         argsList = [csFile, outputStarFn]
 
         parser = defineArgs()
@@ -231,16 +224,16 @@ class ProtCryoSparcSubtract(ProtOperateParticles):
 
         outImgsFn = self._getFileName('out_particles')
         readSetOfParticles(outImgsFn, imgSet,
-                                          postprocessImageRow=self._updateItem,
-                                          alignType=ALIGN_PROJ)
+                           postprocessImageRow=self._updateItem,
+                           alignType=ALIGN_PROJ)
 
     def _updateItem(self, item, row):
         newFn = row.getValue(md.RLN_IMAGE_NAME)
         index, file = cryosparcToLocation(newFn)
         item.setLocation((index, self._getExtraPath(file)))
         item.setSamplingRate(calculateNewSamplingRate(item.getDim(),
-                                                 self._getInputParticles().getSamplingRate(),
-                                                 self._getInputParticles().getDim()))
+                                                      self._getInputParticles().getSamplingRate(),
+                                                      self._getInputParticles().getDim()))
 
     def setAborted(self):
         """ Set the status to aborted and updated the endTime. """
@@ -253,10 +246,11 @@ class ProtCryoSparcSubtract(ProtOperateParticles):
         """ Should be overwritten in subclasses to
                return summary message for NORMAL EXECUTION.
                """
-        errors = []
-        self._validateDim(self._getInputParticles(), self.refVolume.get(),
-                          errors, 'Input particles', 'Input volume')
-        return errors
+        validateMsgs = cryosparcValidate()
+        if not validateMsgs:
+            self._validateDim(self._getInputParticles(), self.refVolume.get(),
+                              validateMsgs, 'Input particles', 'Input volume')
+        return validateMsgs
 
     def _summary(self):
         summary = []
@@ -291,7 +285,7 @@ class ProtCryoSparcSubtract(ProtOperateParticles):
         Initialize all utils cryoSPARC variables
         """
         # Create a cryoSPARC project dir
-        self.projectDirName = suffix + self.getProject().getShortName()
+        self.projectDirName = getProjectName(self.getProject().getShortName())
         self.projectPath = pwutils.join(getCryosparcProjectsDir(), self.projectDirName)
         self.projectDir = createProjectDir(self.projectPath)
 
@@ -328,17 +322,6 @@ class ProtCryoSparcSubtract(ProtOperateParticles):
 
         self.currenJob = String(self.importedParticles.get())
         self._store(self)
-
-        while getJobStatus(self.projectName.get(),
-                           self.importedParticles.get()) not in STOP_STATUSES:
-            waitJob(self.projectName.get(), self.importedParticles.get())
-
-        if getJobStatus(self.projectName.get(),
-                        self.importedParticles.get()) != STATUS_COMPLETED:
-            raise Exception("An error occurred importing the particles. "
-                            "Please, go to cryosPARC software for more "
-                            "details.")
-
         self.par = String(self.importedParticles.get() + '.imported_particles')
 
     def _defineParamsName(self):
@@ -374,30 +357,23 @@ class ProtCryoSparcSubtract(ProtOperateParticles):
                 if int(self.getAttributeValue(paramName)) > 0:
                     params[str(paramName)] = str(self.getAttributeValue(paramName))
 
-        doPartStract = enqueueJob(className, self.projectName.get(),
+        # Determinate the GPUs to use (in dependence of
+        # the cryosparc version)
+        try:
+            gpusToUse = self.getGpuList()
+        except Exception:
+            gpusToUse = False
+
+        self.runPartStract = enqueueJob(className, self.projectName.get(),
                                   self.workSpaceName.get(),
                                   str(params).replace('\'', '"'),
                                   str(input_group_conect).replace('\'', '"'),
-                                  self.lane)
+                                  self.lane, gpusToUse)
 
-        self.runPartStract = String(doPartStract[-1].split()[-1])
         self.currenJob.set(self.runPartStract.get())
         self._store(self)
 
-        while getJobStatus(self.projectName.get(),
-                           self.runPartStract.get()) not in STOP_STATUSES:
-            waitJob(self.projectName.get(), self.importVolume.get())
-
-        if getJobStatus(self.projectName.get(),
-                        self.runPartStract.get()) != STATUS_COMPLETED:
-            raise Exception("An error occurred in the particles subtraction process. "
-                            "Please, go to cryosPARC software for more "
-                            "details.")
-
-
-
-
-
-
-
-
+        waitForCryosparc(self.projectName.get(), self.runPartStract.get(),
+                         "An error occurred in the particles subtraction process. "
+                         "Please, go to cryosPARC software for more "
+                         "details.")

@@ -217,7 +217,6 @@ class ProtCryoSparcNonUniformRefine3D(ProtCryoSparcRefine3D):
         #               default=False,
         #               label="Retrieve statistic model of LocRes")
 
-
     # --------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
         ProtCryoSparcRefine3D._insertAllSteps(self)
@@ -279,25 +278,26 @@ class ProtCryoSparcNonUniformRefine3D(ProtCryoSparcRefine3D):
             elif paramName == 'locres_compute_facility':
                 params[str(paramName)] = str(COMPUTE_FACILITY_CHOICES[self.locres_compute_facility.get()])
 
-        doRefine = enqueueJob(className, self.projectName.get(),
+        # Determinate the GPUs to use (in dependence of
+        # the cryosparc version)
+        try:
+            gpusToUse = self.getGpuList()
+        except Exception:
+            gpusToUse = False
+
+        self.runRefine = enqueueJob(className, self.projectName.get(),
                               self.workSpaceName.get(),
                               str(params).replace('\'', '"'),
                               str(input_group_conect).replace('\'', '"'),
-                              self.lane)
+                              self.lane, gpusToUse)
 
-        self.runRefine = String(doRefine[-1].split()[-1])
         self.currenJob.set(self.runRefine.get())
         self._store(self)
 
-        while getJobStatus(self.projectName.get(),
-                           self.runRefine.get()) not in STOP_STATUSES:
-            waitJob(self.projectName.get(), self.runRefine.get())
-
-        if getJobStatus(self.projectName.get(),
-                        self.runRefine.get()) != STATUS_COMPLETED:
-            raise Exception("An error occurred in the Refinement process. "
-                            "Please, go to cryosPARC software for more "
-                            "details.")
+        waitForCryosparc(self.projectName.get(), self.runRefine.get(),
+                         "An error occurred in the Refinement process. "
+                         "Please, go to cryosPARC software for more "
+                         "details.")
 
 
 

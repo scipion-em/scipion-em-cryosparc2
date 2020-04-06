@@ -178,7 +178,6 @@ class TestCryosparcClassify2D(TestCryosparcBase):
             prot2D.numberOfClasses.set(5)
             prot2D.numberOnlineEMIterator.set(40)
             prot2D.setObjLabel(label)
-            prot2D.numberGPU.set(1)
             self.launchProtocol(prot2D)
             return prot2D
 
@@ -456,16 +455,6 @@ class TestCryosparcLocalRefine(TestCryosparcBase):
         _checkAsserts(cryosparcProtGpu)
 
 
-class TestUtils(BaseTest):
-    def testSamplingRateConvertion(self):
-        sr = calculateNewSamplingRate((2, 2, 2), 4, (4, 4, 4))
-        self.assertEqual(sr, 8, "Wrong sampling rate conversion 1")
-
-        sr = calculateNewSamplingRate((2, 2, 2), 1.5, (4, 4, 4))
-        self.assertEqual(sr, 3, "Wrong sampling rate conversion 2")
-
-        sr = calculateNewSamplingRate((3, 3, 3), 1.5, (4, 4, 4))
-        self.assertEqual(sr, 2, "Wrong sampling rate conversion 3")
 
 
 
