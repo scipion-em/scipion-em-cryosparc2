@@ -434,14 +434,15 @@ class ProtCryoSparcLocalRefine(ProtOperateParticles):
         os.system("wget 127.0.0.1:39000/file/" + idd + " -nd -P" +
                   self._getExtraPath())
         os.system("mv " + self._getExtraPath() + "/" + idd + " " +
-                  self._getExtraPath()+"/fsc.txt")
+                  self._getExtraPath() + "/fsc.txt")
         # Convert into scipion fsc format
-        f = open(self._getExtraPath()+"/fsc.txt", "r")
+        f = open(self._getExtraPath() + "/fsc.txt", "r")
         lines = f.readlines()
         wv = []
         corr = []
         for x in lines[1:-1]:
-            wv.append(str(float(x.split('\t')[0])/(int(self._getInputParticles().getDim()[0])*float(imgSet.getSamplingRate()))))
+            wv.append(str(float(x.split('\t')[0]) / (
+                        int(self._getInputParticles().getDim()[0]) * float(imgSet.getSamplingRate()))))
             corr.append(x.split('\t')[6])
         f.close()
 
@@ -622,5 +623,3 @@ class ProtCryoSparcLocalRefine(ProtOperateParticles):
                          "An error occurred in the local refinement process. "
                          "Please, go to cryosPARC software for more "
                          "details.")
-
-

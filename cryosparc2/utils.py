@@ -61,32 +61,33 @@ def getCryosparcDir():
     return Plugin.getHome()
 
 
-def getCryosparcProgram():
+def getCryosparcProgram(mode="cli"):
     """
     Get the cryosparc program to launch any command
     """
-    if getCryosparcDir() is not None:
-        return os.path.join(getCryosparcDir(),
-                            'cryosparc2_master/bin/cryosparcm cli')
+    csDir = getCryosparcDir()
+
+    if csDir is not None:
+        return os.path.join(csDir,
+                            'cryosparc2_master/bin/cryosparcm %s' % mode)
+
     return None
 
 
-def cryosparcExist():
+def cryosparcExists():
     """
-    Determine if cryosparc software exist
+    Determine if scipion can find cryosparc
+    :returns True if found, False otherwise
     """
-    msg = []
-    if getCryosparcDir() is not None and not os.path.exists(getCryosparcDir()):
-        msg.append('The cryoSPARC software do not exist in %s. Please install it'
-                   % str(os.environ[CRYOSPARC_DIR]))
-    return msg
+    csDir = getCryosparcDir()
+    return csDir is not None and os.path.exists(csDir)
 
 
 def isCryosparcRunning():
     """
     Determine if cryosparc services are running
+    :returns True if running, false otherwise
     """
-    msg = []
     status = -1
     if getCryosparcProgram() is not None:
         test_conection_cmd = (getCryosparcProgram() +
@@ -94,35 +95,44 @@ def isCryosparcRunning():
         test_conection = subprocess.getstatusoutput(test_conection_cmd)
         status = test_conection[0]
 
-    if status != 0:
-        msg = ['Failed to establish a new connection with cryoSPARC. Please, '
-               'restart the cryoSPARC services. Run the "%s" program located in '
-               'the cryosparc_master/bin folder with "%s" parameter' % ("cryosparcm", "start")]
-
-    return msg
+    return status == 0
 
 
 def cryosparcValidate():
     """
     Validates some cryo properties that must be satisfy
     """
-    validateMsgs = cryosparcExist()
-    if not validateMsgs:
-        validateMsgs = isCryosparcRunning()
-        if not validateMsgs:
-            cryosparcVersion = getCryosparcInstalledVersion()
-            supportedVersions = Plugin.getSupportedVersions()
+    if not cryosparcExists():
 
-            isCompatible = [version for version in supportedVersions
-                            if parse_version(version) >= parse_version(cryosparcVersion)]
-            if not isCompatible:
-                msg = ('WARNING!!! The installed Cryosparc version is not '
-                       'compatible with the plugin. This can cause a '
-                       'malfunction of the protocol. Please install one of '
-                       'these versions: ' + str(supportedVersions).replace('\'',
-                                                                           ''))
-                print(pwutils.redStr(msg))
-    return validateMsgs
+        return["cryoSPARC software not found at %s. Please, fill %s variable in scipion's config file."
+                   % (getCryosparcDir(), CRYOSPARC_DIR)]
+
+    if not isCryosparcRunning():
+
+        return ['Failed to connect to cryoSPARC. Please, make sure cryoSPARC is running.\n'
+                'Running: *%s* might fix this.' % getCryosparcProgram("start")]
+
+    cryosparcVersion = parse_version(getCryosparcInstalledVersion())
+    supportedVersions = Plugin.getSupportedVersions()
+    minSupportedVersion = parse_version(supportedVersions[0])
+    maxSupportedVersion = parse_version(supportedVersions[-1])
+
+    # If version lower than first one
+    if minSupportedVersion > cryosparcVersion:
+        return ['The installed Cryosparc version is not '
+                'compatible with the plugin. This can cause a '
+                'malfunction of the protocol. Please install one of '
+                'these versions: ' + str(supportedVersions).replace('\'', '')]
+
+    elif maxSupportedVersion < cryosparcVersion:
+        print(pwutils.yellowStr("cryoSPARC %s is newer than those we've tested %s. Instead of blocking the "
+                             "execution, we are allowing this to run assuming compatibility is not broken."
+                             "If it fails, please consider:\n A - upgrade the plugin, there might be an update.\n "
+                             "B - downgrade cryosparc version.\n C - Contact plugin maintainers"
+                             " at https://github.com/scipion-em/scipion-em-cryosparc2"
+                             % (cryosparcVersion, str(supportedVersions).replace('\'', ''))))
+
+    return []
 
 
 def getCryosparcInstalledVersion():
@@ -146,7 +156,9 @@ def getCryosparcProjectsDir():
     """
     Get the path on the worker node to a writable directory
     """
-    cryoProject_Dir = Plugin.getVar(CRYO_PROJECTS_DIR)
+    # Make a join in case is relative it will prepend getHome.
+    cryoProject_Dir = os.path.join(Plugin.getHome(),
+                                   Plugin.getVar(CRYO_PROJECTS_DIR))
 
     if not os.path.exists(cryoProject_Dir):
         os.mkdir(cryoProject_Dir)
@@ -183,7 +195,7 @@ def createEmptyProject(projectDir, projectTitle):
                                 % ("'", str(getCryosparcUser()),
                                    str(projectDir), str(projectTitle), "'"))
 
-    return subprocess.getstatusoutput(create_empty_project_cmd)
+    return runCmd(create_empty_project_cmd, printCmd=False)
 
 
 def createProjectDir(project_container_dir):
@@ -199,7 +211,7 @@ def createProjectDir(project_container_dir):
     create_project_dir_cmd = (getCryosparcProgram() +
                               ' %scheck_or_create_project_container_dir("%s")%s '
                               % ("'", project_container_dir, "'"))
-    return subprocess.getstatusoutput(create_project_dir_cmd)
+    return runCmd(create_project_dir_cmd, printCmd=False)
 
 
 def createEmptyWorkSpace(projectName, workspaceTitle, workspaceComment):
@@ -214,7 +226,7 @@ def createEmptyWorkSpace(projectName, workspaceTitle, workspaceComment):
                              % ("'", projectName, str(getCryosparcUser()),
                                 "None", str(workspaceTitle),
                                 str(workspaceComment), "'"))
-    return runCmd(create_work_space_cmd)
+    return runCmd(create_work_space_cmd, printCmd=False)
 
 
 def doImportParticlesStar(protocol):
@@ -276,7 +288,7 @@ def doJob(jobType, projectName, workSpaceName, params, input_group_conect):
                    params, input_group_conect, "'"))
 
     print(pwutils.greenStr(do_job_cmd))
-    return subprocess.getstatusoutput(do_job_cmd)
+    return runCmd(do_job_cmd)
 
 
 def enqueueJob(jobType, projectName, workSpaceName, params, input_group_conect,
@@ -325,11 +337,12 @@ def enqueueJob(jobType, projectName, workSpaceName, params, input_group_conect,
     return jobId
 
 
-def runCmd(cmd):
+def runCmd(cmd, printCmd=True):
     """ Runs a command and check its exit code. If different than 0 it raises an exception
     :parameter cmd command to run"""
 
-    print(pwutils.greenStr("Running: %s" % cmd))
+    if printCmd:
+        print(pwutils.greenStr("Running: %s" % cmd))
     exitCode, cmdOutput = subprocess.getstatusoutput(cmd)
 
     if exitCode != 0:
@@ -368,8 +381,8 @@ def getJobStatus(projectName, job):
                           ' %sget_job_status("%s", "%s")%s'
                           % ("'", projectName, job, "'"))
 
-    status = subprocess.getstatusoutput(get_job_status_cmd)
-    return status[-1].split()[-1]
+    status = runCmd(get_job_status_cmd, printCmd=False)
+    return status[-1]
 
 
 def waitJob(projectName, job):
@@ -379,7 +392,7 @@ def waitJob(projectName, job):
     wait_job_cmd = (getCryosparcProgram() +
                     ' %swait_job_complete("%s", "%s")%s'
                     % ("'", projectName, job, "'"))
-    subprocess.getstatusoutput(wait_job_cmd)
+    runCmd(wait_job_cmd, printCmd=False)
 
 
 def get_job_streamlog(projectName, job, fileName):
@@ -388,7 +401,7 @@ def get_job_streamlog(projectName, job, fileName):
                              ' %sget_job_streamlog("%s", "%s")%s%s'
                              % ("'", projectName, job, "'", ">" + fileName))
 
-    subprocess.getstatusoutput(get_job_streamlog_cmd)
+    runCmd(get_job_streamlog_cmd, printCmd=False)
 
 
 def killJob(projectName, job):
@@ -401,7 +414,7 @@ def killJob(projectName, job):
                     ' %skill_job("%s", "%s")%s'
                     % ("'", projectName, job, "'"))
     print(pwutils.greenStr(kill_job_cmd))
-    subprocess.getstatusoutput(kill_job_cmd)
+    runCmd(kill_job_cmd)
 
 
 def clearJob(projectName, job):
@@ -416,7 +429,7 @@ def clearJob(projectName, job):
                     ' %sclear_job("%s", "%s")%s'
                     % ("'", projectName, job, "'"))
     print(pwutils.greenStr(clear_job_cmd))
-    subprocess.getstatusoutput(clear_job_cmd)
+    runCmd(clear_job_cmd, printCmd=False)
 
 
 def getSystemInfo():
@@ -436,7 +449,7 @@ def getSystemInfo():
     }
     """
     system_info_cmd = (getCryosparcProgram() + ' %sget_system_info()%s') % ("'", "'")
-    return subprocess.getstatusoutput(system_info_cmd)
+    return runCmd(system_info_cmd, printCmd=False)
 
 
 def addComputeSectionParams(form):

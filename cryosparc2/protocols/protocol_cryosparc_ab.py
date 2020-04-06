@@ -550,5 +550,5 @@ class ProtCryoSparcInitialModel(ProtInitialVolume, ProtClassify3D):
 
         waitForCryosparc(self.projectName.get(), self.runAbinit.get(),
                          "An error occurred in the initial volume process. "
-                            "Please, go to cryosPARC software for more "
-                            "details.")
+                         "Please, go to cryosPARC software for more "
+                         "details.")
