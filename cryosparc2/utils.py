@@ -132,7 +132,6 @@ def cryosparcValidate():
                              " at https://github.com/scipion-em/scipion-em-cryosparc2"
                              % (cryosparcVersion, str(supportedVersions).replace('\'', ''))))
 
-
     return []
 
 
@@ -158,7 +157,8 @@ def getCryosparcProjectsDir():
     Get the path on the worker node to a writable directory
     """
     # Make a join in case is relative it will prepend getHome.
-    cryoProject_Dir = os.path.join(Plugin.getHome(), Plugin.getVar(CRYO_PROJECTS_DIR))
+    cryoProject_Dir = os.path.join(Plugin.getHome(),
+                                   Plugin.getVar(CRYO_PROJECTS_DIR))
 
     if not os.path.exists(cryoProject_Dir):
         os.mkdir(cryoProject_Dir)
@@ -195,7 +195,7 @@ def createEmptyProject(projectDir, projectTitle):
                                 % ("'", str(getCryosparcUser()),
                                    str(projectDir), str(projectTitle), "'"))
 
-    return subprocess.getstatusoutput(create_empty_project_cmd)
+    return runCmd(create_empty_project_cmd, printCmd=False)
 
 
 def createProjectDir(project_container_dir):
@@ -211,7 +211,7 @@ def createProjectDir(project_container_dir):
     create_project_dir_cmd = (getCryosparcProgram() +
                               ' %scheck_or_create_project_container_dir("%s")%s '
                               % ("'", project_container_dir, "'"))
-    return subprocess.getstatusoutput(create_project_dir_cmd)
+    return runCmd(create_project_dir_cmd, printCmd=False)
 
 
 def createEmptyWorkSpace(projectName, workspaceTitle, workspaceComment):
@@ -226,7 +226,7 @@ def createEmptyWorkSpace(projectName, workspaceTitle, workspaceComment):
                              % ("'", projectName, str(getCryosparcUser()),
                                 "None", str(workspaceTitle),
                                 str(workspaceComment), "'"))
-    return runCmd(create_work_space_cmd)
+    return runCmd(create_work_space_cmd, printCmd=False)
 
 
 def doImportParticlesStar(protocol):
@@ -288,7 +288,7 @@ def doJob(jobType, projectName, workSpaceName, params, input_group_conect):
                    params, input_group_conect, "'"))
 
     print(pwutils.greenStr(do_job_cmd))
-    return subprocess.getstatusoutput(do_job_cmd)
+    return runCmd(do_job_cmd)
 
 
 def enqueueJob(jobType, projectName, workSpaceName, params, input_group_conect,
@@ -337,11 +337,12 @@ def enqueueJob(jobType, projectName, workSpaceName, params, input_group_conect,
     return jobId
 
 
-def runCmd(cmd):
+def runCmd(cmd, printCmd=True):
     """ Runs a command and check its exit code. If different than 0 it raises an exception
     :parameter cmd command to run"""
 
-    print(pwutils.greenStr("Running: %s" % cmd))
+    if printCmd:
+        print(pwutils.greenStr("Running: %s" % cmd))
     exitCode, cmdOutput = subprocess.getstatusoutput(cmd)
 
     if exitCode != 0:
@@ -380,8 +381,8 @@ def getJobStatus(projectName, job):
                           ' %sget_job_status("%s", "%s")%s'
                           % ("'", projectName, job, "'"))
 
-    status = subprocess.getstatusoutput(get_job_status_cmd)
-    return status[-1].split()[-1]
+    status = runCmd(get_job_status_cmd, printCmd=False)
+    return status[-1]
 
 
 def waitJob(projectName, job):
@@ -391,7 +392,7 @@ def waitJob(projectName, job):
     wait_job_cmd = (getCryosparcProgram() +
                     ' %swait_job_complete("%s", "%s")%s'
                     % ("'", projectName, job, "'"))
-    subprocess.getstatusoutput(wait_job_cmd)
+    runCmd(wait_job_cmd, printCmd=False)
 
 
 def get_job_streamlog(projectName, job, fileName):
@@ -400,7 +401,7 @@ def get_job_streamlog(projectName, job, fileName):
                              ' %sget_job_streamlog("%s", "%s")%s%s'
                              % ("'", projectName, job, "'", ">" + fileName))
 
-    subprocess.getstatusoutput(get_job_streamlog_cmd)
+    runCmd(get_job_streamlog_cmd, printCmd=False)
 
 
 def killJob(projectName, job):
@@ -413,7 +414,7 @@ def killJob(projectName, job):
                     ' %skill_job("%s", "%s")%s'
                     % ("'", projectName, job, "'"))
     print(pwutils.greenStr(kill_job_cmd))
-    subprocess.getstatusoutput(kill_job_cmd)
+    runCmd(kill_job_cmd)
 
 
 def clearJob(projectName, job):
@@ -428,7 +429,7 @@ def clearJob(projectName, job):
                     ' %sclear_job("%s", "%s")%s'
                     % ("'", projectName, job, "'"))
     print(pwutils.greenStr(clear_job_cmd))
-    subprocess.getstatusoutput(clear_job_cmd)
+    runCmd(clear_job_cmd, printCmd=False)
 
 
 def getSystemInfo():
@@ -448,7 +449,7 @@ def getSystemInfo():
     }
     """
     system_info_cmd = (getCryosparcProgram() + ' %sget_system_info()%s') % ("'", "'")
-    return subprocess.getstatusoutput(system_info_cmd)
+    return runCmd(system_info_cmd, printCmd=False)
 
 
 def addComputeSectionParams(form):
