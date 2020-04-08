@@ -25,8 +25,8 @@
 # *  e-mail address 'scipion@cnb.csic.es'
 # *
 # **************************************************************************
-from pyworkflow.protocol.params import (PointerParam, FloatParam, BooleanParam,
-                                        StringParam, LEVEL_ADVANCED)
+from pyworkflow.protocol.params import (PointerParam, FloatParam,
+                                        LEVEL_ADVANCED)
 from pwem.objects import Volume, FSC
 from pwem.protocols import ProtRefine3D
 
@@ -297,7 +297,7 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
 
         # --------------[Compute settings]---------------------------
         form.addSection(label="Compute settings")
-        addComputeSectionParams(form)
+        addComputeSectionParams(form, allowMultipleGPUs=False)
 
     # --------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
@@ -458,10 +458,12 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
     def _validate(self):
         validateMsgs = cryosparcValidate()
         if not validateMsgs:
-            particles = self._getInputParticles()
-            if not particles.hasCTF():
-                validateMsgs.append("The Particles has not associated a "
-                                    "CTF model")
+            validateMsgs = gpusValidate(self.getGpuList(), checkSingleGPU=True)
+            if not validateMsgs:
+                particles = self._getInputParticles()
+                if not particles.hasCTF():
+                    validateMsgs.append("The Particles has not associated a "
+                                        "CTF model")
         return validateMsgs
 
     def _summary(self):

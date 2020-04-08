@@ -25,9 +25,7 @@
 # *
 # **************************************************************************
 
-from pyworkflow.protocol.params import (FloatParam, StringParam,
-                                        BooleanParam,
-                                        LEVEL_ADVANCED)
+from pyworkflow.protocol.params import (FloatParam, LEVEL_ADVANCED)
 
 from . import ProtCryoSparcRefine3D
 from ..utils import *
