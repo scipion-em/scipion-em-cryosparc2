@@ -137,6 +137,16 @@ def cryosparcValidate():
     return []
 
 
+def gpusValidate(gpuList, checkSingleGPU=False):
+    """
+    Validate a gpu list
+    """
+    # Case in which the protocol allow a single GPU
+    if checkSingleGPU and len(gpuList) > 1:
+        return ['This protocol can only be run on a single GPU.']
+    return []
+
+
 def getCryosparcInstalledVersion():
     """
     Get the cryosparc installed version
@@ -167,12 +177,14 @@ def getCryosparcProjectsDir():
 
     return cryoProject_Dir
 
+
 def getProjectName(scipionProjectName):
     """ returns the name of the cryosparc project based on
     scipion project name and  a hash based on the user name"""
 
     username = getpass.getuser()
     return "%s-%s" % (scipionProjectName, username)
+
 
 def getProjectPath(projectDir):
     """
@@ -358,6 +370,7 @@ def runCmd(cmd, printCmd=True):
 
     return exitCode, cmdOutput
 
+
 def waitForCryosparc(projectName, jobId, failureMessage):
     """ Waits for cryosparc to finish or fail a job
     :parameter projectName: Cryosparc project name
@@ -459,7 +472,7 @@ def getSystemInfo():
     return runCmd(system_info_cmd, printCmd=False)
 
 
-def addComputeSectionParams(form):
+def addComputeSectionParams(form, allowMultipleGPUs=True):
     """
     Add the compute settings section
     """
@@ -472,13 +485,22 @@ def addComputeSectionParams(form):
                        'using an SSD can dramatically slow down processing.')
 
     if (not isCryosparcRunning()) or parse_version(getCryosparcInstalledVersion()) >= parse_version(V2_13_0):
-        form.addHidden(GPU_LIST, StringParam, default='0',
-                      label='Choose GPU IDs:', validators=[NonEmpty],
-                      help='This argument is necessary. By default, the '
-                           'protocol will attempt to launch on GPU 0. You can '
-                           'override the default allocation by providing a '
-                           'list of which GPUs (0,1,2,3, etc) to use. '
-                           'GPU are separated by ",". For example: "0,1,5"')
+        if allowMultipleGPUs:
+            form.addHidden(GPU_LIST, StringParam, default='0',
+                          label='Choose GPU IDs:', validators=[NonEmpty],
+                          help='This argument is necessary. By default, the '
+                               'protocol will attempt to launch on GPU 0. You can '
+                               'override the default allocation by providing a '
+                               'list of which GPUs (0,1,2,3, etc) to use. '
+                               'GPU are separated by ",". For example: "0,1,5"')
+        else:
+            form.addHidden(GPU_LIST, StringParam, default='0',
+                           label='Choose GPU ID:', validators=[NonEmpty],
+                           help='This argument is necessary. By default, the '
+                                'protocol will attempt to launch on GPU 0. You can '
+                                'override the default allocation by providing a '
+                                'single GPU (0, 1, 2 or 3, etc) to use.')
+
 
     form.addParam('compute_lane', StringParam, default='default',
                   label='Lane name:',

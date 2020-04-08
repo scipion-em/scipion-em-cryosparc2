@@ -28,8 +28,8 @@
 import ast
 
 from pwem.protocols import ProtOperateParticles
-from pyworkflow.protocol.params import (PointerParam, BooleanParam, FloatParam,
-                                        StringParam, LEVEL_ADVANCED)
+from pyworkflow.protocol.params import (PointerParam, FloatParam,
+                                        LEVEL_ADVANCED)
 from pwem.objects import Volume, FSC
 
 from ..convert import *
@@ -298,7 +298,7 @@ class ProtCryoSparcLocalRefine(ProtOperateParticles):
 
         # --------------[Compute settings]---------------------------
         form.addSection(label="Compute settings")
-        addComputeSectionParams(form)
+        addComputeSectionParams(form, allowMultipleGPUs=False)
 
     # --------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
@@ -466,8 +466,10 @@ class ProtCryoSparcLocalRefine(ProtOperateParticles):
                """
         validateMsgs = cryosparcValidate()
         if not validateMsgs:
-            self._validateDim(self._getInputParticles(), self.refVolume.get(),
-                              validateMsgs, 'Input particles', 'Input volume')
+            validateMsgs = gpusValidate(self.getGpuList(), checkSingleGPU=True)
+            if not validateMsgs:
+                self._validateDim(self._getInputParticles(), self.refVolume.get(),
+                                  validateMsgs, 'Input particles', 'Input volume')
         return validateMsgs
 
     def _summary(self):

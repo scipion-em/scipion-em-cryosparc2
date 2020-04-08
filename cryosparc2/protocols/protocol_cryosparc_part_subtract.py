@@ -25,8 +25,8 @@
 # *
 # **************************************************************************
 from pwem.protocols import ProtOperateParticles
-from pyworkflow.protocol.params import (PointerParam, BooleanParam, FloatParam,
-                                        StringParam, LEVEL_ADVANCED)
+from pyworkflow.protocol.params import (PointerParam, FloatParam,
+                                        LEVEL_ADVANCED)
 
 from ..convert import *
 from ..utils import *
@@ -139,7 +139,7 @@ class ProtCryoSparcSubtract(ProtOperateParticles):
 
         # --------------[Compute settings]---------------------------
         form.addSection(label="Compute settings")
-        addComputeSectionParams(form)
+        addComputeSectionParams(form, allowMultipleGPUs=False)
 
     # --------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
@@ -196,8 +196,8 @@ class ProtCryoSparcSubtract(ProtOperateParticles):
         outputStarFn = self._getFileName('out_particles')
 
         # Create the output folder
-        os.system("cp -r " + self.projectPath + "/" + self.projectName.get() + '/' +
-                  self.runPartStract.get() + " " + self._getExtraPath())
+        os.system("cp -r " + self.projectPath + "/" + self.projectName.get() +
+                  '/' + self.runPartStract.get() + " " + self._getExtraPath())
 
         csFileName = "subtracted_particles.cs"
         csFile = os.path.join(self._getExtraPath(), self.runPartStract.get(),
@@ -242,12 +242,16 @@ class ProtCryoSparcSubtract(ProtOperateParticles):
     # --------------------------- INFO functions -------------------------------
     def _validate(self):
         """ Should be overwritten in subclasses to
-               return summary message for NORMAL EXECUTION.
-               """
+            return summary message for NORMAL EXECUTION.
+        """
         validateMsgs = cryosparcValidate()
         if not validateMsgs:
-            self._validateDim(self._getInputParticles(), self.refVolume.get(),
-                              validateMsgs, 'Input particles', 'Input volume')
+            validateMsgs = gpusValidate(self.getGpuList(), checkSingleGPU=True)
+            if not validateMsgs:
+                self._validateDim(self._getInputParticles(),
+                                  self.refVolume.get(),
+                                  validateMsgs, 'Input particles',
+                                  'Input volume')
         return validateMsgs
 
     def _summary(self):
@@ -273,7 +277,7 @@ class ProtCryoSparcSubtract(ProtOperateParticles):
                            self.getObjectTag('outputParticles'))
         return summary
 
-    # ---------------Utils Functions-----------------------------------------------------------
+    # ---------------Utils Functions-------------------------------------------
 
     def _getInputParticles(self):
         return self.inputParticles.get()

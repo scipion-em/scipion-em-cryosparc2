@@ -25,8 +25,8 @@
 # *  e-mail address 'scipion@cnb.csic.es'
 # *
 # **************************************************************************
-from pyworkflow.protocol.params import (PointerParam, FloatParam, BooleanParam,
-                                        LEVEL_ADVANCED, StringParam)
+from pyworkflow.protocol.params import (PointerParam, FloatParam,
+                                        LEVEL_ADVANCED)
 from pwem.protocols import ProtInitialVolume, ProtClassify3D
 
 from ..convert import *
@@ -272,7 +272,7 @@ class ProtCryoSparcInitialModel(ProtInitialVolume, ProtClassify3D):
 
         # --------------[Compute settings]---------------------------
         form.addSection(label="Compute settings")
-        addComputeSectionParams(form)
+        addComputeSectionParams(form, allowMultipleGPUs=False)
 
     # --------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
@@ -372,10 +372,12 @@ class ProtCryoSparcInitialModel(ProtInitialVolume, ProtClassify3D):
     def _validate(self):
         validateMsgs = cryosparcValidate()
         if not validateMsgs:
-            particles = self._getInputParticles()
-            if not particles.hasCTF():
-                validateMsgs.append("The Particles has not associated a "
-                                    "CTF model")
+            validateMsgs = gpusValidate(self.getGpuList(), checkSingleGPU=True)
+            if not validateMsgs:
+                particles = self._getInputParticles()
+                if not particles.hasCTF():
+                    validateMsgs.append("The Particles has not associated a "
+                                        "CTF model")
         return validateMsgs
 
     def _summary(self):

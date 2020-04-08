@@ -28,8 +28,7 @@
 
 
 from pwem.protocols import ProtClassify2D
-from pyworkflow.protocol.params import (PointerParam, BooleanParam,
-                                        FloatParam, StringParam, NonEmpty)
+from pyworkflow.protocol.params import (PointerParam, FloatParam)
 from pyworkflow.utils import replaceExt, createLink
 
 from ..convert import *
@@ -346,10 +345,12 @@ class ProtCryo2D(ProtClassify2D):
     def _validate(self):
         validateMsgs = cryosparcValidate()
         if not validateMsgs:
-            particles = self._getInputParticles()
-            if not particles.hasCTF():
-                validateMsgs.append("The Particles has not associated a "
-                                    "CTF model")
+            validateMsgs = gpusValidate(self.getGpuList())
+            if not validateMsgs:
+                particles = self._getInputParticles()
+                if not particles.hasCTF():
+                    validateMsgs.append("The Particles has not associated a "
+                                        "CTF model")
         return validateMsgs
 
     def _summary(self):
@@ -451,7 +452,8 @@ class ProtCryo2D(ProtClassify2D):
         """
         # Create a cryoSPARC project dir
         self.projectDirName = getProjectName(self.getProject().getShortName())
-        self.projectPath = pwutils.join(getCryosparcProjectsDir(), self.projectDirName)
+        self.projectPath = pwutils.join(getCryosparcProjectsDir(),
+                                        self.projectDirName)
         self.projectDir = createProjectDir(self.projectPath)
 
     def _initializeCryosparcProject(self):
