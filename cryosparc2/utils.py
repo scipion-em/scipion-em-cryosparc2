@@ -471,7 +471,7 @@ def addComputeSectionParams(form):
                        'subsequent jobs that require the same data. Not '
                        'using an SSD can dramatically slow down processing.')
 
-    if parse_version(getCryosparcInstalledVersion()) >= parse_version(V2_13_0):
+    if not isCryosparcRunning() or parse_version(getCryosparcInstalledVersion()) >= parse_version(V2_13_0):
         form.addHidden(GPU_LIST, StringParam, default='0',
                       label='Choose GPU IDs:', validators=[NonEmpty],
                       help='This argument is necessary. By default, the '
