@@ -95,6 +95,17 @@ class ProtCryosparcBase(EMProtocol):
             self.currenJob.set(self.importVolume.get())
             self._store(self)
 
+        if (self.getParam('referenceVolume') is not None and
+                self.referenceVolume.get() is not None):
+            self.vol_fn = os.path.join(os.getcwd(),
+                                       convertBinaryVol(
+                                           self.referenceVolume.get(),
+                                           self._getTmpPath()))
+            self.importVolume = doImportVolumes(self, self.vol_fn, 'map',
+                                                'Importing volume...')
+            self.currenJob.set(self.importVolume.get())
+            self._store(self)
+
         if (self.getParam('refMask') is not None and
                 self.refMask.get() is not None):
             self.maskFn = os.path.join(os.getcwd(),
