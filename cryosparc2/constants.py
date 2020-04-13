@@ -71,6 +71,14 @@ REFINE_MASK_CHOICES = ['dynamic',
 COMPUTE_FACILITY_CHOICES = ['GPU',
                             'CPU']
 
+VAR_USE_SCALES = ['none',
+                  'input',
+                  'optimal']
+
+VAR_OUTPUT_MODE = ['simple',
+                   'cluster',
+                   'intermediates']
+
 # Viewer constants
 LAST_ITER = 0
 ALL_ITERS = 1
