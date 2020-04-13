@@ -237,7 +237,7 @@ class TestCryosparc3DRefinement(TestCryosparcBase):
                                                 numberOfMpi=4, numberOfThreads=1)
 
             prot3DRefinement.inputParticles.set(self.protImportPart.outputParticles)
-            prot3DRefinement.refVolume.set(self.protImportVol.outputVolume)
+            prot3DRefinement.referenceVolume.set(self.protImportVol.outputVolume)
             prot3DRefinement.symmetryGroup.set(SYM_CYCLIC)
             prot3DRefinement.symmetryOrder.set(1)
             prot3DRefinement.setObjLabel(label)
@@ -275,7 +275,7 @@ class TestCryosparcNonUniformRefine3D(TestCryosparcBase):
 
 
             protNonUniform3DRefinement.inputParticles.set(self.protImportPart.outputParticles)
-            protNonUniform3DRefinement.refVolume.set(self.protImportVolumeVol.outputVolume)
+            protNonUniform3DRefinement.referenceVolume.set(self.protImportVolumeVol.outputVolume)
             protNonUniform3DRefinement.symmetryGroup.set(SYM_CYCLIC)
             protNonUniform3DRefinement.symmetryOrder.set(1)
             protNonUniform3DRefinement.setObjLabel(label)
@@ -316,7 +316,7 @@ class TestCryosparcParticlesSubtract(TestCryosparcBase):
                                                 numberOfMpi=4,
                                                 numberOfThreads=1)
             prot3DRefinement.inputParticles.set(self.protImportPart.outputParticles)
-            prot3DRefinement.refVolume.set(self.protImportVol.outputVolume)
+            prot3DRefinement.referenceVolume.set(self.protImportVol.outputVolume)
             prot3DRefinement.symmetryGroup.set(SYM_CYCLIC)
             prot3DRefinement.symmetryOrder.set(1)
             self.launchProtocol(prot3DRefinement)
@@ -371,7 +371,7 @@ class TestCryosparcLocalRefine(TestCryosparcBase):
                                                 numberOfMpi=4,
                                                 numberOfThreads=1)
             prot3DRefinement.inputParticles.set(self.protImportPart.outputParticles)
-            prot3DRefinement.refVolume.set(self.protImportVol.outputVolume)
+            prot3DRefinement.referenceVolume.set(self.protImportVol.outputVolume)
             prot3DRefinement.symmetryGroup.set(SYM_CYCLIC)
             prot3DRefinement.symmetryOrder.set(1)
             self.launchProtocol(prot3DRefinement)
