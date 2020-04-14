@@ -451,6 +451,19 @@ class ProtCryoSparcRefine3D(ProtCryosparcBase, ProtRefine3D):
 
     # -------------------------- UTILS functions ------------------------------
 
+    def _getInputVolume(self):
+        return self.referenceVolume.get()
+
+    def _importVolume(self):
+        self.vol_fn = os.path.join(os.getcwd(),
+                                   convertBinaryVol(
+                                       self.referenceVolume.get(),
+                                       self._getTmpPath()))
+        self.importVolume = doImportVolumes(self, self.vol_fn, 'map',
+                                            'Importing volume...')
+        self.currenJob.set(self.importVolume.get())
+        self._store(self)
+
     def _fillDataFromIter(self, imgSet):
         outImgsFn = self._getFileName('out_particles')
         imgSet.setAlignmentProj()
