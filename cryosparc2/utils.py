@@ -255,6 +255,7 @@ def doImportParticlesStar(protocol):
                              abs_blob_path=None, psize_A=None)
     returns the new uid of the job that was created
     """
+    print(pwutils.greenStr("Importing particles..."))
     className = "import_particles"
     params = {"particle_meta_path": str(os.path.join(os.getcwd(),
                                         protocol._getFileName('input_particles'))),
@@ -278,7 +279,7 @@ def doImportVolumes(protocol, refVolume, volType, msg):
     """
     :return:
     """
-    print(msg)
+    print(pwutils.greenStr(msg))
     className = "import_volumes"
     params = {"volume_blob_path": str(refVolume),
               "volume_out_name": str(volType),
@@ -434,7 +435,7 @@ def killJob(projectName, job):
                     ' %skill_job("%s", "%s")%s'
                     % ("'", projectName, job, "'"))
     print(pwutils.greenStr(kill_job_cmd))
-    runCmd(kill_job_cmd)
+    runCmd(kill_job_cmd, printCmd=False)
 
 
 def clearJob(projectName, job):
@@ -500,7 +501,6 @@ def addComputeSectionParams(form, allowMultipleGPUs=True):
                                 'protocol will attempt to launch on GPU 0. You can '
                                 'override the default allocation by providing a '
                                 'single GPU (0, 1, 2 or 3, etc) to use.')
-
 
     form.addParam('compute_lane', StringParam, default='default',
                   label='Lane name:',

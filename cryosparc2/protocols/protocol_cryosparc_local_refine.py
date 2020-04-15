@@ -32,12 +32,13 @@ from pyworkflow.protocol.params import (PointerParam, FloatParam,
                                         LEVEL_ADVANCED)
 from pwem.objects import Volume, FSC
 
+from . import ProtCryosparcBase
 from ..convert import *
 from ..utils import *
 from ..constants import *
 
 
-class ProtCryoSparcLocalRefine(ProtOperateParticles):
+class ProtCryoSparcLocalRefine(ProtCryosparcBase, ProtOperateParticles):
     """ Signal subtraction protocol of cryoSPARC.
         Subtract projections of a masked volume from particles.
         """
@@ -310,40 +311,11 @@ class ProtCryoSparcLocalRefine(ProtOperateParticles):
         self._insertFunctionStep('createOutputStep')
 
     # --------------------------- STEPS functions ------------------------------
-    def convertInputStep(self):
-        """ Create the input file in STAR format as expected by Relion.
-        If the input particles comes from Relion, just link the file.
-        """
-        imgSet = self._getInputParticles()
-        # Create links to binary files and write the relion .star file
-        writeSetOfParticles(imgSet, self._getFileName('input_particles'),
-                            self._getTmpPath())
-        self._importParticles()
-
-        self.vol_fn = os.path.join(os.getcwd(),
-                                   convertBinaryVol(self.refVolume.get(),
-                                                    self._getTmpPath()))
-        self.importVolume = doImportVolumes(self, self.vol_fn, 'map',
-                                            'Importing volume...')
-        self.currenJob.set(self.importVolume.get())
-        self._store(self)
-
-        if self.refMask.get() is not None:
-            self.maskFn = os.path.join(os.getcwd(),
-                                       convertBinaryVol(
-                                           self.refMask.get(),
-                                           self._getTmpPath()))
-
-        self.importMask = doImportVolumes(self, self.maskFn, 'mask',
-                                          'Importing mask... ')
-        self.currenJob.set(self.importMask.get())
-        self._store(self)
-
     def processStep(self):
         self.vol = self.importVolume.get() + '.imported_volume.map'
         self.mask = self.importMask.get() + '.imported_mask.mask'
 
-        print("Local Refinement started...")
+        print(pwutils.greenStr("Local Refinement started..."))
         self.doLocalRefine()
 
     def createOutputStep(self):
@@ -453,12 +425,6 @@ class ProtCryoSparcLocalRefine(ProtOperateParticles):
         self._defineOutputs(outputFSC=fsc)
         self._defineSourceRelation(vol, fsc)
 
-    def setAborted(self):
-        """ Set the status to aborted and updated the endTime. """
-        ProtOperateParticles.setAborted(self)
-        killJob(str(self.projectName.get()), str(self.currenJob.get()))
-        clearJob(str(self.projectName.get()), str(self.currenJob.get()))
-
     # --------------------------- INFO functions -------------------------------
     def _validate(self):
         """ Should be overwritten in subclasses to
@@ -505,50 +471,6 @@ class ProtCryoSparcLocalRefine(ProtOperateParticles):
     def _createItemMatrix(self, particle, row):
         createItemMatrix(particle, row, align=ALIGN_PROJ)
         setCryosparcAttributes(particle, row, md.RLN_PARTICLE_RANDOM_SUBSET)
-
-    def _getInputParticles(self):
-        return self.inputParticles.get()
-
-    def _initializeUtilsVariables(self):
-        """
-        Initialize all utils cryoSPARC variables
-        """
-        # Create a cryoSPARC project dir
-        self.projectDirName = getProjectName(self.getProject().getShortName())
-        self.projectPath = pwutils.join(getCryosparcProjectsDir(), self.projectDirName)
-        self.projectDir = createProjectDir(self.projectPath)
-
-    def _initializeCryosparcProject(self):
-        """
-        Initialize the cryoSPARC project and workspace
-        """
-        self._initializeUtilsVariables()
-        # create empty project or load an exists one
-        folderPaths = getProjectPath(self.projectPath)
-        if not folderPaths:
-            self.a = createEmptyProject(self.projectPath, self.projectDirName)
-            self.projectName = self.a[-1].split()[-1]
-        else:
-            self.projectName = str(folderPaths[0])
-
-        self.projectName = String(self.projectName)
-        self._store(self)
-
-        # create empty workspace
-        self.b = createEmptyWorkSpace(self.projectName, self.getRunName(),
-                                      self.getObjComment())
-        self.workSpaceName = String(self.b[-1].split()[-1])
-        self._store(self)
-
-    def _importParticles(self):
-
-        print("Importing particles...")
-
-        # import_particles_star
-        self.importedParticles = doImportParticlesStar(self)
-        self.currenJob = String(self.importedParticles.get())
-        self._store(self)
-        self.par = String(self.importedParticles.get() + '.imported_particles')
 
     def _defineParamsName(self):
         """ Define a list with all protocol parameters names"""
