@@ -110,7 +110,7 @@ class ProtCryosparcBase(EMProtocol):
     def _importVolume(self):
         self.vol_fn = os.path.join(os.getcwd(),
                                    convertBinaryVol(
-                                       self.refVolume.get(),
+                                       self._getInputVolume(),
                                        self._getTmpPath()))
         self.importVolume = doImportVolumes(self, self.vol_fn, 'map',
                                             'Importing volume...')
