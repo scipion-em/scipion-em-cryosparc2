@@ -84,45 +84,50 @@ class ProtCryosparcBase(EMProtocol):
                                 self._getTmpPath())
             self._importParticles()
 
-        if (self.getParam('refVolume') is not None and
-                self.refVolume.get() is not None):
-            self.vol_fn = os.path.join(os.getcwd(),
-                                       convertBinaryVol(
-                                           self.refVolume.get(),
-                                           self._getTmpPath()))
-            self.importVolume = doImportVolumes(self, self.vol_fn, 'map',
-                                                'Importing volume...')
-            self.currenJob.set(self.importVolume.get())
-            self._store(self)
+        volume = self._getInputVolume()
+        if volume is not None:
+            self._importVolume()
 
-        if (self.getParam('referenceVolume') is not None and
-                self.referenceVolume.get() is not None):
-            self.vol_fn = os.path.join(os.getcwd(),
-                                       convertBinaryVol(
-                                           self.referenceVolume.get(),
-                                           self._getTmpPath()))
-            self.importVolume = doImportVolumes(self, self.vol_fn, 'map',
-                                                'Importing volume...')
-            self.currenJob.set(self.importVolume.get())
-            self._store(self)
-
-        if (self.getParam('refMask') is not None and
-                self.refMask.get() is not None):
-            self.maskFn = os.path.join(os.getcwd(),
-                                       convertBinaryVol(
-                                           self.refMask.get(),
-                                           self._getTmpPath()))
-
-            self.importMask = doImportVolumes(self, self.maskFn, 'mask',
-                                              'Importing mask... ')
-            self.currenJob.set(self.importMask.get())
-            self._store(self)
-            self.mask = self.importMask.get() + '.imported_mask.mask'
+        mask = self._getInputMask()
+        if mask is not None:
+            self._importMask()
         else:
             self.mask = None
 
     def _getInputParticles(self):
         return self.inputParticles.get()
+
+    def _getInputVolume(self):
+        if self.hasAttribute('refVolume'):
+            return self.refVolume.get()
+        return None
+
+    def _getInputMask(self):
+        if self.hasAttribute('refMask'):
+            return self.refMask.get()
+        return None
+
+    def _importVolume(self):
+        self.vol_fn = os.path.join(os.getcwd(),
+                                   convertBinaryVol(
+                                       self._getInputVolume(),
+                                       self._getTmpPath()))
+        self.importVolume = doImportVolumes(self, self.vol_fn, 'map',
+                                            'Importing volume...')
+        self.currenJob.set(self.importVolume.get())
+        self._store(self)
+
+    def _importMask(self):
+        self.maskFn = os.path.join(os.getcwd(),
+                                   convertBinaryVol(
+                                       self.refMask.get(),
+                                       self._getTmpPath()))
+
+        self.importMask = doImportVolumes(self, self.maskFn, 'mask',
+                                          'Importing mask... ')
+        self.currenJob.set(self.importMask.get())
+        self._store(self)
+        self.mask = self.importMask.get() + '.imported_mask.mask'
 
     def _importParticles(self):
 

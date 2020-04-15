@@ -451,6 +451,9 @@ class ProtCryoSparcRefine3D(ProtCryosparcBase, ProtRefine3D):
 
     # -------------------------- UTILS functions ------------------------------
 
+    def _getInputVolume(self):
+        return self.referenceVolume.get()
+
     def _fillDataFromIter(self, imgSet):
         outImgsFn = self._getFileName('out_particles')
         imgSet.setAlignmentProj()
