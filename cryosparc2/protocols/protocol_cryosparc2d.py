@@ -226,7 +226,7 @@ class ProtCryo2D(ProtCryosparcBase, ProtClassify2D):
         """
         Classify particles into multiples 2D classes
         """
-        print(pwutils.greenStr("2D Classifications Started..."))
+        print(pwutils.yellowStr("2D Classifications Started..."), flush=True)
         self.doRunClass2D()
 
     def createOutputStep(self):
@@ -234,7 +234,7 @@ class ProtCryo2D(ProtCryosparcBase, ProtClassify2D):
         Create the protocol output. Convert cryosparc file to Relion file
         """
         self._initializeUtilsVariables()
-        print(pwutils.greenStr("Creating the output..."))
+        print(pwutils.yellowStr("Creating the output..."), flush=True)
         _numberOfIter = str("_00" + str(self.numberOnlineEMIterator.get()))
         if self.numberOnlineEMIterator.get() > 9:
             _numberOfIter = str("_0" + str(self.numberOnlineEMIterator.get()))
@@ -390,10 +390,10 @@ class ProtCryo2D(ProtCryosparcBase, ProtClassify2D):
             csSize = ImageHandler().getDimensions(csAveragesFile)[0]
 
             if csSize == inputSize:
-                print("No binning detected: linking averages cs file.")
+                print("No binning detected: linking averages cs file.", flush=True)
                 createLink(csAveragesFile, scaledFile)
             else:
-                print("Scaling CS averages file to match particle size (%s -> %s)." % (csSize, inputSize))
+                print("Scaling CS averages file to match particle size (%s -> %s)." % (csSize, inputSize), flush=True)
                 ImageHandler.scaleSplines(csAveragesFile, scaledFile, inputSize)
 
         return scaledFile

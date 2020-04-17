@@ -309,7 +309,7 @@ class ProtCryoSparcRefine3D(ProtCryosparcBase, ProtRefine3D):
     # --------------------------- STEPS functions ------------------------------
     def processStep(self):
         self.vol = self.importVolume.get() + '.imported_volume.map'
-        print(pwutils.greenStr("Refinement started..."))
+        print(pwutils.yellowStr("Refinement started..."), flush=True)
         self.doRunRefine()
 
     def createOutputStep(self):

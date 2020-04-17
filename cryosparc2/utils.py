@@ -255,7 +255,7 @@ def doImportParticlesStar(protocol):
                              abs_blob_path=None, psize_A=None)
     returns the new uid of the job that was created
     """
-    print(pwutils.greenStr("Importing particles..."))
+    print(pwutils.yellowStr("Importing particles..."), flush=True)
     className = "import_particles"
     params = {"particle_meta_path": str(os.path.join(os.getcwd(),
                                         protocol._getFileName('input_particles'))),
@@ -279,7 +279,7 @@ def doImportVolumes(protocol, refVolume, volType, msg):
     """
     :return:
     """
-    print(pwutils.greenStr(msg))
+    print(pwutils.yellowStr(msg), flush=True)
     className = "import_volumes"
     params = {"volume_blob_path": str(refVolume),
               "volume_out_name": str(volType),
@@ -308,7 +308,6 @@ def doJob(jobType, projectName, workSpaceName, params, input_group_conect):
                   ("'", jobType, projectName, workSpaceName, getCryosparcUser(),
                    params, input_group_conect, "'"))
 
-    print(pwutils.greenStr(do_job_cmd))
     return runCmd(do_job_cmd)
 
 
@@ -337,7 +336,7 @@ def enqueueJob(jobType, projectName, workSpaceName, params, input_group_conect,
 
     # Extract the jobId
     jobId = String(cmdOutput.split()[-1])
-    print(pwutils.greenStr("Got %s for JobId" % jobId))
+    print(pwutils.greenStr("Got %s for JobId" % jobId), flush=True)
 
     # Queue the job
     if parse_version(getCryosparcInstalledVersion()) < parse_version(V2_13_0):
@@ -363,7 +362,7 @@ def runCmd(cmd, printCmd=True):
     :parameter cmd command to run"""
 
     if printCmd:
-        print(pwutils.greenStr("Running: %s" % cmd))
+        print(pwutils.greenStr("Running: %s" % cmd), flush=True)
     exitCode, cmdOutput = subprocess.getstatusoutput(cmd)
 
     if exitCode != 0:
@@ -434,8 +433,7 @@ def killJob(projectName, job):
     kill_job_cmd = (getCryosparcProgram() +
                     ' %skill_job("%s", "%s")%s'
                     % ("'", projectName, job, "'"))
-    print(pwutils.greenStr(kill_job_cmd))
-    runCmd(kill_job_cmd, printCmd=False)
+    runCmd(kill_job_cmd, printCmd=True)
 
 
 def clearJob(projectName, job):
@@ -449,7 +447,6 @@ def clearJob(projectName, job):
     clear_job_cmd = (getCryosparcProgram() +
                     ' %sclear_job("%s", "%s")%s'
                     % ("'", projectName, job, "'"))
-    print(pwutils.greenStr(clear_job_cmd))
     runCmd(clear_job_cmd, printCmd=False)
 
 

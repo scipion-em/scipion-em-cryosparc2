@@ -315,7 +315,7 @@ class ProtCryoSparcLocalRefine(ProtCryosparcBase, ProtOperateParticles):
         self.vol = self.importVolume.get() + '.imported_volume.map'
         self.mask = self.importMask.get() + '.imported_mask.mask'
 
-        print(pwutils.greenStr("Local Refinement started..."))
+        print(pwutils.yellowStr("Local Refinement started..."), flush=True)
         self.doLocalRefine()
 
     def createOutputStep(self):

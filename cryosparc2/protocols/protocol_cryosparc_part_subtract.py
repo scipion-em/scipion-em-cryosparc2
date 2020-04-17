@@ -156,7 +156,7 @@ class ProtCryoSparcSubtract(ProtCryosparcBase, ProtOperateParticles):
         self.vol = self.importVolume.get() + '.imported_volume.map'
         self.mask = self.importMask.get() + '.imported_mask.mask'
 
-        print(pwutils.greenStr("Particles Subtraction started..."))
+        print(pwutils.yellowStr("Particles Subtraction started..."), flush=True)
         self.doPartStract()
 
     def createOutputStep(self):
