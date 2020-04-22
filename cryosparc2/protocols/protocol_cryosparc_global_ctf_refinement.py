@@ -35,8 +35,10 @@ from ..constants import *
 
 
 class ProtCryoSparcGlobalCtfRefinement(ProtCryosparcBase, ProtParticles):
-    """ Wrapper protocol for the Relion's per-particle CTF refinement. """
-    _label = 'global ctf refinement'
+    """
+    Wrapper protocol for the Cryosparc's per-particle CTF refinement.
+    """
+    _label = 'global ctf refinement(BETA)'
 
     def _initialize(self):
         self._createFilenameTemplates()
@@ -235,6 +237,10 @@ class ProtCryoSparcGlobalCtfRefinement(ProtCryosparcBase, ProtParticles):
         createItemMatrix(particle, row, align=ALIGN_PROJ)
         setCryosparcAttributes(particle, row,
                                md.RLN_PARTICLE_RANDOM_SUBSET)
+        setCryosparcAttributes(particle, row,
+                               md.RLN_IMAGE_BEAMTILT_X)
+        setCryosparcAttributes(particle, row,
+                               md.RLN_IMAGE_BEAMTILT_Y)
 
     # --------------------------- INFO functions -------------------------------
     def _validate(self):
@@ -250,6 +256,22 @@ class ProtCryoSparcGlobalCtfRefinement(ProtCryosparcBase, ProtParticles):
                                   validateMsgs, 'Input particles',
                                   'Input volume')
         return validateMsgs
+
+    def _summary(self):
+        summary = []
+        if not hasattr(self, 'outputParticles'):
+            summary.append("Output Particles not ready yet.")
+        else:
+            summary.append("Input Particles: %s" %
+                           self.getObjectTag('inputParticles'))
+            summary.append("Reference Mask: %s" %
+                           self.getObjectTag('refMask'))
+            summary.append("Number of Iterations: %s" %
+                           self.crg_num_iters.get())
+            summary.append("--------------------------------------------------")
+            summary.append("Output particles %s" %
+                           self.getObjectTag('outputParticles'))
+        return summary
 
     def doGlobalCtfRefinement(self):
         """

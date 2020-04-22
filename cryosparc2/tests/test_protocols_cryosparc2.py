@@ -31,7 +31,6 @@ from pwem import Domain
 
 from ..protocols import *
 from ..constants import *
-from ..utils import calculateNewSamplingRate
 
 
 class TestCryosparcBase(BaseTest):
@@ -342,6 +341,61 @@ class TestCryosparcParticlesSubtract(TestCryosparcBase):
                                  "There was a problem with Cryosparc subtract projection")
 
         cryosparcProtGpu = _runCryosparctestParticlesSubtract(label="Cryosparc Subtract projection")
+        _checkAsserts(cryosparcProtGpu)
+
+
+class TestCryosparcGlobalCtfRefinement(TestCryosparcBase):
+
+    @classmethod
+    def setUpClass(cls):
+        setupTestProject(cls)
+        setupTestProject(cls)
+        dataProject = 'grigorieff'
+        dataset = DataSet.getDataSet(dataProject)
+        TestCryosparcBase.setData()
+        particlesPattern = dataset.getFile('particles.sqlite')
+        cls.protImportPart = cls.runImportParticleCryoSPARC(cls.partFn2)
+        cls.protImportVol = cls.runImportVolumesCryoSPARC(cls.volFn)
+
+    def testCryosparcGlobalCtfRefinement(self):
+        def _runCryosparctestGlobalCtfRefinement(label=''):
+
+            protGlobalCtfRefinement = self.newProtocol(ProtCryoSparcGlobalCtfRefinement,
+                                                     numberOfMpi=4,
+                                                     numberOfThreads=1)
+
+
+
+            prot3DRefinement = self.newProtocol(ProtCryoSparcRefine3D,
+                                                numberOfMpi=4,
+                                                numberOfThreads=1)
+            prot3DRefinement.inputParticles.set(self.protImportPart.outputParticles)
+            prot3DRefinement.referenceVolume.set(self.protImportVol.outputVolume)
+            prot3DRefinement.symmetryGroup.set(SYM_CYCLIC)
+            prot3DRefinement.symmetryOrder.set(1)
+            self.launchProtocol(prot3DRefinement)
+
+            # Create a 3D Mask using xmipp
+            xmippProtocols = Domain.importFromPlugin('xmipp3.protocols',
+                                                     doRaise=True)
+            protXmippCreate3DMask = self.newProtocol(
+                xmippProtocols.XmippProtCreateMask3D, source=0)
+            protXmippCreate3DMask.inputVolume.set(prot3DRefinement.outputVolume)
+            protXmippCreate3DMask.setObjLabel('xmipp: create 3d mask')
+            self.launchProtocol(protXmippCreate3DMask)
+
+            protGlobalCtfRefinement.inputParticles.set(prot3DRefinement.outputParticles)
+            protGlobalCtfRefinement.inputRefinement.set(prot3DRefinement)
+            protGlobalCtfRefinement.refMask.set(protXmippCreate3DMask.outputMask)
+            self.launchProtocol(protGlobalCtfRefinement)
+
+            return protGlobalCtfRefinement
+
+        def _checkAsserts(cryosparcProt):
+            self.assertIsNotNone(cryosparcProt.outputParticles,
+                                 "There was a problem with Cryosparc subtract projection")
+
+        cryosparcProtGpu = _runCryosparctestGlobalCtfRefinement(label="Cryosparc Subtract projection")
         _checkAsserts(cryosparcProtGpu)
 
 

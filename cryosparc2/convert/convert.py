@@ -33,7 +33,7 @@ from pwem.emlib.image import ImageHandler
 from pyem import metadata
 from pyem import star
 from pwem.objects import (String, Integer, Transform, Particle,
-                          Coordinate, Acquisition, CTFModel)
+                          Coordinate, Acquisition, CTFModel, Float)
 from pyworkflow.object import ObjectWrap
 import pyworkflow.utils as pwutils
 from pwem.constants import *
@@ -453,7 +453,12 @@ def convertBinaryVol(vol, outputDir):
 
 
 def createItemMatrix(item, row, align):
+    item.setCTF(rowToCtfModel(row))
     item.setTransform(rowToAlignment(row, alignType=align))
+    acq = item.getAcquisition()
+    if row.hasLabel('_acquisition.beamTiltX'):
+        item._rlnBeamTiltX = Float(row.getValue(acq.beamTiltX.get(), 0))
+        item._rlnBeamTiltY = Float(row.getValue(acq.beamTiltY.get(), 0))
 
 
 def rowToAlignment(alignmentRow, alignType):
