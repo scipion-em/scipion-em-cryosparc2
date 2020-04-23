@@ -348,7 +348,6 @@ def enqueueJob(jobType, projectName, workSpaceName, params, input_group_conect,
         hostname = getCryosparcEnvInformation('master_hostname')
         if gpusToUse:
             gpusToUse = str(gpusToUse)
-            hostname = getCryosparcEnvInformation('master_hostname')
         enqueue_job_cmd = (getCryosparcProgram() +
                            ' %senqueue_job("%s","%s","%s", "%s", %s)%s' %
                            ("'", projectName, jobId,
