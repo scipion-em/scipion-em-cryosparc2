@@ -73,3 +73,11 @@ cryoSPARC v2 when new versions become available.
 
   scipion installp -p local/path/to/scipion-em-cryosparc2 --devel
 
+===============
+Buildbot status
+===============
+
+Status devel version:
+
+.. image:: http://scipion-test.cnb.csic.es:9980/badges/cryosparc2_sdevel.svg
+
