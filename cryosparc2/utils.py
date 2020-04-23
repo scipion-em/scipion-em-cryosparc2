@@ -114,7 +114,7 @@ def cryosparcValidate():
         return ['Failed to connect to cryoSPARC. Please, make sure cryoSPARC is running.\n'
                 'Running: *%s* might fix this.' % getCryosparcProgram("start")]
 
-    cryosparcVersion = parse_version(getCryosparcInstalledVersion())
+    cryosparcVersion = parse_version(getCryosparcEnvInformation())
     supportedVersions = Plugin.getSupportedVersions()
     minSupportedVersion = parse_version(supportedVersions[0])
     maxSupportedVersion = parse_version(supportedVersions[-1])
@@ -147,14 +147,14 @@ def gpusValidate(gpuList, checkSingleGPU=False):
     return []
 
 
-def getCryosparcInstalledVersion():
+def getCryosparcEnvInformation(envVar='version'):
     """
     Get the cryosparc installed version
     """
     system_info = getSystemInfo()
     dictionary = ast.literal_eval(system_info[1])
-    version = str(dictionary['version'])
-    return version
+    envVariable = str(dictionary[envVar])
+    return envVariable
 
 
 def getCryosparcUser():
@@ -325,7 +325,7 @@ def enqueueJob(jobType, projectName, workSpaceName, params, input_group_conect,
                    params, input_group_conect, "'"))
 
     # Create a compatible job to versions >= v2.14.X
-    if parse_version(getCryosparcInstalledVersion()) >= parse_version(V2_14_0):
+    if parse_version(getCryosparcEnvInformation()) >= parse_version(V2_14_0):
         make_job_cmd = (getCryosparcProgram() +
                         ' %smake_job("%s","%s","%s", "%s", "None", "None", %s, %s)%s' %
                         ("'", jobType, projectName, workSpaceName,
@@ -339,18 +339,20 @@ def enqueueJob(jobType, projectName, workSpaceName, params, input_group_conect,
     print(pwutils.greenStr("Got %s for JobId" % jobId), flush=True)
 
     # Queue the job
-    if parse_version(getCryosparcInstalledVersion()) < parse_version(V2_13_0):
+    if parse_version(getCryosparcEnvInformation()) < parse_version(V2_13_0):
         enqueue_job_cmd = (getCryosparcProgram() +
                            ' %senqueue_job("%s","%s","%s")%s' %
                            ("'", projectName, jobId,
                             lane, "'"))
     else:
+        hostname = getCryosparcEnvInformation('master_hostname')
         if gpusToUse:
             gpusToUse = str(gpusToUse)
+            hostname = getCryosparcEnvInformation('master_hostname')
         enqueue_job_cmd = (getCryosparcProgram() +
-                           ' %senqueue_job("%s","%s","%s", False, %s)%s' %
+                           ' %senqueue_job("%s","%s","%s", "%s", %s)%s' %
                            ("'", projectName, jobId,
-                            lane, gpusToUse, "'"))
+                            lane, hostname, gpusToUse, "'"))
 
     runCmd(enqueue_job_cmd)
 
@@ -482,7 +484,7 @@ def addComputeSectionParams(form, allowMultipleGPUs=True):
                        'subsequent jobs that require the same data. Not '
                        'using an SSD can dramatically slow down processing.')
 
-    if (not isCryosparcRunning()) or parse_version(getCryosparcInstalledVersion()) >= parse_version(V2_13_0):
+    if (not isCryosparcRunning()) or parse_version(getCryosparcEnvInformation()) >= parse_version(V2_13_0):
         if allowMultipleGPUs:
             form.addHidden(GPU_LIST, StringParam, default='0',
                           label='Choose GPU IDs:', validators=[NonEmpty],

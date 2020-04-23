@@ -120,7 +120,7 @@ class ProtCryosparcBase(EMProtocol):
     def _importMask(self):
         self.maskFn = os.path.join(os.getcwd(),
                                    convertBinaryVol(
-                                       self.refMask.get(),
+                                       self._getInputMask(),
                                        self._getTmpPath()))
 
         self.importMask = doImportVolumes(self, self.maskFn, 'mask',
