@@ -248,8 +248,10 @@ class ProtCryoSparcSubtract(ProtOperateParticles):
                """
         validateMsgs = cryosparcValidate()
         if not validateMsgs:
-            self._validateDim(self._getInputParticles(), self.refVolume.get(),
-                              validateMsgs, 'Input particles', 'Input volume')
+            validateMsgs = gpusValidate(self.getGpuList(), checkSingleGPU=True)
+            if not validateMsgs:
+                self._validateDim(self._getInputParticles(), self.refVolume.get(),
+                                  validateMsgs, 'Input particles', 'Input volume')
         return validateMsgs
 
     def _summary(self):

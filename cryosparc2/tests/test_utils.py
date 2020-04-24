@@ -63,7 +63,7 @@ class TestUtils(unittest.TestCase):
                 running.return_value = True
 
                 # Installed version:
-                with patch('cryosparc2.utils.getCryosparcInstalledVersion') as getVersion:
+                with patch('cryosparc2.utils.getCryosparcEnvInformation') as getVersion:
 
                     # Low version
                     getVersion.return_value = "1.0.0"

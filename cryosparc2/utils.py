@@ -116,7 +116,7 @@ def cryosparcValidate():
         return ['Failed to connect to cryoSPARC. Please, make sure cryoSPARC is running.\n'
                 'Running: *%s* might fix this.' % getCryosparcProgram("start")]
 
-    cryosparcVersion = parse_version(getCryosparcInstalledVersion())
+    cryosparcVersion = parse_version(getCryosparcEnvInformation())
     supportedVersions = Plugin.getSupportedVersions()
     minSupportedVersion = parse_version(supportedVersions[0])
     maxSupportedVersion = parse_version(supportedVersions[-1])
@@ -136,18 +136,28 @@ def cryosparcValidate():
                              " at https://github.com/scipion-em/scipion-em-cryosparc2"
                              % (cryosparcVersion, str(supportedVersions).replace('\'', ''))))
 
-
     return []
 
 
-def getCryosparcInstalledVersion():
+def gpusValidate(gpuList, checkSingleGPU=False):
+    """
+    Validate a gpu list
+    """
+    # Case in which the protocol allow a single GPU
+    if checkSingleGPU and len(gpuList) > 1:
+        return ['This protocol can only be run on a single GPU.']
+    return []
+
+
+def getCryosparcEnvInformation(envVar='version'):
     """
     Get the cryosparc installed version
     """
     system_info = getSystemInfo()
     dictionary = ast.literal_eval(system_info[1])
-    version = str(dictionary['version'])
-    return version
+    envVariable = str(dictionary[envVar])
+    return envVariable
+
 
 def getCryosparcUser():
     """
@@ -160,7 +170,9 @@ def getCryosparcProjectsDir():
     """
     Get the path on the worker node to a writable directory
     """
-    cryoProject_Dir = Plugin.getVar(CRYO_PROJECTS_DIR)
+    # Make a join in case is relative it will prepend getHome.
+    cryoProject_Dir = os.path.join(Plugin.getHome(),
+                                   Plugin.getVar(CRYO_PROJECTS_DIR))
 
     if not os.path.exists(cryoProject_Dir):
         os.mkdir(cryoProject_Dir)
@@ -203,7 +215,7 @@ def createEmptyProject(projectDir, projectTitle):
                                 % ("'", str(getCryosparcUser()),
                                    str(projectDir), str(projectTitle), "'"))
 
-    return commands.getstatusoutput(create_empty_project_cmd)
+    return runCmd(create_empty_project_cmd, printCmd=False)
 
 
 def createProjectDir(project_container_dir):
@@ -212,15 +224,14 @@ def createProjectDir(project_container_dir):
      exist
     :param project_container_dir: the "root" directory in which to create the
                                   project (PXXX) directory
-    :param projectName: the name of the project
     :returns: str - the final path of the new project dir with shell variables
               still in the returned path (the path should be expanded every
               time it is used)
     """
     create_project_dir_cmd = (getCryosparcProgram() +
-                             ' %scheck_or_create_project_container_dir("%s")%s '
-                             % ("'", project_container_dir, "'"))
-    return commands.getstatusoutput(create_project_dir_cmd)
+                              ' %scheck_or_create_project_container_dir("%s")%s '
+                              % ("'", project_container_dir, "'"))
+    return runCmd(create_project_dir_cmd, printCmd=False)
 
 
 def createEmptyWorkSpace(projectName, workspaceTitle, workspaceComment):
@@ -235,7 +246,7 @@ def createEmptyWorkSpace(projectName, workspaceTitle, workspaceComment):
                              % ("'", projectName, str(getCryosparcUser()),
                                 "None", str(workspaceTitle),
                                 str(workspaceComment), "'"))
-    return runCmd(create_work_space_cmd)
+    return runCmd(create_work_space_cmd, printCmd=False)
 
 
 def doImportParticlesStar(protocol):
@@ -244,6 +255,7 @@ def doImportParticlesStar(protocol):
                              abs_blob_path=None, psize_A=None)
     returns the new uid of the job that was created
     """
+    print(pwutils.yellowStr("Importing particles..."))
     className = "import_particles"
     params = {"particle_meta_path": str(os.path.join(os.getcwd(),
                                         protocol._getFileName('input_particles'))),
@@ -267,7 +279,7 @@ def doImportVolumes(protocol, refVolume, volType, msg):
     """
     :return:
     """
-    print(msg)
+    print(pwutils.yellowStr(msg))
     className = "import_volumes"
     params = {"volume_blob_path": str(refVolume),
               "volume_out_name": str(volType),
@@ -296,8 +308,7 @@ def doJob(jobType, projectName, workSpaceName, params, input_group_conect):
                   ("'", jobType, projectName, workSpaceName, getCryosparcUser(),
                    params, input_group_conect, "'"))
 
-    print(pwutils.greenStr(do_job_cmd))
-    return commands.getstatusoutput(do_job_cmd)
+    return runCmd(do_job_cmd)
 
 
 def enqueueJob(jobType, projectName, workSpaceName, params, input_group_conect,
@@ -314,7 +325,7 @@ def enqueueJob(jobType, projectName, workSpaceName, params, input_group_conect,
                    params, input_group_conect, "'"))
 
     # Create a compatible job to versions >= v2.14.X
-    if parse_version(getCryosparcInstalledVersion()) >= parse_version(V2_14_0):
+    if parse_version(getCryosparcEnvInformation()) >= parse_version(V2_14_0):
         make_job_cmd = (getCryosparcProgram() +
                         ' %smake_job("%s","%s","%s", "%s", "None", "None", %s, %s)%s' %
                         ("'", jobType, projectName, workSpaceName,
@@ -328,35 +339,38 @@ def enqueueJob(jobType, projectName, workSpaceName, params, input_group_conect,
     print(pwutils.greenStr("Got %s for JobId" % jobId))
 
     # Queue the job
-    if parse_version(getCryosparcInstalledVersion()) < parse_version(V2_13_0):
+    if parse_version(getCryosparcEnvInformation()) < parse_version(V2_13_0):
         enqueue_job_cmd = (getCryosparcProgram() +
                            ' %senqueue_job("%s","%s","%s")%s' %
                            ("'", projectName, jobId,
                             lane, "'"))
     else:
+        hostname = getCryosparcEnvInformation('master_hostname')
         if gpusToUse:
             gpusToUse = str(gpusToUse)
         enqueue_job_cmd = (getCryosparcProgram() +
-                           ' %senqueue_job("%s","%s","%s", False, %s)%s' %
+                           ' %senqueue_job("%s","%s","%s", "%s", %s)%s' %
                            ("'", projectName, jobId,
-                            lane, gpusToUse, "'"))
+                            lane, hostname, gpusToUse, "'"))
 
     runCmd(enqueue_job_cmd)
 
     return jobId
 
 
-def runCmd(cmd):
+def runCmd(cmd, printCmd=True):
     """ Runs a command and check its exit code. If different than 0 it raises an exception
     :parameter cmd command to run"""
 
-    print(pwutils.greenStr("Running: %s" % cmd))
+    if printCmd:
+        print(pwutils.greenStr("Running: %s" % cmd))
     exitCode, cmdOutput = commands.getstatusoutput(cmd)
 
     if exitCode != 0:
         raise Exception("%s failed --> Exit code %s, message %s" % (cmd, exitCode, cmdOutput))
 
     return exitCode, cmdOutput
+
 
 def waitForCryosparc(projectName, jobId, failureMessage):
     """ Waits for cryosparc to finish or fail a job
@@ -388,8 +402,8 @@ def getJobStatus(projectName, job):
                           ' %sget_job_status("%s", "%s")%s'
                           % ("'", projectName, job, "'"))
 
-    status = commands.getstatusoutput(get_job_status_cmd)
-    return status[-1].split()[-1]
+    status = runCmd(get_job_status_cmd, printCmd=False)
+    return status[-1]
 
 
 def waitJob(projectName, job):
@@ -399,7 +413,7 @@ def waitJob(projectName, job):
     wait_job_cmd = (getCryosparcProgram() +
                     ' %swait_job_complete("%s", "%s")%s'
                     % ("'", projectName, job, "'"))
-    commands.getstatusoutput(wait_job_cmd)
+    runCmd(wait_job_cmd, printCmd=False)
 
 
 def get_job_streamlog(projectName, job, fileName):
@@ -408,7 +422,7 @@ def get_job_streamlog(projectName, job, fileName):
                              ' %sget_job_streamlog("%s", "%s")%s%s'
                              % ("'", projectName, job, "'", ">" + fileName))
 
-    commands.getstatusoutput(get_job_streamlog_cmd)
+    runCmd(get_job_streamlog_cmd, printCmd=False)
 
 
 def killJob(projectName, job):
@@ -420,8 +434,7 @@ def killJob(projectName, job):
     kill_job_cmd = (getCryosparcProgram() +
                     ' %skill_job("%s", "%s")%s'
                     % ("'", projectName, job, "'"))
-    print(pwutils.greenStr(kill_job_cmd))
-    commands.getstatusoutput(kill_job_cmd)
+    runCmd(kill_job_cmd, printCmd=True)
 
 
 def clearJob(projectName, job):
@@ -435,8 +448,7 @@ def clearJob(projectName, job):
     clear_job_cmd = (getCryosparcProgram() +
                     ' %sclear_job("%s", "%s")%s'
                     % ("'", projectName, job, "'"))
-    print(pwutils.greenStr(clear_job_cmd))
-    commands.getstatusoutput(clear_job_cmd)
+    runCmd(clear_job_cmd, printCmd=False)
 
 
 def getSystemInfo():
@@ -456,10 +468,10 @@ def getSystemInfo():
     }
     """
     system_info_cmd = (getCryosparcProgram() + ' %sget_system_info()%s') % ("'", "'")
-    return commands.getstatusoutput(system_info_cmd)
+    return runCmd(system_info_cmd, printCmd=False)
 
 
-def addComputeSectionParams(form):
+def addComputeSectionParams(form, allowMultipleGPUs=True):
     """
     Add the compute settings section
     """
@@ -471,14 +483,22 @@ def addComputeSectionParams(form):
                        'subsequent jobs that require the same data. Not '
                        'using an SSD can dramatically slow down processing.')
 
-    if not isCryosparcRunning() or parse_version(getCryosparcInstalledVersion()) >= parse_version(V2_13_0):
-        form.addHidden(GPU_LIST, StringParam, default='0',
-                      label='Choose GPU IDs:', validators=[NonEmpty],
-                      help='This argument is necessary. By default, the '
-                           'protocol will attempt to launch on GPU 0. You can '
-                           'override the default allocation by providing a '
-                           'list of which GPUs (0,1,2,3, etc) to use. '
-                           'GPU are separated by ",". For example: "0,1,5"')
+    if (not isCryosparcRunning()) or parse_version(getCryosparcEnvInformation()) >= parse_version(V2_13_0):
+        if allowMultipleGPUs:
+            form.addHidden(GPU_LIST, StringParam, default='0',
+                          label='Choose GPU IDs:', validators=[NonEmpty],
+                          help='This argument is necessary. By default, the '
+                               'protocol will attempt to launch on GPU 0. You can '
+                               'override the default allocation by providing a '
+                               'list of which GPUs (0,1,2,3, etc) to use. '
+                               'GPU are separated by ",". For example: "0,1,5"')
+        else:
+            form.addHidden(GPU_LIST, StringParam, default='0',
+                           label='Choose GPU ID:', validators=[NonEmpty],
+                           help='This argument is necessary. By default, the '
+                                'protocol will attempt to launch on GPU 0. You can '
+                                'override the default allocation by providing a '
+                                'single GPU (0, 1, 2 or 3, etc) to use.')
 
     form.addParam('compute_lane', StringParam, default='default',
                   label='Lane name:',
@@ -526,7 +546,7 @@ def getSymmetry(symmetryGroup, symmetryOrder):
     """
     symmetry = {
         0: CS_SYM_NAME[SYM_CYCLIC][0] + str(symmetryOrder),  # Cn
-        1: CS_SYM_NAME[SYM_DIHEDRAL_Y][0] + str(symmetryOrder),  #Dn
+        1: CS_SYM_NAME[SYM_DIHEDRAL_Y][0] + str(symmetryOrder),  # Dn
         2: CS_SYM_NAME[SYM_TETRAHEDRAL],  # T
         3: CS_SYM_NAME[SYM_OCTAHEDRAL],  # O
         4: CS_SYM_NAME[SYM_I222],  # I1
