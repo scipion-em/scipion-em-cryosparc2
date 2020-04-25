@@ -167,10 +167,10 @@ class ProtCryoSparcLocalCtfRefinement(ProtCryosparcBase, ProtParticles):
 
         # Create the output folder
         os.system("cp -r " + self.projectPath + "/" + self.projectName.get() +
-                  '/' + self.runGlobalCtfRefinement.get() + " " + self._getExtraPath())
+                  '/' + self.runLocalCtfRefinement.get() + " " + self._getExtraPath())
 
         csFileName = "particles.cs"
-        csFile = os.path.join(self._getExtraPath(), self.runGlobalCtfRefinement.get(),
+        csFile = os.path.join(self._getExtraPath(), self.runLocalCtfRefinement.get(),
                               csFileName)
 
         argsList = [csFile, outputStarFn]
@@ -259,17 +259,17 @@ class ProtCryoSparcLocalCtfRefinement(ProtCryosparcBase, ProtParticles):
         except Exception:
             gpusToUse = False
 
-        self.runGlobalCtfRefinement = enqueueJob(className, self.projectName.get(),
+        self.runLocalCtfRefinement = enqueueJob(className, self.projectName.get(),
                                         self.workSpaceName.get(),
                                         str(params).replace('\'', '"'),
                                         str(input_group_conect).replace('\'',
                                                                         '"'),
                                         self.lane, gpusToUse)
 
-        self.currenJob.set(self.runGlobalCtfRefinement.get())
+        self.currenJob.set(self.runLocalCtfRefinement.get())
         self._store(self)
 
-        waitForCryosparc(self.projectName.get(), self.runGlobalCtfRefinement.get(),
+        waitForCryosparc(self.projectName.get(), self.runLocalCtfRefinement.get(),
                          "An error occurred in the particles subtraction process. "
                          "Please, go to cryosPARC software for more "
                          "details.")
