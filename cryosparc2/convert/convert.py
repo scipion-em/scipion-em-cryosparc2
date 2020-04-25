@@ -455,10 +455,6 @@ def convertBinaryVol(vol, outputDir):
 def createItemMatrix(item, row, align):
     item.setCTF(rowToCtfModel(row))
     item.setTransform(rowToAlignment(row, alignType=align))
-    acq = item.getAcquisition()
-    if row.hasLabel('_acquisition.beamTiltX'):
-        item._rlnBeamTiltX = Float(row.getValue(acq.beamTiltX.get(), 0))
-        item._rlnBeamTiltY = Float(row.getValue(acq.beamTiltY.get(), 0))
 
 
 def rowToAlignment(alignmentRow, alignType):
