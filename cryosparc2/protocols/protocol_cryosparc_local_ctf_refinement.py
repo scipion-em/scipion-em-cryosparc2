@@ -34,11 +34,11 @@ from ..utils import *
 import pwem.emlib.metadata as md
 
 
-class ProtCryoSparcGlobalCtfRefinement(ProtCryosparcBase, ProtParticles):
+class ProtCryoSparcLocalCtfRefinement(ProtCryosparcBase, ProtParticles):
     """
-    Wrapper protocol for the Cryosparc's per-particle Global CTF refinement.
+    Wrapper protocol for the Cryosparc's per-particle Local CTF refinement.
     """
-    _label = 'global ctf refinement(BETA)'
+    _label = 'local ctf refinement(BETA)'
 
     def _initialize(self):
         self._createFilenameTemplates()
@@ -78,69 +78,36 @@ class ProtCryoSparcGlobalCtfRefinement(ProtCryosparcBase, ProtParticles):
         form.addParallelSection(threads=1, mpi=1)
 
         # -----------[Global CTF Refinement]------------------------
-        form.addSection(label="Global CTF Refinement")
-        # form.addParam('crg_N', FloatParam, default=None,
-        #               validators=[Positive],
-        #               label='Refinement box size (Voxels)',
-        #               help='Size of reconstruction/image to use for refinement. '
-        #                    'Blank means to use the particle box size '
-        #                    '(upsampling input maps as needed)')
-        form.addParam('crg_num_iters', IntParam, default=1,
-                      validators=[Positive],
-                      label='Number of iterations',
-                      help='Number of times refinement of the various CTF '
-                           'parameters is done. Using 2 or more iterations '
-                           'allows changes in one parameter (eg. anisomag) to '
-                           'affect the estimation of other parameters '
-                           '(eg. tetrafoil).')
-        form.addParam('crg_num_plots', IntParam, default=50,
+        form.addSection(label="Local CTF Refinement")
+        form.addParam('crl_N', FloatParam, default=None,
+                      allowsNull=True,
+                      label='Refinement box size (Voxels)',
+                      help='Size of reconstruction/image to use for refinement. '
+                           'Blank means to use the particle box size '
+                           '(upsampling input maps as needed)')
+        form.addParam('crl_num_plots', IntParam, default=50,
                       validators=[Positive],
                       label='Num. groups to plot',
                       help='Number of exposure groups to make plots for. '
                            'After this many, stop plotting to save time.')
 
-        form.addParam('crg_plot_binfactor', IntParam, default=1,
-                      validators=[Positive],
-                      expertLevel=LEVEL_ADVANCED,
-                      label='Binning to apply to plots',
-                      help='Binning makes it easier to see tilt/trefoil/tetrafoil '
-                           'etc in the data plots, but does not change the '
-                           'results')
-
-        form.addParam('crg_min_res_A', FloatParam, default=10,
+        form.addParam('crl_min_res_A', IntParam, default=20,
                       validators=[Positive],
                       label='Minimum Fit Res (A)',
                       help='The minimum resolution to use during refinement of '
                            'image aberrations.')
 
-        # form.addParam('crg_max_res_A', FloatParam, default=None,
-        #               label='Maximum Fit Res (A)',
-        #               help='The maximum resolution to use during refinement of '
-        #                    'image aberrations. If blank, use input half-maps '
-        #                    'to compute FSC and set max to FSC=0.5')
+        form.addParam('crl_max_res_A', FloatParam, default=None,
+                      label='Maximum Fit Res (A)',
+                      allowsNull=True,
+                      help='The maximum resolution to use during refinement of '
+                           'image aberrations. If None, use input half-maps '
+                           'to compute FSC and set max to FSC=0.5')
 
-        # form.addParam('crg_mode_odd', EnumParam,
-        #               choices=['dataset','groups'],
-        #               expertLevel=LEVEL_ADVANCED,
-        #               default=0,
-        #               label="Mode for tilt/trefoil",
-        #               help='Mode to fit beam tilt/trefoil')
-
-        form.addParam('crg_do_tilt', BooleanParam, default=True,
-                      label="Fit Tilt",
-                      help="Whether to fit beam tilt.")
-
-        form.addParam('crg_do_trefoil', BooleanParam, default=True,
-                      label="Fit Trefoil",
-                      help="Whether to fit beam trefoil.")
-
-        form.addParam('crg_do_spherical', BooleanParam, default=True,
-                      label="Fit Spherical Aberration",
-                      help="Whether to fit spherical aberration.")
-
-        form.addParam('crg_do_tetrafoil', BooleanParam, default=True,
-                      label="Fit Tetrafoil",
-                      help="Whether to fit beam tetrafoil.")
+        form.addParam('crl_df_range', IntParam, default=2000,
+                      label='Defocus Search Range (A +/-)',
+                      help='Defocus search range in Angstroms, searching both '
+                           'above and below the input defocus by this amount')
 
         # --------------[Compute settings]---------------------------
         form.addSection(label="Compute settings")
@@ -160,14 +127,11 @@ class ProtCryoSparcGlobalCtfRefinement(ProtCryosparcBase, ProtParticles):
 
     def _defineParamsName(self):
         """ Define a list with all protocol parameters names"""
-        self._paramsName = ['crg_num_iters',
-                            'crg_num_plots',
-                            'crg_plot_binfactor',
-                            'crg_min_res_A',
-                            'crg_do_tilt',
-                            'crg_do_trefoil',
-                            'crg_do_spherical',
-                            'crg_do_tetrafoil',
+        self._paramsName = ['crl_N',
+                            'crl_num_plots',
+                            'crl_min_res_A',
+                            'crl_max_res_A',
+                            'crl_df_range',
                             'compute_use_ssd']
         self.lane = str(self.getAttributeValue('compute_lane'))
 
@@ -191,8 +155,8 @@ class ProtCryoSparcGlobalCtfRefinement(ProtCryosparcBase, ProtParticles):
     def processStep(self):
         self.vol = self.importVolume.get() + '.imported_volume.map'
         self.mask = self.importMask.get() + '.imported_mask.mask'
-        print(pwutils.yellowStr("Ctf Refinement started..."), flush=True)
-        self.doGlobalCtfRefinement()
+        print(pwutils.yellowStr("Local Ctf Refinement started..."), flush=True)
+        self.doLocalCtfRefinement()
 
     def createOutputStep(self):
         """
@@ -269,11 +233,11 @@ class ProtCryoSparcGlobalCtfRefinement(ProtCryosparcBase, ProtParticles):
                            self.getObjectTag('outputParticles'))
         return summary
 
-    def doGlobalCtfRefinement(self):
+    def doLocalCtfRefinement(self):
         """
-                :return:
-                """
-        className = "ctf_refine_global"
+         :return:
+         """
+        className = "ctf_refine_local"
         input_group_conect = {"particles": str(self.par),
                               "volume": str(self.vol),
                               "mask": str(self.mask)}
@@ -281,7 +245,12 @@ class ProtCryoSparcGlobalCtfRefinement(ProtCryosparcBase, ProtParticles):
         params = {}
 
         for paramName in self._paramsName:
-            params[str(paramName)] = str(self.getAttributeValue(paramName))
+            if (paramName != 'crl_max_res_A' and paramName != 'crl_N'):
+                params[str(paramName)] = str(self.getAttributeValue(paramName))
+            elif self.crl_max_res_A.get() is not None:
+                params[str(paramName)] = str(self.getAttributeValue(paramName))
+            elif self.crl_N.get() is not None:
+                params[str(paramName)] = str(self.getAttributeValue(paramName))
 
         # Determinate the GPUs to use (in dependence of
         # the cryosparc version)
