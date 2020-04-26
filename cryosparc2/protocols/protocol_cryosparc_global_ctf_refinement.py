@@ -238,10 +238,6 @@ class ProtCryoSparcGlobalCtfRefinement(ProtCryosparcBase, ProtParticles):
         createItemMatrix(particle, row, align=ALIGN_PROJ)
         setCryosparcAttributes(particle, row,
                                md.RLN_PARTICLE_RANDOM_SUBSET)
-        # setCryosparcAttributes(particle, row,
-        #                        md.RLN_IMAGE_BEAMTILT_X)
-        # setCryosparcAttributes(particle, row,
-        #                        md.RLN_IMAGE_BEAMTILT_Y)
 
     # --------------------------- INFO functions -------------------------------
     def _validate(self):

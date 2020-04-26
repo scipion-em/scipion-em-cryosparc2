@@ -479,7 +479,7 @@ class TestCryosparcLocalCtfRefinement(TestCryosparcBase):
             self.launchProtocol(prot3DRefinement)
 
             # Create a 3D Mask using xmipp
-            xmippProtocols = Domain.importFromPlugin('xmipp3.protocols',
+            xmippProtocols = importFromPlugin('xmipp3.protocols',
                                                      doRaise=True)
             protXmippCreate3DMask = self.newProtocol(
                 xmippProtocols.XmippProtCreateMask3D, source=0)

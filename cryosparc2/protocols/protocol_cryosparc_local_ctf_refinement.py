@@ -28,6 +28,7 @@ from pyworkflow.em import ALIGN_PROJ
 from pyworkflow.em.protocol import ProtParticles
 from pyworkflow.protocol.params import (PointerParam, FloatParam,
                                         LEVEL_ADVANCED)
+import pyworkflow.em.metadata as md
 
 from cryosparc2.protocols import ProtCryosparcBase
 from cryosparc2.utils import *
