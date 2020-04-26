@@ -33,7 +33,7 @@ import pyworkflow.em.viewers.showj as showj
 from pyworkflow.protocol.params import LabelParam
 from pyworkflow.viewer import ProtocolViewer, DESKTOP_TKINTER
 from pyworkflow.em.viewers import (ObjectView)
-from cryosparc2.protocols import ProtCryoSparcSubtract
+from cryosparc2.protocols import ProtCryoSparcSubtract, ProtCryoSparcGlobalCtfRefinement, ProtCryoSparcLocalCtfRefinement
 
 from cryosparc2.constants import *
 from cryosparc2.utils import *
@@ -52,7 +52,8 @@ class CryosPARCViewerPartSubtract(ProtocolViewer):
     """
 
     _environments = [DESKTOP_TKINTER]
-    _targets = [ProtCryoSparcSubtract]
+    _targets = [ProtCryoSparcSubtract, ProtCryoSparcGlobalCtfRefinement,
+                ProtCryoSparcLocalCtfRefinement]
     _label = 'viewer cryosPARC'
 
     def __init__(self, *args, **kwargs):
