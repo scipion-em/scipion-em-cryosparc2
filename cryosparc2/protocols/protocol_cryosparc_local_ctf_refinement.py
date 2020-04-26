@@ -226,8 +226,6 @@ class ProtCryoSparcLocalCtfRefinement(ProtCryosparcBase, ProtParticles):
                            self.getObjectTag('inputParticles'))
             summary.append("Reference Mask: %s" %
                            self.getObjectTag('refMask'))
-            summary.append("Number of Iterations: %s" %
-                           self.crg_num_iters.get())
             summary.append("--------------------------------------------------")
             summary.append("Output particles %s" %
                            self.getObjectTag('outputParticles'))
