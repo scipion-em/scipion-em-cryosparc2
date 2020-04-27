@@ -24,10 +24,12 @@
 # *  e-mail address 'scipion@cnb.csic.es'
 # *
 # **************************************************************************
-
+from protocol_base import ProtCryosparcBase
 from protocol_cryorefine import ProtCryoSparcRefine3D
 from protocol_cryosparc2d import ProtCryo2D
 from protocol_cryosparc_ab import ProtCryoSparcInitialModel
 from protocol_cryosparc_nonuniform_refine import ProtCryoSparcNonUniformRefine3D
 from protocol_cryosparc_part_subtract import ProtCryoSparcSubtract
 from protocol_cryosparc_local_refine import ProtCryoSparcLocalRefine
+from protocol_cryosparc_global_ctf_refinement import ProtCryoSparcGlobalCtfRefinement
+from protocol_cryosparc_local_ctf_refinement import ProtCryoSparcLocalCtfRefinement

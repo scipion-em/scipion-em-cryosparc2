@@ -16,6 +16,8 @@ You will need to use `2.0.0 <https://scipion-em.github.io/docs/release-2.0.0/doc
 * **3D Non uniform Refinement**: Apply non-uniform refinement to acheive higher resolution and map quality
 * **Particle Subtraction**: Subtract projections of a masked volume from particles.
 * **3D Local Refinement** Naive local refinement.
+* **Local CTF Refinement (per-particle defocus)** Local CTF Refinement performs per-particle defocus estimation for each particle in a dataset, against a given 3D reference structure.
+* **Global CTF Refinement (per-group beam tilt, trefoil, spherical aberration, tetrafoil)** Global CTF Refinement performs per-exposure-group CTF parameter refinement of higher-order aberrations, against a given 3D reference.
 
 **Installing the plugin**
 =========================

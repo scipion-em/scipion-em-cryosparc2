@@ -30,7 +30,7 @@ from glob import glob
 from os.path import join
 from pyem import metadata
 from pyem import star
-from pyworkflow.em.data import ObjectWrap, String, Integer
+from pyworkflow.em.data import ObjectWrap, String, Integer, Float
 import pyworkflow.utils as pwutils
 from cryosparc2.constants import *
 
@@ -447,6 +447,7 @@ def convertBinaryVol(vol, outputDir):
 
 
 def createItemMatrix(item, row, align):
+    item.setCTF(rowToCtfModel(row))
     item.setTransform(rowToAlignment(row, alignType=align))
 
 
