@@ -81,6 +81,7 @@ class ProtCryoSparcLocalCtfRefinement(ProtCryosparcBase, ProtParticles):
         form.addSection(label="Local CTF Refinement")
         form.addParam('crl_N', FloatParam, default=None,
                       allowsNull=True,
+                      expertLevel=LEVEL_ADVANCED,
                       label='Refinement box size (Voxels)',
                       help='Size of reconstruction/image to use for refinement. '
                            'Blank means to use the particle box size '
@@ -99,6 +100,7 @@ class ProtCryoSparcLocalCtfRefinement(ProtCryosparcBase, ProtParticles):
 
         form.addParam('crl_max_res_A', FloatParam, default=None,
                       label='Maximum Fit Res (A)',
+                      expertLevel=LEVEL_ADVANCED,
                       allowsNull=True,
                       help='The maximum resolution to use during refinement of '
                            'image aberrations. If None, use input half-maps '
