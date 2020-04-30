@@ -332,13 +332,18 @@ class ProtCryoSparcLocalRefine(ProtCryosparcBase, ProtOperateParticles):
 
         x = ast.literal_eval(data[0])
 
-        # Find the ID of last iteration
+        # Find the ID of last iteration and the map resolution
         for y in x:
             if 'text' in y:
                 z = str(y['text'])
                 if z.startswith('FSC'):
                     idd = y['imgfiles'][2]['fileid']
                     itera = z[-3:]
+                elif 'Using Filter Radius' in z:
+                    nomRes = str(y['text']).split('(')[1].split(')')[0].replace(
+                        'A', 'Å')
+                    self.mapResolution = String(nomRes)
+                    self._store(self)
 
         csParticlesName = ("cryosparc_" + self.projectName.get() + "_" +
                            self.runLocalRefinement.get() + "_" + itera + "_particles.cs")
@@ -456,6 +461,8 @@ class ProtCryoSparcLocalRefine(ProtCryosparcBase, ProtOperateParticles):
                            self.getObjectTag('outputParticles'))
             summary.append("Output volume %s" %
                            self.getObjectTag('outputVolume'))
+            if self.hasAttribute('mapResolution'):
+                summary.append("\nMap Resolution: %s" % self.mapResolution.get())
         return summary
 
     # ---------------Utils Functions-----------------------------------------------------------
