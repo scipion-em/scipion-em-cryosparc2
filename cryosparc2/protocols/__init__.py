@@ -33,3 +33,4 @@ from .protocol_cryosparc_part_subtract import ProtCryoSparcSubtract
 from .protocol_cryosparc_local_refine import ProtCryoSparcLocalRefine
 from .protocol_cryosparc_global_ctf_refinement import ProtCryoSparcGlobalCtfRefinement
 from .protocol_cryosparc_local_ctf_refinement import ProtCryoSparcLocalCtfRefinement
+from .protocol_cryosparc_sharppening import ProtCryoSparcSharppening
