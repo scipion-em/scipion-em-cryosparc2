@@ -187,10 +187,23 @@ class ProtCryoSparcSharppening(ProtCryosparcBase, ProtAnalysis3D):
         if not validateMsgs:
             validateMsgs = gpusValidate(self.getGpuList(),
                                         checkSingleGPU=True)
+            if not validateMsgs:
+                if self.sharp_bfactor.get() >= 0.0:
+                    validateMsgs.append('b-factor value must be negative')
         return validateMsgs
 
     def _summary(self):
         summary = []
+        if not hasattr(self, 'outputVolume'):
+            summary.append("Output objects not ready yet.")
+        else:
+            summary.append("Input Refinement Protocol: %s" %
+                           self.getObjectTag('inputRefinement'))
+            summary.append("b-factor: %s" % self.sharp_bfactor.get())
+            summary.append("------------------------------------------")
+
+            summary.append("Output volume %s" %
+                           self.getObjectTag('outputVolume'))
         return summary
 
     def doSharppening(self):
