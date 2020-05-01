@@ -337,7 +337,13 @@ class ProtCryoSparcRefine3D(ProtCryosparcBase, ProtRefine3D):
                     nomRes = str(y['text']).split('(')[1].split(')')[0].replace('A', 'Å')
                     self.mapResolution = String(nomRes)
                     self._store(self)
+                elif 'Estimated Bfactor' in z:
+                    estBFactor = float((y['text']).split(':')[1].replace('\n',
+                                                                         ''))
+                    self.estBFactor = Float(estBFactor)
+                    self._store(self)
 
+        itera = '000'
         csParticlesName = ("cryosparc_" + self.projectName.get() + "_" +
                            self.runRefine.get() + "_" + itera + "_particles.cs")
         csFile = os.path.join(self.projectPath, self.projectName.get(),
@@ -454,6 +460,8 @@ class ProtCryoSparcRefine3D(ProtCryosparcBase, ProtRefine3D):
 
             if self.hasAttribute('mapResolution'):
                 summary.append("\nMap Resolution: %s" % self.mapResolution.get())
+            if self.hasAttribute('estBFactor'):
+                summary.append('\nEstimated Bfactor: %s' % self.estBFactor.get())
         return summary
 
     # -------------------------- UTILS functions ------------------------------

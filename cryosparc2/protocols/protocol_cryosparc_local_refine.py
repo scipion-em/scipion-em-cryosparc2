@@ -344,6 +344,10 @@ class ProtCryoSparcLocalRefine(ProtCryosparcBase, ProtOperateParticles):
                         'A', 'Å')
                     self.mapResolution = String(nomRes)
                     self._store(self)
+                elif 'Estimated Bfactor' in z:
+                    estBFactor = str(y['text']).split(':')[1].replace('\n', '')
+                    self.estBFactor = String(estBFactor)
+                    self._store(self)
 
         csParticlesName = ("cryosparc_" + self.projectName.get() + "_" +
                            self.runLocalRefinement.get() + "_" + itera + "_particles.cs")
@@ -463,6 +467,8 @@ class ProtCryoSparcLocalRefine(ProtCryosparcBase, ProtOperateParticles):
                            self.getObjectTag('outputVolume'))
             if self.hasAttribute('mapResolution'):
                 summary.append("\nMap Resolution: %s" % self.mapResolution.get())
+            if self.hasAttribute('estBFactor'):
+                summary.append('\nEstimated Bfactor: %s' % self.estBFactor.get())
         return summary
 
     # ---------------Utils Functions-----------------------------------------------------------

@@ -138,7 +138,7 @@ class ProtCryoSparcSharppening(ProtCryosparcBase, ProtAnalysis3D):
 
     def processStep(self):
         self.vol = self.importVolume.get() + '.imported_volume.map'
-        print(pwutils.yellowStr("Sharppening started...Yun...."), flush=True)
+        print(pwutils.yellowStr("Sharppening started..."), flush=True)
         self.doSharppening()
 
     def createOutputStep(self):
