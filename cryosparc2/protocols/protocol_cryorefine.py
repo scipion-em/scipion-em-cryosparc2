@@ -338,9 +338,8 @@ class ProtCryoSparcRefine3D(ProtCryosparcBase, ProtRefine3D):
                     self.mapResolution = String(nomRes)
                     self._store(self)
                 elif 'Estimated Bfactor' in z:
-                    estBFactor = float((y['text']).split(':')[1].replace('\n',
-                                                                         ''))
-                    self.estBFactor = Float(estBFactor)
+                    estBFactor = str(y['text']).split(':')[1].replace('\n', '')
+                    self.estBFactor = String(estBFactor)
                     self._store(self)
 
         itera = '000'
