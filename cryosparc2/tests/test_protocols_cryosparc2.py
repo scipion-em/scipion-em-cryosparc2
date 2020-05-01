@@ -344,6 +344,50 @@ class TestCryosparcParticlesSubtract(TestCryosparcBase):
         _checkAsserts(cryosparcProtGpu)
 
 
+class TestCryosparcSharppening(TestCryosparcBase):
+
+    @classmethod
+    def setUpClass(cls):
+        setupTestProject(cls)
+        setupTestProject(cls)
+        dataProject = 'grigorieff'
+        dataset = DataSet.getDataSet(dataProject)
+        TestCryosparcBase.setData()
+        particlesPattern = dataset.getFile('particles.sqlite')
+        cls.protImportPart = cls.runImportParticleCryoSPARC(cls.partFn2)
+        cls.protImportVol = cls.runImportVolumesCryoSPARC(cls.volFn)
+
+    def testCryosparcParticlesSubtract(self):
+        def _runCryosparctestSharppening(label=''):
+
+            protSharppening = self.newProtocol(ProtCryoSparcSharppening,
+                                                     numberOfMpi=4,
+                                                     numberOfThreads=1)
+
+
+            prot3DRefinement = self.newProtocol(ProtCryoSparcRefine3D,
+                                                numberOfMpi=4,
+                                                numberOfThreads=1)
+            prot3DRefinement.inputParticles.set(self.protImportPart.outputParticles)
+            prot3DRefinement.referenceVolume.set(self.protImportVol.outputVolume)
+            prot3DRefinement.symmetryGroup.set(SYM_CYCLIC)
+            prot3DRefinement.symmetryOrder.set(1)
+            self.launchProtocol(prot3DRefinement)
+
+            protSharppening.inputRefinement.set(prot3DRefinement)
+            protSharppening.sharp_bfactor.set(-80)
+            self.launchProtocol(protSharppening)
+
+            return protSharppening
+
+        def _checkAsserts(cryosparcProt):
+            self.assertIsNotNone(cryosparcProt.outputVolume,
+                                 "There was a problem with Cryosparc sharppeninh")
+
+        cryosparcProtGpu = _runCryosparctestSharppening(label="Cryosparc Sharppening")
+        _checkAsserts(cryosparcProtGpu)
+
+
 class TestCryosparcGlobalCtfRefinement(TestCryosparcBase):
 
     @classmethod
@@ -452,6 +496,7 @@ class TestCryosparcLocalCtfRefinement(TestCryosparcBase):
 
         cryosparcProtGpu = _runCryosparctestLocalCtfRefinement(label="Cryosparc Local Ctf Refinement")
         _checkAsserts(cryosparcProtGpu)
+
 
 class TestCryosparcLocalRefine(TestCryosparcBase):
 

@@ -43,7 +43,8 @@ class ProtCryoSparcSharppening(ProtCryosparcBase, ProtAnalysis3D):
     def _defineParams(self, form):
         form.addSection(label='Input')
         form.addParam('inputRefinement', PointerParam,
-                      pointerClass='ProtCryoSparcRefine3D',
+                      pointerClass='ProtCryoSparcRefine3D, '
+                                   'ProtCryoSparcLocalRefine',
                       label="Select a Refinement protocol",
                       important=True,
                       help='Provide the refinement protocol that will be used. '
