@@ -37,6 +37,8 @@ import pwem.emlib.metadata as md
 class ProtCryoSparcGlobalCtfRefinement(ProtCryosparcBase, ProtParticles):
     """
     Wrapper protocol for the Cryosparc's per-particle Global CTF refinement.
+    Performs per-exposure-group CTF parameter refinement of higher-order
+    aberrations, against a given 3D reference
     """
     _label = 'global ctf refinement(BETA)'
 

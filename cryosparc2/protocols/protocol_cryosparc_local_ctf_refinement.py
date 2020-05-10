@@ -37,6 +37,8 @@ import pwem.emlib.metadata as md
 class ProtCryoSparcLocalCtfRefinement(ProtCryosparcBase, ProtParticles):
     """
     Wrapper protocol for the Cryosparc's per-particle Local CTF refinement.
+    Performs per-particle defocus estimation for each particle in a dataset,
+    against a given 3D reference structure.
     """
     _label = 'local ctf refinement(BETA)'
 
