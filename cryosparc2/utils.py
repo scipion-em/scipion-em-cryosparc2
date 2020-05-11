@@ -475,7 +475,7 @@ def addComputeSectionParams(form, allowMultipleGPUs=True):
     """
     Add the compute settings section
     """
-    form.addParam('cacheParticlesSSD', BooleanParam, default=True,
+    form.addParam('compute_use_ssd', BooleanParam, default=True,
                   label='Cache particle images on SSD',
                   help='Whether or not to copy particle images to the local '
                        'SSD before running. The cache is persistent, so after '
