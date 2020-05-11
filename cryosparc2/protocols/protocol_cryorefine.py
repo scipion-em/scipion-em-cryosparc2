@@ -25,20 +25,18 @@
 # *  e-mail address 'scipion@cnb.csic.es'
 # *
 # **************************************************************************
-from pyworkflow.em import ALIGN_PROJ
-from pyworkflow.protocol.params import (PointerParam, FloatParam, BooleanParam,
-                                        StringParam, LEVEL_ADVANCED)
-from pyworkflow.em.data import Volume, FSC
-from pyworkflow.em.protocol import ProtRefine3D
-from cryosparc2.convert import *
-from cryosparc2.utils import *
-from cryosparc2.constants import *
+from pyworkflow.protocol.params import (PointerParam, FloatParam,
+                                        LEVEL_ADVANCED)
+from pwem.objects import Volume, FSC
+from pwem.protocols import ProtRefine3D
 
-import os
-import ast
+from . import ProtCryosparcBase
+from ..convert import *
+from ..utils import *
+from ..constants import *
 
 
-class ProtCryoSparcRefine3D(ProtRefine3D):
+class ProtCryoSparcRefine3D(ProtCryosparcBase, ProtRefine3D):
     """ Protocol to refine a 3D map using cryosparc.
         Rapidly refine a single homogeneous structure to high-resolution and
         validate using the gold-standard FSC.
@@ -63,11 +61,11 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
                       validators=[Positive],
                       help='Select the input images from the project.')
         form.addParam('referenceVolume', PointerParam, pointerClass='Volume',
-                       important=True,
-                       label="Input volume",
-                       help='Initial reference 3D map, it should have the same '
-                            'dimensions and the same pixel size as your input '
-                            'particles.')
+                      important=True,
+                      label="Input volume",
+                      help='Initial reference 3D map, it should have the same '
+                           'dimensions and the same pixel size as your input '
+                           'particles.')
         form.addParam('refMask', PointerParam, pointerClass='VolumeMask',
                       default=None,
                       label='Mask to be applied to this map(Optional)',
@@ -297,7 +295,7 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
 
         # --------------[Compute settings]---------------------------
         form.addSection(label="Compute settings")
-        addComputeSectionParams(form)
+        addComputeSectionParams(form, allowMultipleGPUs=False)
 
     # --------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
@@ -309,41 +307,9 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
         self._insertFunctionStep('createOutputStep')
 
     # --------------------------- STEPS functions ------------------------------
-    def convertInputStep(self):
-        """ Create the input file in STAR format as expected by Relion.
-        If the input particles comes from Relion, just link the file.
-        """
-        imgSet = self._getInputParticles()
-        # Create links to binary files and write the relion .star file
-        writeSetOfParticles(imgSet, self._getFileName('input_particles'),
-                            self._getTmpPath())
-
-        self._importParticles()
-
-        self.vol_fn = os.path.join(os.getcwd(),
-                                   convertBinaryVol(self.referenceVolume.get(),
-                                                    self._getTmpPath()))
-        self.importVolume = doImportVolumes(self, self.vol_fn, 'map',
-                                            'Importing volume...')
-        self.currenJob.set(self.importVolume.get())
-        self._store(self)
-
-        if self.refMask.get() is not None:
-            self.maskFn = os.path.join(os.getcwd(),
-                                       convertBinaryVol(self.refMask.get(),
-                                                        self._getTmpPath()))
-
-            self.importMask = doImportVolumes(self, self.maskFn, 'mask',
-                                              'Importing mask... ')
-            self.currenJob.set(self.importMask.get())
-            self._store(self)
-            self.mask = self.importMask.get() + '.imported_mask.mask'
-        else:
-            self.mask = None
-
     def processStep(self):
         self.vol = self.importVolume.get() + '.imported_volume.map'
-        print("Refinement started...")
+        print(pwutils.yellowStr("Refinement started..."), flush=True)
         self.doRunRefine()
 
     def createOutputStep(self):
@@ -360,14 +326,23 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
 
         x = ast.literal_eval(data[0])
 
-        # Find the ID of last iteration
+        # Find the ID of last iteration and the map resolution
         for y in x:
-            if y.has_key('text'):
+            if 'text' in y:
                 z = str(y['text'])
                 if z.startswith('FSC'):
                     idd = y['imgfiles'][2]['fileid']
                     itera = z[-3:]
+                elif 'Using Filter Radius' in z:
+                    nomRes = str(y['text']).split('(')[1].split(')')[0].replace('A', 'Å')
+                    self.mapResolution = String(nomRes)
+                    self._store(self)
+                elif 'Estimated Bfactor' in z:
+                    estBFactor = str(y['text']).split(':')[1].replace('\n', '')
+                    self.estBFactor = String(estBFactor)
+                    self._store(self)
 
+        itera = '000'
         csParticlesName = ("cryosparc_" + self.projectName.get() + "_" +
                            self.runRefine.get() + "_" + itera + "_particles.cs")
         csFile = os.path.join(self.projectPath, self.projectName.get(),
@@ -448,13 +423,6 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
         self._defineOutputs(outputFSC=fsc)
         self._defineSourceRelation(vol, fsc)
 
-    def setAborted(self):
-        """ Set the status to aborted and updated the endTime. """
-        ProtRefine3D.setAborted(self)
-        killJob(str(self.projectName.get()), str(self.currenJob.get()))
-        clearJob(str(self.projectName.get()), str(self.currenJob.get()))
-
-    # --------------------------- INFO functions -------------------------------
     def _validate(self):
         validateMsgs = cryosparcValidate()
         if not validateMsgs:
@@ -488,12 +456,17 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
                            self.getObjectTag('outputParticles'))
             summary.append("Output volume %s" %
                            self.getObjectTag('outputVolume'))
+
+            if self.hasAttribute('mapResolution'):
+                summary.append("\nMap Resolution: %s" % self.mapResolution.get())
+            if self.hasAttribute('estBFactor'):
+                summary.append('\nEstimated Bfactor: %s' % self.estBFactor.get())
         return summary
 
     # -------------------------- UTILS functions ------------------------------
 
-    def _getInputParticles(self):
-        return self.inputParticles.get()
+    def _getInputVolume(self):
+        return self.referenceVolume.get()
 
     def _fillDataFromIter(self, imgSet):
         outImgsFn = self._getFileName('out_particles')
@@ -507,47 +480,6 @@ class ProtCryoSparcRefine3D(ProtRefine3D):
         createItemMatrix(particle, row, align=ALIGN_PROJ)
         setCryosparcAttributes(particle, row,
                                md.RLN_PARTICLE_RANDOM_SUBSET)
-
-    def _initializeUtilsVariables(self):
-        """
-        Initialize all utils cryoSPARC variables
-        """
-        # Create a cryoSPARC project dir
-        self.projectDirName = getProjectName(self.getProject().getShortName())
-        self.projectPath = pwutils.join(getCryosparcProjectsDir(), self.projectDirName)
-        self.projectDir = createProjectDir(self.projectPath)
-
-    def _initializeCryosparcProject(self):
-        """
-        Initialize the cryoSPARC project and workspace
-        """
-        self._initializeUtilsVariables()
-        # create empty project or load an exists one
-        folderPaths = getProjectPath(self.projectPath)
-        if not folderPaths:
-            self.a = createEmptyProject(self.projectPath, self.projectDirName)
-            self.projectName = self.a[-1].split()[-1]
-        else:
-            self.projectName = str(folderPaths[0])
-
-        self.projectName = String(self.projectName)
-        self._store(self)
-
-        # create empty workspace
-        self.b = createEmptyWorkSpace(self.projectName, self.getRunName(),
-                                      self.getObjComment())
-        self.workSpaceName = String(self.b[-1].split()[-1])
-        self._store(self)
-
-    def _importParticles(self):
-
-        print("Importing Particles")
-
-        # import_particles_star
-        self.importedParticles = doImportParticlesStar(self)
-        self.currenJob = String(self.importedParticles.get())
-        self._store(self)
-        self.par = String(self.importedParticles.get() + '.imported_particles')
 
     def _defineParamsName(self):
         """ Define a list with all protocol parameters names"""

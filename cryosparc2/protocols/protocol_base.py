@@ -24,38 +24,13 @@
 # *  e-mail address 'scipion@cnb.csic.es'
 # *
 # **************************************************************************
-# **************************************************************************
-# *
-# * Authors: Yunior C. Fonseca Reyna    (cfonseca@cnb.csic.es)
-# *
-# *
-# * Unidad de  Bioinformatica of Centro Nacional de Biotecnologia , CSIC
-# *
-# * This program is free software; you can redistribute it and/or modify
-# * it under the terms of the GNU General Public License as published by
-# * the Free Software Foundation; either version 2 of the License, or
-# * (at your option) any later version.
-# *
-# * This program is distributed in the hope that it will be useful,
-# * but WITHOUT ANY WARRANTY; without even the implied warranty of
-# * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# * GNU General Public License for more details.
-# *
-# * You should have received a copy of the GNU General Public License
-# * along with this program; if not, write to the Free Software
-# * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
-# * 02111-1307  USA
-# *
-# *  All comments concerning this program package may be sent to the
-# *  e-mail address 'scipion@cnb.csic.es'
-# *
-# **************************************************************************
 import os
 
-from pyworkflow.em.protocol import pwutils, EMProtocol
+from pwem.protocols import pwutils, EMProtocol
 from pyworkflow.object import String
 
-from cryosparc2.utils import (getProjectPath, createEmptyProject,
+from ..convert import convertBinaryVol, writeSetOfParticles
+from ..utils import (getProjectPath, createEmptyProject,
                      createEmptyWorkSpace, getProjectName,
                      getCryosparcProjectsDir, createProjectDir,
                      doImportParticlesStar, doImportVolumes, killJob, clearJob)
@@ -102,7 +77,6 @@ class ProtCryosparcBase(EMProtocol):
         """ Create the input file in STAR format as expected by Relion.
         If the input particles comes from Relion, just link the file.
         """
-        from cryosparc2.convert.convert import writeSetOfParticles
         imgSet = self._getInputParticles()
         if imgSet is not None:
             # Create links to binary files and write the relion .star file
@@ -134,7 +108,6 @@ class ProtCryosparcBase(EMProtocol):
         return None
 
     def _importVolume(self):
-        from cryosparc2.convert.convert import convertBinaryVol
         self.vol_fn = os.path.join(os.getcwd(),
                                    convertBinaryVol(
                                        self._getInputVolume(),
@@ -145,7 +118,6 @@ class ProtCryosparcBase(EMProtocol):
         self._store(self)
 
     def _importMask(self):
-        from cryosparc2.convert.convert import convertBinaryVol
         self.maskFn = os.path.join(os.getcwd(),
                                    convertBinaryVol(
                                        self._getInputMask(),

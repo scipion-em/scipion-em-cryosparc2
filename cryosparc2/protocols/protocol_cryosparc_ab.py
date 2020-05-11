@@ -25,16 +25,18 @@
 # *  e-mail address 'scipion@cnb.csic.es'
 # *
 # **************************************************************************
-from pyworkflow.em import ALIGN_PROJ
-from pyworkflow.protocol.params import (PointerParam, FloatParam, BooleanParam,
-                                        LEVEL_ADVANCED, StringParam)
-from pyworkflow.em.protocol import ProtInitialVolume, ProtClassify3D
-from cryosparc2.convert import *
-from cryosparc2.utils import *
-from cryosparc2.constants import *
+from pyworkflow.protocol.params import (PointerParam, FloatParam,
+                                        LEVEL_ADVANCED)
+from pwem.protocols import ProtInitialVolume, ProtClassify3D
+
+from . import ProtCryosparcBase
+from ..convert import *
+from ..utils import *
+from ..constants import *
 
 
-class ProtCryoSparcInitialModel(ProtInitialVolume, ProtClassify3D):
+class ProtCryoSparcInitialModel(ProtCryosparcBase, ProtInitialVolume,
+                                ProtClassify3D):
     """    
     Generate a 3D initial model _de novo_ from 2D particles using
     CryoSparc Stochastic Gradient Descent (SGD) algorithm.
@@ -272,7 +274,7 @@ class ProtCryoSparcInitialModel(ProtInitialVolume, ProtClassify3D):
 
         # --------------[Compute settings]---------------------------
         form.addSection(label="Compute settings")
-        addComputeSectionParams(form)
+        addComputeSectionParams(form, allowMultipleGPUs=False)
 
     # --------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
@@ -284,19 +286,8 @@ class ProtCryoSparcInitialModel(ProtInitialVolume, ProtClassify3D):
         self._insertFunctionStep('createOutputStep')
 
     # --------------------------- STEPS functions ------------------------------
-    def convertInputStep(self):
-        """ Create the input file in STAR format as expected by Relion.
-        If the input particles comes from Relion, just link the file. 
-        """
-        print(pwutils.greenStr("Importing Particles..."))
-        imgSet = self._getInputParticles()
-        writeSetOfParticles(imgSet, self._getFileName('input_particles'),
-                            self._getTmpPath())
-        self._importParticles()
-
     def processStep(self):
-
-        print(pwutils.greenStr("Ab Initial Model Generation Started..."))
+        print(pwutils.yellowStr("Ab Initial Model Generation Started..."), flush=True)
         self.doRunAbinit()
 
     def createOutputStep(self):
@@ -304,7 +295,7 @@ class ProtCryoSparcInitialModel(ProtInitialVolume, ProtClassify3D):
         Create the protocol output. Convert cryosparc file to Relion file
         """
         self._initializeUtilsVariables()
-        print(pwutils.greenStr("Creating the output..."))
+        print(pwutils.yellowStr("Creating the output..."), flush=True)
 
         csFileName = ("cryosparc_" + self.projectName.get() + "_" +
                       self.runAbinit.get() + "_final_particles.cs")
@@ -337,8 +328,8 @@ class ProtCryoSparcInitialModel(ProtInitialVolume, ProtClassify3D):
             output_file.write('_rlnReferenceImage')
             output_file.write('\n')
             for i in range(int(self.abinit_K.get())):
-                output_file.write("%02d"%(i+1)+"@"+self._getExtraPath() + "/" + self.runAbinit.get() + "/cryosparc_" +\
-                                  self.projectName.get() + "_"+self.runAbinit.get() + "_class_%02d"%i +
+                output_file.write("%02d" % (i+1)+"@"+self._getExtraPath() + "/" + self.runAbinit.get() + "/cryosparc_" +
+                                  self.projectName.get() + "_"+self.runAbinit.get() + "_class_%02d" % i +
                                   "_final_volume.mrc\n")
 
         imgSet = self._getInputParticles()
@@ -362,12 +353,6 @@ class ProtCryoSparcInitialModel(ProtInitialVolume, ProtClassify3D):
         self._defineOutputs(outputVolumes=volumes)
         self._defineSourceRelation(self.inputParticles.get(), volumes)
 
-    def setAborted(self):
-        """ Set the status to aborted and updated the endTime. """
-        ProtInitialVolume.setAborted(self)
-        killJob(str(self.projectName.get()), str(self.currenJob.get()))
-        clearJob(str(self.projectName.get()), str(self.currenJob.get()))
-
     # --------------------------- INFO functions -------------------------------
     def _validate(self):
         validateMsgs = cryosparcValidate()
@@ -383,7 +368,7 @@ class ProtCryoSparcInitialModel(ProtInitialVolume, ProtClassify3D):
     def _summary(self):
         summary = []
         if (not hasattr(self, 'outputVolumes') or
-            not hasattr(self, 'outputClasses')):
+                not hasattr(self, 'outputClasses')):
             summary.append("Output objects not ready yet.")
         else:
             summary.append("Input Particles: %s" %
@@ -401,11 +386,8 @@ class ProtCryoSparcInitialModel(ProtInitialVolume, ProtClassify3D):
                            self.getObjectTag('outputClasses'))
 
         return summary
+
     # --------------------------- UTILS functions ---------------------------
-
-    def _getInputParticles(self):
-        return self.inputParticles.get()
-
     def _loadClassesInfo(self, filename):
         """ Read some information about the produced CryoSparc Classes
         from the star file.
@@ -444,47 +426,6 @@ class ProtCryoSparcInitialModel(ProtInitialVolume, ProtClassify3D):
             vol.setSamplingRate(calculateNewSamplingRate(vol.getDim(),
                                                          self._getInputParticles().getSamplingRate(),
                                                          self._getInputParticles().getDim()))
-
-    def _initializeUtilsVariables(self):
-        """
-        Initialize all utils cryoSPARC variables
-        """
-        # Create a cryoSPARC project dir
-        self.projectDirName = getProjectName(self.getProject().getShortName())
-        self.projectPath = pwutils.join(getCryosparcProjectsDir(), self.projectDirName)
-        self.projectDir = createProjectDir(self.projectPath)
-
-    def _initializeCryosparcProject(self):
-        """
-        Initialize the cryoSPARC project and workspace
-        """
-        self._initializeUtilsVariables()
-        # create empty project or load an exists one
-        folderPaths = getProjectPath(self.projectPath)
-        if not folderPaths:
-            self.a = createEmptyProject(self.projectPath, self.projectDirName)
-            self.projectName = self.a[-1].split()[-1]
-        else:
-            self.projectName = str(folderPaths[0])
-
-        self.projectName = String(self.projectName)
-        self._store(self)
-
-        # create empty workspace
-        self.b = createEmptyWorkSpace(self.projectName, self.getRunName(),
-                                      self.getObjComment())
-        self.workSpaceName = String(self.b[-1].split()[-1])
-        self._store(self)
-
-    def _importParticles(self):
-
-        print("Importing Particles")
-
-        # import_particles_star
-        self.importedParticles = doImportParticlesStar(self)
-        self.currenJob = String(self.importedParticles.get())
-        self._store(self)
-        self.par = String(self.importedParticles.get() + '.imported_particles')
 
     def _defineParamsName(self):
         """ Define a list with all protocol parameters names"""

@@ -8,7 +8,7 @@ This plugin allows to use cryoSPARC2 programs within the Scipion framework
 that provides data processing and image analysis capabilities for single particle
 cryo-EM, along with a browser based user interface and command line tools.
 
-You will need to use `2.0.0 <https://scipion-em.github.io/docs/release-2.0.0/docs/scipion-modes/how-to-install.html>`_ version of Scipion to run these protocols.
+You will need to use `3.0.0 <https://scipion-em.github.io/docs/release-3.0.0/docs/scipion-modes/how-to-install.html>`_ version of Scipion to run these protocols.
 
 * **2D Classification**: Classify particles into multiple 2D classes to facilitate stack cleaning and removal of junk particles.  Also useful as a sanity check to investigate particle quality.
 * **3D Ab-Initio Reconstruction**:  Reconstruct a single (homogeneous) or multiple (heterogeneous) 3-D maps from a set of particles, without any initial models or starting structures required.
@@ -16,8 +16,9 @@ You will need to use `2.0.0 <https://scipion-em.github.io/docs/release-2.0.0/doc
 * **3D Non uniform Refinement**: Apply non-uniform refinement to acheive higher resolution and map quality
 * **Particle Subtraction**: Subtract projections of a masked volume from particles.
 * **3D Local Refinement** Naive local refinement.
-* **Local CTF Refinement (per-particle defocus)** Local CTF Refinement performs per-particle defocus estimation for each particle in a dataset, against a given 3D reference structure.
-* **Global CTF Refinement (per-group beam tilt, trefoil, spherical aberration, tetrafoil)** Global CTF Refinement performs per-exposure-group CTF parameter refinement of higher-order aberrations, against a given 3D reference.
+* **Local CTF Refinement (per-particle defocus)**: Local CTF Refinement performs per-particle defocus estimation for each particle in a dataset, against a given 3D reference structure.
+* **Global CTF Refinement (per-group beam tilt, trefoil, spherical aberration, tetrafoil)**: Global CTF Refinement performs per-exposure-group CTF parameter refinement of higher-order aberrations, against a given 3D reference.
+* **Sharppening**: Sharpen a volume following refinement.
 
 **Installing the plugin**
 =========================
@@ -73,4 +74,16 @@ cryoSPARC v2 when new versions become available.
 .. code-block::
 
   scipion installp -p local/path/to/scipion-em-cryosparc2 --devel
+
+===============
+Buildbot status
+===============
+
+Status devel version:
+
+.. image:: http://scipion-test.cnb.csic.es:9980/badges/cryosparc2_devel.svg
+
+Status production version:
+
+.. image:: http://scipion-test.cnb.csic.es:9980/badges/cryosparc2_prod.svg
 

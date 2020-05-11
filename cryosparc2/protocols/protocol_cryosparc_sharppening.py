@@ -24,13 +24,14 @@
 # *  e-mail address 'scipion@cnb.csic.es'
 # *
 # **************************************************************************
-from pyworkflow.em.data import Volume
-from pyworkflow.em.protocol import ProtAnalysis3D
+from pwem.objects import Volume
+from pwem.protocols import ProtAnalysis3D
 from pyworkflow.protocol.params import (PointerParam, FloatParam,
                                         LEVEL_ADVANCED)
 
-from cryosparc2.protocols.protocol_base import ProtCryosparcBase
-from cryosparc2.utils import *
+from . import ProtCryosparcBase
+from ..convert import *
+from ..utils import *
 
 
 class ProtCryoSparcSharppening(ProtCryosparcBase, ProtAnalysis3D):
@@ -42,7 +43,8 @@ class ProtCryoSparcSharppening(ProtCryosparcBase, ProtAnalysis3D):
     def _defineParams(self, form):
         form.addSection(label='Input')
         form.addParam('inputRefinement', PointerParam,
-                      pointerClass='ProtCryoSparcRefine3D',
+                      pointerClass='ProtCryoSparcRefine3D, '
+                                   'ProtCryoSparcLocalRefine',
                       label="Select a Refinement protocol",
                       important=True,
                       help='Provide the refinement protocol that will be used. '
@@ -137,7 +139,7 @@ class ProtCryoSparcSharppening(ProtCryosparcBase, ProtAnalysis3D):
 
     def processStep(self):
         self.vol = self.importVolume.get() + '.imported_volume.map'
-        print(pwutils.yellowStr("Sharppening started...Yun...."))
+        print(pwutils.yellowStr("Sharppening started..."), flush=True)
         self.doSharppening()
 
     def createOutputStep(self):
@@ -186,10 +188,23 @@ class ProtCryoSparcSharppening(ProtCryosparcBase, ProtAnalysis3D):
         if not validateMsgs:
             validateMsgs = gpusValidate(self.getGpuList(),
                                         checkSingleGPU=True)
+            if not validateMsgs:
+                if self.sharp_bfactor.get() >= 0.0:
+                    validateMsgs.append('b-factor value must be negative')
         return validateMsgs
 
     def _summary(self):
         summary = []
+        if not hasattr(self, 'outputVolume'):
+            summary.append("Output objects not ready yet.")
+        else:
+            summary.append("Input Refinement Protocol: %s" %
+                           self.getObjectTag('inputRefinement'))
+            summary.append("b-factor: %s" % self.sharp_bfactor.get())
+            summary.append("------------------------------------------")
+
+            summary.append("Output volume %s" %
+                           self.getObjectTag('outputVolume'))
         return summary
 
     def doSharppening(self):

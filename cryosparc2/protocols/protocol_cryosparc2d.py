@@ -26,18 +26,18 @@
 # *
 # **************************************************************************
 
-import pyworkflow.em as em
 
-from pyworkflow.em.protocol import ProtClassify2D
-from pyworkflow.protocol.params import (PointerParam, BooleanParam,
-                                        FloatParam, StringParam)
-from pyworkflow.utils import replaceExt
+from pwem.protocols import ProtClassify2D
+from pyworkflow.protocol.params import (PointerParam, FloatParam)
+from pyworkflow.utils import replaceExt, createLink
 
-from cryosparc2.convert import *
-from cryosparc2.utils import *
-from cryosparc2.constants import *
+from . import ProtCryosparcBase
+from ..convert import *
+from ..utils import *
+from ..constants import *
 
-class ProtCryo2D(ProtClassify2D):
+
+class ProtCryo2D(ProtCryosparcBase, ProtClassify2D):
     """ Wrapper to CryoSparc 2D clustering program.
         Classify particles into multiple 2D classes to facilitate stack cleaning
         and removal of junk particles. Also useful as a sanity check to
@@ -222,22 +222,11 @@ class ProtCryo2D(ProtClassify2D):
         self._insertFunctionStep('createOutputStep')
 
     # --------------------------- STEPS functions ------------------------------
-    def convertInputStep(self):
-        """ Create the input file in STAR format as expected by Relion.
-        If the input particles comes from Relion, just link the file. 
-        """
-        print(pwutils.greenStr("Importing Particles..."))
-        imgSet = self._getInputParticles()
-        writeSetOfParticles(imgSet, self._getFileName('input_particles'),
-                            self._getTmpPath())
-
-        self._importParticles()
-
     def processStep(self):
         """
         Classify particles into multiples 2D classes
         """
-        print(pwutils.greenStr("2D Classifications Started..."))
+        print(pwutils.yellowStr("2D Classifications Started..."), flush=True)
         self.doRunClass2D()
 
     def createOutputStep(self):
@@ -245,7 +234,7 @@ class ProtCryo2D(ProtClassify2D):
         Create the protocol output. Convert cryosparc file to Relion file
         """
         self._initializeUtilsVariables()
-        print(pwutils.greenStr("Creating the output..."))
+        print(pwutils.yellowStr("Creating the output..."), flush=True)
         _numberOfIter = str("_00" + str(self.numberOnlineEMIterator.get()))
         if self.numberOnlineEMIterator.get() > 9:
             _numberOfIter = str("_0" + str(self.numberOnlineEMIterator.get()))
@@ -336,12 +325,6 @@ class ProtCryo2D(ProtClassify2D):
         self._defineOutputs(outputClasses=classes2DSet)
         self._defineSourceRelation(self.inputParticles.get(), classes2DSet)
 
-    def setAborted(self):
-        """ Set the status to aborted and updated the endTime. """
-        ProtClassify2D.setAborted(self)
-        killJob(str(self.projectName.get()), str(self.currenJob.get()))
-        clearJob(str(self.projectName.get()), str(self.currenJob.get()))
-
     # --------------------------- INFO functions -------------------------------
     def _validate(self):
         validateMsgs = cryosparcValidate()
@@ -376,9 +359,6 @@ class ProtCryo2D(ProtClassify2D):
         return [methods]
     
     # --------------------------- UTILS functions ------------------------------
-    def _getInputParticles(self):
-        return self.inputParticles.get()
-
     def _loadClassesInfo(self, filename):
         """ Read some information about the produced 2D classes
         from the metadata file.
@@ -407,14 +387,14 @@ class ProtCryo2D(ProtClassify2D):
         if not os.path.exists(scaledFile):
 
             inputSize = self._getInputParticles().getDim()[0]
-            csSize = em.ImageHandler().getDimensions(csAveragesFile)[0]
+            csSize = ImageHandler().getDimensions(csAveragesFile)[0]
 
             if csSize == inputSize:
-                print("No binning detected: linking averages cs file.")
-                em.createLink(csAveragesFile, scaledFile)
+                print("No binning detected: linking averages cs file.", flush=True)
+                createLink(csAveragesFile, scaledFile)
             else:
-                print("Scaling CS averages file to match particle size (%s -> %s)." % (csSize, inputSize))
-                scaleSpline(csAveragesFile, scaledFile, inputSize, inputSize)
+                print("Scaling CS averages file to match particle size (%s -> %s)." % (csSize, inputSize), flush=True)
+                ImageHandler.scaleSplines(csAveragesFile, scaledFile, inputSize)
 
         return scaledFile
 
@@ -431,11 +411,11 @@ class ProtCryo2D(ProtClassify2D):
         clsSet.classifyItems(updateItemCallback=self._updateParticle,
                              updateClassCallback=self._updateClass,
                              itemDataIterator=md.iterRows(xmpMd,
-                             sortByLabel=md.MDL_ITEM_ID)) # relion style
+                                                          sortByLabel=md.MDL_ITEM_ID))  # relion style
 
     def _updateParticle(self, item, row):
         item.setClassId(row.getValue(md.RLN_PARTICLE_CLASS))
-        item.setTransform(rowToAlignment(row, em.ALIGN_2D))
+        item.setTransform(rowToAlignment(row, ALIGN_2D))
         
     def _updateClass(self, class2D):
         classId = class2D.getObjId()
@@ -446,47 +426,6 @@ class ProtCryo2D(ProtClassify2D):
             class2Drep = class2D.getRepresentative()
             class2Drep.setLocation(index, fn)
             class2Drep.setSamplingRate(sr)
-
-    def _initializeUtilsVariables(self):
-        """
-        Initialize all utils cryoSPARC variables
-        """
-        # Create a cryoSPARC project dir
-        self.projectDirName = getProjectName(self.getProject().getShortName())
-        self.projectPath = pwutils.join(getCryosparcProjectsDir(), self.projectDirName)
-        self.projectDir = createProjectDir(self.projectPath)
-
-    def _initializeCryosparcProject(self):
-        """
-        Initialize the cryoSPARC project and workspace
-        """
-        self._initializeUtilsVariables()
-        # create empty project or load an exists one
-        folderPaths = getProjectPath(self.projectPath)
-        if not folderPaths:
-            self.a = createEmptyProject(self.projectPath, self.projectDirName)
-            self.projectName = self.a[-1].split()[-1]
-        else:
-            self.projectName = str(folderPaths[0])
-
-        self.projectName = String(self.projectName)
-        self._store(self)
-
-        # create empty workspace
-        self.b = createEmptyWorkSpace(self.projectName, self.getRunName(),
-                                      self.getObjComment())
-        self.workSpaceName = String(self.b[-1].split()[-1])
-        self._store(self)
-
-    def _importParticles(self):
-
-        print("Importing Particles...")
-
-        # import_particles_star
-        self.importedParticles = doImportParticlesStar(self)
-        self.currenJob = String(self.importedParticles.get())
-        self._store(self)
-        self.par = String(self.importedParticles.get() + '.imported_particles')
 
     def _defineParamsName(self):
         """ Define a list with all protocol parameters names"""

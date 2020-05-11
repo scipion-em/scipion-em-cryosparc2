@@ -1,11 +1,11 @@
 import getpass
-import re
 import unittest
-from mock import patch
+from unittest.mock import patch
 
 from cryosparc2 import V2_14_2
-from cryosparc2.utils import cryosparcValidate, cryosparcExists, isCryosparcRunning, calculateNewSamplingRate, \
-    getProjectName
+from cryosparc2.utils import (cryosparcValidate, cryosparcExists,
+                              isCryosparcRunning, calculateNewSamplingRate,
+                              getProjectName)
 
 
 class TestUtils(unittest.TestCase):
@@ -37,7 +37,7 @@ class TestUtils(unittest.TestCase):
 
             getProg.return_value = "something"
 
-            with patch("commands.getstatusoutput") as cmdoutput:
+            with patch("subprocess.getstatusoutput") as cmdoutput:
                 cmdoutput.return_value = (0, "Ok")
                 self.assertTrue(isCryosparcRunning(), "isCryosparcRunning running but not detected")
 
@@ -76,13 +76,13 @@ class TestUtils(unittest.TestCase):
                     self.assertEqual(0, len(result), "Validation did not detectCS correct version.")
 
                     # Patch printing Warning function--> redStr
-                    with patch('pyworkflow.utils.yellowStr') as redStr:
+                    with patch('pyworkflow.utils.yellowStr') as yellowStr:
                         # Higher version
                         highV = "100.1.1"
                         getVersion.return_value = highV
                         result = cryosparcValidate()
                         self.assertEqual(0, len(result), "Validation did not allows higher versions than supported.")
-                        redStr.assert_called_once()
+                        self.assertTrue(yellowStr.called, "Warning not printed when working with higher versions")
 
     def testSamplingRateConvertion(self):
 

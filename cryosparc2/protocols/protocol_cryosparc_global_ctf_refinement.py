@@ -24,19 +24,21 @@
 # *  e-mail address 'scipion@cnb.csic.es'
 # *
 # **************************************************************************
-from pyworkflow.em import ALIGN_PROJ
-from pyworkflow.em.protocol import ProtParticles
+from pwem.protocols import ProtParticles
 from pyworkflow.protocol.params import (PointerParam, FloatParam,
                                         LEVEL_ADVANCED)
 
-from cryosparc2.protocols import ProtCryosparcBase
-from cryosparc2.utils import *
-from cryosparc2.constants import *
+from . import ProtCryosparcBase
+from ..convert import *
+from ..utils import *
+import pwem.emlib.metadata as md
 
 
 class ProtCryoSparcGlobalCtfRefinement(ProtCryosparcBase, ProtParticles):
     """
-    Wrapper protocol for the Cryosparc's per-particle CTF refinement.
+    Wrapper protocol for the Cryosparc's per-particle Global CTF refinement.
+    Performs per-exposure-group CTF parameter refinement of higher-order
+    aberrations, against a given 3D reference
     """
     _label = 'global ctf refinement(BETA)'
 
@@ -70,7 +72,7 @@ class ProtCryoSparcGlobalCtfRefinement(ProtCryosparcBase, ProtParticles):
         form.addParam('refMask', PointerParam, pointerClass='VolumeMask',
                       label='Mask to be applied to this map',
                       important=True,
-                      allowsNull=False,
+                      allowsNull=True,
                       help="Provide a soft mask. if mask is present, use that, "
                            "otherwise use mask_refine if present, otherwise "
                            "fail")
@@ -191,7 +193,7 @@ class ProtCryoSparcGlobalCtfRefinement(ProtCryosparcBase, ProtParticles):
     def processStep(self):
         self.vol = self.importVolume.get() + '.imported_volume.map'
         self.mask = self.importMask.get() + '.imported_mask.mask'
-        print(pwutils.yellowStr("Ctf Refinement started..."))
+        print(pwutils.yellowStr("Ctf Refinement started..."), flush=True)
         self.doGlobalCtfRefinement()
 
     def createOutputStep(self):
@@ -210,7 +212,7 @@ class ProtCryoSparcGlobalCtfRefinement(ProtCryosparcBase, ProtParticles):
                               csFileName)
 
         argsList = [csFile, outputStarFn]
-        from cryosparc2.convert.convert import defineArgs, convertCs2Star
+
         parser = defineArgs()
         args = parser.parse_args(argsList)
         convertCs2Star(args)
@@ -234,7 +236,6 @@ class ProtCryoSparcGlobalCtfRefinement(ProtCryosparcBase, ProtParticles):
                                                       sortByLabel=md.RLN_IMAGE_ID))
 
     def _createItemMatrix(self, particle, row):
-        from cryosparc2.convert.convert import createItemMatrix, setCryosparcAttributes
         createItemMatrix(particle, row, align=ALIGN_PROJ)
         setCryosparcAttributes(particle, row,
                                md.RLN_PARTICLE_RANDOM_SUBSET)

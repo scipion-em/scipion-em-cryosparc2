@@ -24,19 +24,21 @@
 # *  e-mail address 'scipion@cnb.csic.es'
 # *
 # **************************************************************************
-from pyworkflow.em import ALIGN_PROJ
-from pyworkflow.em.protocol import ProtParticles
+from pwem.protocols import ProtParticles
 from pyworkflow.protocol.params import (PointerParam, FloatParam,
                                         LEVEL_ADVANCED)
-import pyworkflow.em.metadata as md
 
-from cryosparc2.protocols import ProtCryosparcBase
-from cryosparc2.utils import *
+from . import ProtCryosparcBase
+from ..convert import *
+from ..utils import *
+import pwem.emlib.metadata as md
 
 
 class ProtCryoSparcLocalCtfRefinement(ProtCryosparcBase, ProtParticles):
     """
     Wrapper protocol for the Cryosparc's per-particle Local CTF refinement.
+    Performs per-particle defocus estimation for each particle in a dataset,
+    against a given 3D reference structure.
     """
     _label = 'local ctf refinement(BETA)'
 
@@ -81,6 +83,7 @@ class ProtCryoSparcLocalCtfRefinement(ProtCryosparcBase, ProtParticles):
         form.addSection(label="Local CTF Refinement")
         form.addParam('crl_N', FloatParam, default=None,
                       allowsNull=True,
+                      expertLevel=LEVEL_ADVANCED,
                       label='Refinement box size (Voxels)',
                       help='Size of reconstruction/image to use for refinement. '
                            'Blank means to use the particle box size '
@@ -99,6 +102,7 @@ class ProtCryoSparcLocalCtfRefinement(ProtCryosparcBase, ProtParticles):
 
         form.addParam('crl_max_res_A', FloatParam, default=None,
                       label='Maximum Fit Res (A)',
+                      expertLevel=LEVEL_ADVANCED,
                       allowsNull=True,
                       help='The maximum resolution to use during refinement of '
                            'image aberrations. If None, use input half-maps '
@@ -155,7 +159,7 @@ class ProtCryoSparcLocalCtfRefinement(ProtCryosparcBase, ProtParticles):
     def processStep(self):
         self.vol = self.importVolume.get() + '.imported_volume.map'
         self.mask = self.importMask.get() + '.imported_mask.mask'
-        print(pwutils.yellowStr("Local Ctf Refinement started..."))
+        print(pwutils.yellowStr("Local Ctf Refinement started..."), flush=True)
         self.doLocalCtfRefinement()
 
     def createOutputStep(self):
@@ -174,7 +178,7 @@ class ProtCryoSparcLocalCtfRefinement(ProtCryosparcBase, ProtParticles):
                               csFileName)
 
         argsList = [csFile, outputStarFn]
-        from cryosparc2.convert.convert import defineArgs, convertCs2Star
+
         parser = defineArgs()
         args = parser.parse_args(argsList)
         convertCs2Star(args)
@@ -198,7 +202,6 @@ class ProtCryoSparcLocalCtfRefinement(ProtCryosparcBase, ProtParticles):
                                                       sortByLabel=md.RLN_IMAGE_ID))
 
     def _createItemMatrix(self, particle, row):
-        from cryosparc2.convert.convert import createItemMatrix, setCryosparcAttributes
         createItemMatrix(particle, row, align=ALIGN_PROJ)
         setCryosparcAttributes(particle, row,
                                md.RLN_PARTICLE_RANDOM_SUBSET)

@@ -27,21 +27,19 @@
 import getpass
 import os
 import ast
-from datetime import datetime
-
-import commands
+import subprocess
 from pkg_resources import parse_version
 import pyworkflow.utils as pwutils
-from cryosparc2 import Plugin
-from pyworkflow.em import SCIPION_SYM_NAME, String
-from pyworkflow.em.constants import (SYM_CYCLIC, SYM_TETRAHEDRAL,
-                                     SYM_OCTAHEDRAL, SYM_I222, SYM_I222r)
+from pyworkflow.object import String
+from pwem.constants import SCIPION_SYM_NAME
+from pwem.constants import (SYM_CYCLIC, SYM_TETRAHEDRAL,
+                            SYM_OCTAHEDRAL, SYM_I222, SYM_I222r)
 from pyworkflow.protocol.params import (EnumParam, IntParam, Positive,
-                                        BooleanParam, NumericRangeParam,
-                                        NonEmpty, StringParam, GPU_LIST)
-from cryosparc2.constants import (CS_SYM_NAME, SYM_DIHEDRAL_Y,CRYOSPARC_USER,
-                                  CRYO_PROJECTS_DIR, CRYOSPARC_DIR, V2_14_0,
-                                  V2_13_0)
+                                        BooleanParam, StringParam, NonEmpty,
+                                        GPU_LIST)
+from . import Plugin
+from .constants import (CS_SYM_NAME, SYM_DIHEDRAL_Y, CRYOSPARC_USER,
+                        CRYO_PROJECTS_DIR, CRYOSPARC_DIR, V2_14_0, V2_13_0)
 
 
 STATUS_FAILED = "failed"
@@ -95,8 +93,8 @@ def isCryosparcRunning():
     status = -1
     if getCryosparcProgram() is not None:
         test_conection_cmd = (getCryosparcProgram() +
-                                    ' %stest_connection()%s ' % ("'", "'"))
-        test_conection = commands.getstatusoutput(test_conection_cmd)
+                              ' %stest_connection()%s ' % ("'", "'"))
+        test_conection = subprocess.getstatusoutput(test_conection_cmd)
         status = test_conection[0]
 
     return status == 0
@@ -179,12 +177,14 @@ def getCryosparcProjectsDir():
 
     return cryoProject_Dir
 
+
 def getProjectName(scipionProjectName):
     """ returns the name of the cryosparc project based on
     scipion project name and  a hash based on the user name"""
 
     username = getpass.getuser()
     return "%s-%s" % (scipionProjectName, username)
+
 
 def getProjectPath(projectDir):
     """
@@ -255,7 +255,7 @@ def doImportParticlesStar(protocol):
                              abs_blob_path=None, psize_A=None)
     returns the new uid of the job that was created
     """
-    print(pwutils.yellowStr("Importing particles..."))
+    print(pwutils.yellowStr("Importing particles..."), flush=True)
     className = "import_particles"
     params = {"particle_meta_path": str(os.path.join(os.getcwd(),
                                         protocol._getFileName('input_particles'))),
@@ -279,7 +279,7 @@ def doImportVolumes(protocol, refVolume, volType, msg):
     """
     :return:
     """
-    print(pwutils.yellowStr(msg))
+    print(pwutils.yellowStr(msg), flush=True)
     className = "import_volumes"
     params = {"volume_blob_path": str(refVolume),
               "volume_out_name": str(volType),
@@ -336,7 +336,7 @@ def enqueueJob(jobType, projectName, workSpaceName, params, input_group_conect,
 
     # Extract the jobId
     jobId = String(cmdOutput.split()[-1])
-    print(pwutils.greenStr("Got %s for JobId" % jobId))
+    print(pwutils.greenStr("Got %s for JobId" % jobId), flush=True)
 
     # Queue the job
     if parse_version(getCryosparcEnvInformation()) < parse_version(V2_13_0):
@@ -363,8 +363,8 @@ def runCmd(cmd, printCmd=True):
     :parameter cmd command to run"""
 
     if printCmd:
-        print(pwutils.greenStr("Running: %s" % cmd))
-    exitCode, cmdOutput = commands.getstatusoutput(cmd)
+        print(pwutils.greenStr("Running: %s" % cmd), flush=True)
+    exitCode, cmdOutput = subprocess.getstatusoutput(cmd)
 
     if exitCode != 0:
         raise Exception("%s failed --> Exit code %s, message %s" % (cmd, exitCode, cmdOutput))
@@ -565,14 +565,3 @@ def calculateNewSamplingRate(newDims, previousSR, previousDims):
     pX = previousDims[0]
     nX = newDims[0]
     return previousSR*pX/nX
-
-
-def scaleSpline(inputFn, outputFn, Xdim, Ydim):
-    """ Scale an image using splines. """
-    # TODO: Avoid using xmipp program for this
-
-    program = "xmipp_image_resize"
-    args = "-i %s -o %s --dim %d %d --interp spline" % (inputFn, outputFn, Xdim,
-                                                        Ydim)
-    xmipp3 = pwutils.importFromPlugin('xmipp3', doRaise=True)
-    xmipp3.Plugin.runXmippProgram(program, args)

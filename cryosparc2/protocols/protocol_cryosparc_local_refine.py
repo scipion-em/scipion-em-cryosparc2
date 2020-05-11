@@ -27,18 +27,18 @@
 
 import ast
 
-from pyworkflow.em import ALIGN_PROJ
-from pyworkflow.em.protocol import ProtOperateParticles
-from pyworkflow.protocol.params import (PointerParam, BooleanParam, FloatParam,
-                                        StringParam, LEVEL_ADVANCED)
-from pyworkflow.em.data import Volume, FSC
+from pwem.protocols import ProtOperateParticles
+from pyworkflow.protocol.params import (PointerParam, FloatParam,
+                                        LEVEL_ADVANCED)
+from pwem.objects import Volume, FSC
 
-from cryosparc2.convert import *
-from cryosparc2.utils import *
-from cryosparc2.constants import *
+from . import ProtCryosparcBase
+from ..convert import *
+from ..utils import *
+from ..constants import *
 
 
-class ProtCryoSparcLocalRefine(ProtOperateParticles):
+class ProtCryoSparcLocalRefine(ProtCryosparcBase, ProtOperateParticles):
     """ Signal subtraction protocol of cryoSPARC.
         Subtract projections of a masked volume from particles.
         """
@@ -299,7 +299,7 @@ class ProtCryoSparcLocalRefine(ProtOperateParticles):
 
         # --------------[Compute settings]---------------------------
         form.addSection(label="Compute settings")
-        addComputeSectionParams(form)
+        addComputeSectionParams(form, allowMultipleGPUs=False)
 
     # --------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
@@ -311,40 +311,11 @@ class ProtCryoSparcLocalRefine(ProtOperateParticles):
         self._insertFunctionStep('createOutputStep')
 
     # --------------------------- STEPS functions ------------------------------
-    def convertInputStep(self):
-        """ Create the input file in STAR format as expected by Relion.
-        If the input particles comes from Relion, just link the file.
-        """
-        imgSet = self._getInputParticles()
-        # Create links to binary files and write the relion .star file
-        writeSetOfParticles(imgSet, self._getFileName('input_particles'),
-                            self._getTmpPath())
-        self._importParticles()
-
-        self.vol_fn = os.path.join(os.getcwd(),
-                                   convertBinaryVol(self.refVolume.get(),
-                                                    self._getTmpPath()))
-        self.importVolume = doImportVolumes(self, self.vol_fn, 'map',
-                                            'Importing volume...')
-        self.currenJob.set(self.importVolume.get())
-        self._store(self)
-
-        if self.refMask.get() is not None:
-            self.maskFn = os.path.join(os.getcwd(),
-                                       convertBinaryVol(
-                                           self.refMask.get(),
-                                           self._getTmpPath()))
-
-        self.importMask = doImportVolumes(self, self.maskFn, 'mask',
-                                          'Importing mask... ')
-        self.currenJob.set(self.importMask.get())
-        self._store(self)
-
     def processStep(self):
         self.vol = self.importVolume.get() + '.imported_volume.map'
         self.mask = self.importMask.get() + '.imported_mask.mask'
 
-        print("Local Refinement started...")
+        print(pwutils.yellowStr("Local Refinement started..."), flush=True)
         self.doLocalRefine()
 
     def createOutputStep(self):
@@ -361,13 +332,22 @@ class ProtCryoSparcLocalRefine(ProtOperateParticles):
 
         x = ast.literal_eval(data[0])
 
-        # Find the ID of last iteration
+        # Find the ID of last iteration and the map resolution
         for y in x:
-            if y.has_key('text'):
+            if 'text' in y:
                 z = str(y['text'])
                 if z.startswith('FSC'):
                     idd = y['imgfiles'][2]['fileid']
                     itera = z[-3:]
+                elif 'Using Filter Radius' in z:
+                    nomRes = str(y['text']).split('(')[1].split(')')[0].replace(
+                        'A', 'Å')
+                    self.mapResolution = String(nomRes)
+                    self._store(self)
+                elif 'Estimated Bfactor' in z:
+                    estBFactor = str(y['text']).split(':')[1].replace('\n', '')
+                    self.estBFactor = String(estBFactor)
+                    self._store(self)
 
         csParticlesName = ("cryosparc_" + self.projectName.get() + "_" +
                            self.runLocalRefinement.get() + "_" + itera + "_particles.cs")
@@ -454,12 +434,6 @@ class ProtCryoSparcLocalRefine(ProtOperateParticles):
         self._defineOutputs(outputFSC=fsc)
         self._defineSourceRelation(vol, fsc)
 
-    def setAborted(self):
-        """ Set the status to aborted and updated the endTime. """
-        ProtOperateParticles.setAborted(self)
-        killJob(str(self.projectName.get()), str(self.currenJob.get()))
-        clearJob(str(self.projectName.get()), str(self.currenJob.get()))
-
     # --------------------------- INFO functions -------------------------------
     def _validate(self):
         """ Should be overwritten in subclasses to
@@ -491,6 +465,10 @@ class ProtCryoSparcLocalRefine(ProtOperateParticles):
                            self.getObjectTag('outputParticles'))
             summary.append("Output volume %s" %
                            self.getObjectTag('outputVolume'))
+            if self.hasAttribute('mapResolution'):
+                summary.append("\nMap Resolution: %s" % self.mapResolution.get())
+            if self.hasAttribute('estBFactor'):
+                summary.append('\nEstimated Bfactor: %s' % self.estBFactor.get())
         return summary
 
     # ---------------Utils Functions-----------------------------------------------------------
@@ -506,50 +484,6 @@ class ProtCryoSparcLocalRefine(ProtOperateParticles):
     def _createItemMatrix(self, particle, row):
         createItemMatrix(particle, row, align=ALIGN_PROJ)
         setCryosparcAttributes(particle, row, md.RLN_PARTICLE_RANDOM_SUBSET)
-
-    def _getInputParticles(self):
-        return self.inputParticles.get()
-
-    def _initializeUtilsVariables(self):
-        """
-        Initialize all utils cryoSPARC variables
-        """
-        # Create a cryoSPARC project dir
-        self.projectDirName = getProjectName(self.getProject().getShortName())
-        self.projectPath = pwutils.join(getCryosparcProjectsDir(), self.projectDirName)
-        self.projectDir = createProjectDir(self.projectPath)
-
-    def _initializeCryosparcProject(self):
-        """
-        Initialize the cryoSPARC project and workspace
-        """
-        self._initializeUtilsVariables()
-        # create empty project or load an exists one
-        folderPaths = getProjectPath(self.projectPath)
-        if not folderPaths:
-            self.a = createEmptyProject(self.projectPath, self.projectDirName)
-            self.projectName = self.a[-1].split()[-1]
-        else:
-            self.projectName = str(folderPaths[0])
-
-        self.projectName = String(self.projectName)
-        self._store(self)
-
-        # create empty workspace
-        self.b = createEmptyWorkSpace(self.projectName, self.getRunName(),
-                                      self.getObjComment())
-        self.workSpaceName = String(self.b[-1].split()[-1])
-        self._store(self)
-
-    def _importParticles(self):
-
-        print("Importing particles...")
-
-        # import_particles_star
-        self.importedParticles = doImportParticlesStar(self)
-        self.currenJob = String(self.importedParticles.get())
-        self._store(self)
-        self.par = String(self.importedParticles.get() + '.imported_particles')
 
     def _defineParamsName(self):
         """ Define a list with all protocol parameters names"""
