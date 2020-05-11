@@ -532,7 +532,7 @@ class ProtCryo2D(ProtClassify2D):
                   "class2D_sigma_num_anneal_iters": str(self.iterationToStartAnneal.get()),
                   "class2D_sigma_use_white": str(self.useWhiteNoiseModel.get()),
                   "intermediate_plots": str('False'),
-                  "compute_use_ssd": str(self.cacheParticlesSSD.get()),
+                  "compute_use_ssd": str(self.compute_use_ssd.get()),
                   "compute_num_gpus": str(numberGPU)}
 
         self.runClass2D = enqueueJob(className, self.projectName.get(),
