@@ -342,7 +342,6 @@ class ProtCryoSparcRefine3D(ProtCryosparcBase, ProtRefine3D):
                     self.estBFactor = String(estBFactor)
                     self._store(self)
 
-        itera = '000'
         csParticlesName = ("cryosparc_" + self.projectName.get() + "_" +
                            self.runRefine.get() + "_" + itera + "_particles.cs")
         csFile = os.path.join(self.projectPath, self.projectName.get(),
