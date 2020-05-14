@@ -26,10 +26,12 @@
 # **************************************************************************
 
 from pyworkflow.protocol.params import (FloatParam, LEVEL_ADVANCED,
-                                        PointerParam)
+                                        PointerParam, MultiPointerParam,
+                                        CsvList)
 
 from . import ProtCryosparcBase
-from ..convert import writeSetOfParticles
+from ..convert import (convertBinaryVol, defineArgs, convertCs2Star,
+                       rowToAlignment, ALIGN_PROJ, cryosparcToLocation)
 from ..utils import *
 from ..constants import *
 
@@ -42,7 +44,7 @@ class ProtCryoSparc3DClassification(ProtCryosparcBase):
     differences between structures which may not be obvious at low resolutions,
     and also to re-classify particles to aid in sorting.
     """
-    _label = '3D Classification'
+    _label = '3D classification'
 
     def _initialize(self):
         self._defineFileNames()
@@ -52,7 +54,8 @@ class ProtCryoSparc3DClassification(ProtCryosparcBase):
         myDict = {
             'input_particles': self._getTmpPath('input_particles.star'),
             'out_particles': self._getExtraPath('output_particle.star'),
-            'stream_log': self._getPath() + '/stream.log'
+            'stream_log': self._getPath() + '/stream.log',
+            'out_class': self._getExtraPath() + '/output_class.star'
         }
         self._updateFilenamesDict(myDict)
 
@@ -63,7 +66,7 @@ class ProtCryoSparc3DClassification(ProtCryosparcBase):
                       label="Input particles", important=True,
                       validators=[Positive],
                       help='Select the input images from the project.')
-        form.addParam('refVolume', PointerParam,
+        form.addParam('refVolumes', MultiPointerParam,
                       pointerClass='Volume',
                       important=True,
                       label="Initial volumes",
@@ -218,13 +221,199 @@ class ProtCryoSparc3DClassification(ProtCryosparcBase):
         self._initializeCryosparcProject()
         self._insertFunctionStep("convertInputStep")
         self._insertFunctionStep('processStep')
-        # self._insertFunctionStep('createOutputStep')
+        self._insertFunctionStep('createOutputStep')
 
     # --------------------------- STEPS functions ------------------------------
+    def _getInputVolume(self):
+        if self.hasAttribute('refVolumes'):
+            self.volumes = []
+            for volume in self.refVolumes:
+                vol = volume.get()
+                self.volumes.append(vol)
+            return self.volumes
+        return None
+
+    def _importVolume(self):
+        self.importVolumes = CsvList()
+        for vol in self.volumes:
+            self.vol_fn = os.path.join(os.getcwd(),
+                                       convertBinaryVol(
+                                           vol,
+                                           self._getTmpPath()))
+            self.importVolume = doImportVolumes(self, self.vol_fn, 'map',
+                                                'Importing volume...')
+            self.importVolumes.append(self.importVolume.get())
+            self.currenJob.set(self.importVolume.get())
+            self._store(self)
+
     def processStep(self):
-        self.vol = self.importVolume.get() + '.imported_volume.map'
+        self.vol = [vol + '.imported_volume.map' for vol in self.importVolumes]
         print(pwutils.yellowStr("3D Classification started..."), flush=True)
         self.do3DClasification()
+
+    def createOutputStep(self):
+        """
+        Create the protocol output. Convert cryosparc file to Relion file
+        """
+        self._initializeUtilsVariables()
+        print(pwutils.yellowStr("Creating the output..."), flush=True)
+        get_job_streamlog(self.projectName.get(), self.run3dClassification.get(),
+                          self._getFileName('stream_log'))
+
+        # Get the metadata information from stream.log
+        with open(self._getFileName('stream_log')) as f:
+            data = f.readlines()
+
+        x = ast.literal_eval(data[0])
+
+        # Find the ID of last iteration and the map resolution
+        for y in x:
+            if 'text' in y:
+                z = str(y['text'])
+                if z.startswith('FSC Iteration'):
+                    itera = z.split(' ')[2]
+
+        csParticlesName = ("cryosparc_" + self.projectName.get() + "_" +
+                           self.run3dClassification.get() + "_00" + itera +
+                           "_particles.cs")
+        csFile = os.path.join(self.projectPath, self.projectName.get(),
+                              self.run3dClassification.get(), csParticlesName)
+
+        # Create the output folder
+        ouputsPath = os.path.join(self.projectPath, self.projectName.get(),
+                                  self.run3dClassification.get())
+        outputFolder = self._getExtraPath() + '/' + self.run3dClassification.get()
+        os.system("mkdir " + outputFolder)
+
+        # Copy the particles to scipion output folder
+        os.system("cp -r " + csFile + " " + outputFolder)
+        csFile = os.path.join(outputFolder, csParticlesName)
+
+        outputStarFn = self._getFileName('out_particles')
+        argsList = [csFile, outputStarFn]
+
+        parser = defineArgs()
+        args = parser.parse_args(argsList)
+        convertCs2Star(args)
+
+        # Create model files for 3D classification
+        with open(self._getFileName('out_class'), 'w') as output_file:
+            output_file.write('\n')
+            output_file.write('data_images')
+            output_file.write('\n\n')
+            output_file.write('loop_')
+            output_file.write('\n')
+            output_file.write('_rlnReferenceImage')
+            output_file.write('\n')
+            numOfClass = len(self.importVolumes)
+            for i in range(numOfClass):
+                csVolName = ("cryosparc_" + self.projectName.get() + "_" +
+                             self.run3dClassification.get() + "_class_%02d" % i +
+                                  "_00" + itera + "_volume.mrc")
+                os.system("cp -r " + ouputsPath + "/" + csVolName + " " + outputFolder)
+                output_file.write("%02d" % (
+                            i + 1) + "@" + self._getExtraPath() + "/" + self.run3dClassification.get() + "/cryosparc_" +
+                                  self.projectName.get() + "_" + self.run3dClassification.get() + "_class_%02d" % i +
+                                  "_00" + itera + "_volume.mrc\n")
+
+        imgSet = self._getInputParticles()
+        classes3D = self._createSetOfClasses3D(imgSet)
+        self._fillClassesFromIter(classes3D, self._getFileName('out_particles'))
+
+        self._defineOutputs(outputClasses=classes3D)
+        self._defineSourceRelation(imgSet, classes3D)
+
+        # create a SetOfVolumes and define its relations
+        volumes = self._createSetOfVolumes()
+        vol = None
+
+        for class3D in classes3D:
+            vol = class3D.getRepresentative()
+            vol.setObjId(class3D.getObjId())
+            volumes.append(vol)
+
+        volumes.setSamplingRate(vol.getSamplingRate())
+
+        self._defineOutputs(outputVolumes=volumes)
+        self._defineSourceRelation(self.inputParticles.get(), volumes)
+
+    # --------------------------- UTILS functions ---------------------------
+    def _loadClassesInfo(self, filename):
+        """ Read some information about the produced CryoSparc Classes
+        from the star file.
+        """
+        self._classesInfo = {}  # store classes info, indexed by class id
+
+        modelStar = md.MetaData(filename)
+
+        for classNumber, row in enumerate(md.iterRows(modelStar)):
+            index, fn = cryosparcToLocation(
+                row.getValue('rlnReferenceImage'))
+            # Store info indexed by id, we need to store the row.clone() since
+            # the same reference is used for iteration
+            self._classesInfo[classNumber + 1] = (index, fn, row.clone())
+
+    def _fillClassesFromIter(self, clsSet, filename):
+        """ Create the SetOfClasses3D """
+        self._loadClassesInfo(self._getFileName('out_class'))
+        outImgsFn = self._getFileName('out_class')
+        clsSet.classifyItems(updateItemCallback=self._updateParticle,
+                             updateClassCallback=self._updateClass,
+                             itemDataIterator=md.iterRows(filename,
+                                                          sortByLabel=md.RLN_IMAGE_ID))
+
+    def _updateParticle(self, item, row):
+        item.setClassId(row.getValue(md.RLN_PARTICLE_CLASS))
+        item.setTransform(rowToAlignment(row, ALIGN_PROJ))
+
+    def _updateClass(self, item):
+        classId = item.getObjId()
+        if classId in self._classesInfo:
+            index, fn, row = self._classesInfo[classId]
+            fn += ":mrc"
+            item.setAlignmentProj()
+            vol = item.getRepresentative()
+            vol.setLocation(index, fn)
+            vol.setSamplingRate(calculateNewSamplingRate(vol.getDim(),
+                                                         self._getInputParticles().getSamplingRate(),
+                                                         self._getInputParticles().getDim()))
+
+    # --------------------------- INFO functions -------------------------------
+    def _validate(self):
+        validateMsgs = cryosparcValidate()
+        if not validateMsgs:
+            validateMsgs = gpusValidate(self.getGpuList(),
+                                        checkSingleGPU=True)
+            if not validateMsgs:
+                particles = self._getInputParticles()
+                if not particles.hasCTF():
+                    validateMsgs.append(
+                        "The Particles has not associated a "
+                        "CTF model")
+        return validateMsgs
+
+    def _summary(self):
+        summary = []
+        if (not hasattr(self, 'outputVolumes') or
+                not hasattr(self, 'outputClasses')):
+            summary.append("Output objects not ready yet.")
+        else:
+            summary.append("Input Particles: %s" %
+                           self.getObjectTag('inputParticles'))
+            summary.append("Initial volumes: %s" %
+                           self.getObjectTag('refVolumes'))
+            summary.append("Symmetry: %s" %
+                           getSymmetry(self.symmetryGroup.get(),
+                                       self.symmetryOrder.get()))
+            summary.append("------------------------------------------")
+            summary.append("Output volumes %s" %
+                           self.getObjectTag('outputVolumes'))
+            summary.append("Output classes %s" %
+                           self.getObjectTag('outputClasses'))
+
+        return summary
+
+    # --------------------------- UTILS functions ---------------------------
 
     def _defineParamsName(self):
         """ Define a list with all protocol parameters names"""
@@ -253,8 +442,8 @@ class ProtCryoSparc3DClassification(ProtCryosparcBase):
         """
         """
         className = "hetero_refine"
-        input_group_conect = {"particles": str(self.par),
-                              "volume": str(self.vol)}
+        input_group_conect = {"particles": str(self.par)}
+        group_connect = {"volume": self.vol}
         # {'particles' : 'JXX.imported_particles' }
         params = {}
 
@@ -283,7 +472,7 @@ class ProtCryoSparc3DClassification(ProtCryosparcBase):
                                     str(params).replace('\'', '"'),
                                     str(input_group_conect).replace('\'',
                                                                     '"'),
-                                    self.lane, gpusToUse)
+                                    self.lane, gpusToUse, group_connect)
 
         self.currenJob.set(self.run3dClassification.get())
         self._store(self)

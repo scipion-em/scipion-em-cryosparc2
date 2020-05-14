@@ -34,7 +34,7 @@ from pyworkflow.protocol.params import (LabelParam)
 
 from ..constants import *
 from ..utils import *
-from ..protocols import ProtCryoSparcInitialModel
+from ..protocols import ProtCryoSparcInitialModel, ProtCryoSparc3DClassification
 
 
 class CryosPARCViewerInitialModel(ProtocolViewer):
@@ -42,7 +42,7 @@ class CryosPARCViewerInitialModel(ProtocolViewer):
     with the Xmipp program xmipp_showj
     """
     _environments = [DESKTOP_TKINTER, WEB_DJANGO]
-    _targets = [ProtCryoSparcInitialModel]
+    _targets = [ProtCryoSparcInitialModel, ProtCryoSparc3DClassification]
 
     def _defineParams(self, form):
         self._env = os.environ.copy()
