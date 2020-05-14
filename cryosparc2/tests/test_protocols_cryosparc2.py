@@ -26,6 +26,7 @@
 # **************************************************************************
 
 from pwem.protocols import *
+from pyworkflow.protocol import MultiPointerParam, PointerList
 from pyworkflow.tests import *
 from pwem import Domain
 
@@ -286,6 +287,71 @@ class TestCryosparcNonUniformRefine3D(TestCryosparcBase):
                                  "There was a problem with Cryosparc Non-Uniform 3D refinement")
 
         cryosparcProtGpu = _runCryosparctestNonUniformRefine3D(label="Cryosparc Non-Uniform 3D refinement")
+        _checkAsserts(cryosparcProtGpu)
+
+
+class TestCryosparc3DClassification(TestCryosparcBase):
+
+    @classmethod
+    def setUpClass(cls):
+        setupTestProject(cls)
+        setupTestProject(cls)
+        dataProject = 'grigorieff'
+        dataset = DataSet.getDataSet(dataProject)
+        TestCryosparcBase.setData()
+        particlesPattern = dataset.getFile('particles.sqlite')
+        cls.protImportPart = cls.runImportParticleCryoSPARC(cls.partFn2)
+        cls.protImportVolumeVol = cls.runImportVolumesCryoSPARC(cls.volFn)
+
+    def testCryosparc3DClassification(self):
+        def _runCryosparctest3DClassification(label=''):
+            # Launch a first refinement protocol
+            protNonUniform3DRefinement = self.newProtocol(ProtCryoSparcNonUniformRefine3D,
+                                                          numberOfMpi=4,
+                                                          numberOfThreads=1)
+
+
+            protNonUniform3DRefinement.inputParticles.set(self.protImportPart.outputParticles)
+            protNonUniform3DRefinement.referenceVolume.set(self.protImportVolumeVol.outputVolume)
+            protNonUniform3DRefinement.symmetryGroup.set(SYM_CYCLIC)
+            protNonUniform3DRefinement.symmetryOrder.set(1)
+            protNonUniform3DRefinement.setObjLabel("protNonUniform3DRefinement_1")
+            self.launchProtocol(protNonUniform3DRefinement)
+
+            # Launch a second refinement protocol
+            protNonUniform3DRefinement1 = self.newProtocol(ProtCryoSparcNonUniformRefine3D,
+                                                           numberOfMpi=4,
+                                                           numberOfThreads=1)
+
+            protNonUniform3DRefinement1.inputParticles.set(
+                self.protImportPart.outputParticles)
+            protNonUniform3DRefinement1.referenceVolume.set(
+                self.protImportVolumeVol.outputVolume)
+            protNonUniform3DRefinement1.symmetryGroup.set(SYM_CYCLIC)
+            protNonUniform3DRefinement1.symmetryOrder.set(1)
+            protNonUniform3DRefinement1.setObjLabel("protNonUniform3DRefinement_2")
+            self.launchProtocol(protNonUniform3DRefinement1)
+
+            # Launch a 3D classification protocol
+            prot3DClassification = self.newProtocol(ProtCryoSparc3DClassification,
+                                                    numberOfMpi=4,
+                                                    numberOfThreads=1)
+            prot3DClassification.inputParticles.set(protNonUniform3DRefinement.outputParticles)
+            volumes = PointerList()
+            volumes.append(protNonUniform3DRefinement.outputVolume)
+            volumes.append(protNonUniform3DRefinement1.outputVolume)
+            prot3DClassification.refVolumes.set(volumes)
+            self.launchProtocol(prot3DClassification)
+
+            return prot3DClassification
+
+        def _checkAsserts(cryosparcProt):
+            self.assertIsNotNone(cryosparcProt.outputVolumes,
+                                 "There was a problem with Cryosparc 3D Classification output volumes ")
+            self.assertIsNotNone(cryosparcProt.outputClasses,
+                                 "There was a problem with Cryosparc 3D Classification output classes")
+
+        cryosparcProtGpu = _runCryosparctest3DClassification(label="Cryosparc 3D Classification")
         _checkAsserts(cryosparcProtGpu)
 
 

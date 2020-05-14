@@ -390,6 +390,10 @@ class ProtCryoSparc3DClassification(ProtCryosparcBase):
                     validateMsgs.append(
                         "The Particles has not associated a "
                         "CTF model")
+                volumes = self._getInputVolume()
+                if volumes is not None and len(volumes) < 2:
+                    validateMsgs.append(
+                        "The number of initial volumes must be equal or greater than 2")
         return validateMsgs
 
     def _summary(self):
