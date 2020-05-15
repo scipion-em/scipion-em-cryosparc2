@@ -7,3 +7,6 @@
 # Include conf file
  include cryosparc2/protocols.conf
 
+# Include the requirement file
+include requirements.txt
+

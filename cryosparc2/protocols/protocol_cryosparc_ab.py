@@ -287,7 +287,7 @@ class ProtCryoSparcInitialModel(ProtCryosparcBase, ProtInitialVolume,
 
     # --------------------------- STEPS functions ------------------------------
     def processStep(self):
-        print(pwutils.greenStr("Ab Initial Model Generation Started..."))
+        print(pwutils.yellowStr("Ab Initial Model Generation Started..."), flush=True)
         self.doRunAbinit()
 
     def createOutputStep(self):
@@ -295,7 +295,7 @@ class ProtCryoSparcInitialModel(ProtCryosparcBase, ProtInitialVolume,
         Create the protocol output. Convert cryosparc file to Relion file
         """
         self._initializeUtilsVariables()
-        print(pwutils.greenStr("Creating the output..."))
+        print(pwutils.yellowStr("Creating the output..."), flush=True)
 
         csFileName = ("cryosparc_" + self.projectName.get() + "_" +
                       self.runAbinit.get() + "_final_particles.cs")

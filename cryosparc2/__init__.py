@@ -62,7 +62,7 @@ class Plugin(pwem.Plugin):
 
     @classmethod
     def isVersionActive(cls):
-        return cls.getActiveVersion().startswith(V2_9)
+        return cls.getActiveVersion().startswith(V2_14_2)
 
     @classmethod
     def defineBinaries(cls, env):

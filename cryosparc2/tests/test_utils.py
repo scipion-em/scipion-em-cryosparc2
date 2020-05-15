@@ -1,11 +1,11 @@
 import getpass
-import re
 import unittest
 from unittest.mock import patch
 
 from cryosparc2 import V2_14_2
-from cryosparc2.utils import cryosparcValidate, cryosparcExists, isCryosparcRunning, calculateNewSamplingRate, \
-    getProjectName
+from cryosparc2.utils import (cryosparcValidate, cryosparcExists,
+                              isCryosparcRunning, calculateNewSamplingRate,
+                              getProjectName)
 
 
 class TestUtils(unittest.TestCase):
@@ -63,7 +63,7 @@ class TestUtils(unittest.TestCase):
                 running.return_value = True
 
                 # Installed version:
-                with patch('cryosparc2.utils.getCryosparcInstalledVersion') as getVersion:
+                with patch('cryosparc2.utils.getCryosparcEnvInformation') as getVersion:
 
                     # Low version
                     getVersion.return_value = "1.0.0"

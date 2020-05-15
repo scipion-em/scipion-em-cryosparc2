@@ -114,7 +114,7 @@ def cryosparcValidate():
         return ['Failed to connect to cryoSPARC. Please, make sure cryoSPARC is running.\n'
                 'Running: *%s* might fix this.' % getCryosparcProgram("start")]
 
-    cryosparcVersion = parse_version(getCryosparcInstalledVersion())
+    cryosparcVersion = parse_version(getCryosparcEnvInformation())
     supportedVersions = Plugin.getSupportedVersions()
     minSupportedVersion = parse_version(supportedVersions[0])
     maxSupportedVersion = parse_version(supportedVersions[-1])
@@ -147,14 +147,14 @@ def gpusValidate(gpuList, checkSingleGPU=False):
     return []
 
 
-def getCryosparcInstalledVersion():
+def getCryosparcEnvInformation(envVar='version'):
     """
     Get the cryosparc installed version
     """
     system_info = getSystemInfo()
     dictionary = ast.literal_eval(system_info[1])
-    version = str(dictionary['version'])
-    return version
+    envVariable = str(dictionary[envVar])
+    return envVariable
 
 
 def getCryosparcUser():
@@ -255,7 +255,7 @@ def doImportParticlesStar(protocol):
                              abs_blob_path=None, psize_A=None)
     returns the new uid of the job that was created
     """
-    print(pwutils.greenStr("Importing particles..."))
+    print(pwutils.yellowStr("Importing particles..."), flush=True)
     className = "import_particles"
     params = {"particle_meta_path": str(os.path.join(os.getcwd(),
                                         protocol._getFileName('input_particles'))),
@@ -279,7 +279,7 @@ def doImportVolumes(protocol, refVolume, volType, msg):
     """
     :return:
     """
-    print(pwutils.greenStr(msg))
+    print(pwutils.yellowStr(msg), flush=True)
     className = "import_volumes"
     params = {"volume_blob_path": str(refVolume),
               "volume_out_name": str(volType),
@@ -308,12 +308,11 @@ def doJob(jobType, projectName, workSpaceName, params, input_group_conect):
                   ("'", jobType, projectName, workSpaceName, getCryosparcUser(),
                    params, input_group_conect, "'"))
 
-    print(pwutils.greenStr(do_job_cmd))
     return runCmd(do_job_cmd)
 
 
 def enqueueJob(jobType, projectName, workSpaceName, params, input_group_conect,
-               lane, gpusToUse=False):
+               lane, gpusToUse=False, group_connect=None):
     """
     make_job(job_type, project_uid, workspace_uid, user_id,
              created_by_job_uid=None, params={}, input_group_connects={})
@@ -326,7 +325,7 @@ def enqueueJob(jobType, projectName, workSpaceName, params, input_group_conect,
                    params, input_group_conect, "'"))
 
     # Create a compatible job to versions >= v2.14.X
-    if parse_version(getCryosparcInstalledVersion()) >= parse_version(V2_14_0):
+    if parse_version(getCryosparcEnvInformation()) >= parse_version(V2_14_0):
         make_job_cmd = (getCryosparcProgram() +
                         ' %smake_job("%s","%s","%s", "%s", "None", "None", %s, %s)%s' %
                         ("'", jobType, projectName, workSpaceName,
@@ -337,21 +336,31 @@ def enqueueJob(jobType, projectName, workSpaceName, params, input_group_conect,
 
     # Extract the jobId
     jobId = String(cmdOutput.split()[-1])
-    print(pwutils.greenStr("Got %s for JobId" % jobId))
+
+    if group_connect:
+        for key, valuesList in group_connect.items():
+            for value in valuesList:
+                job_connect_group = (getCryosparcProgram() +
+                            ' %sjob_connect_group("%s", "%s", "%s")%s' %
+                            ("'", projectName, value, (str(jobId) + "." + key) ,"'"))
+                runCmd(job_connect_group, printCmd=False)
+
+    print(pwutils.greenStr("Got %s for JobId" % jobId), flush=True)
 
     # Queue the job
-    if parse_version(getCryosparcInstalledVersion()) < parse_version(V2_13_0):
+    if parse_version(getCryosparcEnvInformation()) < parse_version(V2_13_0):
         enqueue_job_cmd = (getCryosparcProgram() +
                            ' %senqueue_job("%s","%s","%s")%s' %
                            ("'", projectName, jobId,
                             lane, "'"))
     else:
+        hostname = getCryosparcEnvInformation('master_hostname')
         if gpusToUse:
             gpusToUse = str(gpusToUse)
         enqueue_job_cmd = (getCryosparcProgram() +
-                           ' %senqueue_job("%s","%s","%s", False, %s)%s' %
+                           ' %senqueue_job("%s","%s","%s", "%s", %s)%s' %
                            ("'", projectName, jobId,
-                            lane, gpusToUse, "'"))
+                            lane, hostname, gpusToUse, "'"))
 
     runCmd(enqueue_job_cmd)
 
@@ -363,7 +372,7 @@ def runCmd(cmd, printCmd=True):
     :parameter cmd command to run"""
 
     if printCmd:
-        print(pwutils.greenStr("Running: %s" % cmd))
+        print(pwutils.greenStr("Running: %s" % cmd), flush=True)
     exitCode, cmdOutput = subprocess.getstatusoutput(cmd)
 
     if exitCode != 0:
@@ -434,8 +443,7 @@ def killJob(projectName, job):
     kill_job_cmd = (getCryosparcProgram() +
                     ' %skill_job("%s", "%s")%s'
                     % ("'", projectName, job, "'"))
-    print(pwutils.greenStr(kill_job_cmd))
-    runCmd(kill_job_cmd, printCmd=False)
+    runCmd(kill_job_cmd, printCmd=True)
 
 
 def clearJob(projectName, job):
@@ -449,7 +457,6 @@ def clearJob(projectName, job):
     clear_job_cmd = (getCryosparcProgram() +
                     ' %sclear_job("%s", "%s")%s'
                     % ("'", projectName, job, "'"))
-    print(pwutils.greenStr(clear_job_cmd))
     runCmd(clear_job_cmd, printCmd=False)
 
 
@@ -477,7 +484,7 @@ def addComputeSectionParams(form, allowMultipleGPUs=True):
     """
     Add the compute settings section
     """
-    form.addParam('cacheParticlesSSD', BooleanParam, default=True,
+    form.addParam('compute_use_ssd', BooleanParam, default=True,
                   label='Cache particle images on SSD',
                   help='Whether or not to copy particle images to the local '
                        'SSD before running. The cache is persistent, so after '
@@ -485,7 +492,7 @@ def addComputeSectionParams(form, allowMultipleGPUs=True):
                        'subsequent jobs that require the same data. Not '
                        'using an SSD can dramatically slow down processing.')
 
-    if (not isCryosparcRunning()) or parse_version(getCryosparcInstalledVersion()) >= parse_version(V2_13_0):
+    if (not isCryosparcRunning()) or parse_version(getCryosparcEnvInformation()) >= parse_version(V2_13_0):
         if allowMultipleGPUs:
             form.addHidden(GPU_LIST, StringParam, default='0',
                           label='Choose GPU IDs:', validators=[NonEmpty],

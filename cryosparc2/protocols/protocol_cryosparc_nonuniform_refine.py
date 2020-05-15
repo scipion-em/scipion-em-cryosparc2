@@ -33,9 +33,14 @@ from ..constants import *
 
 
 class ProtCryoSparcNonUniformRefine3D(ProtCryoSparcRefine3D):
-    """ Protocol to refine a 3D map using cryosparc.
-        Rapidly refine a single homogeneous structure to high-resolution and
-        validate using the gold-standard FSC.
+    """ Apply non-uniform refinement to achieve higher resolution and map
+    quality, especially for membrane proteins. Non-uniform refinement
+    iteratively accounts for regions of a structure that have disordered or
+    flexible density causing local loss of resolution. Accounting for these
+    regions and dynamically estimating their locations can significantly
+    improve resolution in other regions as well as overall map quality by
+    impacting the alignment of particles and reducing the tendency for
+    refinement algorithms to over-fit disordered regions.
     """
     _label = '3D non-uniform refinement'
 
