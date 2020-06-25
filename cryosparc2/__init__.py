@@ -40,7 +40,7 @@ class Plugin(pwem.Plugin):
     _homeVar = CRYOSPARC_HOME
     _pathVars = [CRYOSPARC_HOME]
     _supportedVersions = [V2_5_0, V2_8_0, V2_9_0, V2_11_0, V2_12_0, V2_12_2,
-                          V2_12_4, V2_13_0, V2_13_2, V2_14_0, V2_14_2]
+                          V2_12_4, V2_13_0, V2_13_2, V2_14_0, V2_14_2, V2_15_0]
 
     @classmethod
     def _defineVariables(cls):
@@ -62,7 +62,7 @@ class Plugin(pwem.Plugin):
 
     @classmethod
     def isVersionActive(cls):
-        return cls.getActiveVersion().startswith(V2_14_2)
+        return cls.getActiveVersion().startswith(V2_15_0)
 
     @classmethod
     def defineBinaries(cls, env):
