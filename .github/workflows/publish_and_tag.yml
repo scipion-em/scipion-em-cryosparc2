@@ -38,6 +38,8 @@ jobs:
         python setup.py sdist
         twine upload dist/* -c "${{ secrets.PYPI_COMMENT }}"
     - name: Get version and tag
+      env:
+        FOLDER_WITH_VERSION: cryosparc2
       run: |
         export PACKAGE_VERSION=$(python -c "import $FOLDER_WITH_VERSION; print('v'+$FOLDER_WITH_VERSION.__version__);")
         git tag $PACKAGE_VERSION
