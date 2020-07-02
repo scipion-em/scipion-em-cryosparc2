@@ -34,9 +34,7 @@ jobs:
       env:
         TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
         TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
-        PACKAGE_VERSION: $(python -c "import $FOLDER_WITH_VERSION; print('v'+$FOLDER_WITH_VERSION.__version__);")
       run: |
-        echo $PACKAGE_VERSION
         python setup.py sdist
         twine upload dist/* -c "${{ secrets.PYPI_COMMENT }}"
     - name: Get version and tag
