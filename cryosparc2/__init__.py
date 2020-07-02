@@ -26,7 +26,7 @@
 # **************************************************************************
 
 import os
-import pwem
+import pwem as em
 from pyworkflow.utils import Environ
 
 from .constants import *
@@ -36,7 +36,7 @@ _references = ['Punjani2017', 'Brubaker2017', 'daniel_asarnow_2019_3576630']
 _logo = 'cryosparc2_logo.png'
 
 
-class Plugin(pwem.Plugin):
+class Plugin(em.Plugin):
     _homeVar = CRYOSPARC_HOME
     _pathVars = [CRYOSPARC_HOME]
     _supportedVersions = [V2_5_0, V2_8_0, V2_9_0, V2_11_0, V2_12_0, V2_12_2,
