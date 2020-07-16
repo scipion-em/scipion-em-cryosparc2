@@ -39,7 +39,7 @@ from pyworkflow.protocol.params import (EnumParam, IntParam, Positive,
                                         GPU_LIST)
 from . import Plugin
 from .constants import (CS_SYM_NAME, SYM_DIHEDRAL_Y, CRYOSPARC_USER,
-                        CRYO_PROJECTS_DIR, CRYOSPARC_DIR, V2_14_0, V2_13_0)
+                        CRYO_PROJECTS_DIR, V2_14_0, V2_13_0, CRYOSPARC_HOME)
 
 
 STATUS_FAILED = "failed"
@@ -107,7 +107,7 @@ def cryosparcValidate():
     if not cryosparcExists():
 
         return["cryoSPARC software not found at %s. Please, fill %s variable in scipion's config file."
-                   % (getCryosparcDir(), CRYOSPARC_DIR)]
+                   % (getCryosparcDir(), CRYOSPARC_HOME)]
 
     if not isCryosparcRunning():
 
@@ -476,7 +476,7 @@ def getSystemInfo():
         'version' : get_running_version(),
     }
     """
-    system_info_cmd = (getCryosparcProgram() + ' %sget_system_info()%s') % ("'", "'")
+    system_info_cmd = (getCryosparcProgram() + " 'get_system_info()'")
     return runCmd(system_info_cmd, printCmd=False)
 
 
@@ -492,7 +492,15 @@ def addComputeSectionParams(form, allowMultipleGPUs=True):
                        'subsequent jobs that require the same data. Not '
                        'using an SSD can dramatically slow down processing.')
 
-    if (not isCryosparcRunning()) or parse_version(getCryosparcEnvInformation()) >= parse_version(V2_13_0):
+    # This is here because getCryosparcEnvInformation is failing in some machines
+    try:
+        versionAllowGPUs = parse_version(getCryosparcEnvInformation()) >= parse_version(V2_13_0)
+    # Code is failing to get CS info, either stop or some error
+    except Exception as e:
+        # ... we assume is a modern version
+        versionAllowGPUs = True
+
+    if versionAllowGPUs:
         if allowMultipleGPUs:
             form.addHidden(GPU_LIST, StringParam, default='0',
                           label='Choose GPU IDs:', validators=[NonEmpty],
