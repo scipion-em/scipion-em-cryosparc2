@@ -31,7 +31,7 @@ from pyworkflow.utils import Environ
 
 from .constants import *
 
-__version__ = '3.0.11'
+__version__ = '3.0.12'
 _references = ['Punjani2017', 'Brubaker2017', 'daniel_asarnow_2019_3576630']
 _logo = 'cryosparc2_logo.png'
 
@@ -44,7 +44,7 @@ class Plugin(em.Plugin):
 
     @classmethod
     def _defineVariables(cls):
-        cls._defineVar(CRYOSPARC_HOME, os.environ.get(CRYOSPARC_DIR))
+        cls._defineVar(CRYOSPARC_HOME, os.environ.get(CRYOSPARC_DIR) or "")
         cls._defineVar(CRYO_PROJECTS_DIR, "scipion_projects")
 
     @classmethod
