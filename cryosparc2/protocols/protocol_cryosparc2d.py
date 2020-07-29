@@ -110,6 +110,24 @@ class ProtCryo2D(ProtCryosparcBase, ProtClassify2D):
                            'window. By default, the window is a circle that only '
                            'masks out the corners of the 2D classes.')
 
+        form.addParam('class2D_window_inner_A', FloatParam, default=None,
+                      label='Circular mask diameter (A)',
+                      help='The inner diameter (in Angstroms) of the window '
+                            'that is applied to 2D classes during '
+                            'classification. If None, the window only masks out '
+                            'the corners of each 2D class.',
+                      allowsNull=True,
+                      condition='useCircular2D==True')
+
+        form.addParam('class2D_window_outer_A', FloatParam, default=None,
+                      label='Circular mask diameter outer (A)',
+                      help='The outer diameter (in Angstroms) of the window. '
+                           'If None, outer diameter is 20 percent larger than '
+                           'inner diameter. The window mask transitions '
+                           'smoothly between inner and outer diameters.',
+                      allowsNull=True,
+                      condition='useCircular2D==True')
+
         form.addParam('reCenter2D', BooleanParam, default=True,
                       label='Re-center 2D classes',
                       help='Whether or not to re-center 2D class references at '
@@ -473,6 +491,11 @@ class ProtCryo2D(ProtCryosparcBase, ProtClassify2D):
                   "intermediate_plots": str('False'),
                   "compute_use_ssd": str(self.compute_use_ssd.get()),
                   "compute_num_gpus": str(numberGPU)}
+
+        if self.class2D_window_inner_A.get() is not None:
+            params["class2D_window_inner_A"] = str(self.class2D_window_inner_A.get())
+        if self.class2D_window_outer_A.get() is not None:
+            params["class2D_window_outer_A"] = str(self.class2D_window_outer_A.get())
 
         self.runClass2D = enqueueJob(className, self.projectName.get(),
                                 self.workSpaceName.get(),
