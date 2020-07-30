@@ -347,6 +347,7 @@ class TestCryosparc3DClassification(TestCryosparcBase):
             volumes.append(protNonUniform3DRefinement.outputVolume)
             volumes.append(protNonUniform3DRefinement1.outputVolume)
             prot3DClassification.refVolumes.set(volumes)
+            prot3DClassification.compute_use_ssd.set(False)
             self.launchProtocol(prot3DClassification)
 
             return prot3DClassification
