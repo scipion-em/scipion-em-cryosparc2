@@ -456,7 +456,7 @@ class ProtCryoSparc3DClassification(ProtCryosparcBase):
                     paramName != 'multirefine_noise_model'):
                 params[str(paramName)] = str(self.getAttributeValue(paramName))
 
-            elif paramName == 'refine_symmetry':
+            elif paramName == 'multirefine_symmetry':
                 symetryValue = getSymmetry(self.symmetryGroup.get(),
                                            self.symmetryOrder.get())
 
