@@ -28,6 +28,7 @@
 from pyworkflow.protocol.params import (PointerParam, FloatParam,
                                         LEVEL_ADVANCED)
 from pwem.protocols import ProtInitialVolume, ProtClassify3D
+from pyworkflow.utils import replaceExt, createLink
 
 from . import ProtCryosparcBase
 from ..convert import *
@@ -400,12 +401,41 @@ class ProtCryoSparcInitialModel(ProtCryosparcBase, ProtInitialVolume,
             index, fn = cryosparcToLocation(row.getValue('rlnReferenceImage'))
             # Store info indexed by id, we need to store the row.clone() since
             # the same reference is used for iteration
-            self._classesInfo[classNumber+1] = (index, fn, row.clone())
+            scaledFile = self._getScaledAveragesFile(fn)
+            self._classesInfo[classNumber+1] = (index, scaledFile, row.clone())
+
+    def _getScaledAveragesFile(self, csAveragesFile):
+
+        # For the moment this is the best possible result, scaling from 128 to 300 does not render
+        # nice results apart that the factor turns to 299x299.
+        # But without this the representative subset is wrong.
+        # return csAveragesFile
+
+        scaledFile = self._getScaledAveragesFileName(csAveragesFile)
+        if not os.path.exists(scaledFile):
+
+            inputSize = self._getInputParticles().getDim()[0]
+            csSize = ImageHandler().getDimensions(csAveragesFile)[0]
+
+            if csSize == inputSize:
+                print("No binning detected: linking averages cs file.", flush=True)
+                createLink(csAveragesFile, scaledFile)
+            else:
+                print("Scaling CS averages file to match particle size (%s -> %s)." % (csSize, inputSize), flush=True)
+                ImageHandler.scaleSplines(csAveragesFile, scaledFile, None,
+                                          finalDimension=inputSize,
+                                          forceVolume=True)
+
+        return scaledFile
+
+    def _getScaledAveragesFileName(self, csAveragesFile):
+
+        return replaceExt(csAveragesFile, "_scaled.mrc")
 
     def _fillClassesFromIter(self, clsSet, filename):
         """ Create the SetOfClasses3D """
-        self._loadClassesInfo(self._getFileName('out_class'))
         outImgsFn = self._getFileName('out_class')
+        self._loadClassesInfo(outImgsFn)
         clsSet.classifyItems(updateItemCallback=self._updateParticle,
                              updateClassCallback=self._updateClass,
                              itemDataIterator=md.iterRows(filename,

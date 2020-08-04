@@ -412,7 +412,8 @@ class ProtCryo2D(ProtCryosparcBase, ProtClassify2D):
                 createLink(csAveragesFile, scaledFile)
             else:
                 print("Scaling CS averages file to match particle size (%s -> %s)." % (csSize, inputSize), flush=True)
-                ImageHandler.scaleSplines(csAveragesFile, scaledFile, inputSize)
+                ImageHandler.scaleSplines(csAveragesFile, scaledFile, None,
+                                          finalDimension=inputSize)
 
         return scaledFile
 
