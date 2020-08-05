@@ -152,7 +152,7 @@ class CryosPARCViewer3DRefinement(EmProtocolViewer):
         volumes = self._getVolumeNames()
 
         if len(volumes) > 1:
-            cmdFile = self.protocol._getExtraPath('chimera_volumes.cmd')
+            cmdFile = self.protocol._getExtraPath('chimera_volumes.cxc')
             f = open(cmdFile, 'w+')
             for vol in volumes:
                 # We assume that the chimera script will be generated

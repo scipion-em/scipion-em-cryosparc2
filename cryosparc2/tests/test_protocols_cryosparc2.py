@@ -166,6 +166,7 @@ class TestCryosparcClassify2D(TestCryosparcBase):
             prot2D.inputParticles.set(self.protImportPart.outputParticles)
             prot2D.numberOfClasses.set(5)
             prot2D.numberOnlineEMIterator.set(40)
+            prot2D.compute_use_ssd.set(False)
             prot2D.setObjLabel(label)
             self.launchProtocol(prot2D)
             return prot2D
@@ -203,6 +204,7 @@ class TestCryosparc3DInitialModel(TestCryosparcBase):
             protInitialModel.abinit_K.set(1)
             protInitialModel.symmetryGroup.set(SYM_CYCLIC)
             protInitialModel.symmetryOrder.set(1)
+            protInitialModel.compute_use_ssd.set(False)
             protInitialModel.setObjLabel(label)
             self.launchProtocol(protInitialModel)
             return protInitialModel
@@ -240,6 +242,7 @@ class TestCryosparc3DRefinement(TestCryosparcBase):
             prot3DRefinement.referenceVolume.set(self.protImportVol.outputVolume)
             prot3DRefinement.symmetryGroup.set(SYM_CYCLIC)
             prot3DRefinement.symmetryOrder.set(1)
+            prot3DRefinement.compute_use_ssd.set(False)
             prot3DRefinement.setObjLabel(label)
             self.launchProtocol(prot3DRefinement)
             return prot3DRefinement
@@ -278,6 +281,7 @@ class TestCryosparcNonUniformRefine3D(TestCryosparcBase):
             protNonUniform3DRefinement.referenceVolume.set(self.protImportVolumeVol.outputVolume)
             protNonUniform3DRefinement.symmetryGroup.set(SYM_CYCLIC)
             protNonUniform3DRefinement.symmetryOrder.set(1)
+            protNonUniform3DRefinement.compute_use_ssd.set(False)
             protNonUniform3DRefinement.setObjLabel(label)
             self.launchProtocol(protNonUniform3DRefinement)
             return protNonUniform3DRefinement
@@ -315,6 +319,7 @@ class TestCryosparc3DClassification(TestCryosparcBase):
             protNonUniform3DRefinement.referenceVolume.set(self.protImportVolumeVol.outputVolume)
             protNonUniform3DRefinement.symmetryGroup.set(SYM_CYCLIC)
             protNonUniform3DRefinement.symmetryOrder.set(1)
+            protNonUniform3DRefinement.compute_use_ssd.set(False)
             protNonUniform3DRefinement.setObjLabel("protNonUniform3DRefinement_1")
             self.launchProtocol(protNonUniform3DRefinement)
 
@@ -329,6 +334,7 @@ class TestCryosparc3DClassification(TestCryosparcBase):
                 self.protImportVolumeVol.outputVolume)
             protNonUniform3DRefinement1.symmetryGroup.set(SYM_CYCLIC)
             protNonUniform3DRefinement1.symmetryOrder.set(1)
+            protNonUniform3DRefinement1.compute_use_ssd.set(False)
             protNonUniform3DRefinement1.setObjLabel("protNonUniform3DRefinement_2")
             self.launchProtocol(protNonUniform3DRefinement1)
 
@@ -341,6 +347,7 @@ class TestCryosparc3DClassification(TestCryosparcBase):
             volumes.append(protNonUniform3DRefinement.outputVolume)
             volumes.append(protNonUniform3DRefinement1.outputVolume)
             prot3DClassification.refVolumes.set(volumes)
+            prot3DClassification.compute_use_ssd.set(False)
             self.launchProtocol(prot3DClassification)
 
             return prot3DClassification
@@ -383,6 +390,7 @@ class TestCryosparcParticlesSubtract(TestCryosparcBase):
             prot3DRefinement.inputParticles.set(self.protImportPart.outputParticles)
             prot3DRefinement.referenceVolume.set(self.protImportVol.outputVolume)
             prot3DRefinement.symmetryGroup.set(SYM_CYCLIC)
+            prot3DRefinement.compute_use_ssd.set(False)
             prot3DRefinement.symmetryOrder.set(1)
             self.launchProtocol(prot3DRefinement)
 
@@ -398,6 +406,7 @@ class TestCryosparcParticlesSubtract(TestCryosparcBase):
             protParticlesSubtract.inputParticles.set(prot3DRefinement.outputParticles)
             protParticlesSubtract.refVolume.set(prot3DRefinement.outputVolume)
             protParticlesSubtract.refMask.set(protXmippCreate3DMask.outputMask)
+            protParticlesSubtract.compute_use_ssd.set(False)
             self.launchProtocol(protParticlesSubtract)
 
             return protParticlesSubtract
@@ -438,10 +447,12 @@ class TestCryosparcSharppening(TestCryosparcBase):
             prot3DRefinement.referenceVolume.set(self.protImportVol.outputVolume)
             prot3DRefinement.symmetryGroup.set(SYM_CYCLIC)
             prot3DRefinement.symmetryOrder.set(1)
+            prot3DRefinement.compute_use_ssd.set(False)
             self.launchProtocol(prot3DRefinement)
 
             protSharppening.inputRefinement.set(prot3DRefinement)
             protSharppening.sharp_bfactor.set(-80)
+            protSharppening.compute_use_ssd.set(False)
             self.launchProtocol(protSharppening)
 
             return protSharppening
@@ -483,6 +494,7 @@ class TestCryosparcGlobalCtfRefinement(TestCryosparcBase):
             prot3DRefinement.referenceVolume.set(self.protImportVol.outputVolume)
             prot3DRefinement.symmetryGroup.set(SYM_CYCLIC)
             prot3DRefinement.symmetryOrder.set(1)
+            prot3DRefinement.compute_use_ssd.set(False)
             self.launchProtocol(prot3DRefinement)
 
             # Create a 3D Mask using xmipp
@@ -497,6 +509,7 @@ class TestCryosparcGlobalCtfRefinement(TestCryosparcBase):
             protGlobalCtfRefinement.inputParticles.set(prot3DRefinement.outputParticles)
             protGlobalCtfRefinement.inputRefinement.set(prot3DRefinement)
             protGlobalCtfRefinement.refMask.set(protXmippCreate3DMask.outputMask)
+            protGlobalCtfRefinement.compute_use_ssd.set(False)
             self.launchProtocol(protGlobalCtfRefinement)
 
             return protGlobalCtfRefinement
@@ -538,6 +551,7 @@ class TestCryosparcLocalCtfRefinement(TestCryosparcBase):
             prot3DRefinement.referenceVolume.set(self.protImportVol.outputVolume)
             prot3DRefinement.symmetryGroup.set(SYM_CYCLIC)
             prot3DRefinement.symmetryOrder.set(1)
+            prot3DRefinement.compute_use_ssd.set(False)
             self.launchProtocol(prot3DRefinement)
 
             # Create a 3D Mask using xmipp
@@ -552,6 +566,7 @@ class TestCryosparcLocalCtfRefinement(TestCryosparcBase):
             protLocalCtfRefinement.inputParticles.set(prot3DRefinement.outputParticles)
             protLocalCtfRefinement.inputRefinement.set(prot3DRefinement)
             protLocalCtfRefinement.refMask.set(protXmippCreate3DMask.outputMask)
+            protLocalCtfRefinement.compute_use_ssd.set(False)
             self.launchProtocol(protLocalCtfRefinement)
 
             return protLocalCtfRefinement
@@ -593,6 +608,7 @@ class TestCryosparcLocalRefine(TestCryosparcBase):
             prot3DRefinement.referenceVolume.set(self.protImportVol.outputVolume)
             prot3DRefinement.symmetryGroup.set(SYM_CYCLIC)
             prot3DRefinement.symmetryOrder.set(1)
+            prot3DRefinement.compute_use_ssd.set(False)
             self.launchProtocol(prot3DRefinement)
 
             # Create a 3D Mask using xmipp
@@ -607,6 +623,7 @@ class TestCryosparcLocalRefine(TestCryosparcBase):
             protLocalRefine.inputParticles.set(prot3DRefinement.outputParticles)
             protLocalRefine.refVolume.set(prot3DRefinement.outputVolume)
             protLocalRefine.refMask.set(protXmippCreate3DMask.outputMask)
+            protLocalRefine.compute_use_ssd.set(False)
             self.launchProtocol(protLocalRefine)
 
             return protLocalRefine

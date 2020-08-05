@@ -93,7 +93,7 @@ class CryosPARCViewer2D(ProtocolViewer):
         # properly see the rlnClassDistribution label.
         dim = self.protocol.inputParticles.get().getDim()[0]
         if dim < 128:
-            zoom = 128*100/dim
+            zoom = int(128*100/dim)
         else:
             zoom = 100
         return zoom

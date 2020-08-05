@@ -491,7 +491,6 @@ class ProtCryoSparcLocalRefine(ProtCryosparcBase, ProtOperateParticles):
                             'local_align_max_align', 'local_align_grid_r',
                             'local_align_grid_t', 'override_final_radwn',
                             'n_iterations',
-
                             'refine_num_final_iterations',
                             'refine_res_init',
                             'refine_res_gsfsc_split',
@@ -509,7 +508,8 @@ class ProtCryoSparcLocalRefine(ProtCryosparcBase, ProtOperateParticles):
                             'refine_mask',
                             'refine_dynamic_mask_thresh_factor',
                             'refine_dynamic_mask_near_ang',
-                            'refine_dynamic_mask_far_ang']
+                            'refine_dynamic_mask_far_ang',
+                            'compute_use_ssd']
         self.lane = str(self.getAttributeValue('compute_lane'))
 
     def doLocalRefine(self):
