@@ -422,9 +422,12 @@ class ProtCryoSparcInitialModel(ProtCryosparcBase, ProtInitialVolume,
                 createLink(csAveragesFile, scaledFile)
             else:
                 print("Scaling CS averages file to match particle size (%s -> %s)." % (csSize, inputSize), flush=True)
-                ImageHandler.scaleSplines(csAveragesFile, scaledFile, None,
-                                          finalDimension=inputSize,
-                                          forceVolume=True)
+                try:
+                    ImageHandler.scaleSplines(csAveragesFile, scaledFile, None,
+                                              finalDimension=inputSize,
+                                              forceVolume=True)
+                except Exception:
+                    print("The CS averages could not be scaled.")
 
         return scaledFile
 
