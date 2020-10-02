@@ -254,7 +254,8 @@ class ProtCryoSparcNonUniformRefine3D(ProtCryoSparcRefine3D):
         """
         className = "nonuniform_refine"
         input_group_conect = {"particles": str(self.par),
-                              "volume": str(self.vol)}
+                              "volume": str(self.vol),
+                              "mask": str(self.mask)}
         # {'particles' : 'JXX.imported_particles' }
         params = {}
 
