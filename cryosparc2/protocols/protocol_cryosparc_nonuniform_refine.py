@@ -253,9 +253,13 @@ class ProtCryoSparcNonUniformRefine3D(ProtCryoSparcRefine3D):
         :return:
         """
         className = "nonuniform_refine"
-        input_group_conect = {"particles": str(self.par),
-                              "volume": str(self.vol),
-                              "mask": str(self.mask)}
+        if self.mask is not None:
+            input_group_conect = {"particles": str(self.par),
+                                  "volume": str(self.vol),
+                                  "mask": str(self.mask)}
+        else:
+            input_group_conect = {"particles": str(self.par),
+                                  "volume": str(self.vol)}
         # {'particles' : 'JXX.imported_particles' }
         params = {}
 
