@@ -29,7 +29,6 @@
 
 from pwem.protocols import ProtClassify2D
 from pyworkflow.protocol.params import (PointerParam, FloatParam)
-from pyworkflow.utils import replaceExt, createLink
 
 from . import ProtCryosparcBase
 from ..convert import *
@@ -389,40 +388,9 @@ class ProtCryo2D(ProtCryosparcBase, ProtClassify2D):
             index, fn = cryosparcToLocation(row.getValue('rlnImageName'))
             # Store info indexed by id, we need to store the row.clone() since
             # the same reference is used for iteration
-            scaledFile = self._getScaledAveragesFile(fn)
+            scaledFile = self._getScaledAveragesFile(fn, force=True)
             self._classesInfo[classNumber + 1] = (index, scaledFile, row.clone())
         self._numClass = index
-
-    def _getScaledAveragesFile(self, csAveragesFile):
-
-        # For the moment this is the best possible result, scaling from 128 to 300 does not render
-        # nice results apart that the factor turns to 299x299.
-        # But without this the representative subset is wrong.
-        # return csAveragesFile
-
-        scaledFile = self._getScaledAveragesFileName(csAveragesFile)
-
-        if not os.path.exists(scaledFile):
-
-            inputSize = self._getInputParticles().getDim()[0]
-            csSize = ImageHandler().getDimensions(csAveragesFile)[0]
-
-            if csSize == inputSize:
-                print("No binning detected: linking averages cs file.", flush=True)
-                createLink(csAveragesFile, scaledFile)
-            else:
-                print("Scaling CS averages file to match particle size (%s -> %s)." % (csSize, inputSize), flush=True)
-                try:
-                    ImageHandler.scaleSplines(csAveragesFile, scaledFile, None,
-                                              finalDimension=inputSize)
-                except Exception:
-                    print("The CS averages could not be scaled.")
-
-        return scaledFile
-
-    def _getScaledAveragesFileName(self, csAveragesFile):
-
-        return replaceExt(csAveragesFile, "_scaled.mrc")
 
     def _fillClassesFromLevel(self, clsSet):
         """ Create the SetOfClasses2D from a given iteration. """

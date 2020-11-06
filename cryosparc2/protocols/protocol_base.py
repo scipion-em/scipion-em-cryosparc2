@@ -28,8 +28,9 @@ import os
 
 from pwem.protocols import pwutils, EMProtocol
 from pyworkflow.object import String
+from pyworkflow.utils import createLink, removeExt
 
-from ..convert import convertBinaryVol, writeSetOfParticles
+from ..convert import convertBinaryVol, writeSetOfParticles, ImageHandler
 from ..utils import (getProjectPath, createEmptyProject,
                      createEmptyWorkSpace, getProjectName,
                      getCryosparcProjectsDir, createProjectDir,
@@ -93,6 +94,39 @@ class ProtCryosparcBase(EMProtocol):
             self._importMask()
         else:
             self.mask = None
+
+    def _getScaledAveragesFile(self, csAveragesFile, force=False):
+
+        # For the moment this is the best possible result, scaling from 128 to 300 does not render
+        # nice results apart that the factor turns to 299x299.
+        # But without this the representative subset is wrong.
+        # return csAveragesFile
+
+        scaledFile = self._getScaledAveragesFileName(csAveragesFile)
+
+        if not os.path.exists(scaledFile):
+
+            inputSize = self._getInputParticles().getDim()[0]
+            csSize = ImageHandler().getDimensions(csAveragesFile)[0]
+
+            if csSize == inputSize:
+                print("No binning detected: linking averages cs file.", flush=True)
+                createLink(csAveragesFile, scaledFile)
+            else:
+                print("Scaling CS averages file to match particle size (%s -> %s)." % (csSize, inputSize), flush=True)
+                try:
+                    ImageHandler.scaleSplines(csAveragesFile, scaledFile, None,
+                                              finalDimension=inputSize,
+                                              forceVolume=force)
+                except Exception as ex:
+                    print("The CS averages could not be scaled. %s " % ex)
+                    return csAveragesFile
+
+        return scaledFile
+
+    def _getScaledAveragesFileName(self, csAveragesFile):
+
+        return removeExt(csAveragesFile) + "_scaled.mrc"
 
     def _getInputParticles(self):
         return self.inputParticles.get()
