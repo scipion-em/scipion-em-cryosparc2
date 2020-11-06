@@ -401,7 +401,7 @@ class ProtCryoSparcInitialModel(ProtCryosparcBase, ProtInitialVolume,
             index, fn = cryosparcToLocation(row.getValue('rlnReferenceImage'))
             # Store info indexed by id, we need to store the row.clone() since
             # the same reference is used for iteration
-            scaledFile = self._getScaledAveragesFile(fn)
+            scaledFile = self._getScaledAveragesFile(fn, force=True)
             self._classesInfo[classNumber+1] = (index, scaledFile, row.clone())
 
     def _fillClassesFromIter(self, clsSet, filename):

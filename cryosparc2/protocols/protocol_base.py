@@ -95,7 +95,7 @@ class ProtCryosparcBase(EMProtocol):
         else:
             self.mask = None
 
-    def _getScaledAveragesFile(self, csAveragesFile):
+    def _getScaledAveragesFile(self, csAveragesFile, force=False):
 
         # For the moment this is the best possible result, scaling from 128 to 300 does not render
         # nice results apart that the factor turns to 299x299.
@@ -116,7 +116,8 @@ class ProtCryosparcBase(EMProtocol):
                 print("Scaling CS averages file to match particle size (%s -> %s)." % (csSize, inputSize), flush=True)
                 try:
                     ImageHandler.scaleSplines(csAveragesFile, scaledFile, None,
-                                              finalDimension=inputSize)
+                                              finalDimension=inputSize,
+                                              forceVolume=force)
                 except Exception as ex:
                     print("The CS averages could not be scaled. %s " % ex)
                     return csAveragesFile
