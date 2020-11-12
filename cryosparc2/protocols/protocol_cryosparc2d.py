@@ -388,7 +388,7 @@ class ProtCryo2D(ProtCryosparcBase, ProtClassify2D):
             index, fn = cryosparcToLocation(row.getValue('rlnImageName'))
             # Store info indexed by id, we need to store the row.clone() since
             # the same reference is used for iteration
-            scaledFile = self._getScaledAveragesFile(fn, force=True)
+            scaledFile = self._getScaledAveragesFile(fn)
             self._classesInfo[classNumber + 1] = (index, scaledFile, row.clone())
         self._numClass = index
 
