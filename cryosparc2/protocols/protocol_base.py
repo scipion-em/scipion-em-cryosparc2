@@ -115,9 +115,13 @@ class ProtCryosparcBase(EMProtocol):
             else:
                 print("Scaling CS averages file to match particle size (%s -> %s)." % (csSize, inputSize), flush=True)
                 try:
-                    ImageHandler.scaleSplines(csAveragesFile, scaledFile, None,
-                                              finalDimension=inputSize,
-                                              forceVolume=force)
+                    if force:
+                        ImageHandler.scaleSplines(csAveragesFile, scaledFile,
+                                                  finalDimension=inputSize,
+                                                  forceVolume=force)
+                    else:
+                        ImageHandler.scale2DStack(csAveragesFile, scaledFile,
+                                                  finalDimension=inputSize)
                 except Exception as ex:
                     print("The CS averages could not be scaled. %s " % ex)
                     return csAveragesFile
