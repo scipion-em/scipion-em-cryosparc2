@@ -102,7 +102,7 @@ class ProtCryosparcBase(EMProtocol):
         # But without this the representative subset is wrong.
         # return csAveragesFile
 
-        scaledFile = self._getScaledAveragesFileName(csAveragesFile)
+        scaledFile = self._getScaledAveragesFileName(csAveragesFile, force)
 
         if not os.path.exists(scaledFile):
 
@@ -120,6 +120,7 @@ class ProtCryosparcBase(EMProtocol):
                                                   finalDimension=inputSize,
                                                   forceVolume=force)
                     else:
+
                         ImageHandler.scale2DStack(csAveragesFile, scaledFile,
                                                   finalDimension=inputSize)
                 except Exception as ex:
@@ -128,9 +129,10 @@ class ProtCryosparcBase(EMProtocol):
 
         return scaledFile
 
-    def _getScaledAveragesFileName(self, csAveragesFile):
+    def _getScaledAveragesFileName(self, csAveragesFile, isVolume=False):
 
-        return removeExt(csAveragesFile) + "_scaled.mrc"
+        extension = ".mrc" if isVolume else ".mrcs"
+        return removeExt(csAveragesFile) + "_scaled" + extension
 
     def _getInputParticles(self):
         return self.inputParticles.get()
