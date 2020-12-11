@@ -25,13 +25,13 @@
 # *  e-mail address 'scipion@cnb.csic.es'
 # *
 # **************************************************************************
-
-
+from pwem import ALIGN_2D
 from pwem.protocols import ProtClassify2D
 from pyworkflow.protocol.params import (PointerParam, FloatParam)
 
 from . import ProtCryosparcBase
-from ..convert import *
+from ..convert import (rowToAlignment, defineArgs, convertCs2Star,
+                       cryosparcToLocation)
 from ..utils import *
 from ..constants import *
 

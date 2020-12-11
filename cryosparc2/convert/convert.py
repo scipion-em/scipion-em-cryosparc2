@@ -17,23 +17,19 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-from __future__ import print_function
+
 import numpy
 import os
 import argparse
 import json
-import logging
 import sys
-import numpy as np
 import pandas as pd
 from glob import glob
 from os.path import join
 
 from pwem.emlib.image import ImageHandler
-from pyem import metadata
-from pyem import star
 from pwem.objects import (String, Integer, Transform, Particle,
-                          Coordinate, Acquisition, CTFModel, Float)
+                          Coordinate, Acquisition, CTFModel)
 from pyworkflow.object import ObjectWrap
 import pyworkflow.utils as pwutils
 from pwem.constants import *
@@ -42,63 +38,11 @@ import pyworkflow as pw
 from ..constants import *
 
 
-def convertCs2SQlite(args):
-    if args.input[0].endswith(".cs"):
-        print("Detected CryoSPARC 2+ .cs file")
-        cs = np.load(args.input[0])
-        try:
-            df = metadata.parse_cryosparc_2_cs(cs,
-                                               minphic=args.minphic,
-                                               boxsize=args.boxsize,
-                                               swapxy=args.swapxy)
-        except (KeyError, ValueError) as e:
-            print("A passthrough file may be required (check inside the "
-                  "cryoSPARC 2+ job directory)")
-            return 1
-    else:
-        print("Detected CryoSPARC 0.6.5 .csv file")
-        if len(args.input) > 1:
-            print("Only one file at a time supported for "
-                  "CryoSPARC 0.6.5 .csv format")
-            return 1
-        meta = metadata.parse_cryosparc_065_csv(
-            args.input[0])  # Read cryosparc metadata file.
-        df = metadata.cryosparc_065_csv2star(meta, args.minphic)
-
-    if args.cls is not None:
-        df = star.select_classes(df, args.cls)
-
-    if args.copy_micrograph_coordinates is not None:
-        coord_star = pd.concat(
-            (star.parse_star(inp, keep_index=False) for inp in
-             glob(args.copy_micrograph_coordinates)), join="inner")
-        star.augment_star_ucsf(coord_star)
-        star.augment_star_ucsf(df)
-        key = star.merge_key(df, coord_star)
-        print("Coordinates merge key: %s" % key)
-        if args.cached or key == star.Relion.IMAGE_NAME:
-            fields = star.Relion.MICROGRAPH_COORDS
-        else:
-            fields = star.Relion.MICROGRAPH_COORDS + [star.UCSF.IMAGE_INDEX,
-                                                      star.UCSF.IMAGE_PATH]
-        df = star.smart_merge(df, coord_star, fields=fields, key=key)
-        star.simplify_star_ucsf(df)
-
-    if args.micrograph_path is not None:
-        df = star.replace_micrograph_path(df, args.micrograph_path,
-                                          inplace=True)
-
-    if args.transform is not None:
-        r = np.array(json.loads(args.transform))
-        df = star.transform_star(df, r, inplace=True)
-
-    # Write Relion .star file with correct headers.
-    star.write_star(args.output, df, reindex=True)
-    print("Output fields: %s" % ", ".join(df.columns))
-    return 0
-
-
 def convertCs2Star(args):
+    import logging
+    from pyem import metadata
+    from pyem import star
+
     log = logging.getLogger('root')
     hdlr = logging.StreamHandler(sys.stdout)
     log.addHandler(hdlr)
@@ -106,7 +50,7 @@ def convertCs2Star(args):
     log.setLevel(logging.DEBUG)
     if args.input[0].endswith(".cs"):
         log.debug("Detected CryoSPARC 2+ .cs file")
-        cs = np.load(args.input[0])
+        cs = numpy.load(args.input[0])
         try:
             df = metadata.parse_cryosparc_2_cs(cs,
                                                minphic=args.minphic,
@@ -152,7 +96,7 @@ def convertCs2Star(args):
                                           inplace=True)
 
     if args.transform is not None:
-        r = np.array(json.loads(args.transform))
+        r = numpy.array(json.loads(args.transform))
         df = star.transform_star(df, r, inplace=True)
 
     # Write Relion .star file with correct headers.
