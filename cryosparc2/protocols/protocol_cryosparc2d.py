@@ -252,12 +252,15 @@ class ProtCryo2D(ProtCryosparcBase, ProtClassify2D):
         """
         self._initializeUtilsVariables()
         print(pwutils.yellowStr("Creating the output..."), flush=True)
-        _numberOfIter = str("_00" + str(self.numberOnlineEMIterator.get()))
-        if self.numberOnlineEMIterator.get() > 9:
-            _numberOfIter = str("_0" + str(self.numberOnlineEMIterator.get()))
+        _numberOfIter = self.numberOnlineEMIterator.get() + self.numberFinalIterator.get() - 1
+        _numberOfIterSuffix = str("_00" + str(self.numberOnlineEMIterator.get()))
+        if _numberOfIter > 9:
+            _numberOfIterSuffix = str("_0" + str(_numberOfIter))
+        if _numberOfIter > 99:
+            _numberOfIterSuffix = str("_" + str(_numberOfIter))
 
         csParticlesName = ("cryosparc_" + self.projectName.get() +
-                           "_" + self.runClass2D.get() + _numberOfIter +
+                           "_" + self.runClass2D.get() + _numberOfIterSuffix +
                            "_particles.cs")
         csFile = os.path.join(self.projectPath, self.projectName.get(),
                               self.runClass2D.get(), csParticlesName)
@@ -277,7 +280,7 @@ class ProtCryo2D(ProtCryosparcBase, ProtClassify2D):
         convertCs2Star(args)
 
         csClassAveragesName = ("cryosparc_" + self.projectName.get() + "_" +
-                               self.runClass2D.get() + _numberOfIter +
+                               self.runClass2D.get() + _numberOfIterSuffix +
                                "_class_averages.cs")
 
         csFile = os.path.join(self.projectPath, self.projectName.get(),
@@ -296,7 +299,7 @@ class ProtCryo2D(ProtCryosparcBase, ProtClassify2D):
 
         # Copy the mrc file to scipion output folder
         mrcFileName = ("cryosparc_" + self.projectName.get() + "_" +
-                       self.runClass2D.get() + _numberOfIter +
+                       self.runClass2D.get() + _numberOfIterSuffix +
                        "_class_averages.mrc")
 
         csFile = os.path.join(self.projectPath, self.projectName.get(),
