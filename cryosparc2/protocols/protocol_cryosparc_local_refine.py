@@ -25,15 +25,15 @@
 # *
 # **************************************************************************
 
-import ast
-
+from pwem import ALIGN_PROJ
 from pwem.protocols import ProtOperateParticles
 from pyworkflow.protocol.params import (PointerParam, FloatParam,
                                         LEVEL_ADVANCED)
 from pwem.objects import Volume, FSC
 
 from . import ProtCryosparcBase
-from ..convert import *
+from ..convert import (defineArgs, convertCs2Star, createItemMatrix,
+                       setCryosparcAttributes)
 from ..utils import *
 from ..constants import *
 

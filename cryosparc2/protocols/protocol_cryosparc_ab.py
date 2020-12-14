@@ -25,13 +25,15 @@
 # *  e-mail address 'scipion@cnb.csic.es'
 # *
 # **************************************************************************
+from pwem import ALIGN_PROJ
 from pyworkflow.protocol.params import (PointerParam, FloatParam,
                                         LEVEL_ADVANCED)
 from pwem.protocols import ProtInitialVolume, ProtClassify3D
-from pyworkflow.utils import replaceExt, createLink, removeExt
 
 from . import ProtCryosparcBase
-from ..convert import *
+from ..convert import (defineArgs, convertCs2Star, cryosparcToLocation,
+                       rowToAlignment)
+
 from ..utils import *
 from ..constants import *
 

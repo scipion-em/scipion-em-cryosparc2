@@ -27,11 +27,12 @@
 # **************************************************************************
 from pyworkflow.protocol.params import (PointerParam, FloatParam,
                                         LEVEL_ADVANCED)
-from pwem.objects import Volume, FSC
+from pwem.objects import Volume, FSC, ALIGN_PROJ
 from pwem.protocols import ProtRefine3D
 
 from . import ProtCryosparcBase
-from ..convert import *
+from ..convert import (defineArgs, convertCs2Star, createItemMatrix,
+                       setCryosparcAttributes)
 from ..utils import *
 from ..constants import *
 

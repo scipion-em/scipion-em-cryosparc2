@@ -30,7 +30,6 @@ from pyworkflow.protocol.params import (PointerParam, FloatParam,
                                         LEVEL_ADVANCED)
 
 from . import ProtCryosparcBase
-from ..convert import *
 from ..utils import *
 
 
