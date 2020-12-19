@@ -460,6 +460,18 @@ def clearJob(projectName, job):
     runCmd(clear_job_cmd, printCmd=False)
 
 
+def clearIntermediateResults(projectName, job):
+    """
+     Clear the intermediate result from a specific Job
+    :param projectName: the uid of the project that contains the job to clear
+    :param job: the uid of the job to clear
+    """
+    clear_int_results_cmd = (getCryosparcProgram() +
+                             ' %sclear_intermediate_results("%s", "%s")%s'
+                             % ("'", projectName, job, "'"))
+    runCmd(clear_int_results_cmd, printCmd=False)
+
+
 def getSystemInfo():
     """
     Returns system-related information related to the cryosparc app
@@ -484,7 +496,7 @@ def addComputeSectionParams(form, allowMultipleGPUs=True):
     """
     Add the compute settings section
     """
-    form.addParam('compute_use_ssd', BooleanParam, default=True,
+    form.addParam('compute_use_ssd', BooleanParam, default=False,
                   label='Cache particle images on SSD',
                   help='Whether or not to copy particle images to the local '
                        'SSD before running. The cache is persistent, so after '
