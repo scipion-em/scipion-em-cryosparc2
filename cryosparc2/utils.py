@@ -39,7 +39,8 @@ from pyworkflow.protocol.params import (EnumParam, IntParam, Positive,
                                         GPU_LIST)
 from . import Plugin
 from .constants import (CS_SYM_NAME, SYM_DIHEDRAL_Y, CRYOSPARC_USER,
-                        CRYO_PROJECTS_DIR, V2_14_0, V2_13_0, CRYOSPARC_HOME)
+                        CRYO_PROJECTS_DIR, V2_14_0, V2_13_0, CRYOSPARC_HOME,
+                        CRYOSPARC_USE_SSD)
 
 
 STATUS_FAILED = "failed"
@@ -496,7 +497,11 @@ def addComputeSectionParams(form, allowMultipleGPUs=True):
     """
     Add the compute settings section
     """
-    form.addParam('compute_use_ssd', BooleanParam, default=False,
+    computeSSD = os.getenv(CRYOSPARC_USE_SSD)
+    if computeSSD is None:
+        computeSSD = False
+
+    form.addParam('compute_use_ssd', BooleanParam, default=computeSSD,
                   label='Cache particle images on SSD',
                   help='Whether or not to copy particle images to the local '
                        'SSD before running. The cache is persistent, so after '
