@@ -38,6 +38,7 @@ CRYOSPARC_DIR = 'CRYOSPARC_DIR'  # Legacy, replaced by CRYOSPARC_HOME
 # Optional: Folder where cryosparc projects will be created
 CRYO_PROJECTS_DIR = 'CRYO_PROJECTS_DIR'
 CRYOSPARC_USER = 'CRYOSPARC_USER'
+CRYOSPARC_USE_SSD = 'CRYOSPARC_USE_SSD'
 
 # Supported versions:
 V2_5_0 = 'v2.5.0'

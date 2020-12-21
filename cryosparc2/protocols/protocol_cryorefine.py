@@ -566,6 +566,9 @@ class ProtCryoSparcRefine3D(ProtCryosparcBase, ProtRefine3D):
                          "An error occurred in the Refinement process. "
                          "Please, go to cryosPARC software for more "
                          "details.")
+        print(pwutils.yellowStr("Removing intermediate results..."), flush=True)
+        self.clearIntResults = clearIntermediateResults(self.projectName.get(),
+                                                        self.runRefine.get())
 
 
 

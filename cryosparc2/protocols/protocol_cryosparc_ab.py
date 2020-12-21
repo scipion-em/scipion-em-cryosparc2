@@ -499,3 +499,6 @@ class ProtCryoSparcInitialModel(ProtCryosparcBase, ProtInitialVolume,
                          "An error occurred in the initial volume process. "
                          "Please, go to cryosPARC software for more "
                          "details.")
+        print(pwutils.yellowStr("Removing intermediate results..."), flush=True)
+        self.clearIntResults = clearIntermediateResults(self.projectName.get(),
+                                                        self.runAbinit.get())
