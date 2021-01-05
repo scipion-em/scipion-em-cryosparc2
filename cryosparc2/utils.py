@@ -40,8 +40,11 @@ from pyworkflow.protocol.params import (EnumParam, IntParam, Positive,
 from . import Plugin
 from .constants import (CS_SYM_NAME, SYM_DIHEDRAL_Y, CRYOSPARC_USER,
                         CRYO_PROJECTS_DIR, V2_14_0, V2_13_0, CRYOSPARC_HOME,
-                        CRYOSPARC_USE_SSD)
+                        CRYOSPARC_USE_SSD, V_UNKNOWN)
 
+VERSION = 'version'
+
+CRYOSPARC__MASTER = 'cryosparc2_master'
 
 STATUS_FAILED = "failed"
 STATUS_ABORTED = "aborted"
@@ -56,12 +59,15 @@ STOP_STATUSES = [STATUS_ABORTED, STATUS_COMPLETED, STATUS_FAILED, STATUS_KILLED]
 ACTIVE_STATUSES = [STATUS_QUEUED, STATUS_RUNNING, STATUS_STARTED,
                    STATUS_LAUNCHED]
 
+# Module variables
+_csVersion = None  # Lazy variable: never use it directly. Use getCryosparcVersion instead
 
-def getCryosparcDir():
+
+def getCryosparcDir(*paths):
     """
     Get the root directory where cryoSPARC code and dependencies are installed.
     """
-    return Plugin.getHome()
+    return Plugin.getHome(*paths)
 
 
 def getCryosparcProgram(mode="cli"):
@@ -71,8 +77,7 @@ def getCryosparcProgram(mode="cli"):
     csDir = getCryosparcDir()
 
     if csDir is not None:
-        return os.path.join(csDir,
-                            'cryosparc2_master/bin/cryosparcm %s' % mode)
+        return os.path.join(csDir, CRYOSPARC__MASTER, "bin", 'cryosparcm %s' % mode)
 
     return None
 
@@ -106,16 +111,14 @@ def cryosparcValidate():
     Validates some cryo properties that must be satisfy
     """
     if not cryosparcExists():
-
-        return["cryoSPARC software not found at %s. Please, fill %s variable in scipion's config file."
-                   % (getCryosparcDir(), CRYOSPARC_HOME)]
+        return ["cryoSPARC software not found at %s. Please, fill %s variable in scipion's config file."
+                % (getCryosparcDir(), CRYOSPARC_HOME)]
 
     if not isCryosparcRunning():
-
         return ['Failed to connect to cryoSPARC. Please, make sure cryoSPARC is running.\n'
                 'Running: *%s* might fix this.' % getCryosparcProgram("start")]
 
-    cryosparcVersion = parse_version(getCryosparcEnvInformation())
+    cryosparcVersion = parse_version(getCryosparcVersion())
     supportedVersions = Plugin.getSupportedVersions()
     minSupportedVersion = parse_version(supportedVersions[0])
     maxSupportedVersion = parse_version(supportedVersions[-1])
@@ -129,11 +132,11 @@ def cryosparcValidate():
 
     elif maxSupportedVersion < cryosparcVersion:
         print(pwutils.yellowStr("cryoSPARC %s is newer than those we've tested %s. Instead of blocking the "
-                             "execution, we are allowing this to run assuming compatibility is not broken."
-                             "If it fails, please consider:\n A - upgrade the plugin, there might be an update.\n "
-                             "B - downgrade cryosparc version.\n C - Contact plugin maintainers"
-                             " at https://github.com/scipion-em/scipion-em-cryosparc2"
-                             % (cryosparcVersion, str(supportedVersions).replace('\'', ''))))
+                                "execution, we are allowing this to run assuming compatibility is not broken."
+                                "If it fails, please consider:\n A - upgrade the plugin, there might be an update.\n "
+                                "B - downgrade cryosparc version.\n C - Contact plugin maintainers"
+                                " at https://github.com/scipion-em/scipion-em-cryosparc2"
+                                % (cryosparcVersion, str(supportedVersions).replace('\'', ''))))
 
     return []
 
@@ -148,14 +151,37 @@ def gpusValidate(gpuList, checkSingleGPU=False):
     return []
 
 
-def getCryosparcEnvInformation(envVar='version'):
+def getCryosparcEnvInformation(envVar=VERSION):
     """
-    Get the cryosparc installed version
+    Get the cryosparc environment information
     """
     system_info = getSystemInfo()
     dictionary = ast.literal_eval(system_info[1])
     envVariable = str(dictionary[envVar])
     return envVariable
+
+
+def getCryosparcVersion():
+    """ Gets cryosparc version 1st, from a variable if populated,
+     2nd from the version txt file, if fails, asks CS using getCryosparcEnvInformation"""
+    global _csVersion
+    if _csVersion is None:
+        try:
+            _csVersion = _getCryosparcVersionFromFile()
+        except Exception:
+            try:
+                _csVersion = getCryosparcEnvInformation(VERSION)
+            except Exception:
+                print("Couldn't get Cryosparc's version. Please review your config (%s)" % Plugin.getUrl())
+                _csVersion = V_UNKNOWN
+    return _csVersion
+
+
+def _getCryosparcVersionFromFile():
+    versionFile = getCryosparcDir(CRYOSPARC__MASTER, "version")
+    # read the version file
+    with open(versionFile, "r") as fh:
+        return fh.readline()
 
 
 def getCryosparcUser():
@@ -190,8 +216,8 @@ def getProjectName(scipionProjectName):
 def getProjectPath(projectDir):
     """
     Gets all projects of given path .
-    projectDir: Folder path to get subfolders.
-    returns: Set with all subfolders.
+    projectDir: Folder path to get sub folders.
+    returns: Set with all sub folders.
     """
     folderPaths = os.listdir(projectDir)
     return folderPaths
@@ -259,14 +285,14 @@ def doImportParticlesStar(protocol):
     print(pwutils.yellowStr("Importing particles..."), flush=True)
     className = "import_particles"
     params = {"particle_meta_path": str(os.path.join(os.getcwd(),
-                                        protocol._getFileName('input_particles'))),
+                                                     protocol._getFileName('input_particles'))),
               "particle_blob_path": str(os.path.join(os.getcwd(),
-                                        protocol._getTmpPath())),
+                                                     protocol._getTmpPath())),
               "psize_A": str(protocol._getInputParticles().getSamplingRate())
               }
 
     import_particles = enqueueJob(className, protocol.projectName, protocol.workSpaceName,
-                        str(params).replace('\'', '"'), '{}', protocol.lane)
+                                  str(params).replace('\'', '"'), '{}', protocol.lane)
 
     waitForCryosparc(protocol.projectName.get(), import_particles.get(),
                      "An error occurred importing particles. "
@@ -288,9 +314,9 @@ def doImportVolumes(protocol, refVolume, volType, msg):
                   protocol._getInputParticles().getSamplingRate())}
 
     importedVolume = enqueueJob(className, protocol.projectName, protocol.workSpaceName,
-                 str(params).replace('\'', '"'), '{}', protocol.lane)
+                                str(params).replace('\'', '"'), '{}', protocol.lane)
 
-    waitForCryosparc(protocol.projectName.get(), importedVolume.get() ,
+    waitForCryosparc(protocol.projectName.get(), importedVolume.get(),
                      "An error occurred importing the volume. "
                      "Please, go to cryosPARC software for more "
                      "details."
@@ -299,7 +325,7 @@ def doImportVolumes(protocol, refVolume, volType, msg):
     return importedVolume
 
 
-def doJob(jobType, projectName, workSpaceName, params, input_group_conect):
+def doJob(jobType, projectName, workSpaceName, params, input_group_connect):
     """
     do_job(job_type, puid='P1', wuid='W1', uuid='devuser', params={},
            input_group_connects={})
@@ -307,12 +333,12 @@ def doJob(jobType, projectName, workSpaceName, params, input_group_conect):
     do_job_cmd = (getCryosparcProgram() +
                   ' %sdo_job("%s","%s","%s", "%s", %s, %s)%s' %
                   ("'", jobType, projectName, workSpaceName, getCryosparcUser(),
-                   params, input_group_conect, "'"))
+                   params, input_group_connect, "'"))
 
     return runCmd(do_job_cmd)
 
 
-def enqueueJob(jobType, projectName, workSpaceName, params, input_group_conect,
+def enqueueJob(jobType, projectName, workSpaceName, params, input_group_connect,
                lane, gpusToUse=False, group_connect=None):
     """
     make_job(job_type, project_uid, workspace_uid, user_id,
@@ -321,17 +347,17 @@ def enqueueJob(jobType, projectName, workSpaceName, params, input_group_conect,
 
     # Create a compatible job to versions < v2.14.X
     make_job_cmd = (getCryosparcProgram() +
-                  ' %smake_job("%s","%s","%s", "%s", "None", %s, %s)%s' %
-                  ("'", jobType, projectName, workSpaceName, getCryosparcUser(),
-                   params, input_group_conect, "'"))
+                    ' %smake_job("%s","%s","%s", "%s", "None", %s, %s)%s' %
+                    ("'", jobType, projectName, workSpaceName, getCryosparcUser(),
+                     params, input_group_connect, "'"))
 
     # Create a compatible job to versions >= v2.14.X
-    if parse_version(getCryosparcEnvInformation()) >= parse_version(V2_14_0):
+    if parse_version(getCryosparcVersion()) >= parse_version(V2_14_0):
         make_job_cmd = (getCryosparcProgram() +
                         ' %smake_job("%s","%s","%s", "%s", "None", "None", %s, %s)%s' %
                         ("'", jobType, projectName, workSpaceName,
                          getCryosparcUser(),
-                         params, input_group_conect, "'"))
+                         params, input_group_connect, "'"))
 
     exitCode, cmdOutput = runCmd(make_job_cmd)
 
@@ -342,14 +368,14 @@ def enqueueJob(jobType, projectName, workSpaceName, params, input_group_conect,
         for key, valuesList in group_connect.items():
             for value in valuesList:
                 job_connect_group = (getCryosparcProgram() +
-                            ' %sjob_connect_group("%s", "%s", "%s")%s' %
-                            ("'", projectName, value, (str(jobId) + "." + key) ,"'"))
+                                     ' %sjob_connect_group("%s", "%s", "%s")%s' %
+                                     ("'", projectName, value, (str(jobId) + "." + key), "'"))
                 runCmd(job_connect_group, printCmd=False)
 
     print(pwutils.greenStr("Got %s for JobId" % jobId), flush=True)
 
     # Queue the job
-    if parse_version(getCryosparcEnvInformation()) < parse_version(V2_13_0):
+    if parse_version(getCryosparcVersion()) < parse_version(V2_13_0):
         enqueue_job_cmd = (getCryosparcProgram() +
                            ' %senqueue_job("%s","%s","%s")%s' %
                            ("'", projectName, jobId,
@@ -370,7 +396,8 @@ def enqueueJob(jobType, projectName, workSpaceName, params, input_group_conect,
 
 def runCmd(cmd, printCmd=True):
     """ Runs a command and check its exit code. If different than 0 it raises an exception
-    :parameter cmd command to run"""
+    :parameter cmd command to run
+    :parameter printCmd (default True) prints the command"""
 
     if printCmd:
         print(pwutils.greenStr("Running: %s" % cmd), flush=True)
@@ -427,7 +454,6 @@ def waitJob(projectName, job):
 
 
 def get_job_streamlog(projectName, job, fileName):
-
     get_job_streamlog_cmd = (getCryosparcProgram() +
                              ' %sget_job_streamlog("%s", "%s")%s%s'
                              % ("'", projectName, job, "'", ">" + fileName))
@@ -449,15 +475,15 @@ def killJob(projectName, job):
 
 def clearJob(projectName, job):
     """
-         Clear a Job (if queued) to get it back to builing state (do not clear
+         Clear a Job (if queued) to get it back to building state (do not clear
          params or inputs)
         :param projectName: the uid of the project that contains the job to clear
         :param job: the uid of the job to clear
         ** IMPORTANT: This method can be launch only if the job is queued
         """
     clear_job_cmd = (getCryosparcProgram() +
-                    ' %sclear_job("%s", "%s")%s'
-                    % ("'", projectName, job, "'"))
+                     ' %sclear_job("%s", "%s")%s'
+                     % ("'", projectName, job, "'"))
     runCmd(clear_job_cmd, printCmd=False)
 
 
@@ -511,21 +537,21 @@ def addComputeSectionParams(form, allowMultipleGPUs=True):
 
     # This is here because getCryosparcEnvInformation is failing in some machines
     try:
-        versionAllowGPUs = parse_version(getCryosparcEnvInformation()) >= parse_version(V2_13_0)
+        versionAllowGPUs = parse_version(getCryosparcVersion()) >= parse_version(V2_13_0)
     # Code is failing to get CS info, either stop or some error
-    except Exception as e:
+    except Exception:
         # ... we assume is a modern version
         versionAllowGPUs = True
 
     if versionAllowGPUs:
         if allowMultipleGPUs:
             form.addHidden(GPU_LIST, StringParam, default='0',
-                          label='Choose GPU IDs:', validators=[NonEmpty],
-                          help='This argument is necessary. By default, the '
-                               'protocol will attempt to launch on GPU 0. You can '
-                               'override the default allocation by providing a '
-                               'list of which GPUs (0,1,2,3, etc) to use. '
-                               'GPU are separated by ",". For example: "0,1,5"')
+                           label='Choose GPU IDs:', validators=[NonEmpty],
+                           help='This argument is necessary. By default, the '
+                                'protocol will attempt to launch on GPU 0. You can '
+                                'override the default allocation by providing a '
+                                'list of which GPUs (0,1,2,3, etc) to use. '
+                                'GPU are separated by ",". For example: "0,1,5"')
         else:
             form.addHidden(GPU_LIST, StringParam, default='0',
                            label='Choose GPU ID:', validators=[NonEmpty],
@@ -568,7 +594,7 @@ def addSymmetryParam(form):
                   )
     form.addParam('symmetryOrder', IntParam, default=1,
                   condition='symmetryGroup==%d or symmetryGroup==%d' %
-                            (SYM_DIHEDRAL_Y-1, SYM_CYCLIC),
+                            (SYM_DIHEDRAL_Y - 1, SYM_CYCLIC),
                   label='Symmetry Order',
                   validators=[Positive],
                   help='Order of symmetry.')
@@ -598,4 +624,4 @@ def calculateNewSamplingRate(newDims, previousSR, previousDims):
     """
     pX = previousDims[0]
     nX = newDims[0]
-    return previousSR*pX/nX
+    return previousSR * pX / nX

@@ -41,6 +41,7 @@ CRYOSPARC_USER = 'CRYOSPARC_USER'
 CRYOSPARC_USE_SSD = 'CRYOSPARC_USE_SSD'
 
 # Supported versions:
+V_UNKNOWN ='v0.0.0'
 V2_5_0 = 'v2.5.0'
 V2_8_0 = 'v2.8.0'
 V2_9_0 = 'v2.9.0'
