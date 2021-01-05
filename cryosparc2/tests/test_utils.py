@@ -2,11 +2,12 @@ import getpass
 import unittest
 from unittest.mock import patch
 
-from cryosparc2 import V2_14_2
+from cryosparc2 import V2_14_2, V_UNKNOWN
 from cryosparc2.utils import (cryosparcValidate, cryosparcExists,
                               isCryosparcRunning, calculateNewSamplingRate,
-                              getProjectName)
+                              getProjectName, getCryosparcVersion)
 
+import cryosparc2.utils as csutils
 
 class TestUtils(unittest.TestCase):
 
@@ -63,7 +64,7 @@ class TestUtils(unittest.TestCase):
                 running.return_value = True
 
                 # Installed version:
-                with patch('cryosparc2.utils.getCryosparcEnvInformation') as getVersion:
+                with patch('cryosparc2.utils.getCryosparcVersion') as getVersion:
 
                     # Low version
                     getVersion.return_value = "1.0.0"
@@ -94,6 +95,62 @@ class TestUtils(unittest.TestCase):
 
         sr = calculateNewSamplingRate((3, 3, 3), 1.5, (4, 4, 4))
         self.assertEqual(sr, 2, "Wrong sampling rate conversion 3")
+
+    def testGetVersion(self):
+
+        VERSION_FROM_FILE = "1.2.3"
+        VERSION_FROM_ENV = "3.2.1"
+
+        # Installed version:
+        with patch('cryosparc2.utils.getCryosparcEnvInformation') as getEnvInfo:
+            with patch('cryosparc2.utils._getCryosparcVersionFromFile') as getFromFile:
+
+                # Set up the mocks
+                getEnvInfo.return_value = VERSION_FROM_ENV
+                getFromFile.return_value = VERSION_FROM_FILE
+
+                # Call getting version from file
+                version = getCryosparcVersion()
+                self.assertEqual(version, VERSION_FROM_FILE)
+                version = getCryosparcVersion()
+                self.assertEqual(version, VERSION_FROM_FILE)
+                getFromFile.assert_called_once()
+
+                # Reset
+                csutils._csVersion = None
+                getFromFile.reset_mock()
+                getFromFile.side_effect = Exception("version file missing")
+
+                # Call getting version from env
+                getFromFile.assert_not_called()
+                version = getCryosparcVersion()
+                self.assertEqual(version, VERSION_FROM_ENV)
+                getFromFile.assert_called_once()
+                getEnvInfo.assert_called_once()
+
+                version = getCryosparcVersion()
+                self.assertEqual(version, VERSION_FROM_ENV)
+                getFromFile.assert_called_once()
+                getEnvInfo.assert_called_once()
+
+                # Reset
+                csutils._csVersion = None
+                getFromFile.reset_mock()
+                getFromFile.side_effect = Exception('version file missing')
+                getEnvInfo.reset_mock()
+                getEnvInfo.side_effect = Exception('Env fails')
+
+                # Call getting version from env
+                version = getCryosparcVersion()
+                self.assertEqual(version, V_UNKNOWN)
+                getFromFile.assert_called_once()
+                getEnvInfo.assert_called_once()
+
+                version = getCryosparcVersion()
+                self.assertEqual(version, V_UNKNOWN)
+                getFromFile.assert_called_once()
+                getEnvInfo.assert_called_once()
+
 
 if __name__ == '__main__':
     unittest.main()

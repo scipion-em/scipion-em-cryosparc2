@@ -31,12 +31,13 @@ from pyworkflow.utils import Environ
 
 from .constants import *
 
-__version__ = '3.1.9'
+__version__ = '3.1.10'
 _references = ['Punjani2017', 'Brubaker2017', 'daniel_asarnow_2019_3576630']
 _logo = 'cryosparc2_logo.png'
 
 
 class Plugin(em.Plugin):
+    _url = "https://github.com/scipion-em/scipion-em-cryosparc2"
     _homeVar = CRYOSPARC_HOME
     _pathVars = [CRYOSPARC_HOME]
     _supportedVersions = [V2_5_0, V2_8_0, V2_9_0, V2_11_0, V2_12_0, V2_12_2,
@@ -59,10 +60,6 @@ class Plugin(em.Plugin):
         }, position=Environ.BEGIN)
 
         return environ
-
-    @classmethod
-    def isVersionActive(cls):
-        return cls.getActiveVersion().startswith(V2_15_0)
 
     @classmethod
     def defineBinaries(cls, env):
