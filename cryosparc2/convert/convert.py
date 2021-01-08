@@ -33,7 +33,6 @@ from pwem.objects import (String, Integer, Transform, Particle,
 from pyworkflow.object import ObjectWrap
 import pyworkflow.utils as pwutils
 from pwem.constants import *
-import pyworkflow as pw
 
 from ..constants import *
 
@@ -218,7 +217,7 @@ def imageToRow(img, imgRow, imgLabel=md.RLN_IMAGE_NAME, **kwargs):
     filesDict = kwargs.get('filesDict', {})
     filename = filesDict.get(fn, fn)
 
-    imgRow.setValue(imgLabel, locationTocCryosparc(index, filename))
+    imgRow.setValue(imgLabel, locationToCryosparc(index, filename))
 
     if kwargs.get('writeCtf', True) and img.hasCTF():
         ctfModelToRow(img.getCTF(), imgRow)
@@ -261,7 +260,7 @@ def ctfModelToRow(ctfModel, ctfRow):
     objectToRow(ctfModel, ctfRow, CTF_DICT, extraLabels=CTF_EXTRA_LABELS)
 
 
-def locationTocCryosparc(index, filename):
+def locationToCryosparc(index, filename):
     """ Convert an index and filename location
     to a string with @ as expected in cryoSPARC.
     """
@@ -383,7 +382,7 @@ def convertBinaryVol(vol, outputDir):
         """ Convert from a format that is not read by Relion
         to mrc format.
         """
-        newFn = join(outputDir, pw.utils.replaceBaseExt(fn, 'mrc'))
+        newFn = join(outputDir, pwutils.replaceBaseExt(fn, 'mrc'))
         ih.convert(fn, newFn)
         return newFn
 
@@ -475,16 +474,16 @@ def convertBinaryFiles(imgSet, outputDir, extension='mrcs'):
     outputRoot = os.path.join(outputDir, 'input')
     # Get the extension without the dot
     stackFiles = imgSet.getFiles()
-    ext = pw.utils.getExt(next(iter(stackFiles)))[1:]
-    rootDir = pw.utils.commonPath(list(stackFiles))
+    ext = pwutils.getExt(next(iter(stackFiles)))[1:]
+    rootDir = pwutils.commonPath(list(stackFiles))
 
     def getUniqueFileName(fn, extension):
         """ Get an unique file for either link or convert files.
         It is possible that the base name overlap if they come
         from different runs. (like particles.mrcs after relion preprocess)
         """
-        newFn = join(outputRoot, pw.utils.replaceBaseExt(fn, extension))
-        newRoot = pw.utils.removeExt(newFn)
+        newFn = join(outputRoot, pwutils.replaceBaseExt(fn, extension))
+        newRoot = pwutils.removeExt(newFn)
 
         values = filesDict.values()
         counter = 1
@@ -501,7 +500,7 @@ def convertBinaryFiles(imgSet, outputDir, extension='mrcs'):
         """
         newFn = getUniqueFileName(fn, extension)
         if not os.path.exists(newFn):
-            pw.utils.createLink(fn, newFn)
+            pwutils.createLink(fn, newFn)
             print("   %s -> %s" % (newFn, fn))
         return newFn
 
@@ -524,7 +523,7 @@ def convertBinaryFiles(imgSet, outputDir, extension='mrcs'):
         print("convertBinaryFiles: creating soft links.")
         print("   Root: %s -> %s" % (outputRoot, rootDir))
         mapFunc = replaceRoot
-        pw.utils.createLink(rootDir, outputRoot)
+        pwutils.createLink(rootDir, outputRoot)
     elif ext == 'mrc' and extension == 'mrcs':
         print("convertBinaryFiles: creating soft links (mrcs -> mrc).")
         mapFunc = createBinaryLink
@@ -536,7 +535,7 @@ def convertBinaryFiles(imgSet, outputDir, extension='mrcs'):
         mapFunc = None
 
     if mapFunc is not None:
-        pw.utils.makePath(outputRoot)
+        pwutils.makePath(outputRoot)
         for fn in stackFiles:
             newFn = mapFunc(fn)  # convert or link
             filesDict[fn] = newFn  # map new filename
