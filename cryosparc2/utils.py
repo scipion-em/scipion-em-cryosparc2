@@ -40,7 +40,7 @@ from pyworkflow.protocol.params import (EnumParam, IntParam, Positive,
 from . import Plugin
 from .constants import (CS_SYM_NAME, SYM_DIHEDRAL_Y, CRYOSPARC_USER,
                         CRYO_PROJECTS_DIR, V2_14_0, V2_13_0, CRYOSPARC_HOME,
-                        CRYOSPARC_USE_SSD, V_UNKNOWN)
+                        CRYOSPARC_USE_SSD, V_UNKNOWN, V3_0_0, V2_15_0)
 
 VERSION = 'version'
 
@@ -344,7 +344,7 @@ def enqueueJob(jobType, projectName, workSpaceName, params, input_group_connect,
     make_job(job_type, project_uid, workspace_uid, user_id,
              created_by_job_uid=None, params={}, input_group_connects={})
     """
-
+    cryosparcVersion = getCryosparcVersion()
     # Create a compatible job to versions < v2.14.X
     make_job_cmd = (getCryosparcProgram() +
                     ' %smake_job("%s","%s","%s", "%s", "None", %s, %s)%s' %
@@ -352,12 +352,21 @@ def enqueueJob(jobType, projectName, workSpaceName, params, input_group_connect,
                      params, input_group_connect, "'"))
 
     # Create a compatible job to versions >= v2.14.X
-    if parse_version(getCryosparcVersion()) >= parse_version(V2_14_0):
+    if parse_version(cryosparcVersion) >= parse_version(V2_14_0):
         make_job_cmd = (getCryosparcProgram() +
                         ' %smake_job("%s","%s","%s", "%s", "None", "None", %s, %s)%s' %
                         ("'", jobType, projectName, workSpaceName,
                          getCryosparcUser(),
                          params, input_group_connect, "'"))
+
+    # Create a compatible job to versions >= v3.0.X
+    if parse_version(cryosparcVersion) >= parse_version(V3_0_0):
+        make_job_cmd = (getCryosparcProgram() +
+                        ' %smake_job("%s","%s","%s", "%s", "None", "None", %s, %s, "False", "None")%s' %
+                        ("'", jobType, projectName, workSpaceName,
+                         getCryosparcUser(),
+                         params, input_group_connect, "'"))
+
 
     exitCode, cmdOutput = runCmd(make_job_cmd)
 
@@ -375,12 +384,13 @@ def enqueueJob(jobType, projectName, workSpaceName, params, input_group_connect,
     print(pwutils.greenStr("Got %s for JobId" % jobId), flush=True)
 
     # Queue the job
-    if parse_version(getCryosparcVersion()) < parse_version(V2_13_0):
+    if parse_version(cryosparcVersion) < parse_version(V2_13_0):
         enqueue_job_cmd = (getCryosparcProgram() +
                            ' %senqueue_job("%s","%s","%s")%s' %
                            ("'", projectName, jobId,
                             lane, "'"))
-    else:
+
+    elif parse_version(cryosparcVersion) <= parse_version(V2_15_0):
         hostname = getCryosparcEnvInformation('master_hostname')
         if gpusToUse:
             gpusToUse = str(gpusToUse)
@@ -388,6 +398,17 @@ def enqueueJob(jobType, projectName, workSpaceName, params, input_group_connect,
                            ' %senqueue_job("%s","%s","%s", "%s", %s)%s' %
                            ("'", projectName, jobId,
                             lane, hostname, gpusToUse, "'"))
+
+    elif parse_version(cryosparcVersion) >= parse_version(V3_0_0):
+        hostname = getCryosparcEnvInformation('master_hostname')
+        if gpusToUse:
+            gpusToUse = str(gpusToUse)
+        no_check_inputs_ready = False
+        enqueue_job_cmd = (getCryosparcProgram() +
+                           ' %senqueue_job("%s","%s","%s", "%s", %s, "%s")%s' %
+                           ("'", projectName, jobId,
+                            lane, hostname, gpusToUse,
+                            no_check_inputs_ready, "'"))
 
     runCmd(enqueue_job_cmd)
 
