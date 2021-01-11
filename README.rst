@@ -21,6 +21,17 @@ You will need to use `3.0.0 <https://scipion-em.github.io/docs/release-3.0.0/doc
 * **Global CTF Refinement (per-group beam tilt, trefoil, spherical aberration, tetrafoil)**: Global CTF Refinement performs per-exposure-group CTF parameter refinement of higher-order aberrations, against a given 3D reference.
 * **Sharppening**: Sharpen a volume following refinement.
 
+
+**Plugin Versions**
+===================
+
+**v3.2.1**
+----------
+January 8, 2021
+
+**new**: Compatibility with cryoSPARC v3.0 and v3.0.1
+
+
 **Installing the plugin**
 =========================
 
