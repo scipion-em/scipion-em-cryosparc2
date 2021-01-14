@@ -27,11 +27,11 @@
 
 import os
 import pwem as em
-from pyworkflow.utils import Environ
+import pyworkflow.utils as pwutils
 
 from .constants import *
 
-__version__ = '3.2.1'
+__version__ = '3.2.2'
 _references = ['Punjani2017', 'Brubaker2017', 'daniel_asarnow_2019_3576630']
 _logo = 'cryosparc2_logo.png'
 
@@ -52,13 +52,13 @@ class Plugin(em.Plugin):
     @classmethod
     def getEnviron(cls):
         """ Setup the environment variables needed to launch cryoSparc. """
-        environ = Environ(os.environ)
+        environ = pwutils.Environ(os.environ)
 
         environ.update({
             'PATH': Plugin.getHome(),
             'LD_LIBRARY_PATH': str.join(cls.getHome(), 'cryosparclib')
                                + ":" + cls.getHome(),
-        }, position=Environ.BEGIN)
+        }, position=pwutils.Environ.BEGIN)
 
         return environ
 

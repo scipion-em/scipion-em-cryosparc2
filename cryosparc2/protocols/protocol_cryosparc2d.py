@@ -25,18 +25,22 @@
 # *  e-mail address 'scipion@cnb.csic.es'
 # *
 # **************************************************************************
+import os
+import pwem.protocols as pwprot
 from pwem import ALIGN_2D
-from pwem.protocols import ProtClassify2D
-from pyworkflow.protocol.params import (PointerParam, FloatParam)
+from pyworkflow.protocol.params import (PointerParam, FloatParam, IntParam,
+                                        BooleanParam, Positive)
+import pyworkflow.utils as pwutils
 
-from . import ProtCryosparcBase
+from .protocol_base import ProtCryosparcBase
 from ..convert import (rowToAlignment, defineArgs, convertCs2Star,
                        cryosparcToLocation)
-from ..utils import *
+from ..utils import (addComputeSectionParams, cryosparcValidate, gpusValidate,
+                     enqueueJob, waitForCryosparc, clearIntermediateResults)
 from ..constants import *
 
 
-class ProtCryo2D(ProtCryosparcBase, ProtClassify2D):
+class ProtCryo2D(ProtCryosparcBase, pwprot.ProtClassify2D):
     """ Wrapper to CryoSparc 2D clustering program.
         Classify particles into multiple 2D classes to facilitate stack cleaning
         and removal of junk particles. Also useful as a sanity check to
@@ -46,7 +50,7 @@ class ProtCryo2D(ProtCryosparcBase, ProtClassify2D):
     IS_2D = True
     
     def __init__(self, **args):
-        ProtClassify2D.__init__(self, **args)
+        pwprot.ProtClassify2D.__init__(self, **args)
         if self.numberOfMpi.get() < 2:
             self.numberOfMpi.set(2)
     

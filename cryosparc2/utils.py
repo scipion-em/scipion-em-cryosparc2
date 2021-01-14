@@ -26,17 +26,13 @@
 # **************************************************************************
 import getpass
 import os
-import ast
-import subprocess
 from pkg_resources import parse_version
+
 import pyworkflow.utils as pwutils
-from pyworkflow.object import String
 from pwem.constants import SCIPION_SYM_NAME
 from pwem.constants import (SYM_CYCLIC, SYM_TETRAHEDRAL,
                             SYM_OCTAHEDRAL, SYM_I222, SYM_I222r)
-from pyworkflow.protocol.params import (EnumParam, IntParam, Positive,
-                                        BooleanParam, StringParam, NonEmpty,
-                                        GPU_LIST)
+
 from . import Plugin
 from .constants import (CS_SYM_NAME, SYM_DIHEDRAL_Y, CRYOSPARC_USER,
                         CRYO_PROJECTS_DIR, V2_14_0, V2_13_0, CRYOSPARC_HOME,
@@ -96,6 +92,7 @@ def isCryosparcRunning():
     Determine if cryosparc services are running
     :returns True if running, false otherwise
     """
+    import subprocess
     status = -1
     if getCryosparcProgram() is not None:
         test_conection_cmd = (getCryosparcProgram() +
@@ -155,6 +152,7 @@ def getCryosparcEnvInformation(envVar=VERSION):
     """
     Get the cryosparc environment information
     """
+    import ast
     system_info = getSystemInfo()
     dictionary = ast.literal_eval(system_info[1])
     envVariable = str(dictionary[envVar])
@@ -344,6 +342,8 @@ def enqueueJob(jobType, projectName, workSpaceName, params, input_group_connect,
     make_job(job_type, project_uid, workspace_uid, user_id,
              created_by_job_uid=None, params={}, input_group_connects={})
     """
+    from pyworkflow.object import String
+
     cryosparcVersion = getCryosparcVersion()
     # Create a compatible job to versions < v2.14.X
     make_job_cmd = (getCryosparcProgram() +
@@ -419,7 +419,7 @@ def runCmd(cmd, printCmd=True):
     """ Runs a command and check its exit code. If different than 0 it raises an exception
     :parameter cmd command to run
     :parameter printCmd (default True) prints the command"""
-
+    import subprocess
     if printCmd:
         print(pwutils.greenStr("Running: %s" % cmd), flush=True)
     exitCode, cmdOutput = subprocess.getstatusoutput(cmd)
@@ -544,6 +544,9 @@ def addComputeSectionParams(form, allowMultipleGPUs=True):
     """
     Add the compute settings section
     """
+    from pyworkflow.protocol.params import (EnumParam, IntParam, Positive,
+                                            BooleanParam, StringParam, NonEmpty,
+                                            GPU_LIST)
     computeSSD = os.getenv(CRYOSPARC_USE_SSD)
     if computeSSD is None:
         computeSSD = False
@@ -592,6 +595,7 @@ def addSymmetryParam(form):
     :param form:
     :return:
     """
+    from pyworkflow.protocol.params import (EnumParam, IntParam, Positive)
     form.addParam('symmetryGroup', EnumParam,
                   choices=[CS_SYM_NAME[SYM_CYCLIC] +
                            " (" + SCIPION_SYM_NAME[SYM_CYCLIC] + ")",

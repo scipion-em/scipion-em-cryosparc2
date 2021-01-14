@@ -18,14 +18,11 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import numpy
+import numpy as np
 import os
 import argparse
 import json
 import sys
-import pandas as pd
-from glob import glob
-from os.path import join
 
 from pwem.emlib.image import ImageHandler
 from pwem.objects import (String, Integer, Transform, Particle,
@@ -38,6 +35,8 @@ from ..constants import *
 
 
 def convertCs2Star(args):
+    from glob import glob
+    import pandas as pd
     import logging
     from pyem import metadata
     from pyem import star
@@ -49,7 +48,7 @@ def convertCs2Star(args):
     log.setLevel(logging.DEBUG)
     if args.input[0].endswith(".cs"):
         log.debug("Detected CryoSPARC 2+ .cs file")
-        cs = numpy.load(args.input[0])
+        cs = np.load(args.input[0])
         try:
             df = metadata.parse_cryosparc_2_cs(cs,
                                                minphic=args.minphic,
@@ -95,7 +94,7 @@ def convertCs2Star(args):
                                           inplace=True)
 
     if args.transform is not None:
-        r = numpy.array(json.loads(args.transform))
+        r = np.array(json.loads(args.transform))
         df = star.transform_star(df, r, inplace=True)
 
     # Write Relion .star file with correct headers.
@@ -290,7 +289,7 @@ def alignmentToRow(alignment, alignmentRow, alignType):
         angle = angles[0] + angles[2]
         alignmentRow.setValue(md.RLN_ORIENT_PSI, -angle)
 
-        flip = bool(numpy.linalg.det(matrix[0:2, 0:2]) < 0)
+        flip = bool(np.linalg.det(matrix[0:2, 0:2]) < 0)
         if flip:
             print("FLIP in 2D not implemented")
     elif is3D:
@@ -317,7 +316,7 @@ def geometryFromMatrix(matrix, inverseTransform):
         shifts = -translation_from_matrix(matrix)
     else:
         shifts = translation_from_matrix(matrix)
-    angles = -numpy.rad2deg(euler_from_matrix(matrix, axes='szyz'))
+    angles = -np.rad2deg(euler_from_matrix(matrix, axes='szyz'))
     return shifts, angles
 
 
@@ -382,6 +381,7 @@ def convertBinaryVol(vol, outputDir):
         """ Convert from a format that is not read by Relion
         to mrc format.
         """
+        from os.path import join
         newFn = join(outputDir, pwutils.replaceBaseExt(fn, 'mrc'))
         ih.convert(fn, newFn)
         return newFn
@@ -413,8 +413,8 @@ def rowToAlignment(alignmentRow, alignType):
     inverseTransform = alignType == ALIGN_PROJ
     if alignmentRow.containsAny(ALIGNMENT_DICT):
         alignment = Transform()
-        angles = numpy.zeros(3)
-        shifts = numpy.zeros(3)
+        angles = np.zeros(3)
+        shifts = np.zeros(3)
         shifts[0] = alignmentRow.getValue(md.RLN_ORIENT_ORIGIN_X, 0.)
         shifts[1] = alignmentRow.getValue(md.RLN_ORIENT_ORIGIN_Y, 0.)
         if not is2D:
@@ -447,8 +447,7 @@ def matrixFromGeometry(shifts, angles, inverseTransform):
     2D shifts in X and Y...and the 3 euler angles.
     """
     from pwem.convert.transformations import euler_matrix
-    from numpy import deg2rad
-    radAngles = -deg2rad(angles)
+    radAngles = -np.deg2rad(angles)
     M = euler_matrix(radAngles[0], radAngles[1], radAngles[2], 'szyz')
     if inverseTransform:
         from numpy.linalg import inv
@@ -482,6 +481,7 @@ def convertBinaryFiles(imgSet, outputDir, extension='mrcs'):
         It is possible that the base name overlap if they come
         from different runs. (like particles.mrcs after relion preprocess)
         """
+        from os.path import join
         newFn = join(outputRoot, pwutils.replaceBaseExt(fn, extension))
         newRoot = pwutils.removeExt(newFn)
 

@@ -26,9 +26,9 @@
 # **************************************************************************
 import os
 
-from pwem.protocols import pwutils, EMProtocol
-from pyworkflow.object import String
-from pyworkflow.utils import createLink, removeExt
+import pwem.protocols as pw
+import pyworkflow.object as pwobj
+import pyworkflow.utils as pwutils
 
 from ..convert import convertBinaryVol, writeSetOfParticles, ImageHandler
 from ..utils import (getProjectPath, createEmptyProject,
@@ -37,7 +37,7 @@ from ..utils import (getProjectPath, createEmptyProject,
                      doImportParticlesStar, doImportVolumes, killJob, clearJob)
 
 
-class ProtCryosparcBase(EMProtocol):
+class ProtCryosparcBase(pw.EMProtocol):
     """
     This class contains the common functions for all Cryosparc protocols.
     """
@@ -55,13 +55,13 @@ class ProtCryosparcBase(EMProtocol):
         else:
             self.projectName = str(folderPaths[0])
 
-        self.projectName = String(self.projectName)
+        self.projectName = pwobj.String(self.projectName)
         self._store(self)
 
         # create empty workspace
         self.b = createEmptyWorkSpace(self.projectName, self.getRunName(),
                                       self.getObjComment())
-        self.workSpaceName = String(self.b[-1].split()[-1])
+        self.workSpaceName = pwobj.String(self.b[-1].split()[-1])
         self._store(self)
 
     def _initializeUtilsVariables(self):
@@ -70,7 +70,7 @@ class ProtCryosparcBase(EMProtocol):
         """
         # Create a cryoSPARC project dir
         self.projectDirName = getProjectName(self.getProject().getShortName())
-        self.projectPath = pwutils.join(getCryosparcProjectsDir(),
+        self.projectPath = pw.pwutils.join(getCryosparcProjectsDir(),
                                         self.projectDirName)
         self.projectDir = createProjectDir(self.projectPath)
 
@@ -111,7 +111,7 @@ class ProtCryosparcBase(EMProtocol):
 
             if csSize == inputSize:
                 print("No binning detected: linking averages cs file.", flush=True)
-                createLink(csAveragesFile, scaledFile)
+                pwutils.createLink(csAveragesFile, scaledFile)
             else:
                 print("Scaling CS averages file to match particle size (%s -> %s)." % (csSize, inputSize), flush=True)
                 try:
@@ -132,7 +132,7 @@ class ProtCryosparcBase(EMProtocol):
     def _getScaledAveragesFileName(self, csAveragesFile, isVolume=False):
 
         extension = ".mrc" if isVolume else ".mrcs"
-        return removeExt(csAveragesFile) + "_scaled" + extension
+        return pwutils.removeExt(csAveragesFile) + "_scaled" + extension
 
     def _getInputParticles(self):
         return self.inputParticles.get()
@@ -173,15 +173,15 @@ class ProtCryosparcBase(EMProtocol):
 
         # import_particles_star
         self.importedParticles = doImportParticlesStar(self)
-        self.currenJob = String(self.importedParticles.get())
+        self.currenJob = pwobj.String(self.importedParticles.get())
         self._store(self)
 
-        self.currenJob = String(self.importedParticles.get())
+        self.currenJob = pwobj.String(self.importedParticles.get())
         self._store(self)
-        self.par = String(self.importedParticles.get() + '.imported_particles')
+        self.par = pwobj.String(self.importedParticles.get() + '.imported_particles')
 
     def setAborted(self):
         """ Set the status to aborted and updated the endTime. """
-        EMProtocol.setAborted(self)
+        pw.EMProtocol.setAborted(self)
         killJob(str(self.projectName.get()), str(self.currenJob.get()))
         clearJob(str(self.projectName.get()), str(self.currenJob.get()))

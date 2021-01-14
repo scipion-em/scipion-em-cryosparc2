@@ -26,7 +26,7 @@
 # **************************************************************************
 
 from pwem.protocols import *
-from pyworkflow.protocol import MultiPointerParam, PointerList
+from pyworkflow.protocol import PointerList
 from pyworkflow.tests import *
 from pwem import Domain
 

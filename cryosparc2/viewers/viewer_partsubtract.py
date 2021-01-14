@@ -37,7 +37,6 @@ from pwem.viewers import ObjectView
 from ..protocols import (ProtCryoSparcSubtract,
                          ProtCryoSparcGlobalCtfRefinement,
                          ProtCryoSparcLocalCtfRefinement)
-from ..constants import *
 from ..utils import *
 from .. import Plugin
 

@@ -33,7 +33,6 @@ from pyworkflow.viewer import ProtocolViewer, DESKTOP_TKINTER
 from pwem.viewers import ClassesView, Classes3DView
 
 from ..protocols import ProtCryo2D
-from ..constants import *
 from ..utils import *
 from .. import Plugin
 
