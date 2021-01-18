@@ -24,17 +24,23 @@
 # *  e-mail address 'scipion@cnb.csic.es'
 # *
 # **************************************************************************
+import os
 
 from pwem import ALIGN_PROJ
 from pwem.protocols import ProtOperateParticles
+
+import pyworkflow.utils as pwutils
 from pyworkflow.protocol.params import (PointerParam, FloatParam,
-                                        LEVEL_ADVANCED)
+                                        LEVEL_ADVANCED, IntParam, Positive,
+                                        BooleanParam, EnumParam, String)
 from pwem.objects import Volume, FSC
 
-from . import ProtCryosparcBase
+from .protocol_base import ProtCryosparcBase
 from ..convert import (defineArgs, convertCs2Star, createItemMatrix,
                        setCryosparcAttributes)
-from ..utils import *
+from ..utils import (addComputeSectionParams, get_job_streamlog,
+                     calculateNewSamplingRate, cryosparcValidate, gpusValidate,
+                     enqueueJob, waitForCryosparc, clearIntermediateResults)
 from ..constants import *
 
 
@@ -322,6 +328,7 @@ class ProtCryoSparcLocalRefine(ProtCryosparcBase, ProtOperateParticles):
         """
         Create the protocol output. Convert cryosparc file to Relion file
         """
+        import ast
         self._initializeUtilsVariables()
         get_job_streamlog(self.projectName.get(), self.runLocalRefinement.get(),
                           self._getFileName('stream_log'))

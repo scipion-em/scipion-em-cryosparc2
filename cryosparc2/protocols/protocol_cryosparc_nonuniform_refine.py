@@ -25,10 +25,14 @@
 # *
 # **************************************************************************
 
-from pyworkflow.protocol.params import (FloatParam, LEVEL_ADVANCED)
+import pyworkflow.utils as pwutils
+from pyworkflow.protocol.params import (FloatParam, LEVEL_ADVANCED, Positive,
+                                        IntParam, BooleanParam, EnumParam,
+                                        StringParam)
 
-from . import ProtCryoSparcRefine3D
-from ..utils import *
+from .protocol_cryorefine import ProtCryoSparcRefine3D
+from ..utils import (getSymmetry, enqueueJob, waitForCryosparc,
+                     clearIntermediateResults)
 from ..constants import *
 
 

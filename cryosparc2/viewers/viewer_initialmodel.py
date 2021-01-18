@@ -30,7 +30,7 @@ import webbrowser
 from pyworkflow.viewer import (ProtocolViewer, DESKTOP_TKINTER, WEB_DJANGO)
 import pwem.viewers.showj as showj
 from pwem.viewers import ObjectView
-from pyworkflow.protocol.params import (LabelParam)
+from pyworkflow.protocol.params import (LabelParam, EnumParam)
 
 from ..constants import *
 from ..utils import *

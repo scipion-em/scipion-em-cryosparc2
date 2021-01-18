@@ -25,19 +25,22 @@
 # *  e-mail address 'scipion@cnb.csic.es'
 # *
 # **************************************************************************
-from pyworkflow.protocol.params import (PointerParam, FloatParam,
-                                        LEVEL_ADVANCED)
-from pwem.objects import Volume, FSC, ALIGN_PROJ
-from pwem.protocols import ProtRefine3D
+import pwem.objects as pwobj
+import pwem.protocols as pwprot
+import pyworkflow.utils as pwutils
+from pyworkflow.protocol.params import *
 
-from . import ProtCryosparcBase
+from .protocol_base import ProtCryosparcBase
 from ..convert import (defineArgs, convertCs2Star, createItemMatrix,
                        setCryosparcAttributes)
-from ..utils import *
-from ..constants import *
+from ..utils import (addSymmetryParam, addComputeSectionParams,
+                     get_job_streamlog, calculateNewSamplingRate,
+                     cryosparcValidate, gpusValidate, getSymmetry,
+                     waitForCryosparc, clearIntermediateResults, enqueueJob)
+from ..constants import md, NOISE_MODEL_CHOICES, REFINE_MASK_CHOICES
 
 
-class ProtCryoSparcRefine3D(ProtCryosparcBase, ProtRefine3D):
+class ProtCryoSparcRefine3D(ProtCryosparcBase, pwprot.ProtRefine3D):
     """ Protocol to refine a 3D map using cryosparc.
         Rapidly refine a single homogeneous structure to high-resolution and
         validate using the gold-standard FSC.
@@ -317,6 +320,7 @@ class ProtCryoSparcRefine3D(ProtCryosparcBase, ProtRefine3D):
         """
         Create the protocol output. Convert cryosparc file to Relion file
         """
+        import ast
         self._initializeUtilsVariables()
         get_job_streamlog(self.projectName.get(), self.runRefine.get(),
                           self._getFileName('stream_log'))
@@ -336,11 +340,11 @@ class ProtCryoSparcRefine3D(ProtCryosparcBase, ProtRefine3D):
                     itera = z[-3:]
                 elif 'Using Filter Radius' in z:
                     nomRes = str(y['text']).split('(')[1].split(')')[0].replace('A', 'Å')
-                    self.mapResolution = String(nomRes)
+                    self.mapResolution = pwobj.String(nomRes)
                     self._store(self)
                 elif 'Estimated Bfactor' in z:
                     estBFactor = str(y['text']).split(':')[1].replace('\n', '')
-                    self.estBFactor = String(estBFactor)
+                    self.estBFactor = pwobj.String(estBFactor)
                     self._store(self)
 
         csParticlesName = ("cryosparc_" + self.projectName.get() + "_" +
@@ -386,7 +390,7 @@ class ProtCryoSparcRefine3D(ProtCryosparcBase, ProtRefine3D):
         half2 = os.path.join(self._getExtraPath(), half2Name)
 
         imgSet = self._getInputParticles()
-        vol = Volume()
+        vol = pwobj.Volume()
         vol.setFileName(fnVol)
         vol.setSamplingRate(calculateNewSamplingRate(vol.getDim(),
                                                      imgSet.getSamplingRate(),
@@ -416,7 +420,7 @@ class ProtCryoSparcRefine3D(ProtCryosparcBase, ProtRefine3D):
             corr.append(x.split('\t')[6])
         f.close()
 
-        fsc = FSC(objLabel=self.getRunName())
+        fsc = pwobj.FSC(objLabel=self.getRunName())
         fsc.setData(wv, corr)
         wv2, corr2 = fsc.getData()
 
@@ -477,7 +481,7 @@ class ProtCryoSparcRefine3D(ProtCryosparcBase, ProtRefine3D):
                                                       sortByLabel=md.RLN_IMAGE_ID))
 
     def _createItemMatrix(self, particle, row):
-        createItemMatrix(particle, row, align=ALIGN_PROJ)
+        createItemMatrix(particle, row, align=pwobj.ALIGN_PROJ)
         setCryosparcAttributes(particle, row,
                                md.RLN_PARTICLE_RANDOM_SUBSET)
 

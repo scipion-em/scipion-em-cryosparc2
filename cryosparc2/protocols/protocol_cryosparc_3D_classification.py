@@ -24,15 +24,21 @@
 # *  e-mail address 'scipion@cnb.csic.es'
 # *
 # **************************************************************************
+import os
 
+import pyworkflow.utils as pwutils
 from pyworkflow.protocol.params import (FloatParam, LEVEL_ADVANCED,
                                         PointerParam, MultiPointerParam,
-                                        CsvList)
+                                        CsvList, Positive, IntParam,
+                                        BooleanParam, StringParam, EnumParam)
 
-from . import ProtCryosparcBase
+from .protocol_base import ProtCryosparcBase
 from ..convert import (convertBinaryVol, defineArgs, convertCs2Star,
                        rowToAlignment, ALIGN_PROJ, cryosparcToLocation)
-from ..utils import *
+from ..utils import (addSymmetryParam, addComputeSectionParams, doImportVolumes,
+                     get_job_streamlog, calculateNewSamplingRate,
+                     cryosparcValidate, gpusValidate, getSymmetry, enqueueJob,
+                     waitForCryosparc, clearIntermediateResults)
 from ..constants import *
 
 
@@ -255,6 +261,7 @@ class ProtCryoSparc3DClassification(ProtCryosparcBase):
         """
         Create the protocol output. Convert cryosparc file to Relion file
         """
+        import ast
         self._initializeUtilsVariables()
         print(pwutils.yellowStr("Creating the output..."), flush=True)
         get_job_streamlog(self.projectName.get(), self.run3dClassification.get(),

@@ -28,7 +28,7 @@ import webbrowser
 
 import pwem.viewers.showj as showj
 from pyworkflow.protocol.constants import *
-from pyworkflow.protocol.params import (LabelParam, FloatParam)
+from pyworkflow.protocol.params import (LabelParam, FloatParam, EnumParam)
 from pyworkflow.viewer import DESKTOP_TKINTER, WEB_DJANGO
 from pwem.viewers import (ChimeraView, EmPlotter, ChimeraClientView,
                           ObjectView, EmProtocolViewer)

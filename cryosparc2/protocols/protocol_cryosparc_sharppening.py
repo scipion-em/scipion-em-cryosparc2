@@ -24,13 +24,18 @@
 # *  e-mail address 'scipion@cnb.csic.es'
 # *
 # **************************************************************************
+import os
+
 from pwem.objects import Volume
 from pwem.protocols import ProtAnalysis3D
+import pyworkflow.utils as pwutils
 from pyworkflow.protocol.params import (PointerParam, FloatParam,
-                                        LEVEL_ADVANCED)
+                                        LEVEL_ADVANCED, BooleanParam, IntParam,
+                                        String)
 
-from . import ProtCryosparcBase
-from ..utils import *
+from .protocol_base import ProtCryosparcBase
+from ..utils import (addComputeSectionParams, cryosparcValidate, gpusValidate,
+                     enqueueJob, waitForCryosparc, clearIntermediateResults)
 
 
 class ProtCryoSparcSharppening(ProtCryosparcBase, ProtAnalysis3D):

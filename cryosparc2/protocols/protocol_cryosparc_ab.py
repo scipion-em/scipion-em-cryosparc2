@@ -25,16 +25,24 @@
 # *  e-mail address 'scipion@cnb.csic.es'
 # *
 # **************************************************************************
-from pwem import ALIGN_PROJ
+import os
+
+import pyworkflow.utils as pwutils
 from pyworkflow.protocol.params import (PointerParam, FloatParam,
-                                        LEVEL_ADVANCED)
+                                        LEVEL_ADVANCED, IntParam, Positive,
+                                        BooleanParam, EnumParam)
+
+from pwem import ALIGN_PROJ
 from pwem.protocols import ProtInitialVolume, ProtClassify3D
 
-from . import ProtCryosparcBase
+from .protocol_base import ProtCryosparcBase
 from ..convert import (defineArgs, convertCs2Star, cryosparcToLocation,
                        rowToAlignment)
 
-from ..utils import *
+from ..utils import (addSymmetryParam, addComputeSectionParams,
+                     cryosparcValidate, gpusValidate, getSymmetry, enqueueJob,
+                     calculateNewSamplingRate, waitForCryosparc,
+                     clearIntermediateResults)
 from ..constants import *
 
 

@@ -24,15 +24,21 @@
 # *  e-mail address 'scipion@cnb.csic.es'
 # *
 # **************************************************************************
+import os
+
 from pwem import ALIGN_PROJ
 from pwem.protocols import ProtOperateParticles
-from pyworkflow.protocol.params import (PointerParam, FloatParam,
-                                        LEVEL_ADVANCED)
 
-from . import ProtCryosparcBase
+import pyworkflow.utils as pwutils
+from pyworkflow.protocol.params import (PointerParam, FloatParam,
+                                        LEVEL_ADVANCED, Positive, BooleanParam,)
+
+from .protocol_base import ProtCryosparcBase
 from ..convert import (defineArgs, convertCs2Star, readSetOfParticles,
                        cryosparcToLocation)
-from ..utils import *
+from ..utils import (addComputeSectionParams, calculateNewSamplingRate,
+                     cryosparcValidate, gpusValidate, enqueueJob,
+                     waitForCryosparc, clearIntermediateResults)
 from ..constants import *
 
 

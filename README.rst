@@ -25,11 +25,13 @@ You will need to use `3.0.0 <https://scipion-em.github.io/docs/release-3.0.0/doc
 **Plugin Versions**
 ===================
 
-**v3.2.1**
+**v3.2.2**
 ----------
-January 8, 2021
+January 13, 2021
 
 **new**: Compatibility with cryoSPARC v3.0 and v3.0.1
+
+**update**: Improved protocols loading
 
 
 **Installing the plugin**

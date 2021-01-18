@@ -26,25 +26,20 @@
 # **************************************************************************
 import getpass
 import os
-import ast
-import subprocess
 from pkg_resources import parse_version
+
 import pyworkflow.utils as pwutils
-from pyworkflow.object import String
 from pwem.constants import SCIPION_SYM_NAME
 from pwem.constants import (SYM_CYCLIC, SYM_TETRAHEDRAL,
                             SYM_OCTAHEDRAL, SYM_I222, SYM_I222r)
-from pyworkflow.protocol.params import (EnumParam, IntParam, Positive,
-                                        BooleanParam, StringParam, NonEmpty,
-                                        GPU_LIST)
+
 from . import Plugin
 from .constants import (CS_SYM_NAME, SYM_DIHEDRAL_Y, CRYOSPARC_USER,
                         CRYO_PROJECTS_DIR, V2_14_0, V2_13_0, CRYOSPARC_HOME,
-                        CRYOSPARC_USE_SSD, V_UNKNOWN, V3_0_0, V2_15_0)
+                        CRYOSPARC_USE_SSD, V_UNKNOWN, V3_0_0, V2_15_0,
+                        CRYOSPARC_MASTER)
 
 VERSION = 'version'
-
-CRYOSPARC__MASTER = 'cryosparc2_master'
 
 STATUS_FAILED = "failed"
 STATUS_ABORTED = "aborted"
@@ -76,8 +71,16 @@ def getCryosparcProgram(mode="cli"):
     """
     csDir = getCryosparcDir()
 
+    # TODO Find a better way to do that
     if csDir is not None:
-        return os.path.join(csDir, CRYOSPARC__MASTER, "bin", 'cryosparcm %s' % mode)
+        if os.path.exists(os.path.join(csDir, CRYOSPARC_MASTER, "bin")):
+            # Case of CS v3.X.X is instaled
+            return os.path.join(csDir, CRYOSPARC_MASTER, "bin",
+                                'cryosparcm %s' % mode)
+        else:
+            # Case of CS v2.X.X is instaled
+            return os.path.join(csDir, 'cryosparc2_master', "bin",
+                                'cryosparcm %s' % mode)
 
     return None
 
@@ -96,6 +99,7 @@ def isCryosparcRunning():
     Determine if cryosparc services are running
     :returns True if running, false otherwise
     """
+    import subprocess
     status = -1
     if getCryosparcProgram() is not None:
         test_conection_cmd = (getCryosparcProgram() +
@@ -155,6 +159,7 @@ def getCryosparcEnvInformation(envVar=VERSION):
     """
     Get the cryosparc environment information
     """
+    import ast
     system_info = getSystemInfo()
     dictionary = ast.literal_eval(system_info[1])
     envVariable = str(dictionary[envVar])
@@ -174,11 +179,11 @@ def getCryosparcVersion():
             except Exception:
                 print("Couldn't get Cryosparc's version. Please review your config (%s)" % Plugin.getUrl())
                 _csVersion = V_UNKNOWN
-    return _csVersion
+    return _csVersion.rstrip('\n')
 
 
 def _getCryosparcVersionFromFile():
-    versionFile = getCryosparcDir(CRYOSPARC__MASTER, "version")
+    versionFile = getCryosparcDir(CRYOSPARC_MASTER, "version")
     # read the version file
     with open(versionFile, "r") as fh:
         return fh.readline()
@@ -344,6 +349,8 @@ def enqueueJob(jobType, projectName, workSpaceName, params, input_group_connect,
     make_job(job_type, project_uid, workspace_uid, user_id,
              created_by_job_uid=None, params={}, input_group_connects={})
     """
+    from pyworkflow.object import String
+
     cryosparcVersion = getCryosparcVersion()
     # Create a compatible job to versions < v2.14.X
     make_job_cmd = (getCryosparcProgram() +
@@ -362,7 +369,7 @@ def enqueueJob(jobType, projectName, workSpaceName, params, input_group_connect,
     # Create a compatible job to versions >= v3.0.X
     if parse_version(cryosparcVersion) >= parse_version(V3_0_0):
         make_job_cmd = (getCryosparcProgram() +
-                        ' %smake_job("%s","%s","%s", "%s", "None", "None", %s, %s, "False", "None")%s' %
+                        ' %smake_job("%s","%s","%s", "%s", "None", "None", %s, %s, "False", 0)%s' %
                         ("'", jobType, projectName, workSpaceName,
                          getCryosparcUser(),
                          params, input_group_connect, "'"))
@@ -419,7 +426,7 @@ def runCmd(cmd, printCmd=True):
     """ Runs a command and check its exit code. If different than 0 it raises an exception
     :parameter cmd command to run
     :parameter printCmd (default True) prints the command"""
-
+    import subprocess
     if printCmd:
         print(pwutils.greenStr("Running: %s" % cmd), flush=True)
     exitCode, cmdOutput = subprocess.getstatusoutput(cmd)
@@ -544,6 +551,9 @@ def addComputeSectionParams(form, allowMultipleGPUs=True):
     """
     Add the compute settings section
     """
+    from pyworkflow.protocol.params import (EnumParam, IntParam, Positive,
+                                            BooleanParam, StringParam, NonEmpty,
+                                            GPU_LIST)
     computeSSD = os.getenv(CRYOSPARC_USE_SSD)
     if computeSSD is None:
         computeSSD = False
@@ -592,6 +602,7 @@ def addSymmetryParam(form):
     :param form:
     :return:
     """
+    from pyworkflow.protocol.params import (EnumParam, IntParam, Positive)
     form.addParam('symmetryGroup', EnumParam,
                   choices=[CS_SYM_NAME[SYM_CYCLIC] +
                            " (" + SCIPION_SYM_NAME[SYM_CYCLIC] + ")",

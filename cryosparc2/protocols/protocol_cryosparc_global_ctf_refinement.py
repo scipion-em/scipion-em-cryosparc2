@@ -24,19 +24,24 @@
 # *  e-mail address 'scipion@cnb.csic.es'
 # *
 # **************************************************************************
-from pwem import ALIGN_PROJ
-from pwem.protocols import ProtParticles
-from pyworkflow.protocol.params import (PointerParam, FloatParam,
-                                        LEVEL_ADVANCED)
+import os
 
-from . import ProtCryosparcBase
+from pwem import ALIGN_PROJ
+import pwem.protocols as pwprot
+
+import pyworkflow.utils as pwutils
+from pyworkflow.protocol.params import (PointerParam, FloatParam, IntParam,
+                                        LEVEL_ADVANCED, Positive, BooleanParam)
+
+from .protocol_base import ProtCryosparcBase
 from ..convert import (defineArgs, convertCs2Star, createItemMatrix,
                        setCryosparcAttributes)
-from ..utils import *
+from ..utils import (addComputeSectionParams, cryosparcValidate, gpusValidate,
+                     enqueueJob, waitForCryosparc, clearIntermediateResults)
 import pwem.emlib.metadata as md
 
 
-class ProtCryoSparcGlobalCtfRefinement(ProtCryosparcBase, ProtParticles):
+class ProtCryoSparcGlobalCtfRefinement(ProtCryosparcBase, pwprot.ProtParticles):
     """
     Wrapper protocol for the Cryosparc's per-particle Global CTF refinement.
     Performs per-exposure-group CTF parameter refinement of higher-order
