@@ -575,7 +575,7 @@ def cryosPARCwriteSetOfParticles(imgSet, starFile, outputDir, **kwargs):
         # pixel size is ignored in the command line.
         partMd.removeLabel(md.RLN_CTF_MAGNIFICATION)
 
-    blockName = kwargs.get('blockName', 'Particles')
+    blockName = kwargs.get('blockName', 'particles')
     partMd.write('%s@%s' % (blockName, starFile))
 
 
