@@ -20,18 +20,29 @@ You will need to use `3.0.0 <https://scipion-em.github.io/docs/release-3.0.0/doc
 * **Local CTF Refinement (per-particle defocus)**: Local CTF Refinement performs per-particle defocus estimation for each particle in a dataset, against a given 3D reference structure.
 * **Global CTF Refinement (per-group beam tilt, trefoil, spherical aberration, tetrafoil)**: Global CTF Refinement performs per-exposure-group CTF parameter refinement of higher-order aberrations, against a given 3D reference.
 * **Sharppening**: Sharpen a volume following refinement.
+* **Helical 3D Refinement**: Reconstruct and refine a homogeneous helical assembly, with or without imposition and refinement of symmetry parameters.
 
 
 **Plugin Versions**
 ===================
 
-**v3.2.2**
+**v3.2.4**
+----------
+February 11, 2021
+
+**new**      : Compatibility with cryoSPARC v3.1.0
+
+**new**      : Added Helical Refinement protocol
+
+**update**   : Removed unused parameters(MPIs and Threads) from all protocols
+
+**v3.2.3**
 ----------
 January 13, 2021
 
-**new**: Compatibility with cryoSPARC v3.0 and v3.0.1
+**new**      : Compatibility with cryoSPARC v3.0 and v3.0.1
 
-**update**: Improved protocols loading
+**update**   : Improved protocols loading
 
 
 **Installing the plugin**

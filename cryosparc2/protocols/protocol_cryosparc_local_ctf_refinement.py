@@ -29,6 +29,7 @@ import os
 from pwem import ALIGN_PROJ
 from pwem.protocols import ProtParticles
 import pyworkflow.utils as pwutils
+from pyworkflow import BETA
 from pyworkflow.protocol.params import (PointerParam, FloatParam,
                                         LEVEL_ADVANCED, IntParam, Positive)
 
@@ -46,7 +47,8 @@ class ProtCryoSparcLocalCtfRefinement(ProtCryosparcBase, ProtParticles):
     Performs per-particle defocus estimation for each particle in a dataset,
     against a given 3D reference structure.
     """
-    _label = 'local ctf refinement(BETA)'
+    _label = 'local ctf refinement'
+    _devStatus = BETA
 
     def _initialize(self):
         self._createFilenameTemplates()
@@ -82,8 +84,6 @@ class ProtCryoSparcLocalCtfRefinement(ProtCryosparcBase, ProtParticles):
                       help="Provide a soft mask. if mask is present, use that, "
                            "otherwise use mask_refine if present, otherwise "
                            "fail")
-
-        form.addParallelSection(threads=1, mpi=1)
 
         # -----------[Global CTF Refinement]------------------------
         form.addSection(label="Local CTF Refinement")

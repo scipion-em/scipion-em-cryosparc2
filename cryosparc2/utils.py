@@ -596,7 +596,7 @@ def addComputeSectionParams(form, allowMultipleGPUs=True):
                   help='The scheduler lane name to add the protocol execution')
 
 
-def addSymmetryParam(form):
+def addSymmetryParam(form, help=""):
     """
     Add the symmetry param with the conventions
     :param form:
@@ -621,8 +621,8 @@ def addSymmetryParam(form):
                   help="Symmetry as defined by cryosparc. Please note that "
                        "Dihedral symmetry in cryosparc is defined with respect"
                        "to y axis (Dyn).\n"
-                       "If no symmetry is present, use C1. Enforcing symmetry "
-                       "above C1 is not recommended for ab-initio reconstruction"
+                       "If no symmetry is present, use C1.\n" +
+                       help
                   )
     form.addParam('symmetryOrder', IntParam, default=1,
                   condition='symmetryGroup==%d or symmetryGroup==%d' %

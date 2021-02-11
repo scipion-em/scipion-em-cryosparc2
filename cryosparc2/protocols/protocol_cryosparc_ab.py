@@ -70,7 +70,6 @@ class ProtCryoSparcInitialModel(ProtCryosparcBase, ProtInitialVolume,
                       pointerClass='SetOfParticles',
                       label="Input particles", important=True,
                       help='Select the input images from the project.')
-        form.addParallelSection(threads=1, mpi=1)
 
         # --------------[Ab-Initio reconstruction]---------------------------
 
@@ -234,7 +233,10 @@ class ProtCryoSparcInitialModel(ProtCryosparcBase, ProtInitialVolume,
                            'should have significant probability (used for '
                            'auto-tuning initial noise sigma-scale)')
 
-        addSymmetryParam(form)
+        addSymmetryParam(form, help="Symmetry enforced (C, D, I, O, T). Eg. "
+                                    "C1, D7, C4 etc. Enforcing symmetry above "
+                                    "C1 is not recommended for ab-initio "
+                                    "reconstruction")
 
         form.addParam('abinit_r_grid', FloatParam, default=25,
                       expertLevel=LEVEL_ADVANCED,

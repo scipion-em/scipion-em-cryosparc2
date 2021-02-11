@@ -71,7 +71,6 @@ class ProtCryo2D(ProtCryosparcBase, pwprot.ProtClassify2D):
                       pointerClass='SetOfParticles',
                       label="Input particles", important=True,
                       help='Select the input images from the project.')
-        form.addParallelSection(threads=1, mpi=1)
 
         # ----------- [2D Classification] --------------------------------
 

@@ -30,6 +30,7 @@ from pwem import ALIGN_PROJ
 import pwem.protocols as pwprot
 
 import pyworkflow.utils as pwutils
+from pyworkflow import BETA
 from pyworkflow.protocol.params import (PointerParam, FloatParam, IntParam,
                                         LEVEL_ADVANCED, Positive, BooleanParam)
 
@@ -47,7 +48,8 @@ class ProtCryoSparcGlobalCtfRefinement(ProtCryosparcBase, pwprot.ProtParticles):
     Performs per-exposure-group CTF parameter refinement of higher-order
     aberrations, against a given 3D reference
     """
-    _label = 'global ctf refinement(BETA)'
+    _label = 'global ctf refinement'
+    _devStatus = BETA
 
     def _initialize(self):
         self._createFilenameTemplates()
@@ -84,7 +86,6 @@ class ProtCryoSparcGlobalCtfRefinement(ProtCryosparcBase, pwprot.ProtParticles):
                            "otherwise use mask_refine if present, otherwise "
                            "fail")
 
-        form.addParallelSection(threads=1, mpi=1)
 
         # -----------[Global CTF Refinement]------------------------
         form.addSection(label="Global CTF Refinement")

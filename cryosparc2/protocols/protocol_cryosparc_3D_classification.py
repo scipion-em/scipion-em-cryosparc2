@@ -79,7 +79,6 @@ class ProtCryoSparc3DClassification(ProtCryosparcBase):
                       help='Multiple initial volumes to refine and classify. '
                            'The same input volume can be connected multiple '
                            'times.')
-        form.addParallelSection(threads=1, mpi=1)
 
         # --------------[Heterogeneous Refinement]---------------------------
         form.addSection(label='Heterogeneous Refinement')
@@ -91,7 +90,9 @@ class ProtCryoSparc3DClassification(ProtCryosparcBase):
                            'Keep this as small as possible to limit GPU '
                            'memory usage.')
 
-        addSymmetryParam(form)
+        addSymmetryParam(form, help="Symmetry String (C, D, I, O, T). E.g. "
+                                    "C1, D7, C4, etc. Symmetry is applied to "
+                                    "all classes.")
 
         form.addParam('multirefine_sharp_bfactor', IntParam, default=-100,
                       label="Plotting bfactor",
