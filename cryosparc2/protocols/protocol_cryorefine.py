@@ -299,7 +299,7 @@ class ProtCryoSparcRefine3D(ProtCryosparcBase, pwprot.ProtRefine3D):
 
         # --------------[Compute settings]---------------------------
         form.addSection(label="Compute settings")
-        addComputeSectionParams(form, allowMultipleGPUs=False)
+        addComputeSectionParams(form, allowMultipleGPUs=True)
 
     # --------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
@@ -430,7 +430,7 @@ class ProtCryoSparcRefine3D(ProtCryosparcBase, pwprot.ProtRefine3D):
     def _validate(self):
         validateMsgs = cryosparcValidate()
         if not validateMsgs:
-            validateMsgs = gpusValidate(self.getGpuList(), checkSingleGPU=True)
+            validateMsgs = gpusValidate(self.getGpuList())
             if not validateMsgs:
                 particles = self._getInputParticles()
                 if not particles.hasCTF():

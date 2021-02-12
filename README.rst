@@ -30,19 +30,21 @@ You will need to use `3.0.0 <https://scipion-em.github.io/docs/release-3.0.0/doc
 ----------
 February 11, 2021
 
-**new**      : Compatibility with cryoSPARC v3.1.0
+* **new**      : Compatibility with cryoSPARC v3.1.0
 
-**new**      : Added Helical Refinement protocol
+* **new**      : Added Helical Refinement protocol
 
-**update**   : Removed unused parameters(MPIs and Threads) from all protocols
+* **update**   : Removed unused parameters(MPIs and Threads) from all protocols
+
+* **fixed**    : Use of multiple GPUs of Homogeneous and Non-Uniform Refinements
 
 **v3.2.3**
 ----------
 January 13, 2021
 
-**new**      : Compatibility with cryoSPARC v3.0 and v3.0.1
+* **new**      : Compatibility with cryoSPARC v3.0 and v3.0.1
 
-**update**   : Improved protocols loading
+* **update**   : Improved protocols loading
 
 
 **Installing the plugin**
