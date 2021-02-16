@@ -46,6 +46,7 @@ class ProtCryoSparcRefine3D(ProtCryosparcBase, pwprot.ProtRefine3D):
         validate using the gold-standard FSC.
     """
     _label = '3D homogeneous refinement'
+    _fscColumns = 6
 
     # --------------------------- DEFINE param functions ----------------------
     def _defineFileNames(self):
@@ -84,8 +85,6 @@ class ProtCryoSparcRefine3D(ProtCryosparcBase, pwprot.ProtRefine3D):
                            'mask for the experimental images will be '
                            'applied.')
 
-        form.addParallelSection(threads=1, mpi=1)
-
         # --------------[Homogeneous Refinement]---------------------------
 
         form.addSection(label='Refinement')
@@ -96,7 +95,8 @@ class ProtCryoSparcRefine3D(ProtCryosparcBase, pwprot.ProtRefine3D):
                            '0, use the full image size. Otherwise images '
                            'are automatically downsampled')
 
-        addSymmetryParam(form)
+        addSymmetryParam(form, help="Symmetry String (C, D, I, O, T). E.g. C1, "
+                                    "D7, C4, etc")
 
         form.addParam('refine_symmetry_do_align', BooleanParam, default=True,
                       label="Do symmetry alignment",
@@ -299,7 +299,7 @@ class ProtCryoSparcRefine3D(ProtCryosparcBase, pwprot.ProtRefine3D):
 
         # --------------[Compute settings]---------------------------
         form.addSection(label="Compute settings")
-        addComputeSectionParams(form, allowMultipleGPUs=False)
+        addComputeSectionParams(form, allowMultipleGPUs=True)
 
     # --------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
@@ -417,7 +417,7 @@ class ProtCryoSparcRefine3D(ProtCryosparcBase, pwprot.ProtRefine3D):
         corr = []
         for x in lines[1:-1]:
             wv.append(str(float(x.split('\t')[0])/(int(self._getInputParticles().getDim()[0])*float(imgSet.getSamplingRate()))))
-            corr.append(x.split('\t')[6])
+            corr.append(x.split('\t')[self._fscColumns])
         f.close()
 
         fsc = pwobj.FSC(objLabel=self.getRunName())
@@ -430,7 +430,7 @@ class ProtCryoSparcRefine3D(ProtCryosparcBase, pwprot.ProtRefine3D):
     def _validate(self):
         validateMsgs = cryosparcValidate()
         if not validateMsgs:
-            validateMsgs = gpusValidate(self.getGpuList(), checkSingleGPU=True)
+            validateMsgs = gpusValidate(self.getGpuList())
             if not validateMsgs:
                 particles = self._getInputParticles()
                 if not particles.hasCTF():

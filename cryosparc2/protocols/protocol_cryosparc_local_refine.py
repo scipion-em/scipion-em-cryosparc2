@@ -91,8 +91,6 @@ class ProtCryoSparcLocalRefine(ProtCryosparcBase, ProtOperateParticles):
                            "That is: *the mask should INCLUDE the part of the "
                            "volume that you wish to SUBTRACT.*")
 
-        form.addParallelSection(threads=1, mpi=1)
-
         # -----------[Local Refinement]------------------------
         form.addSection(label="Naive local refinement")
 

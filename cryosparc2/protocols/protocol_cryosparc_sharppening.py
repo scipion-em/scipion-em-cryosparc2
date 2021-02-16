@@ -56,8 +56,6 @@ class ProtCryoSparcSharppening(ProtCryosparcBase, ProtAnalysis3D):
                            'use a selected mask. If mask does not present, '
                            'the protocol will fail')
 
-        form.addParallelSection(threads=1, mpi=1)
-
         # -----------[Sharppening]------------------------
         form.addSection(label="Sharpening")
         form.addParam('sharp_bfactor', FloatParam, default=0.0,

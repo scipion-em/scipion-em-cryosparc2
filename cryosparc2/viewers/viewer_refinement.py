@@ -35,7 +35,7 @@ from pwem.viewers import (ChimeraView, EmPlotter, ChimeraClientView,
 
 from ..protocols import (ProtCryoSparcNonUniformRefine3D,
                          ProtCryoSparcRefine3D,
-                         ProtCryoSparcLocalRefine)
+                         ProtCryoSparcLocalRefine, ProtCryoSparcHelicalRefine3D)
 from ..constants import *
 from ..utils import *
 
@@ -44,7 +44,7 @@ class CryosPARCViewer3DRefinement(EmProtocolViewer):
     """ Visualization of e2refine_easy results. """
 
     _targets = [ProtCryoSparcRefine3D, ProtCryoSparcNonUniformRefine3D,
-                ProtCryoSparcLocalRefine]
+                ProtCryoSparcLocalRefine, ProtCryoSparcHelicalRefine3D]
     _environments = [DESKTOP_TKINTER, WEB_DJANGO]
     _label = 'viewer Refinement'
 
@@ -67,9 +67,13 @@ class CryosPARCViewer3DRefinement(EmProtocolViewer):
 
         group = form.addGroup('Resolution')
 
+        choices = ['no mask', 'spherical', 'loose', 'tight', 'corrected', 'all']
+
+        if self.protocol.__class__ == ProtCryoSparcHelicalRefine3D:
+            choices = ['no mask', 'spherical', 'loose', 'tight', 'all']
+
         group.addParam('resolutionPlotsFSC', EnumParam,
-                       choices=['no mask', 'spherical', 'loose',
-                                'tight', 'corrected', 'all'],
+                       choices=choices,
                        default=FSC_UNMASK, display=EnumParam.DISPLAY_COMBO,
                        label='Display resolution plots (FSC)',
                        help='*unmasked*: display FSC of unmasked maps.\n'
@@ -230,8 +234,9 @@ class CryosPARCViewer3DRefinement(EmProtocolViewer):
                 legends.append('Loose')
                 self._plotFSC(a, fsc_path, FSC_TIGHTMASK)
                 legends.append('Tight')
-                self._plotFSC(a, fsc_path, FSC_CORRECTEDMASK+1)
-                legends.append('Corrected')
+                if self.protocol.__class__ != ProtCryoSparcHelicalRefine3D:
+                    self._plotFSC(a, fsc_path, FSC_CORRECTEDMASK+1)
+                    legends.append('Corrected')
                 xplotter.showLegend(legends)
 
         if show:
