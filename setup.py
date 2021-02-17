@@ -96,11 +96,11 @@ setup(
 
     # This should be your name or the name of the organization which owns the
     # project.
-    author='Szu-Chi Chung, Yunior C. Fonseca Reyna',  # Optional
+    author='Yunior C. Fonseca Reyna, Szu-Chi Chung',  # Optional
 
     # This should be a valid email address corresponding to the author listed
     # above.
-    author_email='phonchi@stat.sinica.edu.tw, cfonseca@cnb.csic.es',  # Optional
+    author_email='cfonseca@cnb.csic.es, phonchi@stat.sinica.edu.tw',  # Optional
 
     # Classifiers help users find your project by categorizing it.
     #

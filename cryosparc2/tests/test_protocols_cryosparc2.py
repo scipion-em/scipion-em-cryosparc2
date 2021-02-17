@@ -581,7 +581,7 @@ class TestCryosparcLocalCtfRefinement(TestCryosparcBase):
         _checkAsserts(cryosparcProtGpu)
 
 
-class TestCryosparcLocalRefine(TestCryosparcBase):
+class TestCryosparcNaiveLocalRefine(TestCryosparcBase):
 
     @classmethod
     def setUpClass(cls):
@@ -594,10 +594,10 @@ class TestCryosparcLocalRefine(TestCryosparcBase):
         cls.protImportPart = cls.runImportParticleCryoSPARC(cls.partFn2)
         cls.protImportVol = cls.runImportVolumesCryoSPARC(cls.volFn)
 
-    def testCryosparcLocalRefine(self):
-        def _runCryosparctestLocalRefinet(label=''):
+    def testCryosparcNaiveLocalRefine(self):
+        def _runCryosparctestNaiveLocalRefine(label=''):
 
-            protLocalRefine = self.newProtocol(ProtCryoSparcLocalRefine)
+            protLocalRefine = self.newProtocol(ProtCryoSparcNaiveLocalRefine)
 
             prot3DRefinement = self.newProtocol(ProtCryoSparcRefine3D)
             prot3DRefinement.inputParticles.set(self.protImportPart.outputParticles)
@@ -628,7 +628,7 @@ class TestCryosparcLocalRefine(TestCryosparcBase):
             self.assertIsNotNone(cryosparcProt.outputParticles,
                                  "There was a problem with Cryosparc subtract projection")
 
-        cryosparcProtGpu = _runCryosparctestLocalRefinet(label="Cryosparc Local Refine")
+        cryosparcProtGpu = _runCryosparctestNaiveLocalRefine(label="Cryosparc Local Refine")
         _checkAsserts(cryosparcProtGpu)
 
 

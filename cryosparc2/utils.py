@@ -551,8 +551,7 @@ def addComputeSectionParams(form, allowMultipleGPUs=True):
     """
     Add the compute settings section
     """
-    from pyworkflow.protocol.params import (EnumParam, IntParam, Positive,
-                                            BooleanParam, StringParam, NonEmpty,
+    from pyworkflow.protocol.params import (BooleanParam, StringParam, NonEmpty,
                                             GPU_LIST)
     computeSSD = os.getenv(CRYOSPARC_USE_SSD)
     if computeSSD is None:
