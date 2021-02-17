@@ -347,10 +347,18 @@ class ProtCryoSparcLocalRefine(ProtCryosparcBase, ProtOperateParticles):
             validateMsgs = gpusValidate(self.getGpuList(),
                                         checkSingleGPU=True)
             if not validateMsgs:
-                self._validateDim(self._getInputParticles(),
+                particles = self._getInputParticles()
+                self._validateDim(particles,
                                   self.refVolume.get(),
                                   validateMsgs, 'Input particles',
                                   'Input volume')
+                if not particles.hasCTF():
+                    validateMsgs.append("The Particles has not associated a "
+                                        "CTF model")
+                    if not validateMsgs and not particles.hasAlignment3D():
+                        validateMsgs.append("The Particles has not a 3D "
+                                            "alignment")
+
         return validateMsgs
 
     def _summary(self):
