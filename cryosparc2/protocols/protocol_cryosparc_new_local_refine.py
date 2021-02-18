@@ -27,6 +27,8 @@
 
 import os
 
+from pkg_resources import parse_version
+
 from pwem import ALIGN_PROJ
 from pwem.protocols import ProtOperateParticles
 
@@ -43,7 +45,7 @@ from ..convert import (defineArgs, convertCs2Star, createItemMatrix,
 from ..utils import (addComputeSectionParams, get_job_streamlog,
                      calculateNewSamplingRate, cryosparcValidate, gpusValidate,
                      enqueueJob, waitForCryosparc, clearIntermediateResults,
-                     addSymmetryParam)
+                     addSymmetryParam, getCryosparcVersion)
 from ..constants import *
 
 
@@ -53,6 +55,7 @@ class ProtCryoSparcLocalRefine(ProtCryosparcBase, ProtOperateParticles):
         """
     _label = 'local refinement'
     _devStatus = NEW
+    _protCompatibility = [V3_0_0, V3_1_0]
 
     def _initialize(self):
         self._defineFileNames()
@@ -344,20 +347,26 @@ class ProtCryoSparcLocalRefine(ProtCryosparcBase, ProtOperateParticles):
                """
         validateMsgs = cryosparcValidate()
         if not validateMsgs:
-            validateMsgs = gpusValidate(self.getGpuList(),
-                                        checkSingleGPU=True)
-            if not validateMsgs:
-                particles = self._getInputParticles()
-                self._validateDim(particles,
-                                  self.refVolume.get(),
-                                  validateMsgs, 'Input particles',
-                                  'Input volume')
-                if not particles.hasCTF():
-                    validateMsgs.append("The Particles has not associated a "
-                                        "CTF model")
-                    if not validateMsgs and not particles.hasAlignment3D():
-                        validateMsgs.append("The Particles has not a 3D "
-                                            "alignment")
+            csVersion = getCryosparcVersion()
+            if [version for version in self._protCompatibility
+                if parse_version(version) >= parse_version(csVersion)]:
+                validateMsgs = gpusValidate(self.getGpuList(),
+                                            checkSingleGPU=True)
+                if not validateMsgs:
+                    particles = self._getInputParticles()
+                    self._validateDim(particles,
+                                      self.refVolume.get(),
+                                      validateMsgs, 'Input particles',
+                                      'Input volume')
+                    if not particles.hasCTF():
+                        validateMsgs.append("The Particles has not associated a "
+                                            "CTF model")
+                        if not validateMsgs and not particles.hasAlignment3D():
+                            validateMsgs.append("The Particles has not a 3D "
+                                                "alignment")
+            else:
+                validateMsgs.append("The protocol is not compatible with the "
+                                    "cryoSPARC version %s" % csVersion)
 
         return validateMsgs
 
