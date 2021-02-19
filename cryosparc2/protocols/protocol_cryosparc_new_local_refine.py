@@ -33,7 +33,7 @@ from pwem import ALIGN_PROJ
 from pwem.protocols import ProtOperateParticles
 
 import pyworkflow.utils as pwutils
-from pyworkflow import NEW
+from pyworkflow import BETA
 from pyworkflow.protocol.params import (PointerParam, FloatParam,
                                         LEVEL_ADVANCED, IntParam, Positive,
                                         BooleanParam, EnumParam, String)
@@ -45,7 +45,7 @@ from ..convert import (defineArgs, convertCs2Star, createItemMatrix,
 from ..utils import (addComputeSectionParams, get_job_streamlog,
                      calculateNewSamplingRate, cryosparcValidate, gpusValidate,
                      enqueueJob, waitForCryosparc, clearIntermediateResults,
-                     addSymmetryParam, getCryosparcVersion)
+                     addSymmetryParam, getCryosparcVersion, getSymmetry)
 from ..constants import *
 
 
@@ -54,7 +54,7 @@ class ProtCryoSparcLocalRefine(ProtCryosparcBase, ProtOperateParticles):
         Subtract projections of a masked volume from particles.
         """
     _label = 'local refinement'
-    _devStatus = NEW
+    _devStatus = BETA
     _protCompatibility = [V3_0_0, V3_1_0]
     _className = "new_local_refine"
 
@@ -107,24 +107,24 @@ class ProtCryoSparcLocalRefine(ProtCryosparcBase, ProtOperateParticles):
                            'away from the known initial pose, hence increasing '
                            'stability.')
 
-        form.addParam('sigma_prior_r', FloatParam, default=15,
+        form.addParam('sigma_prior_r', IntParam, default=15,
                   validators=[Positive],
                   condition="use_alignment_prior == True",
                   label="Standard deviation (deg) of prior over rotation",
                   help='Standard deviation of gaussian prior over rotation magnitude in degrees.')
 
-        form.addParam('sigma_prior_s', FloatParam, default=7,
+        form.addParam('sigma_prior_s', IntParam, default=7,
                       validators=[Positive],
                       condition="use_alignment_prior == True",
                       label="Standard deviation (A) of prior over shifts",
                       help='Standard deviation of gaussian prior over shift magnitude in Angstroms.')
 
-        form.addParam('init_r_extent', FloatParam, default=20,
+        form.addParam('init_r_extent', IntParam, default=20,
                       validators=[Positive],
                       label="Rotation search extent (deg)",
                       help='Rotation search extent in degrees.')
 
-        form.addParam('init_s_extent', FloatParam, default=10,
+        form.addParam('init_s_extent', IntParam, default=10,
                       validators=[Positive],
                       label="Shift search extent (A)",
                       help='Shift search extent in Angstroms.')
@@ -150,7 +150,7 @@ class ProtCryoSparcLocalRefine(ProtCryosparcBase, ProtOperateParticles):
                            'used for alignment. This value is normally '
                            'set by the GS-FSC')
 
-        form.addParam('refine_res_init', FloatParam, default=12,
+        form.addParam('refine_res_init', IntParam, default=12,
                       validators=[Positive],
                       label="Initial lowpass resolution (A)",
                       help='Applied to input structure')
@@ -429,7 +429,8 @@ class ProtCryoSparcLocalRefine(ProtCryosparcBase, ProtOperateParticles):
                             'intermediate_plots',
                             'sigma_prior_r',
                             'sigma_prior_s',
-                            'compute_use_ssd']
+                            'compute_use_ssd',
+                            'refine_symmetry']
         self.lane = str(self.getAttributeValue('compute_lane'))
 
     def doLocalRefine(self):
@@ -452,7 +453,8 @@ class ProtCryoSparcLocalRefine(ProtCryosparcBase, ProtOperateParticles):
                     paramName != 'fulcrum' and
                     paramName != 'intermediate_plots' and
                     paramName != 'sigma_prior_r' and
-                    paramName != 'sigma_prior_s'):
+                    paramName != 'sigma_prior_s' and
+                    paramName != 'refine_symmetry'):
                 params[str(paramName)] = str(self.getAttributeValue(paramName))
             elif paramName == 'refine_mask':
                 params[str(paramName)] = str(
@@ -469,6 +471,10 @@ class ProtCryoSparcLocalRefine(ProtCryosparcBase, ProtOperateParticles):
             elif (paramName == 'sigma_prior_r' or
                   paramName == 'sigma_prior_s') and self.getAttributeValue('use_alignment_prior'):
                 params[str(paramName)] = str(self.getAttributeValue(paramName))
+            elif paramName == 'refine_symmetry':
+                symetryValue = getSymmetry(self.symmetryGroup.get(),
+                                           self.symmetryOrder.get())
+                params[str(paramName)] = symetryValue
 
         # Determinate the GPUs to use (in dependence of
         # the cryosparc version)
