@@ -90,7 +90,7 @@ class ProtCryoSparcLocalRefine(ProtCryosparcBase, ProtOperateParticles):
                            'particles.')
         form.addParam('refMask', PointerParam, pointerClass='VolumeMask',
                       label='Mask to be applied to this map',
-                      allowsNull=True,
+                      important=True,
                       help="Provide a soft mask where the protein density "
                            "you wish to subtract from the experimental "
                            "particles is white (1) and the rest of the "
