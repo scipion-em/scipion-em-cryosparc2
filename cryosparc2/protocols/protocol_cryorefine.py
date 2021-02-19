@@ -45,8 +45,9 @@ class ProtCryoSparcRefine3D(ProtCryosparcBase, pwprot.ProtRefine3D):
         Rapidly refine a single homogeneous structure to high-resolution and
         validate using the gold-standard FSC.
     """
-    _label = '3D homogeneous refinement'
+    _label = '3D homogeneous refinement(Legacy)'
     _fscColumns = 6
+    _className = "homo_refine"
 
     # --------------------------- DEFINE param functions ----------------------
     def _defineFileNames(self):
@@ -519,7 +520,6 @@ class ProtCryoSparcRefine3D(ProtCryosparcBase, pwprot.ProtRefine3D):
         """
         :return:
         """
-        className = "homo_refine"
         if self.mask is not None:
             input_group_conect = {"particles": str(self.par),
                                   "volume": str(self.vol),
@@ -557,7 +557,7 @@ class ProtCryoSparcRefine3D(ProtCryosparcBase, pwprot.ProtRefine3D):
         except Exception:
             gpusToUse = False
 
-        self.runRefine = enqueueJob(className, self.projectName.get(),
+        self.runRefine = enqueueJob(self._className, self.projectName.get(),
                               self.workSpaceName.get(),
                               str(params).replace('\'', '"'),
                               str(input_group_conect).replace('\'', '"'),

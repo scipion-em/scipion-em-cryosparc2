@@ -49,6 +49,7 @@ class ProtCryoSparcLocalCtfRefinement(ProtCryosparcBase, ProtParticles):
     """
     _label = 'local ctf refinement'
     _devStatus = BETA
+    _className = "ctf_refine_local"
 
     def _initialize(self):
         self._createFilenameTemplates()
@@ -245,7 +246,6 @@ class ProtCryoSparcLocalCtfRefinement(ProtCryosparcBase, ProtParticles):
         """
          :return:
          """
-        className = "ctf_refine_local"
         input_group_conect = {"particles": str(self.par),
                               "volume": str(self.vol),
                               "mask": str(self.mask)}
@@ -267,7 +267,7 @@ class ProtCryoSparcLocalCtfRefinement(ProtCryosparcBase, ProtParticles):
         except Exception:
             gpusToUse = False
 
-        self.runLocalCtfRefinement = enqueueJob(className, self.projectName.get(),
+        self.runLocalCtfRefinement = enqueueJob(self._className, self.projectName.get(),
                                         self.workSpaceName.get(),
                                         str(params).replace('\'', '"'),
                                         str(input_group_conect).replace('\'',

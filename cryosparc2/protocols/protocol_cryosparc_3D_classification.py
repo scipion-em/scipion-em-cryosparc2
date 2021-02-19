@@ -51,6 +51,7 @@ class ProtCryoSparc3DClassification(ProtCryosparcBase):
     and also to re-classify particles to aid in sorting.
     """
     _label = '3D classification'
+    _className = "hetero_refine"
 
     def _initialize(self):
         self._defineFileNames()
@@ -453,7 +454,6 @@ class ProtCryoSparc3DClassification(ProtCryosparcBase):
     def do3DClasification(self):
         """
         """
-        className = "hetero_refine"
         input_group_conect = {"particles": str(self.par)}
         group_connect = {"volume": self.vol}
         # {'particles' : 'JXX.imported_particles' }
@@ -479,7 +479,7 @@ class ProtCryoSparc3DClassification(ProtCryosparcBase):
         except Exception:
             gpusToUse = False
 
-        self.run3dClassification = enqueueJob(className, self.projectName.get(),
+        self.run3dClassification = enqueueJob(self._className, self.projectName.get(),
                                     self.workSpaceName.get(),
                                     str(params).replace('\'', '"'),
                                     str(input_group_conect).replace('\'',

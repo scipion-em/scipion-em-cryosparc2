@@ -50,6 +50,7 @@ class ProtCryoSparcGlobalCtfRefinement(ProtCryosparcBase, pwprot.ProtParticles):
     """
     _label = 'global ctf refinement'
     _devStatus = BETA
+    _className = "ctf_refine_global"
 
     def _initialize(self):
         self._createFilenameTemplates()
@@ -283,7 +284,6 @@ class ProtCryoSparcGlobalCtfRefinement(ProtCryosparcBase, pwprot.ProtParticles):
         """
                 :return:
                 """
-        className = "ctf_refine_global"
         input_group_conect = {"particles": str(self.par),
                               "volume": str(self.vol),
                               "mask": str(self.mask)}
@@ -300,7 +300,7 @@ class ProtCryoSparcGlobalCtfRefinement(ProtCryosparcBase, pwprot.ProtParticles):
         except Exception:
             gpusToUse = False
 
-        self.runGlobalCtfRefinement = enqueueJob(className, self.projectName.get(),
+        self.runGlobalCtfRefinement = enqueueJob(self._className, self.projectName.get(),
                                         self.workSpaceName.get(),
                                         str(params).replace('\'', '"'),
                                         str(input_group_conect).replace('\'',

@@ -48,6 +48,7 @@ class ProtCryo2D(ProtCryosparcBase, pwprot.ProtClassify2D):
     """
     _label = '2d classification'
     IS_2D = True
+    _className = "class_2D"
     
     def __init__(self, **args):
         pwprot.ProtClassify2D.__init__(self, **args)
@@ -434,7 +435,6 @@ class ProtCryo2D(ProtCryosparcBase, pwprot.ProtClassify2D):
                                  input_group_connects={})
         returns: the new uid of the job that was created
         """
-        className = "class_2D"
         # {'particles' : 'JXX.imported_particles' }
         input_group_conect = {"particles": str(self.par)}
 
@@ -475,7 +475,7 @@ class ProtCryo2D(ProtCryosparcBase, pwprot.ProtClassify2D):
         if self.class2D_window_outer_A.get() is not None:
             params["class2D_window_outer_A"] = str(self.class2D_window_outer_A.get())
 
-        self.runClass2D = enqueueJob(className, self.projectName.get(),
+        self.runClass2D = enqueueJob(self._className, self.projectName.get(),
                                 self.workSpaceName.get(),
                                 str(params).replace('\'', '"'),
                                 str(input_group_conect).replace('\'', '"'),

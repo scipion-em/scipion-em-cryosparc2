@@ -56,6 +56,7 @@ class ProtCryoSparcLocalRefine(ProtCryosparcBase, ProtOperateParticles):
     _label = 'local refinement'
     _devStatus = NEW
     _protCompatibility = [V3_0_0, V3_1_0]
+    _className = "new_local_refine"
 
     def _initialize(self):
         self._defineFileNames()
@@ -435,8 +436,6 @@ class ProtCryoSparcLocalRefine(ProtCryosparcBase, ProtOperateParticles):
         """
         :return:
         """
-        className = "new_local_refine"
-
         if self.mask is not None:
             input_group_conect = {"particles": str(self.par),
                                   "volume": str(self.vol),
@@ -478,7 +477,7 @@ class ProtCryoSparcLocalRefine(ProtCryosparcBase, ProtOperateParticles):
         except Exception:
             gpusToUse = False
 
-        self.runLocalRefinement = enqueueJob(className, self.projectName.get(),
+        self.runLocalRefinement = enqueueJob(self._className, self.projectName.get(),
                                              self.workSpaceName.get(),
                                              str(params).replace('\'', '"'),
                                              str(input_group_conect).replace('\'',
