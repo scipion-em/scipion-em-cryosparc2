@@ -35,7 +35,9 @@ from pwem.viewers import (ChimeraView, EmPlotter, ChimeraClientView,
 
 from ..protocols import (ProtCryoSparcNonUniformRefine3D,
                          ProtCryoSparcRefine3D,
-                         ProtCryoSparcLocalRefine, ProtCryoSparcHelicalRefine3D)
+                         ProtCryoSparcLocalRefine, ProtCryoSparcHelicalRefine3D,
+                         ProtCryoSparc3DHomogeneousRefine,
+                         ProtCryoSparcNewNonUniformRefine3D)
 from ..constants import *
 from ..utils import *
 
@@ -44,7 +46,9 @@ class CryosPARCViewer3DRefinement(EmProtocolViewer):
     """ Visualization of e2refine_easy results. """
 
     _targets = [ProtCryoSparcRefine3D, ProtCryoSparcNonUniformRefine3D,
-                ProtCryoSparcLocalRefine, ProtCryoSparcHelicalRefine3D]
+                ProtCryoSparcLocalRefine, ProtCryoSparcHelicalRefine3D,
+                ProtCryoSparc3DHomogeneousRefine,
+                ProtCryoSparcNewNonUniformRefine3D]
     _environments = [DESKTOP_TKINTER, WEB_DJANGO]
     _label = 'viewer Refinement'
 

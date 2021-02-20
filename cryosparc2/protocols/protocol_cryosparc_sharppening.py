@@ -43,6 +43,7 @@ class ProtCryoSparcSharppening(ProtCryosparcBase, ProtAnalysis3D):
     Wrapper protocol for the Cryosparc's to calculate the sharpened map.
     """
     _label = 'sharppening'
+    _className = "sharpen"
 
     def _defineParams(self, form):
         form.addSection(label='Input')
@@ -211,7 +212,6 @@ class ProtCryoSparcSharppening(ProtCryosparcBase, ProtAnalysis3D):
 
     def doSharppening(self):
 
-        className = "sharpen"
         input_group_conect = {"volume": str(self.vol)}
         params = {}
 
@@ -225,7 +225,7 @@ class ProtCryoSparcSharppening(ProtCryosparcBase, ProtAnalysis3D):
         except Exception:
             gpusToUse = False
 
-        self.runSharppening = enqueueJob(className,
+        self.runSharppening = enqueueJob(self._className,
                                          self.projectName.get(),
                                          self.workSpaceName.get(),
                                          str(params).replace('\'',

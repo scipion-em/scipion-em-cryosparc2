@@ -253,6 +253,42 @@ class TestCryosparc3DRefinement(TestCryosparcBase):
         _checkAsserts(cryosparcProtGpu)
 
 
+class TestProtCryoSparc3DHomogeneousRefine(TestCryosparcBase):
+
+    @classmethod
+    def setUpClass(cls):
+        setupTestProject(cls)
+        setupTestProject(cls)
+        dataProject = 'grigorieff'
+        dataset = DataSet.getDataSet(dataProject)
+        TestCryosparcBase.setData()
+        particlesPattern = dataset.getFile('particles.sqlite')
+        cls.protImportPart = cls.runImportParticleCryoSPARC(cls.partFn2)
+        cls.protImportVol = cls.runImportVolumesCryoSPARC(cls.volFn)
+
+    def testCryosparc3DHomogeneousRefinement(self):
+        def _runCryosparctest3DHomogeneousRefinement(label=''):
+            prot3DHomoRefinement = self.newProtocol(ProtCryoSparc3DHomogeneousRefine)
+
+            prot3DHomoRefinement.inputParticles.set(self.protImportPart.outputParticles)
+            prot3DHomoRefinement.referenceVolume.set(self.protImportVol.outputVolume)
+            prot3DHomoRefinement.symmetryGroup.set(SYM_CYCLIC)
+            prot3DHomoRefinement.symmetryOrder.set(1)
+            prot3DHomoRefinement.compute_use_ssd.set(False)
+            prot3DHomoRefinement.setObjLabel(label)
+            self.launchProtocol(prot3DHomoRefinement)
+            return prot3DHomoRefinement
+
+        def _checkAsserts(cryosparcProt):
+            self.assertIsNotNone(cryosparcProt.outputVolume,
+                                 "There was a problem with Cryosparc 3D refinement")
+            self.assertEqual(cryosparcProt.outputVolume.getSamplingRate(), 4,
+                             'Wrong sampling rate conversion for refined volume')
+
+        cryosparcProtGpu = _runCryosparctest3DHomogeneousRefinement(label="Cryosparc 3D homogeneous refinement")
+        _checkAsserts(cryosparcProtGpu)
+
+
 class TestCryosparcNonUniformRefine3D(TestCryosparcBase):
 
     @classmethod
@@ -286,6 +322,41 @@ class TestCryosparcNonUniformRefine3D(TestCryosparcBase):
                                  "There was a problem with Cryosparc Non-Uniform 3D refinement")
 
         cryosparcProtGpu = _runCryosparctestNonUniformRefine3D(label="Cryosparc Non-Uniform 3D refinement")
+        _checkAsserts(cryosparcProtGpu)
+
+class TestCryosparcNewNonUniformRefine3D(TestCryosparcBase):
+
+    @classmethod
+    def setUpClass(cls):
+        setupTestProject(cls)
+        setupTestProject(cls)
+        dataProject = 'grigorieff'
+        dataset = DataSet.getDataSet(dataProject)
+        TestCryosparcBase.setData()
+        particlesPattern = dataset.getFile('particles.sqlite')
+        cls.protImportPart = cls.runImportParticleCryoSPARC(cls.partFn2)
+        cls.protImportVolumeVol = cls.runImportVolumesCryoSPARC(cls.volFn)
+
+    def testCryosparcNewNonUniformRefine3D(self):
+        def _runCryosparctestNewNonUniformRefine3D(label=''):
+            protNewNonUniform3DRefinement = self.newProtocol(ProtCryoSparcNewNonUniformRefine3D)
+
+
+
+            protNewNonUniform3DRefinement.inputParticles.set(self.protImportPart.outputParticles)
+            protNewNonUniform3DRefinement.referenceVolume.set(self.protImportVolumeVol.outputVolume)
+            protNewNonUniform3DRefinement.symmetryGroup.set(SYM_CYCLIC)
+            protNewNonUniform3DRefinement.symmetryOrder.set(1)
+            protNewNonUniform3DRefinement.compute_use_ssd.set(False)
+            protNewNonUniform3DRefinement.setObjLabel(label)
+            self.launchProtocol(protNewNonUniform3DRefinement)
+            return protNewNonUniform3DRefinement
+
+        def _checkAsserts(cryosparcProt):
+            self.assertIsNotNone(cryosparcProt.outputVolume,
+                                 "There was a problem with Cryosparc Non-Uniform 3D refinement")
+
+        cryosparcProtGpu = _runCryosparctestNewNonUniformRefine3D(label="Cryosparc New Non-Uniform 3D refinement")
         _checkAsserts(cryosparcProtGpu)
 
 
@@ -581,6 +652,57 @@ class TestCryosparcLocalCtfRefinement(TestCryosparcBase):
         _checkAsserts(cryosparcProtGpu)
 
 
+class TestCryosparcNaiveLocalRefine(TestCryosparcBase):
+
+    @classmethod
+    def setUpClass(cls):
+        setupTestProject(cls)
+        setupTestProject(cls)
+        dataProject = 'grigorieff'
+        dataset = DataSet.getDataSet(dataProject)
+        TestCryosparcBase.setData()
+        particlesPattern = dataset.getFile('particles.sqlite')
+        cls.protImportPart = cls.runImportParticleCryoSPARC(cls.partFn2)
+        cls.protImportVol = cls.runImportVolumesCryoSPARC(cls.volFn)
+
+    def testCryosparcNaiveLocalRefine(self):
+        def _runCryosparctestNaiveLocalRefine(label=''):
+
+            protLocalRefine = self.newProtocol(ProtCryoSparcNaiveLocalRefine)
+
+            prot3DRefinement = self.newProtocol(ProtCryoSparcRefine3D)
+            prot3DRefinement.inputParticles.set(self.protImportPart.outputParticles)
+            prot3DRefinement.referenceVolume.set(self.protImportVol.outputVolume)
+            prot3DRefinement.symmetryGroup.set(SYM_CYCLIC)
+            prot3DRefinement.symmetryOrder.set(1)
+            prot3DRefinement.compute_use_ssd.set(False)
+            self.launchProtocol(prot3DRefinement)
+
+            # Create a 3D Mask using xmipp
+            xmippProtocols = Domain.importFromPlugin('xmipp3.protocols',
+                                                     doRaise=True)
+            protXmippCreate3DMask = self.newProtocol(
+                xmippProtocols.XmippProtCreateMask3D, source=0)
+            protXmippCreate3DMask.inputVolume.set(prot3DRefinement.outputVolume)
+            protXmippCreate3DMask.setObjLabel('xmipp: create 3d mask')
+            self.launchProtocol(protXmippCreate3DMask)
+
+            protLocalRefine.inputParticles.set(prot3DRefinement.outputParticles)
+            protLocalRefine.refVolume.set(prot3DRefinement.outputVolume)
+            protLocalRefine.refMask.set(protXmippCreate3DMask.outputMask)
+            protLocalRefine.compute_use_ssd.set(False)
+            self.launchProtocol(protLocalRefine)
+
+            return protLocalRefine
+
+        def _checkAsserts(cryosparcProt):
+            self.assertIsNotNone(cryosparcProt.outputParticles,
+                                 "There was a problem with Cryosparc subtract projection")
+
+        cryosparcProtGpu = _runCryosparctestNaiveLocalRefine(label="Cryosparc Local Refine")
+        _checkAsserts(cryosparcProtGpu)
+
+
 class TestCryosparcLocalRefine(TestCryosparcBase):
 
     @classmethod
@@ -594,8 +716,8 @@ class TestCryosparcLocalRefine(TestCryosparcBase):
         cls.protImportPart = cls.runImportParticleCryoSPARC(cls.partFn2)
         cls.protImportVol = cls.runImportVolumesCryoSPARC(cls.volFn)
 
-    def testCryosparcLocalRefine(self):
-        def _runCryosparctestLocalRefinet(label=''):
+    def testCryosparcNaiveLocalRefine(self):
+        def _runCryosparctestNaiveLocalRefine(label=''):
 
             protLocalRefine = self.newProtocol(ProtCryoSparcLocalRefine)
 
@@ -628,10 +750,8 @@ class TestCryosparcLocalRefine(TestCryosparcBase):
             self.assertIsNotNone(cryosparcProt.outputParticles,
                                  "There was a problem with Cryosparc subtract projection")
 
-        cryosparcProtGpu = _runCryosparctestLocalRefinet(label="Cryosparc Local Refine")
+        cryosparcProtGpu = _runCryosparctestNaiveLocalRefine(label="Cryosparc Local Refine")
         _checkAsserts(cryosparcProtGpu)
-
-
 
 
 

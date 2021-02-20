@@ -42,6 +42,7 @@ class ProtCryosparcBase(pw.EMProtocol):
     This class contains the common functions for all Cryosparc protocols.
     """
     _protCompatibility = []
+    _className = ""
 
     def _initializeCryosparcProject(self):
         """

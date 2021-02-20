@@ -1,9 +1,8 @@
 # **************************************************************************
 # *
-# *  Authors:     Szu-Chi Chung (phonchi@stat.sinica.edu.tw)
-# *               Yunior C. Fonseca Reyna (cfonseca@cnb.csic.es)
+# * Authors: Yunior C. Fonseca Reyna    (cfonseca@cnb.csic.es)
 # *
-# * SABID Laboratory, Institute of Statistical Science, Academia Sinica
+# *
 # * Unidad de  Bioinformatica of Centro Nacional de Biotecnologia , CSIC
 # *
 # * This program is free software; you can redistribute it and/or modify
@@ -25,151 +24,179 @@
 # *  e-mail address 'scipion@cnb.csic.es'
 # *
 # **************************************************************************
-import pwem.objects as pwobj
-import pwem.protocols as pwprot
+import os
+
+from pwem import ALIGN_PROJ
+from pwem.protocols import ProtOperateParticles
+
 import pyworkflow.utils as pwutils
-from pyworkflow.protocol.params import *
+from pyworkflow.protocol.params import (PointerParam, FloatParam,
+                                        LEVEL_ADVANCED, IntParam, Positive,
+                                        BooleanParam, EnumParam, String)
+from pwem.objects import Volume, FSC
 
 from .protocol_base import ProtCryosparcBase
 from ..convert import (defineArgs, convertCs2Star, createItemMatrix,
                        setCryosparcAttributes)
-from ..utils import (addSymmetryParam, addComputeSectionParams,
-                     get_job_streamlog, calculateNewSamplingRate,
-                     cryosparcValidate, gpusValidate, getSymmetry,
-                     waitForCryosparc, clearIntermediateResults, enqueueJob)
-from ..constants import md, NOISE_MODEL_CHOICES, REFINE_MASK_CHOICES
+from ..utils import (addComputeSectionParams, get_job_streamlog,
+                     calculateNewSamplingRate, cryosparcValidate, gpusValidate,
+                     enqueueJob, waitForCryosparc, clearIntermediateResults)
+from ..constants import *
 
 
-class ProtCryoSparcRefine3D(ProtCryosparcBase, pwprot.ProtRefine3D):
-    """ Protocol to refine a 3D map using cryosparc.
-        Rapidly refine a single homogeneous structure to high-resolution and
-        validate using the gold-standard FSC.
-    """
-    _label = '3D homogeneous refinement(Legacy)'
-    _fscColumns = 6
-    _className = "homo_refine"
+class ProtCryoSparcNaiveLocalRefine(ProtCryosparcBase, ProtOperateParticles):
+    """ Signal subtraction protocol of cryoSPARC.
+        Subtract projections of a masked volume from particles.
+        """
+    _label = 'naive local refinement(Legacy)'
+    _className = "naive_local_refine"
 
-    # --------------------------- DEFINE param functions ----------------------
+    def _initialize(self):
+        self._defineFileNames()
+
     def _defineFileNames(self):
-        """ Centralize how files are called within the protocol. """
+        """ Centralize how files are called. """
         myDict = {
-                  'input_particles': self._getTmpPath('input_particles.star'),
-                  'out_particles': self._getPath() + '/output_particle.star',
-                  'stream_log': self._getPath()+'/stream.log'
-                  }
+            'input_particles': self._getTmpPath('input_particles.star'),
+            'out_particles': self._getExtraPath('output_particle.star'),
+            'stream_log': self._getPath() + '/stream.log'
+        }
         self._updateFilenamesDict(myDict)
 
     def _defineParams(self, form):
         form.addSection(label='Input')
         form.addParam('inputParticles', PointerParam,
                       pointerClass='SetOfParticles',
+                      pointerCondition='hasAlignmentProj',
                       label="Input particles", important=True,
-                      validators=[Positive],
-                      help='Select the input images from the project.')
-        form.addParam('referenceVolume', PointerParam, pointerClass='Volume',
+                      help='Select the experimental particles.')
+        form.addParam('refVolume', PointerParam, pointerClass='Volume',
+                      label="Input map to be projected",
                       important=True,
-                      label="Input volume",
-                      help='Initial reference 3D map, it should have the same '
-                           'dimensions and the same pixel size as your input '
+                      help='Provide the input volume that will be used to '
+                           'calculate projections, which will be subtracted '
+                           'from the experimental particles. Make sure this '
+                           'map was calculated by RELION from the same '
+                           'particles as above, and preferably with those '
+                           'orientations, as it is crucial that the absolute '
+                           'greyscale is the same as in the experimental '
                            'particles.')
         form.addParam('refMask', PointerParam, pointerClass='VolumeMask',
-                      default=None,
-                      label='Mask to be applied to this map(Optional)',
-                      allowsNull=True,
-                      help='A volume mask containing a (soft) mask with '
-                           'the same dimensions as the reference(s), '
-                           'and values between 0 and 1, with 1 being 100% '
-                           'protein and 0 being 100% solvent. The '
-                           'reconstructed reference map will be multiplied '
-                           'by this mask. If no mask is given, a soft '
-                           'spherical mask based on the <radius> of the '
-                           'mask for the experimental images will be '
-                           'applied.')
+                      label='Mask to be applied to this map',
+                      important=True,
+                      allowsNull=False,
+                      help="Provide a soft mask where the protein density "
+                           "you wish to subtract from the experimental "
+                           "particles is white (1) and the rest of the "
+                           "protein and the solvent is black (0). "
+                           "That is: *the mask should INCLUDE the part of the "
+                           "volume that you wish to SUBTRACT.*")
 
-        # --------------[Homogeneous Refinement]---------------------------
+        # -----------[Local Refinement]------------------------
+        form.addSection(label="Naive local refinement")
+
+        # form.addParam('fulcx', IntParam, default=0,
+        #               label='Fulcrum, x-coordinate',
+        #               help='The fulcrum is the point around which the subvolume '
+        #                    'rotates with respect to the main volume')
+        #
+        # form.addParam('fulcy', IntParam, default=0,
+        #               label='Fulcrum, y-coordinate',
+        #               help='The fulcrum is the point around which the subvolume '
+        #                    'rotates with respect to the main volume')
+        #
+        # form.addParam('fulcz', IntParam, default=0,
+        #               label='Fulcrum, z-coordinate',
+        #               help='The fulcrum is the point around which the subvolume '
+        #                    'rotates with respect to the main volume')
+        #
+        # form.addParam('optimize_fulcrum', BooleanParam, default=False,
+        #               label="Optimize fulcrum placement (experimental)",
+        #               help="Attempt to move the fulcrum closer to the optimal "
+        #                    "position at each iteration. Recommended to keep "
+        #                    "off in most cases.")
+
+        form.addParam('local_align_extent_pix', IntParam, default=3,
+                      validators=[Positive],
+                      label='Local shift search extent (pix)',
+                      help='The maximum extent of local shifts that will be '
+                           'searched over, in pixels')
+
+        form.addParam('local_align_extent_deg', IntParam, default=10,
+                      label='Local rotation search extent (degrees)',
+                      help='The maximum magnitude of the change in rotations '
+                           'to search over, in degrees')
+
+        form.addParam('local_align_max_align', FloatParam, default=0.5,
+                      validators=[Positive],
+                      label='Alignment resolution (degrees)',
+                      help='Smallest search distance between angles, in degrees')
+
+        form.addParam('local_align_grid_r', IntParam, default=9,
+                      validators=[Positive],
+                      label='Local shift search grid size',
+                      help='The number of points on the search grid for local '
+                           'shifts')
+
+        form.addParam('local_align_grid_t', IntParam, default=9,
+                      validators=[Positive],
+                      label='Local rotation search grid size',
+                      help='The number of points on the search grid for local '
+                           'rotations')
+
+        form.addParam('override_final_radwn', BooleanParam,
+                      default=False,
+                      label='Override final radwn')
+
+        form.addParam('n_iterations', IntParam, default=1,
+                      validators=[Positive],
+                      label='Override number of iterations')
+
+        # -----[Non Uniform Refinement]----------------------------------------
+
+        form.addSection(label='Non-uniform refinement')
+        form.addParam('NU-refine', BooleanParam, default=False,
+                      label='Use Non-Uniform Refinement')
+
+        # -----[Refinement]----------------------------------------
 
         form.addSection(label='Refinement')
-        form.addParam('refine_N', IntParam, default=0,
-                      expertLevel=LEVEL_ADVANCED,
-                      label="Refinement box size (Voxels)",
-                      help='The volume size to use for refinement. If this is '
-                           '0, use the full image size. Otherwise images '
-                           'are automatically downsampled')
 
-        addSymmetryParam(form, help="Symmetry String (C, D, I, O, T). E.g. C1, "
-                                    "D7, C4, etc")
-
-        form.addParam('refine_symmetry_do_align', BooleanParam, default=True,
-                      label="Do symmetry alignment",
-                      help='Align the input structure to the symmetry axes')
-
-        form.addParam('refine_do_init_scale_est', BooleanParam, default=True,
-                      label="Re-estimate greyscale level of input reference")
-
-        form.addParam('refine_num_final_iterations', IntParam, default=0,
-                      expertLevel=LEVEL_ADVANCED,
+        form.addParam('refine_num_final_iterations', IntParam, default=1,
                       label="Number of extra final passes",
                       help='Number of extra passes through the data to do '
                            'after the GS-FSC resolution has stopped improving')
 
-        # form.addParam('refine_res_align_max', IntParam, default=None,
-        #               expertLevel=LEVEL_ADVANCED,
-        #               label="Maximum align resolution (A)",
-        #               help='Manual override for maximum resolution that is '
-        #                    'used for alignment. This value is normally set by '
-        #                    'the GS-FSC')
-
-        form.addParam('refine_res_init', IntParam, default=30,
-                      expertLevel=LEVEL_ADVANCED,
+        form.addParam('refine_res_init', IntParam, default=20,
                       validators=[Positive],
                       label="Initial lowpass resolution (A)",
                       help='Applied to input structure')
 
         form.addParam('refine_res_gsfsc_split', IntParam, default=20,
-                      expertLevel=LEVEL_ADVANCED,
                       validators=[Positive],
                       label="GSFSC split resolution (A)",
                       help='Resolution beyond which two GS-FSC halves are '
                            'independent')
 
-        # form.addParam('refine_highpass_res', IntParam, default=None,
-        #               expertLevel=LEVEL_ADVANCED,
-        #               label="Highpass resolution (A)")
-
-        form.addParam('refine_SPW', BooleanParam, default=False,
+        form.addParam('refine_FSC_inflate_factor', IntParam, default=1,
+                      validators=[Positive],
                       expertLevel=LEVEL_ADVANCED,
-                      label="Use SPW")
+                      label="FSC Inflate Factor")
 
-        # form.addParam('refine_particle_mw_kda', IntParam, default=None,
-        #               expertLevel=LEVEL_ADVANCED,
-        #               label="Particle MW (KDa)")
-
-        # form.addParam('refine_FSC_weight', StringParam, default='fsc_loosemask',
-        #               expertLevel=LEVEL_ADVANCED,
-        #               label="FSC Weighting")
-
-        # form.addParam('refine_bnb_params', StringParam, default='3D',
-        #               expertLevel=LEVEL_ADVANCED,
-        #               label="BnB Params")
-
-        form.addParam('refine_clip', BooleanParam, default=False,
-                      expertLevel=LEVEL_ADVANCED,
+        form.addParam('refine_clip', BooleanParam, default=True,
                       label="Enforce non-negativity",
                       help='Clip negative density. Probably should be false')
 
         form.addParam('refine_window', BooleanParam, default=True,
-                      expertLevel=LEVEL_ADVANCED,
                       label="Skip interpolant premult",
                       help='Softly window the structure in real space with a '
                            'spherical window. Should be true')
 
         form.addParam('refine_skip_premult', BooleanParam, default=True,
-                      expertLevel=LEVEL_ADVANCED,
                       label="Window structure in real space",
                       help='Leave this as true')
 
         form.addParam('refine_ignore_dc', BooleanParam, default=True,
-                      expertLevel=LEVEL_ADVANCED,
                       label="Ignore DC component",
                       help='Ignore the DC component of images. Should be true')
 
@@ -198,19 +225,19 @@ class ProtCryoSparcRefine3D(ProtCryosparcBase, pwprot.ProtRefine3D):
                       expertLevel=LEVEL_ADVANCED,
                       label="Minimize over per-particle scale")
 
-        form.addParam('refine_scale_align_use_prev', BooleanParam, default=False,
+        form.addParam('refine_scale_align_use_prev', BooleanParam,
+                      default=True,
                       expertLevel=LEVEL_ADVANCED,
                       label="Use scales from previous iteration during "
                             "alignment")
 
         form.addParam('refine_scale_ctf_use_current', BooleanParam,
                       expertLevel=LEVEL_ADVANCED,
-                      default=False,
+                      default=True,
                       label="Use scales from current alignment in reconstruction",
                       help='Use scales from current alignment in reconstruction')
 
         form.addParam('refine_scale_start_iter', IntParam, default=0,
-                      expertLevel=LEVEL_ADVANCED,
                       label="Scale min/use start iter",
                       help='Iteration to start minimizing over per-particle scale')
 
@@ -223,44 +250,36 @@ class ProtCryoSparcRefine3D(ProtCryosparcBase, pwprot.ProtRefine3D):
                            'meaning coloured with radial symmetry')
 
         form.addParam('refine_noise_priorw', IntParam, default=50,
-                      expertLevel=LEVEL_ADVANCED,
                       validators=[Positive],
+                      expertLevel=LEVEL_ADVANCED,
                       label="Noise priorw",
                       help='Weight of the prior for estimating noise (units of '
                            '# of images)')
 
         form.addParam('refine_noise_initw', IntParam, default=200,
-                      expertLevel=LEVEL_ADVANCED,
                       validators=[Positive],
+                      expertLevel=LEVEL_ADVANCED,
                       label="Noise initw",
                       help='Weight of the initial noise estimate (units of # '
                            'of images)')
 
         form.addParam('refine_noise_init_sigmascale', IntParam, default=3,
-                      expertLevel=LEVEL_ADVANCED,
                       validators=[Positive],
+                      expertLevel=LEVEL_ADVANCED,
                       label="Noise initial sigma-scale",
                       help='Scale factor initially applied to the base noise '
                            'estimate')
 
-        form.addParam('refine_minisize', IntParam, default=2000,
-                      expertLevel=LEVEL_ADVANCED,
-                      validators=[Positive],
-                      label="Computational minibatch size",
-                      help='Number of images to use in each minibatch - only '
-                           'affects computational performance. 1000 is a good '
-                           'number, but try 4000 if you have lots of RAM')
-
         form.addParam('refine_mask', EnumParam,
                       choices=['dynamic', 'static', 'null'],
                       default=0,
-                      expertLevel=LEVEL_ADVANCED,
                       label="Mask:",
                       help='Type of masking to use. Either "dynamic", '
                            '"static", or "null"')
 
-        form.addParam('refine_dynamic_mask_thresh_factor', FloatParam, default=0.2,
+        form.addParam('refine_dynamic_mask_thresh_factor', FloatParam,
                       expertLevel=LEVEL_ADVANCED,
+                      default=0.2,
                       validators=[Positive],
                       label="Dynamic mask threshold (0-1)",
                       help='Level set threshold for selecting regions that are '
@@ -269,7 +288,7 @@ class ProtCryoSparcRefine3D(ProtCryosparcBase, pwprot.ProtRefine3D):
 
         form.addParam('refine_dynamic_mask_near_ang', FloatParam,
                       expertLevel=LEVEL_ADVANCED,
-                      default=6.0,
+                      default=3.0,
                       validators=[Positive],
                       label="Dynamic mask near (A)",
                       help='Controls extent to which mask is expanded. At the '
@@ -277,30 +296,15 @@ class ProtCryoSparcRefine3D(ProtCryosparcBase, pwprot.ProtRefine3D):
 
         form.addParam('refine_dynamic_mask_far_ang', FloatParam,
                       expertLevel=LEVEL_ADVANCED,
-                      default=14.0,
+                      default=6,
                       validators=[Positive],
                       label="Dynamic mask far (A)",
                       help='Controls extent to which mask is expanded. At the '
                            'far distance the mask value becomes 0.0 (in A)')
 
-        form.addParam('refine_dynamic_mask_start_res', IntParam,
-                      expertLevel=LEVEL_ADVANCED,
-                      default=12,
-                      validators=[Positive],
-                      label="Dynamic mask start resolution (A)",
-                      help='Map resolution at which to start dynamic masking '
-                           '(in A)')
-
-        form.addParam('refine_dynamic_mask_use_abs', BooleanParam,
-                      expertLevel=LEVEL_ADVANCED,
-                      default=False,
-                      label="Dynamic mask use absolute value",
-                      help='Include negative regions if they are more negative '
-                           'than the threshold')
-
         # --------------[Compute settings]---------------------------
         form.addSection(label="Compute settings")
-        addComputeSectionParams(form, allowMultipleGPUs=True)
+        addComputeSectionParams(form, allowMultipleGPUs=False)
 
     # --------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
@@ -314,8 +318,10 @@ class ProtCryoSparcRefine3D(ProtCryosparcBase, pwprot.ProtRefine3D):
     # --------------------------- STEPS functions ------------------------------
     def processStep(self):
         self.vol = self.importVolume.get() + '.imported_volume.map'
-        print(pwutils.yellowStr("Refinement started..."), flush=True)
-        self.doRunRefine()
+        self.mask = self.importMask.get() + '.imported_mask.mask'
+
+        print(pwutils.yellowStr("Local Refinement started..."), flush=True)
+        self.doLocalRefine()
 
     def createOutputStep(self):
         """
@@ -323,7 +329,7 @@ class ProtCryoSparcRefine3D(ProtCryosparcBase, pwprot.ProtRefine3D):
         """
         import ast
         self._initializeUtilsVariables()
-        get_job_streamlog(self.projectName.get(), self.runRefine.get(),
+        get_job_streamlog(self.projectName.get(), self.runLocalRefinement.get(),
                           self._getFileName('stream_log'))
 
         # Get the metadata information from stream.log
@@ -340,22 +346,27 @@ class ProtCryoSparcRefine3D(ProtCryosparcBase, pwprot.ProtRefine3D):
                     idd = y['imgfiles'][2]['fileid']
                     itera = z[-3:]
                 elif 'Using Filter Radius' in z:
-                    nomRes = str(y['text']).split('(')[1].split(')')[0].replace('A', 'Å')
-                    self.mapResolution = pwobj.String(nomRes)
+                    nomRes = str(y['text']).split('(')[1].split(')')[0].replace(
+                        'A', 'Å')
+                    self.mapResolution = String(nomRes)
                     self._store(self)
                 elif 'Estimated Bfactor' in z:
                     estBFactor = str(y['text']).split(':')[1].replace('\n', '')
-                    self.estBFactor = pwobj.String(estBFactor)
+                    self.estBFactor = String(estBFactor)
                     self._store(self)
 
         csParticlesName = ("cryosparc_" + self.projectName.get() + "_" +
-                           self.runRefine.get() + "_" + itera + "_particles.cs")
+                           self.runLocalRefinement.get() + "_" + itera + "_particles.cs")
         csFile = os.path.join(self.projectPath, self.projectName.get(),
-                              self.runRefine.get(), csParticlesName)
+                              self.runLocalRefinement.get(), csParticlesName)
+
+        # Create the output folder
+        outputFolder = self._getExtraPath() + '/' + self.runLocalRefinement.get()
+        os.system("mkdir " + outputFolder)
 
         # Copy the particles to scipion output folder
-        os.system("cp -r " + csFile + " " + self._getExtraPath())
-        csFile = os.path.join(self._getExtraPath(), csParticlesName)
+        os.system("cp -r " + csFile + " " + outputFolder)
+        csFile = os.path.join(outputFolder, csParticlesName)
 
         outputStarFn = self._getFileName('out_particles')
         argsList = [csFile, outputStarFn]
@@ -365,33 +376,33 @@ class ProtCryoSparcRefine3D(ProtCryosparcBase, pwprot.ProtRefine3D):
         convertCs2Star(args)
 
         fnVolName = ("cryosparc_" + self.projectName.get() + "_" +
-                     self.runRefine.get() + "_" + itera + "_volume_map.mrc")
+                     self.runLocalRefinement.get() + "_" + itera + "_volume_map.mrc")
         half1Name = ("cryosparc_" + self.projectName.get() + "_" +
-                     self.runRefine.get() + "_" + itera +
+                     self.runLocalRefinement.get() + "_" + itera +
                      "_volume_map_half_A.mrc")
         half2Name = ("cryosparc_" + self.projectName.get() + "_" +
-                     self.runRefine.get() + "_" + itera +
+                     self.runLocalRefinement.get() + "_" + itera +
                      "_volume_map_half_B.mrc")
 
         fnVol = os.path.join(self.projectPath, self.projectName.get(),
-                             self.runRefine.get(), fnVolName)
+                             self.runLocalRefinement.get(), fnVolName)
         half1 = os.path.join(self.projectPath, self.projectName.get(),
-                             self.runRefine.get(), half1Name)
+                             self.runLocalRefinement.get(), half1Name)
         half2 = os.path.join(self.projectPath, self.projectName.get(),
-                             self.runRefine.get(), half2Name)
+                             self.runLocalRefinement.get(), half2Name)
 
         # Copy the volumes to extra folder
-        os.system("cp -r " + fnVol + " " + self._getExtraPath())
-        fnVol = os.path.join(self._getExtraPath(), fnVolName)
+        os.system("cp -r " + fnVol + " " + outputFolder)
+        fnVol = os.path.join(outputFolder, fnVolName)
 
-        os.system("cp -r " + half1 + " " + self._getExtraPath())
-        half1 = os.path.join(self._getExtraPath(), half1Name)
+        os.system("cp -r " + half1 + " " + outputFolder)
+        half1 = os.path.join(outputFolder, half1Name)
 
-        os.system("cp -r " + half2 + " " + self._getExtraPath())
-        half2 = os.path.join(self._getExtraPath(), half2Name)
+        os.system("cp -r " + half2 + " " + outputFolder)
+        half2 = os.path.join(outputFolder, half2Name)
 
         imgSet = self._getInputParticles()
-        vol = pwobj.Volume()
+        vol = Volume()
         vol.setFileName(fnVol)
         vol.setSamplingRate(calculateNewSamplingRate(vol.getDim(),
                                                      imgSet.getSamplingRate(),
@@ -410,33 +421,36 @@ class ProtCryoSparcRefine3D(ProtCryosparcBase, pwprot.ProtRefine3D):
         os.system("wget 127.0.0.1:39000/file/" + idd + " -nd -P" +
                   self._getExtraPath())
         os.system("mv " + self._getExtraPath() + "/" + idd + " " +
-                  self._getExtraPath()+"/fsc.txt")
+                  self._getExtraPath() + "/fsc.txt")
         # Convert into scipion fsc format
-        f = open(self._getExtraPath()+"/fsc.txt", "r")
+        f = open(self._getExtraPath() + "/fsc.txt", "r")
         lines = f.readlines()
         wv = []
         corr = []
         for x in lines[1:-1]:
-            wv.append(str(float(x.split('\t')[0])/(int(self._getInputParticles().getDim()[0])*float(imgSet.getSamplingRate()))))
-            corr.append(x.split('\t')[self._fscColumns])
+            wv.append(str(float(x.split('\t')[0]) / (
+                        int(self._getInputParticles().getDim()[0]) * float(imgSet.getSamplingRate()))))
+            corr.append(x.split('\t')[6])
         f.close()
 
-        fsc = pwobj.FSC(objLabel=self.getRunName())
+        fsc = FSC(objLabel=self.getRunName())
         fsc.setData(wv, corr)
         wv2, corr2 = fsc.getData()
 
         self._defineOutputs(outputFSC=fsc)
         self._defineSourceRelation(vol, fsc)
 
+    # --------------------------- INFO functions -------------------------------
     def _validate(self):
+        """ Should be overwritten in subclasses to
+               return summary message for NORMAL EXECUTION.
+               """
         validateMsgs = cryosparcValidate()
         if not validateMsgs:
-            validateMsgs = gpusValidate(self.getGpuList())
+            validateMsgs = gpusValidate(self.getGpuList(), checkSingleGPU=True)
             if not validateMsgs:
-                particles = self._getInputParticles()
-                if not particles.hasCTF():
-                    validateMsgs.append("The Particles has not associated a "
-                                        "CTF model")
+                self._validateDim(self._getInputParticles(), self.refVolume.get(),
+                                  validateMsgs, 'Input particles', 'Input volume')
         return validateMsgs
 
     def _summary(self):
@@ -449,29 +463,21 @@ class ProtCryoSparcRefine3D(ProtCryosparcBase, pwprot.ProtRefine3D):
             summary.append("Input Particles: %s" %
                            self.getObjectTag('inputParticles'))
             summary.append("Input Volume: %s" %
-                           self.getObjectTag('referenceVolume'))
+                           self.getObjectTag('refVolume'))
             summary.append("Input Mask: %s" %
                            self.getObjectTag('refMask'))
-            summary.append("Symmetry: %s" %
-                           getSymmetry(self.symmetryGroup.get(),
-                                       self.symmetryOrder.get())
-                           )
             summary.append("------------------------------------------")
             summary.append("Output particles %s" %
                            self.getObjectTag('outputParticles'))
             summary.append("Output volume %s" %
                            self.getObjectTag('outputVolume'))
-
             if self.hasAttribute('mapResolution'):
                 summary.append("\nMap Resolution: %s" % self.mapResolution.get())
             if self.hasAttribute('estBFactor'):
                 summary.append('\nEstimated Bfactor: %s' % self.estBFactor.get())
         return summary
 
-    # -------------------------- UTILS functions ------------------------------
-
-    def _getInputVolume(self):
-        return self.referenceVolume.get()
+    # ---------------Utils Functions-----------------------------------------------------------
 
     def _fillDataFromIter(self, imgSet):
         outImgsFn = self._getFileName('out_particles')
@@ -482,16 +488,15 @@ class ProtCryoSparcRefine3D(ProtCryosparcBase, pwprot.ProtRefine3D):
                                                       sortByLabel=md.RLN_IMAGE_ID))
 
     def _createItemMatrix(self, particle, row):
-        createItemMatrix(particle, row, align=pwobj.ALIGN_PROJ)
-        setCryosparcAttributes(particle, row,
-                               md.RLN_PARTICLE_RANDOM_SUBSET)
+        createItemMatrix(particle, row, align=ALIGN_PROJ)
+        setCryosparcAttributes(particle, row, md.RLN_PARTICLE_RANDOM_SUBSET)
 
     def _defineParamsName(self):
         """ Define a list with all protocol parameters names"""
-        self._paramsName = ['refine_N',
-                            'refine_symmetry',
-                            'refine_symmetry_do_align',
-                            'refine_do_init_scale_est',
+        self._paramsName = ['local_align_extent_pix', 'local_align_extent_deg',
+                            'local_align_max_align', 'local_align_grid_r',
+                            'local_align_grid_t', 'override_final_radwn',
+                            'n_iterations',
                             'refine_num_final_iterations',
                             'refine_res_init',
                             'refine_res_gsfsc_split',
@@ -506,17 +511,14 @@ class ProtCryoSparcRefine3D(ProtCryosparcBase, pwprot.ProtRefine3D):
                             'refine_scale_start_iter',
                             'refine_noise_model', 'refine_noise_priorw',
                             'refine_noise_initw',
-                            'refine_noise_init_sigmascale',
-                            'refine_minisize', 'refine_mask',
+                            'refine_mask',
                             'refine_dynamic_mask_thresh_factor',
                             'refine_dynamic_mask_near_ang',
                             'refine_dynamic_mask_far_ang',
-                            'refine_dynamic_mask_start_res',
-                            'refine_dynamic_mask_use_abs',
                             'compute_use_ssd']
         self.lane = str(self.getAttributeValue('compute_lane'))
 
-    def doRunRefine(self):
+    def doLocalRefine(self):
         """
         :return:
         """
@@ -531,24 +533,16 @@ class ProtCryoSparcRefine3D(ProtCryosparcBase, pwprot.ProtRefine3D):
         params = {}
 
         for paramName in self._paramsName:
-            if (paramName != 'refine_symmetry' and
-                    paramName != 'refine_noise_model' and
-                    paramName != 'refine_mask' and
-                    paramName != 'refine_N'):
-                params[str(paramName)] = str(self.getAttributeValue(paramName))
-            elif (paramName == 'refine_N' and
-                  int(self.getAttributeValue(paramName)) > 0):
+            if (paramName != 'refine_noise_model' and
+                    paramName != 'refine_mask'):
                 params[str(paramName)] = str(self.getAttributeValue(paramName))
 
-            elif paramName == 'refine_symmetry':
-                symetryValue = getSymmetry(self.symmetryGroup.get(),
-                                           self.symmetryOrder.get())
-
-                params[str(paramName)] = symetryValue
             elif paramName == 'refine_noise_model':
-                params[str(paramName)] = str(NOISE_MODEL_CHOICES[self.refine_noise_model.get()])
+                params[str(paramName)] = str(
+                    NOISE_MODEL_CHOICES[self.refine_noise_model.get()])
             elif paramName == 'refine_mask':
-                params[str(paramName)] = str(REFINE_MASK_CHOICES[self.refine_mask.get()])
+                params[str(paramName)] = str(
+                    REFINE_MASK_CHOICES[self.refine_mask.get()])
 
         # Determinate the GPUs to use (in dependence of
         # the cryosparc version)
@@ -557,22 +551,20 @@ class ProtCryoSparcRefine3D(ProtCryosparcBase, pwprot.ProtRefine3D):
         except Exception:
             gpusToUse = False
 
-        self.runRefine = enqueueJob(self._className, self.projectName.get(),
-                              self.workSpaceName.get(),
-                              str(params).replace('\'', '"'),
-                              str(input_group_conect).replace('\'', '"'),
-                              self.lane, gpusToUse)
+        self.runLocalRefinement = enqueueJob(self._className, self.projectName.get(),
+                                             self.workSpaceName.get(),
+                                             str(params).replace('\'', '"'),
+                                             str(input_group_conect).replace('\'',
+                                                                             '"'),
+                                             self.lane, gpusToUse)
 
-        self.currenJob.set(self.runRefine.get())
+        self.currenJob.set(self.runLocalRefinement.get())
         self._store(self)
 
-        waitForCryosparc(self.projectName.get(), self.runRefine.get(),
-                         "An error occurred in the Refinement process. "
+        waitForCryosparc(self.projectName.get(), self.runLocalRefinement.get(),
+                         "An error occurred in the local refinement process. "
                          "Please, go to cryosPARC software for more "
                          "details.")
         print(pwutils.yellowStr("Removing intermediate results..."), flush=True)
         self.clearIntResults = clearIntermediateResults(self.projectName.get(),
-                                                        self.runRefine.get())
-
-
-
+                                                        self.runLocalRefinement.get())

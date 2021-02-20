@@ -57,6 +57,7 @@ class ProtCryoSparcHelicalRefine3D(ProtCryoSparcRefine3D):
     _devStatus = BETA
     _fscColumns = 4
     _protCompatibility = [V3_0_0, V3_1_0]
+    _className = "helix_refine"
 
     def _defineParams(self, form):
         form.addSection(label='Input')
@@ -255,7 +256,6 @@ class ProtCryoSparcHelicalRefine3D(ProtCryoSparcRefine3D):
         self.lane = str(self.getAttributeValue('compute_lane'))
 
     def doRunRefine(self):
-        className = "helix_refine"
         if self.mask is not None:
             input_group_conect = {"particles": str(self.par),
                                   "volume": str(self.vol),
@@ -288,7 +288,7 @@ class ProtCryoSparcHelicalRefine3D(ProtCryoSparcRefine3D):
         except Exception:
             gpusToUse = False
 
-        self.runRefine = enqueueJob(className, self.projectName.get(),
+        self.runRefine = enqueueJob(self._className, self.projectName.get(),
                               self.workSpaceName.get(),
                               str(params).replace('\'', '"'),
                               str(input_group_conect).replace('\'', '"'),
