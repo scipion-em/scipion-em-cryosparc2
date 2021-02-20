@@ -29,7 +29,7 @@ from pkg_resources import parse_version
 import pwem.objects as pwobj
 import pwem.protocols as pwprot
 import pyworkflow.utils as pwutils
-from pyworkflow import BETA
+from pyworkflow import NEW
 from pyworkflow.protocol.params import *
 
 from .protocol_base import ProtCryosparcBase
@@ -41,7 +41,7 @@ from ..utils import (addSymmetryParam, addComputeSectionParams,
                      waitForCryosparc, clearIntermediateResults, enqueueJob,
                      getCryosparcVersion)
 from ..constants import (md, NOISE_MODEL_CHOICES, REFINE_MASK_CHOICES, V3_0_0,
-                         V3_1_0)
+                         V3_1_0, REFINE_FILTER_TYPE)
 
 
 class ProtCryoSparc3DHomogeneousRefine(ProtCryosparcBase, pwprot.ProtRefine3D):
@@ -49,8 +49,8 @@ class ProtCryoSparc3DHomogeneousRefine(ProtCryosparcBase, pwprot.ProtRefine3D):
         Rapidly refine a single homogeneous structure to high-resolution and
         validate using the gold-standard FSC.
     """
-    _label = '3D homogeneous refinement(new)'
-    _devStatus = BETA
+    _label = '3D homogeneous refinement'
+    _devStatus = NEW
     _fscColumns = 6
     _className = "homo_refine_new"
     _protCompatibility = [V3_0_0, V3_1_0]
@@ -388,7 +388,7 @@ class ProtCryoSparc3DHomogeneousRefine(ProtCryosparcBase, pwprot.ProtRefine3D):
         for y in x:
             if 'text' in y:
                 z = str(y['text'])
-                if z.startswith('FSC'):
+                if z.startswith('FSC Iteration') or z.startswith('FSC iIteration'):
                     idd = y['imgfiles'][2]['fileid']
                     itera = z.split(',')[0][-3:]
                 elif 'Using Filter Radius' in z:
@@ -602,7 +602,8 @@ class ProtCryoSparc3DHomogeneousRefine(ProtCryosparcBase, pwprot.ProtRefine3D):
             if (paramName != 'refine_symmetry' and
                     paramName != 'refine_noise_model' and
                     paramName != 'refine_mask' and
-                    paramName != 'refine_highpass_res'):
+                    paramName != 'refine_highpass_res' and
+                    paramName != 'refine_nu_filtertype'):
                 params[str(paramName)] = str(self.getAttributeValue(paramName))
             elif (paramName == 'refine_highpass_res' and self.getAttributeValue(paramName) is not None and
                   int(self.getAttributeValue(paramName)) > 0):
@@ -619,6 +620,9 @@ class ProtCryoSparc3DHomogeneousRefine(ProtCryosparcBase, pwprot.ProtRefine3D):
             elif paramName == 'refine_mask':
                 params[str(paramName)] = str(
                     REFINE_MASK_CHOICES[self.refine_mask.get()])
+            elif paramName == 'refine_nu_filtertype':
+                params[str(paramName)] = str(
+                    REFINE_FILTER_TYPE[self.refine_nu_filtertype.get()])
 
         # Determinate the GPUs to use (in dependence of
         # the cryosparc version)

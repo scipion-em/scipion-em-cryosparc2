@@ -266,7 +266,7 @@ class TestProtCryoSparc3DHomogeneousRefine(TestCryosparcBase):
         cls.protImportPart = cls.runImportParticleCryoSPARC(cls.partFn2)
         cls.protImportVol = cls.runImportVolumesCryoSPARC(cls.volFn)
 
-    def testCryosparc3DRefinement(self):
+    def testCryosparc3DHomogeneousRefinement(self):
         def _runCryosparctest3DHomogeneousRefinement(label=''):
             prot3DHomoRefinement = self.newProtocol(ProtCryoSparc3DHomogeneousRefine)
 
@@ -322,6 +322,41 @@ class TestCryosparcNonUniformRefine3D(TestCryosparcBase):
                                  "There was a problem with Cryosparc Non-Uniform 3D refinement")
 
         cryosparcProtGpu = _runCryosparctestNonUniformRefine3D(label="Cryosparc Non-Uniform 3D refinement")
+        _checkAsserts(cryosparcProtGpu)
+
+class TestCryosparcNewNonUniformRefine3D(TestCryosparcBase):
+
+    @classmethod
+    def setUpClass(cls):
+        setupTestProject(cls)
+        setupTestProject(cls)
+        dataProject = 'grigorieff'
+        dataset = DataSet.getDataSet(dataProject)
+        TestCryosparcBase.setData()
+        particlesPattern = dataset.getFile('particles.sqlite')
+        cls.protImportPart = cls.runImportParticleCryoSPARC(cls.partFn2)
+        cls.protImportVolumeVol = cls.runImportVolumesCryoSPARC(cls.volFn)
+
+    def testCryosparcNewNonUniformRefine3D(self):
+        def _runCryosparctestNewNonUniformRefine3D(label=''):
+            protNewNonUniform3DRefinement = self.newProtocol(ProtCryoSparcNewNonUniformRefine3D)
+
+
+
+            protNewNonUniform3DRefinement.inputParticles.set(self.protImportPart.outputParticles)
+            protNewNonUniform3DRefinement.referenceVolume.set(self.protImportVolumeVol.outputVolume)
+            protNewNonUniform3DRefinement.symmetryGroup.set(SYM_CYCLIC)
+            protNewNonUniform3DRefinement.symmetryOrder.set(1)
+            protNewNonUniform3DRefinement.compute_use_ssd.set(False)
+            protNewNonUniform3DRefinement.setObjLabel(label)
+            self.launchProtocol(protNewNonUniform3DRefinement)
+            return protNewNonUniform3DRefinement
+
+        def _checkAsserts(cryosparcProt):
+            self.assertIsNotNone(cryosparcProt.outputVolume,
+                                 "There was a problem with Cryosparc Non-Uniform 3D refinement")
+
+        cryosparcProtGpu = _runCryosparctestNewNonUniformRefine3D(label="Cryosparc New Non-Uniform 3D refinement")
         _checkAsserts(cryosparcProtGpu)
 
 

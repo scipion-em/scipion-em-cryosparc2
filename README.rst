@@ -21,10 +21,23 @@ You will need to use `3.0.0 <https://scipion-em.github.io/docs/release-3.0.0/doc
 * **Global CTF Refinement (per-group beam tilt, trefoil, spherical aberration, tetrafoil)**: Global CTF Refinement performs per-exposure-group CTF parameter refinement of higher-order aberrations, against a given 3D reference.
 * **Sharppening**: Sharpen a volume following refinement.
 * **Helical 3D Refinement**: Reconstruct and refine a homogeneous helical assembly, with or without imposition and refinement of symmetry parameters.
-
+* **3D Homogeneous Refinement(new)**: Rapidly refine a single homogeneous structure to high-resolution and validate using the gold-standard FSC. Using new faster GPU code, and support for higher-order aberration (beam tilt, spherical aberration, trefoil, tetrafoil) correction and per-particle defocus refinement on the fly.
+* **3D Non uniform Refinement(new)**: Apply non-uniform refinement to achieve higher resolution and map quality. Specially designed for small proteins and membrane proteins.
+* **3D Local Refinement(new)**  Refine a masked region within a consensus structure by allowing particle alignments to vary only slightly.
 
 **Plugin Versions**
 ===================
+
+**v3.2.5**
+----------
+February 20, 2021
+
+* **new**      : Added the new 3D Homogeneous Refinement
+
+* **new**      : Added the new 3D Non uniform Refinement : https://www.nature.com/articles/s41592-020-00990-8
+
+* **new**      : Added the new local Refinement
+
 
 **v3.2.4**
 ----------
@@ -37,14 +50,6 @@ February 11, 2021
 * **update**   : Removed unused parameters(MPIs and Threads) from all protocols
 
 * **fixed**    : Use of multiple GPUs of Homogeneous and Non-Uniform Refinements
-
-**v3.2.3**
-----------
-January 13, 2021
-
-* **new**      : Compatibility with cryoSPARC v3.0 and v3.0.1
-
-* **update**   : Improved protocols loading
 
 
 **Installing the plugin**
