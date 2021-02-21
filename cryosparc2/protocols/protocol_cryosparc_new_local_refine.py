@@ -239,9 +239,10 @@ class ProtCryoSparcLocalRefine(ProtCryosparcBase, ProtOperateParticles):
         for y in x:
             if 'text' in y:
                 z = str(y['text'])
-                if z.startswith('FSC'):
+                if z.startswith('FSC Iteration') or z.startswith(
+                        'FSC iIteration'):
                     idd = y['imgfiles'][2]['fileid']
-                    itera = z[-3:]
+                    itera = z.split(',')[0][-3:]
                 elif 'Using Filter Radius' in z:
                     nomRes = str(y['text']).split('(')[1].split(')')[
                         0].replace(
@@ -475,6 +476,7 @@ class ProtCryoSparcLocalRefine(ProtCryosparcBase, ProtOperateParticles):
                 symetryValue = getSymmetry(self.symmetryGroup.get(),
                                            self.symmetryOrder.get())
                 params[str(paramName)] = symetryValue
+            params['refine_dynamic_mask_start_res'] = str(1000)
 
         # Determinate the GPUs to use (in dependence of
         # the cryosparc version)
