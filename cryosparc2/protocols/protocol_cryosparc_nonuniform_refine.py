@@ -46,7 +46,8 @@ class ProtCryoSparcNonUniformRefine3D(ProtCryoSparcRefine3D):
     impacting the alignment of particles and reducing the tendency for
     refinement algorithms to over-fit disordered regions.
     """
-    _label = '3D non-uniform refinement'
+    _label = '3D non-uniform refinement(Legacy)'
+    _className = "nonuniform_refine"
 
     def _defineParams(self, form):
 
@@ -256,7 +257,6 @@ class ProtCryoSparcNonUniformRefine3D(ProtCryoSparcRefine3D):
         """
         :return:
         """
-        className = "nonuniform_refine"
         if self.mask is not None:
             input_group_conect = {"particles": str(self.par),
                                   "volume": str(self.vol),
@@ -298,7 +298,7 @@ class ProtCryoSparcNonUniformRefine3D(ProtCryoSparcRefine3D):
         except Exception:
             gpusToUse = False
 
-        self.runRefine = enqueueJob(className, self.projectName.get(),
+        self.runRefine = enqueueJob(self._className, self.projectName.get(),
                               self.workSpaceName.get(),
                               str(params).replace('\'', '"'),
                               str(input_group_conect).replace('\'', '"'),

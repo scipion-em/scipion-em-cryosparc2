@@ -47,6 +47,7 @@ class ProtCryoSparcSubtract(ProtCryosparcBase, ProtOperateParticles):
         Subtract projections of a masked volume from particles.
         """
     _label = 'subtract projection'
+    _className = "particle_subtract"
 
     def _initialize(self):
         self._createFilenameTemplates()
@@ -266,7 +267,6 @@ class ProtCryoSparcSubtract(ProtCryosparcBase, ProtOperateParticles):
         """
         :return:
         """
-        className = "particle_subtract"
         input_group_conect = {"particles": str(self.par),
                               "volume": str(self.vol),
                               "mask": str(self.mask)}
@@ -290,7 +290,7 @@ class ProtCryoSparcSubtract(ProtCryosparcBase, ProtOperateParticles):
         except Exception:
             gpusToUse = False
 
-        self.runPartStract = enqueueJob(className, self.projectName.get(),
+        self.runPartStract = enqueueJob(self._className, self.projectName.get(),
                                   self.workSpaceName.get(),
                                   str(params).replace('\'', '"'),
                                   str(input_group_conect).replace('\'', '"'),

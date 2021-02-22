@@ -75,6 +75,13 @@ REFINE_MASK_CHOICES = ['dynamic',
                        'static',
                        'null']
 
+REFINE_FILTER_TYPE = ['butterworth',
+                     'rect',
+                     'gaussian']
+
+REFINE_FULCRUM_LOCATION = ['mask_center',
+                           'box_center']
+
 COMPUTE_FACILITY_CHOICES = ['GPU',
                             'CPU']
 

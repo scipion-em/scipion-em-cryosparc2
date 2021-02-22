@@ -53,6 +53,7 @@ class ProtCryoSparcInitialModel(ProtCryosparcBase, ProtInitialVolume,
     CryoSparc Stochastic Gradient Descent (SGD) algorithm.
     """
     _label = 'initial model'
+    _className = "homo_abinit"
     # --------------------------- DEFINE param functions ----------------------
 
     def _defineFileNames(self):
@@ -472,7 +473,6 @@ class ProtCryoSparcInitialModel(ProtCryosparcBase, ProtInitialVolume,
         "\", \"" + self.workSpaceName + "\", \"\'" + self._user + "\'\", \""
         + self.par + "\",\"\'1\'\")\'")
         """
-        className = "homo_abinit"
         input_group_conect = {"particles": str(self.par)}
         # {'particles' : 'JXX.imported_particles' }
         params = {}
@@ -495,7 +495,7 @@ class ProtCryoSparcInitialModel(ProtCryosparcBase, ProtInitialVolume,
         except Exception:
             gpusToUse = False
 
-        self.runAbinit = enqueueJob(className, self.projectName.get(),
+        self.runAbinit = enqueueJob(self._className, self.projectName.get(),
                                self.workSpaceName.get(),
                                str(params).replace('\'', '"'),
                                str(input_group_conect).replace('\'', '"'),
