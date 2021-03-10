@@ -24,9 +24,17 @@ You will need to use `3.0.0 <https://scipion-em.github.io/docs/release-3.0.0/doc
 * **3D Homogeneous Refinement(new)**: Rapidly refine a single homogeneous structure to high-resolution and validate using the gold-standard FSC. Using new faster GPU code, and support for higher-order aberration (beam tilt, spherical aberration, trefoil, tetrafoil) correction and per-particle defocus refinement on the fly.
 * **3D Non uniform Refinement(new)**: Apply non-uniform refinement to achieve higher resolution and map quality. Specially designed for small proteins and membrane proteins.
 * **3D Local Refinement(new)**  Refine a masked region within a consensus structure by allowing particle alignments to vary only slightly.
+* **Symmetry Expansion**: Duplicate particles around a point-group symmetry.
 
 **Plugin Versions**
 ===================
+
+**v3.2.6**
+----------
+March 10, 2021
+
+* **new**      : Added the Symmetry Expansion protocol
+
 
 **v3.2.5**
 ----------
