@@ -36,7 +36,8 @@ from pwem.viewers import ObjectView
 
 from ..protocols import (ProtCryoSparcSubtract,
                          ProtCryoSparcGlobalCtfRefinement,
-                         ProtCryoSparcLocalCtfRefinement)
+                         ProtCryoSparcLocalCtfRefinement,
+                         ProtCryoSparcSymmetryExpansion)
 from ..utils import *
 from .. import Plugin
 
@@ -54,7 +55,8 @@ class CryosPARCViewerPartSubtract(ProtocolViewer):
 
     _environments = [DESKTOP_TKINTER]
     _targets = [ProtCryoSparcSubtract, ProtCryoSparcGlobalCtfRefinement,
-                ProtCryoSparcLocalCtfRefinement]
+                ProtCryoSparcLocalCtfRefinement,
+                ProtCryoSparcSymmetryExpansion]
     _label = 'viewer cryosPARC'
 
     def __init__(self, *args, **kwargs):
@@ -66,9 +68,9 @@ class CryosPARCViewerPartSubtract(ProtocolViewer):
         form.addSection(label='Visualization')
         group = form.addGroup('Particles')
         group.addParam('displayDataViewer', LabelParam,
-                       label='Display particle classes with Scipion')
+                       label='Display particle with Scipion')
         group.addParam('displayCryosPARC2D', LabelParam,
-                       label='Display particle classes with cryosPARC GUI')
+                       label='Display particle with cryosPARC GUI')
 
     def _getVisualizeDict(self):
         self._load()

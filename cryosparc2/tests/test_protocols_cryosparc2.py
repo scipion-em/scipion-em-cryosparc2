@@ -652,6 +652,46 @@ class TestCryosparcLocalCtfRefinement(TestCryosparcBase):
         _checkAsserts(cryosparcProtGpu)
 
 
+class TestCryosparcSymetryExpansion(TestCryosparcBase):
+
+    @classmethod
+    def setUpClass(cls):
+        setupTestProject(cls)
+        setupTestProject(cls)
+        dataProject = 'grigorieff'
+        dataset = DataSet.getDataSet(dataProject)
+        TestCryosparcBase.setData()
+        particlesPattern = dataset.getFile('particles.sqlite')
+        cls.protImportPart = cls.runImportParticleCryoSPARC(cls.partFn2)
+        cls.protImportVol = cls.runImportVolumesCryoSPARC(cls.volFn)
+
+    def testCryosparcSymetryExpansion(self):
+        def _runCryosparctestSymetryExpansion(label=''):
+
+            protSymExp = self.newProtocol(ProtCryoSparcSymmetryExpansion)
+
+            prot3DRefinement = self.newProtocol(ProtCryoSparcRefine3D)
+            prot3DRefinement.inputParticles.set(self.protImportPart.outputParticles)
+            prot3DRefinement.referenceVolume.set(self.protImportVol.outputVolume)
+            prot3DRefinement.symmetryGroup.set(SYM_CYCLIC)
+            prot3DRefinement.symmetryOrder.set(1)
+            prot3DRefinement.compute_use_ssd.set(False)
+            self.launchProtocol(prot3DRefinement)
+
+            protSymExp.inputParticles.set(prot3DRefinement.outputParticles)
+            protSymExp.compute_use_ssd.set(False)
+            self.launchProtocol(protSymExp)
+
+            return protSymExp
+
+        def _checkAsserts(cryosparcProt):
+            self.assertIsNotNone(cryosparcProt.outputParticles,
+                                 "There was a problem with Cryosparc Symmetry Expansion")
+
+        cryosparcProtGpu = _runCryosparctestSymetryExpansion(label="Cryosparc Symmetry Expansion")
+        _checkAsserts(cryosparcProtGpu)
+
+
 class TestCryosparcNaiveLocalRefine(TestCryosparcBase):
 
     @classmethod
