@@ -29,6 +29,11 @@ You will need to use `3.0.0 <https://scipion-em.github.io/docs/release-3.0.0/doc
 **Plugin Versions**
 ===================
 
+**v3.2.7**
+----------
+* **fixed**  : Fixed the Symmetry Expansion protocol
+
+
 **v3.2.6**
 ----------
 March 10, 2021

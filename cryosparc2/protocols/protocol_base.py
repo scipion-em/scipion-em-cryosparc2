@@ -136,6 +136,16 @@ class ProtCryosparcBase(pw.EMProtocol):
         extension = ".mrc" if isVolume else ".mrcs"
         return pwutils.removeExt(csAveragesFile) + "_scaled" + extension
 
+    def setFilePattern(self, path):
+        baseName = os.path.basename(path).split('.')[0]
+        self.inputFileNamePattern = path.replace(baseName, '%s')
+
+    def updateParticlePath(self, part, row):
+        fn = part.getFileName()
+        baseName = os.path.basename(fn).split('.')[0]
+        newFileName = self.inputFileNamePattern % baseName
+        part.setFileName(newFileName)
+
     def _getInputParticles(self):
         return self.inputParticles.get()
 

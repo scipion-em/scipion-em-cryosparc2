@@ -679,6 +679,8 @@ class TestCryosparcSymetryExpansion(TestCryosparcBase):
             self.launchProtocol(prot3DRefinement)
 
             protSymExp.inputParticles.set(prot3DRefinement.outputParticles)
+            protSymExp.symmetryGroup.set(SYM_CYCLIC)
+            protSymExp.symmetryOrder.set(4)
             protSymExp.compute_use_ssd.set(False)
             self.launchProtocol(protSymExp)
 
@@ -687,6 +689,7 @@ class TestCryosparcSymetryExpansion(TestCryosparcBase):
         def _checkAsserts(cryosparcProt):
             self.assertIsNotNone(cryosparcProt.outputParticles,
                                  "There was a problem with Cryosparc Symmetry Expansion")
+            self.assertTrue(cryosparcProt.outputParticles.getSize() == self.protImportPart.outputParticles.getSize()*4)
 
         cryosparcProtGpu = _runCryosparctestSymetryExpansion(label="Cryosparc Symmetry Expansion")
         _checkAsserts(cryosparcProtGpu)
