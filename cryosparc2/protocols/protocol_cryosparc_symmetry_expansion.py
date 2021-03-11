@@ -28,6 +28,7 @@
 import os
 
 from pwem import ALIGN_PROJ
+from pwem.objects import SetOfParticles
 from pwem.protocols import ProtOperateParticles
 
 import pyworkflow.utils as pwutils
@@ -39,7 +40,7 @@ from pyworkflow.protocol.params import (PointerParam, FloatParam,
 from .protocol_base import ProtCryosparcBase
 from ..convert import (defineArgs, convertCs2Star, readSetOfParticles,
                        cryosparcToLocation, createItemMatrix,
-                       setCryosparcAttributes)
+                       setCryosparcAttributes, writeSetOfParticles)
 from ..utils import (addComputeSectionParams, calculateNewSamplingRate,
                      cryosparcValidate, gpusValidate, enqueueJob,
                      waitForCryosparc, clearIntermediateResults,
@@ -140,29 +141,16 @@ class ProtCryoSparcSymmetryExpansion(ProtCryosparcBase):
         parser = defineArgs()
         args = parser.parse_args(argsList)
         convertCs2Star(args)
-
         imgSet = self._getInputParticles()
-
-        outImgSet = self._createSetOfParticles()
+        self.setFilePattern(imgSet.getFirstItem().getFileName())
+        outImgSet = SetOfParticles.create(self._getExtraPath())
         outImgSet.copyInfo(imgSet)
-        self._fillDataFromIter(outImgSet)
+        readSetOfParticles(outputStarFn, outImgSet,
+                           alignType=imgSet.getAlignment(),
+                           postprocessImageRow=self.updateParticlePath)
 
         self._defineOutputs(outputParticles=outImgSet)
         self._defineTransformRelation(imgSet, outImgSet)
-
-    def _fillDataFromIter(self, imgSet):
-        outImgsFn = self._getFileName('out_particles')
-        imgSet.setAlignmentProj()
-        imgSet.copyItems(self._getInputParticles(),
-                         updateItemCallback=self._createItemMatrix,
-                         itemDataIterator=md.iterRows(outImgsFn,
-                                                      sortByLabel=md.RLN_IMAGE_ID))
-
-    def _createItemMatrix(self, particle, row):
-        createItemMatrix(particle, row, align=ALIGN_PROJ)
-        setCryosparcAttributes(particle, row,
-                               md.RLN_PARTICLE_RANDOM_SUBSET)
-
 
     # --------------------------- INFO functions -------------------------------
     def _validate(self):
