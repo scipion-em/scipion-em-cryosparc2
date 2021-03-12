@@ -419,10 +419,9 @@ class ProtCryo2D(ProtCryosparcBase, pwprot.ProtClassify2D):
         if classId in self._classesInfo:
             index, fn, row = self._classesInfo[classId]
             class2D.setAlignment2D()
-            sr = row.getValue('rlnDetectorPixelSize')
             class2Drep = class2D.getRepresentative()
             class2Drep.setLocation(index, fn)
-            class2Drep.setSamplingRate(sr)
+            class2Drep.setSamplingRate(class2D.getSamplingRate())
 
     def _defineParamsName(self):
         """ Define a list with all protocol parameters names"""
