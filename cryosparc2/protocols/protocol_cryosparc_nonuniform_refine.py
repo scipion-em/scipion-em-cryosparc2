@@ -72,17 +72,6 @@ class ProtCryoSparcNonUniformRefine3D(ProtCryoSparcRefine3D):
                       help='Difference in radius wave number between refinement '
                            'iterations for early stopping criteria')
 
-        # form.addParam('locres_box_width', FloatParam,
-        #               expertLevel=LEVEL_ADVANCED,
-        #               default=None,
-        #               validators=[Positive],
-        #               label="Kernel width in voxels",
-        #               help='Width of the sub-volume in voxels used to compute '
-        #                    'local resolution. Smaller values give more precision '
-        #                    'in locality, but less precision in wavelength '
-        #                    '(resolution). Setting this to null uses the adaptive '
-        #                    'window factor to set this automatically instead')
-
         form.addParam('locres_use_mask', BooleanParam,
                       default=True,
                       label="Only compute at voxels within mask",
@@ -136,11 +125,6 @@ class ProtCryoSparcNonUniformRefine3D(ProtCryoSparcRefine3D):
                       help='Zeropadding factor applied to the selected box '
                            'width to improve resolution accuracy')
 
-        # form.addParam('locres_log_output', BooleanParam,
-        #               expertLevel=LEVEL_ADVANCED,
-        #               default=False,
-        #               label="Enable logging")
-
         form.addParam('locres_cap', BooleanParam,
                       expertLevel=LEVEL_ADVANCED,
                       default=False,
@@ -183,27 +167,12 @@ class ProtCryoSparcNonUniformRefine3D(ProtCryoSparcRefine3D):
                            'resolution during refinement iterations. Leave as '
                            'default')
 
-        # form.addParam('use_median_filter', StringParam,
-        #               default='Partial Volume',
-        #               label="Median",
-        #               help="enum_keys=['Partial Volume', 'None', 'Full Volume'], enum_values=[+1,0,-1]")
-
-        # form.addParam('median_filter_box_size', FloatParam,
-        #               default=None,
-        #               validators=[Positive],
-        #               label="Median box size")
-
         form.addParam('temporal_locres', BooleanParam,
                       expertLevel=LEVEL_ADVANCED,
                       default=False,
                       label="Enable temporal locres estimate",
                       help='Take temporal local resolution estimate into '
                            'account. Leave as default')
-
-        # form.addParam('intermediate_plots', BooleanParam,
-        #               expertLevel=LEVEL_ADVANCED,
-        #               default=True,
-        #               label="Show plots from intermediate steps")
 
         form.addParam('use_phenix_sharpen', BooleanParam,
                       default=False,
@@ -220,11 +189,6 @@ class ProtCryoSparcNonUniformRefine3D(ProtCryoSparcRefine3D):
                       expertLevel=LEVEL_ADVANCED,
                       default=False,
                       label="Sharpen before local processing")
-
-        # form.addParam('view_stats', BooleanParam,
-        #               expertLevel=LEVEL_ADVANCED,
-        #               default=False,
-        #               label="Retrieve statistic model of LocRes")
 
     # --------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):

@@ -91,8 +91,6 @@ class ProtCryoSparcNewNonUniformRefine3D(ProtCryoSparc3DHomogeneousRefine):
     def _defineParamsName(self):
         """ Define a list with all protocol parameters names"""
         ProtCryoSparc3DHomogeneousRefine._defineParamsName(self)
-        self._paramsName.append('refine_do_marg')
-        self._paramsName.append('refine_nu_enable')
-        self._paramsName.append('refine_nu_filtertype')
-        self._paramsName.append('refine_nu_order')
-        self._paramsName.append('refine_nu_awf')
+        self._paramsName += ['refine_do_marg', 'refine_do_marg',
+                             'refine_nu_filtertype', 'refine_nu_order',
+                             'refine_nu_awf']

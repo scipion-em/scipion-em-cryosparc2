@@ -29,12 +29,14 @@ import os
 import pwem.protocols as pw
 import pyworkflow.object as pwobj
 import pyworkflow.utils as pwutils
+from pwem.objects import FSC
 
 from ..convert import convertBinaryVol, writeSetOfParticles, ImageHandler
 from ..utils import (getProjectPath, createEmptyProject,
                      createEmptyWorkSpace, getProjectName,
                      getCryosparcProjectsDir, createProjectDir,
-                     doImportParticlesStar, doImportVolumes, killJob, clearJob)
+                     doImportParticlesStar, doImportVolumes, killJob, clearJob,
+                     get_job_streamlog, getSystemInfo)
 
 
 class ProtCryosparcBase(pw.EMProtocol):
@@ -43,6 +45,7 @@ class ProtCryosparcBase(pw.EMProtocol):
     """
     _protCompatibility = []
     _className = ""
+    _fscColumns = 6
 
     def _initializeCryosparcProject(self):
         """
@@ -99,9 +102,9 @@ class ProtCryosparcBase(pw.EMProtocol):
 
     def _getScaledAveragesFile(self, csAveragesFile, force=False):
 
-        # For the moment this is the best possible result, scaling from 128 to 300 does not render
-        # nice results apart that the factor turns to 299x299.
-        # But without this the representative subset is wrong.
+        # For the moment this is the best possible result, scaling from 128 to
+        # 300 does not render nice results apart that the factor turns to
+        # 299x299. But without this the representative subset is wrong.
         # return csAveragesFile
 
         scaledFile = self._getScaledAveragesFileName(csAveragesFile, force)
@@ -112,10 +115,12 @@ class ProtCryosparcBase(pw.EMProtocol):
             csSize = ImageHandler().getDimensions(csAveragesFile)[0]
 
             if csSize == inputSize:
-                print("No binning detected: linking averages cs file.", flush=True)
+                print("No binning detected: linking averages cs file.",
+                      flush=True)
                 pwutils.createLink(csAveragesFile, scaledFile)
             else:
-                print("Scaling CS averages file to match particle size (%s -> %s)." % (csSize, inputSize), flush=True)
+                print("Scaling CS averages file to match particle "
+                      "size (%s -> %s)." % (csSize, inputSize), flush=True)
                 try:
                     if force:
                         ImageHandler.scaleSplines(csAveragesFile, scaledFile,
@@ -190,10 +195,81 @@ class ProtCryosparcBase(pw.EMProtocol):
 
         self.currenJob = pwobj.String(self.importedParticles.get())
         self._store(self)
-        self.par = pwobj.String(self.importedParticles.get() + '.imported_particles')
+        self.par = pwobj.String(self.importedParticles.get() +
+                                '.imported_particles')
 
     def setAborted(self):
         """ Set the status to aborted and updated the endTime. """
         pw.EMProtocol.setAborted(self)
         killJob(str(self.projectName.get()), str(self.currenJob.get()))
         clearJob(str(self.projectName.get()), str(self.currenJob.get()))
+
+    def createFSC(self, idd, imgSet, vol):
+        import requests
+        # Need to get the cryosparc master address
+        system_info = getSystemInfo()
+        status_errors = system_info[0]
+        if not status_errors:
+            system_info = eval(system_info[1])
+            master_hostname = system_info.get('master_hostname')
+            port_webapp = system_info.get('port_webapp')
+
+            url = "http://%s:%s/file/%s" % (master_hostname, port_webapp, idd)
+            fscRequest = requests.get(url, allow_redirects=True)
+            fscFile = "fsc.txt"
+            fscFilePath = os.path.join(self._getExtraPath(), fscFile)
+
+            # Convert into scipion fsc format
+            open(fscFilePath, 'wb').write(fscRequest.content)
+            f = open(fscFilePath, 'r')
+            lines = f.readlines()
+            wv = []
+            corr = []
+            for x in lines[1:-1]:
+                wv.append(str(float(x.split('\t')[0]) / (
+                        int(self._getInputParticles().getDim()[0]) * float(
+                    imgSet.getSamplingRate()))))
+                corr.append(x.split('\t')[self._fscColumns])
+            f.close()
+            fsc = FSC(objLabel=self.getRunName())
+            fsc.setData(wv, corr)
+            wv2, corr2 = fsc.getData()
+            self._defineOutputs(outputFSC=fsc)
+            self._defineSourceRelation(vol, fsc)
+
+    def findLastIteration(self, jobName):
+        import ast
+        get_job_streamlog(self.projectName.get(),
+                          jobName,
+                          self._getFileName('stream_log'))
+
+        # Get the metadata information from stream.log
+        with open(self._getFileName('stream_log')) as f:
+            data = f.readlines()
+
+        x = ast.literal_eval(data[0])
+
+        # Find the ID of last iteration and the map resolution
+        for y in x:
+            if 'text' in y:
+                z = str(y['text'])
+
+                if z.startswith('FSC Iteration') or z.startswith(
+                        'FSC iIteration'):
+                    idd = y['imgfiles'][2]['fileid']
+                    itera = z.split(',')[0][-3:]
+                elif 'Using Filter Radius' in z:
+                    nomRes = str(y['text']).split('(')[1].split(')')[
+                        0].replace(
+                        'A', 'Å')
+                    self.mapResolution = pwobj.String(nomRes)
+                    self._store(self)
+                elif 'Estimated Bfactor' in z:
+                    estBFactor = str(y['text']).split(':')[1].replace('\n',
+                                                                      '')
+                    self.estBFactor = pwobj.String(estBFactor)
+                    self._store(self)
+        return idd, itera
+
+    def _createModelFile(self):
+        pass

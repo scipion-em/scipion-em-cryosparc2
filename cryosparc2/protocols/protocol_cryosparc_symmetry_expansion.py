@@ -27,25 +27,18 @@
 
 import os
 
-from pwem import ALIGN_PROJ
 from pwem.objects import SetOfParticles
-from pwem.protocols import ProtOperateParticles
 
 import pyworkflow.utils as pwutils
 from pyworkflow import NEW
 from pyworkflow.protocol.params import (PointerParam, FloatParam,
-                                        LEVEL_ADVANCED, Positive, BooleanParam,
-                                        IntParam, )
+                                        IntParam)
 
 from .protocol_base import ProtCryosparcBase
-from ..convert import (defineArgs, convertCs2Star, readSetOfParticles,
-                       cryosparcToLocation, createItemMatrix,
-                       setCryosparcAttributes, writeSetOfParticles)
-from ..utils import (addComputeSectionParams, calculateNewSamplingRate,
-                     cryosparcValidate, gpusValidate, enqueueJob,
-                     waitForCryosparc, clearIntermediateResults,
-                     addSymmetryParam, getSymmetry)
-from ..constants import *
+from ..convert import (defineArgs, convertCs2Star, readSetOfParticles)
+from ..utils import (addComputeSectionParams, cryosparcValidate, gpusValidate,
+                     enqueueJob, waitForCryosparc, clearIntermediateResults,
+                     addSymmetryParam, getSymmetry, copyFiles)
 
 
 class ProtCryoSparcSymmetryExpansion(ProtCryosparcBase):
@@ -116,10 +109,8 @@ class ProtCryoSparcSymmetryExpansion(ProtCryosparcBase):
     # --------------------------- STEPS functions ------------------------------
 
     def processStep(self):
-
         print(pwutils.yellowStr("Symmetry Expansion started..."), flush=True)
         self.doSymmetryExpansion()
-
 
     def createOutputStep(self):
         """
@@ -127,14 +118,14 @@ class ProtCryoSparcSymmetryExpansion(ProtCryosparcBase):
         """
         self._initializeUtilsVariables()
         outputStarFn = self._getFileName('out_particles')
-
-        # Create the output folder
-        os.system("cp -r " + self.projectPath + "/" + self.projectName.get() +
-                  '/' + self.runSymExp.get() + " " + self._getExtraPath())
-
         csFileName = "particles_expanded.cs"
-        csFile = os.path.join(self._getExtraPath(), self.runSymExp.get(),
-                              csFileName)
+
+        # Copy the CS output expanded particles to extra folder
+        copyFiles(os.path.join(self.projectPath, self.projectName.get(),
+                               self.runSymExp.get()),
+                  self._getExtraPath(), files=[csFileName])
+
+        csFile = os.path.join(self._getExtraPath(), csFileName)
 
         argsList = [csFile, outputStarFn]
 

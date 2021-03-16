@@ -37,7 +37,8 @@ from .protocol_base import ProtCryosparcBase
 from ..convert import (defineArgs, convertCs2Star, createItemMatrix,
                        setCryosparcAttributes)
 from ..utils import (addComputeSectionParams, cryosparcValidate, gpusValidate,
-                     enqueueJob, waitForCryosparc, clearIntermediateResults)
+                     enqueueJob, waitForCryosparc, clearIntermediateResults,
+                     copyFiles)
 import pwem.emlib.metadata as md
 
 
@@ -124,7 +125,7 @@ class ProtCryoSparcLocalCtfRefinement(ProtCryosparcBase, ProtParticles):
         form.addSection(label="Compute settings")
         addComputeSectionParams(form, allowMultipleGPUs=False)
 
-        # --------------------------- INSERT steps functions -----------------------
+    # --------------------------- INSERT steps functions -----------------------
 
     def _insertAllSteps(self):
         self._createFilenameTemplates()
@@ -175,14 +176,14 @@ class ProtCryoSparcLocalCtfRefinement(ProtCryosparcBase, ProtParticles):
         """
         self._initializeUtilsVariables()
         outputStarFn = self._getFileName('out_particles')
-
-        # Create the output folder
-        os.system("cp -r " + self.projectPath + "/" + self.projectName.get() +
-                  '/' + self.runLocalCtfRefinement.get() + " " + self._getExtraPath())
-
+        csOutputFolder = os.path.join(self.projectPath, self.projectName.get(),
+                                      self.runLocalCtfRefinement.get())
         csFileName = "particles.cs"
-        csFile = os.path.join(self._getExtraPath(), self.runLocalCtfRefinement.get(),
-                              csFileName)
+
+        # Copy the CS output particles to extra folder
+        copyFiles(csOutputFolder, self._getExtraPath(), files=[csFileName])
+
+        csFile = os.path.join(self._getExtraPath(), csFileName)
 
         argsList = [csFile, outputStarFn]
 
@@ -193,7 +194,6 @@ class ProtCryoSparcLocalCtfRefinement(ProtCryosparcBase, ProtParticles):
         imgSet = self._getInputParticles()
 
         outImgSet = self._createSetOfParticles()
-        imgSet.setAlignmentProj()
         outImgSet.copyInfo(imgSet)
         self._fillDataFromIter(outImgSet)
 

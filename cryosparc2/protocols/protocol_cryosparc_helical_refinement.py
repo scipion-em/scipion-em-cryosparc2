@@ -31,16 +31,13 @@ from pwem import SCIPION_SYM_NAME
 
 import pyworkflow.utils as pwutils
 from pyworkflow import BETA
-from pyworkflow.protocol.params import (FloatParam, LEVEL_ADVANCED, Positive,
-                                        IntParam, BooleanParam, EnumParam,
-                                        StringParam, PointerParam)
-from .protocol_base import ProtCryosparcBase
+from pyworkflow.protocol.params import (FloatParam, Positive, IntParam,
+                                        BooleanParam, EnumParam, PointerParam)
 
 from .protocol_cryorefine import ProtCryoSparcRefine3D
 from ..utils import (getSymmetry, enqueueJob, waitForCryosparc,
-                     clearIntermediateResults, addSymmetryParam,
-                     addComputeSectionParams, cryosparcValidate, gpusValidate,
-                     getCryosparcVersion)
+                     clearIntermediateResults, addComputeSectionParams,
+                     cryosparcValidate, gpusValidate, getCryosparcVersion)
 from ..constants import *
 
 
@@ -279,7 +276,6 @@ class ProtCryoSparcHelicalRefine3D(ProtCryoSparcRefine3D):
                 params[str(paramName)] = symetryValue
             elif self.getAttributeValue(paramName) is not None and float(self.getAttributeValue(paramName)) > 0:
                 params[str(paramName)] = str(self.getAttributeValue(paramName))
-
 
         # Determinate the GPUs to use (in dependence of
         # the cryosparc version)

@@ -38,7 +38,8 @@ from .protocol_base import ProtCryosparcBase
 from ..convert import (defineArgs, convertCs2Star, createItemMatrix,
                        setCryosparcAttributes)
 from ..utils import (addComputeSectionParams, cryosparcValidate, gpusValidate,
-                     enqueueJob, waitForCryosparc, clearIntermediateResults)
+                     enqueueJob, waitForCryosparc, clearIntermediateResults,
+                     copyFiles)
 import pwem.emlib.metadata as md
 
 
@@ -87,15 +88,8 @@ class ProtCryoSparcGlobalCtfRefinement(ProtCryosparcBase, pwprot.ProtParticles):
                            "otherwise use mask_refine if present, otherwise "
                            "fail")
 
-
         # -----------[Global CTF Refinement]------------------------
         form.addSection(label="Global CTF Refinement")
-        # form.addParam('crg_N', FloatParam, default=None,
-        #               validators=[Positive],
-        #               label='Refinement box size (Voxels)',
-        #               help='Size of reconstruction/image to use for refinement. '
-        #                    'Blank means to use the particle box size '
-        #                    '(upsampling input maps as needed)')
         form.addParam('crg_num_iters', IntParam, default=1,
                       validators=[Positive],
                       label='Number of iterations',
@@ -124,19 +118,6 @@ class ProtCryoSparcGlobalCtfRefinement(ProtCryosparcBase, pwprot.ProtParticles):
                       help='The minimum resolution to use during refinement of '
                            'image aberrations.')
 
-        # form.addParam('crg_max_res_A', FloatParam, default=None,
-        #               label='Maximum Fit Res (A)',
-        #               help='The maximum resolution to use during refinement of '
-        #                    'image aberrations. If blank, use input half-maps '
-        #                    'to compute FSC and set max to FSC=0.5')
-
-        # form.addParam('crg_mode_odd', EnumParam,
-        #               choices=['dataset','groups'],
-        #               expertLevel=LEVEL_ADVANCED,
-        #               default=0,
-        #               label="Mode for tilt/trefoil",
-        #               help='Mode to fit beam tilt/trefoil')
-
         form.addParam('crg_do_tilt', BooleanParam, default=True,
                       label="Fit Tilt",
                       help="Whether to fit beam tilt.")
@@ -157,7 +138,7 @@ class ProtCryoSparcGlobalCtfRefinement(ProtCryosparcBase, pwprot.ProtParticles):
         form.addSection(label="Compute settings")
         addComputeSectionParams(form, allowMultipleGPUs=False)
 
-        # --------------------------- INSERT steps functions -----------------------
+    # --------------------------- INSERT steps functions -----------------------
 
     def _insertAllSteps(self):
         self._createFilenameTemplates()
@@ -211,14 +192,14 @@ class ProtCryoSparcGlobalCtfRefinement(ProtCryosparcBase, pwprot.ProtParticles):
         """
         self._initializeUtilsVariables()
         outputStarFn = self._getFileName('out_particles')
-
-        # Create the output folder
-        os.system("cp -r " + self.projectPath + "/" + self.projectName.get() +
-                  '/' + self.runGlobalCtfRefinement.get() + " " + self._getExtraPath())
-
+        csOutputFolder = os.path.join(self.projectPath, self.projectName.get(),
+                                      self.runGlobalCtfRefinement.get())
         csFileName = "particles.cs"
-        csFile = os.path.join(self._getExtraPath(), self.runGlobalCtfRefinement.get(),
-                              csFileName)
+
+        # Copy the CS output particles to extra folder
+        copyFiles(csOutputFolder, self._getExtraPath(), files=[csFileName])
+
+        csFile = os.path.join(self._getExtraPath(), csFileName)
 
         argsList = [csFile, outputStarFn]
 
@@ -229,7 +210,6 @@ class ProtCryoSparcGlobalCtfRefinement(ProtCryosparcBase, pwprot.ProtParticles):
         imgSet = self._getInputParticles()
 
         outImgSet = self._createSetOfParticles()
-        imgSet.setAlignmentProj()
         outImgSet.copyInfo(imgSet)
         self._fillDataFromIter(outImgSet)
 
