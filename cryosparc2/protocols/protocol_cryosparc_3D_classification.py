@@ -323,7 +323,8 @@ class ProtCryoSparc3DClassification(ProtCryosparcBase):
                 row.getValue('rlnReferenceImage'))
             # Store info indexed by id, we need to store the row.clone() since
             # the same reference is used for iteration
-            self._classesInfo[classNumber + 1] = (index, fn, row.clone())
+            scaledFile = self._getScaledAveragesFile(fn, force=True)
+            self._classesInfo[classNumber + 1] = (index, scaledFile, row.clone())
 
     def _fillClassesFromIter(self, clsSet, filename):
         """ Create the SetOfClasses3D """

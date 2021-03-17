@@ -123,7 +123,9 @@ class ProtCryosparcBase(pw.EMProtocol):
                       "size (%s -> %s)." % (csSize, inputSize), flush=True)
                 try:
                     if force:
+                        scaleFactor = inputSize/csSize
                         ImageHandler.scaleSplines(csAveragesFile, scaledFile,
+                                                  scaleFactor,
                                                   finalDimension=inputSize,
                                                   forceVolume=force)
                     else:
