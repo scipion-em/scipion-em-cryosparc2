@@ -385,12 +385,13 @@ class ProtCryo2D(ProtCryosparcBase, pwprot.ProtClassify2D):
                     output_file.write(line)
 
     def _getNumberOfIterSuffix(self):
-        _numberOfIter = self.numberOnlineEMIterator.get() + self.numberFinalIterator.get() - 1
-        _numberOfIterSuffix = str("_00" + str(self.numberOnlineEMIterator.get()))
+        _numberOfIter = (self.numberOnlineEMIterator.get() +
+                         self.numberFinalIterator.get() - 1)
+        _numberOfIterSuffix = "_00%s" % str(self.numberOnlineEMIterator.get())
         if _numberOfIter > 9:
-            _numberOfIterSuffix = str("_0" + str(_numberOfIter))
+            _numberOfIterSuffix = "_0%s" % str(_numberOfIter)
         if _numberOfIter > 99:
-            _numberOfIterSuffix = str("_" + str(_numberOfIter))
+            _numberOfIterSuffix = "_%s" % str(_numberOfIter)
         return _numberOfIterSuffix
 
     def _defineParamsName(self):
