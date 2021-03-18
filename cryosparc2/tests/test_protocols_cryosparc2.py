@@ -191,8 +191,8 @@ class TestCryosparcClassify2D(TestCryosparcBase):
                                       doCTF=False, maskDiameterA=340)
 
             prot2D.inputParticles.set(self.protImportPart.outputParticles)
-            prot2D.class2D_K.set(5)
-            prot2D.class2D_num_full_iter_batch.set(20)
+            prot2D.numberOfClasses.set(5)
+            prot2D.numberOnlineEMIterator.set(20)
             prot2D.compute_use_ssd.set(False)
             prot2D.setObjLabel(label)
             self.launchProtocol(prot2D)
@@ -218,8 +218,8 @@ class TestCryosparcClassify2D(TestCryosparcBase):
                                       maskDiameterA=340)
 
             prot2D.inputParticles.set(protResize.outputParticles)
-            prot2D.class2D_K.set(5)
-            prot2D.class2D_num_full_iter_batch.set(20)
+            prot2D.numberOfClasses.set(5)
+            prot2D.numberOnlineEMIterator.set(20)
             prot2D.compute_use_ssd.set(False)
             prot2D.setObjLabel(label)
             self.launchProtocol(prot2D)

@@ -77,7 +77,7 @@ class ProtCryo2D(ProtCryosparcBase, pwprot.ProtClassify2D):
         # ----------- [2D Classification] --------------------------------
 
         form.addSection(label="2D Classification")
-        form.addParam('class2D_K', IntParam, default=50,
+        form.addParam('numberOfClasses', IntParam, default=50,
                       validators=[Positive],
                       label='Number of classes:',
                       help='The number of 2D classes into which to sort the '
@@ -86,14 +86,14 @@ class ProtCryo2D(ProtCryosparcBase, pwprot.ProtClassify2D):
                            'into different numbers of classes can be helpful in '
                            'finding junk particles or rare views.')
 
-        form.addParam('class2D_max_res', IntParam, default=6,
+        form.addParam('maximunResolution', IntParam, default=6,
                       validators=[Positive],
                       label='Maximum resolution (A)',
                       help='The maximum resolution in Angstroms to consider when '
                            'aligning and reconstructing 2D classes. This setting '
                            'controls the box size that is used internally, and '
                            'higher resolutions can slow down processing.')
-        form.addParam('class2D_sigma_init_factor', FloatParam, default=2.0,
+        form.addParam('initialClassification', FloatParam, default=2.0,
                       label='Initial classification uncertainty factor',
                       validators=[Positive],
                       help='This factor (a number greater than 1) controls the '
@@ -106,7 +106,7 @@ class ProtCryo2D(ProtCryosparcBase, pwprot.ProtClassify2D):
                            'assignments for more iterations, resulting in more '
                            'diversity of "good" classes.')
 
-        form.addParam('class2D_window', BooleanParam, default=True,
+        form.addParam('useCircular2D', BooleanParam, default=True,
                       label='Use circular mask on 2D classes?',
                       help='Whether or not to apply a circular window to the 2D '
                            'classes during classification. This ensures that '
@@ -121,7 +121,7 @@ class ProtCryo2D(ProtCryosparcBase, pwprot.ProtClassify2D):
                             'classification. If None, the window only masks out '
                             'the corners of each 2D class.',
                       allowsNull=True,
-                      condition='class2D_window==True')
+                      condition='useCircular2D==True')
 
         form.addParam('class2D_window_outer_A', FloatParam, default=None,
                       label='Circular mask diameter outer (A)',
@@ -130,9 +130,9 @@ class ProtCryo2D(ProtCryosparcBase, pwprot.ProtClassify2D):
                            'inner diameter. The window mask transitions '
                            'smoothly between inner and outer diameters.',
                       allowsNull=True,
-                      condition='class2D_window==True')
+                      condition='useCircular2D==True')
 
-        form.addParam('class2D_recenter', BooleanParam, default=True,
+        form.addParam('reCenter2D', BooleanParam, default=True,
                       label='Re-center 2D classes',
                       help='Whether or not to re-center 2D class references at '
                            'every iteration to avoid drift of density away from '
@@ -140,7 +140,7 @@ class ProtCryo2D(ProtCryosparcBase, pwprot.ProtClassify2D):
                            'important to keep classes centered and avoid '
                            'artefacts near the edges of the box.')
 
-        form.addParam('class2D_recenter_thresh', FloatParam, default=0.2,
+        form.addParam('reCenterMask', FloatParam, default=0.2,
                       validators=[Positive],
                       label='Re-center mask threshold',
                       help='2D classes are recentered by computing the '
@@ -149,14 +149,14 @@ class ProtCryo2D(ProtCryosparcBase, pwprot.ProtClassify2D):
                            'maximum density value in the reference, so 0.2 means '
                            'pixels with greater than 20%% of the maximum density.')
 
-        form.addParam('class2D_recenter_threshBinary', BooleanParam, default=False,
+        form.addParam('reCenterMaskBinary', BooleanParam, default=False,
                       label='Re-center mask binary',
                       help='If True, compute the COM for re-centering by equally '
                            'weighting every pixel that was above the threshold. '
                            'If False, weight every pixel by its greyscale '
                            'density value.')
 
-        form.addParam('class2D_force_max', BooleanParam, default=True,
+        form.addParam('forceMaxover', BooleanParam, default=True,
                       label='Force Max over poses/shifts',
                       help='If True, maximize over poses and shifts when '
                            'aligning particles to references. If False, '
@@ -165,20 +165,20 @@ class ProtCryo2D(ProtCryosparcBase, pwprot.ProtClassify2D):
                            'necessary, but can provide better results with very '
                            'small or low SNR particles.')
 
-        form.addParam('class2D_ctf_phase_flip_only', BooleanParam, default=False,
+        form.addParam('ctfFlipPhases', BooleanParam, default=False,
                       label='CTF flip phases only',
                       help='Treat the CTF by flipping phases only, rather that '
                            'correctly accounting for amplitude and phase. Not '
                            'recommended.')
 
-        form.addParam('class2D_num_full_iter', IntParam, default=1,
+        form.addParam('numberFinalIterator', IntParam, default=1,
                       validators=[Positive],
                       label='Number of final full iterations',
                       help='The number of final full passes through the dataset '
                            'at the end of classification. Usually only one full '
                            'pass is needed.')
 
-        form.addParam('class2D_num_full_iter_batch', IntParam, default=20,
+        form.addParam('numberOnlineEMIterator', IntParam, default=20,
                       validators=[Positive],
                       label='Number of online-EM iterations',
                       help='The total number of iterations of online-EM to '
@@ -187,34 +187,34 @@ class ProtCryo2D(ProtCryosparcBase, pwprot.ProtClassify2D):
                            'have few distinct views, a larger number like 40 '
                            'can help.')
 
-        form.addParam('class2D_num_full_iter_batchsize_per_class', IntParam, default=100,
+        form.addParam('batchSizeClass', IntParam, default=100,
                       validators=[Positive],
                       label='Batchsize per class',
                       help='The number of particles per class to use during each '
                            'iteration of online-EM. For small or low SNR '
                            'particles, this can be increased to 200.')
 
-        form.addParam('class2D_init_scale', IntParam, default=1,
+        form.addParam('initialScale2D', IntParam, default=1,
                       validators=[Positive],
                       label='2D initial scale',
                       help='Initial scale of random starting references. Not '
                            'recommended to change.')
-        form.addParam('class2D_zp_factor', IntParam, default=2,
+        form.addParam('zeropadFactor', IntParam, default=2,
                       validators=[Positive],
                       label='2D zeropad factor',
                       help='Zeropadding factor. For very large box particles, '
                            'this can be reduced to speed up computation and '
                            'reduce memory requirements.')
 
-        form.addParam('class2D_use_frc_reg', BooleanParam, default=True,
+        form.addParam('useFRCRegularized', BooleanParam, default=True,
                       label='Use FRC based regularizer',
                       help='Use an FRC based regularizer to avoid overfitting '
                            'during classification.')
 
-        form.addParam('class2D_use_frc_reg_full', BooleanParam, default=True,
+        form.addParam('useFullFRC', BooleanParam, default=True,
                       label='Use full FRC')
 
-        form.addParam('class2D_sigma_init_iter', IntParam, default=2,
+        form.addParam('iterationToStartAnneling', IntParam, default=2,
                       validators=[Positive],
                       label='Iteration to start annealing sigma',
                       help='Iteration at which noise model should be annealed. '
@@ -226,7 +226,7 @@ class ProtCryo2D(ProtCryosparcBase, pwprot.ProtClassify2D):
                       help='Number of iterations over which to anneal noise '
                            'model. Not recommended to change.')
 
-        form.addParam('class2D_sigma_use_white', BooleanParam, default=False,
+        form.addParam('useWhiteNoiseModel', BooleanParam, default=False,
                       label='Use white noise model',
                       help='Force the use of a white noise model.')
 
@@ -318,7 +318,7 @@ class ProtCryo2D(ProtCryosparcBase, pwprot.ProtClassify2D):
             summary.append("Input Particles: %s" %
                            self.getObjectTag('inputParticles'))
             summary.append("Classified into *%d* classes." %
-                           self.class2D_K.get())
+                           self.numberOfClasses.get())
             summary.append("Output set: %s" %
                            self.getObjectTag('outputClasses'))
 
@@ -328,7 +328,7 @@ class ProtCryo2D(ProtCryosparcBase, pwprot.ProtClassify2D):
         methods = "We classified input particles %s (%d items) " % (
             self.getObjectTag('inputParticles'),
             self._getInputParticles().getSize())
-        methods += "into %d classes using CryoSparc " % self.class2D_K.get()
+        methods += "into %d classes using CryoSparc " % self.numberOfClasses.get()
         return [methods]
     
     # --------------------------- UTILS functions ------------------------------
@@ -375,59 +375,55 @@ class ProtCryo2D(ProtCryosparcBase, pwprot.ProtClassify2D):
     def _createModelFile(self):
         with open(self._getFileName('out_class'), 'r') as input_file, \
                 open(self._getFileName('out_class_m2'), 'w') as output_file:
-            j = 0  # mutex lock
-            i = 0  # start
             for line in input_file:
-                if line.startswith("_rln"):
-                    output_file.write(line)
-                    i = 1
-                elif i == 0:
-                    output_file.write(line)
+                if "@" in line:
+                    row = "%s@%s/%s"
+                    classNumber = line.split('@')[0]
+                    image = line.split('/')[1]
+                    output_file.write(row % (classNumber, self._getExtraPath(), image))
                 else:
-                    row = "%s %s@%s/%s %s\n"
-                    if j == 0:
-                        for n, m in enumerate(line.split()):
-                            if '@' in m:
-                                break
-                        j = 1
-                    output_file.write(row % (" ".join(line.split()[:n]),
-                                             line.split()[n].split('@')[0],
-                                             self._getExtraPath(),
-                                             line.split()[n].split('/')[1],
-                                             " ".join(line.split()[n + 1:])))
+                    output_file.write(line)
 
     def _getNumberOfIterSuffix(self):
-        _numberOfIter = (self.class2D_num_full_iter_batch.get() +
-                         self.class2D_num_full_iter.get() - 1)
-        _numberOfIterSuffix = "_00%s" % (str(self.class2D_num_full_iter_batch.get()))
-
+        _numberOfIter = self.numberOnlineEMIterator.get() + self.numberFinalIterator.get() - 1
+        _numberOfIterSuffix = str("_00" + str(self.numberOnlineEMIterator.get()))
         if _numberOfIter > 9:
-            _numberOfIterSuffix = "_0%s" % (str(_numberOfIter))
+            _numberOfIterSuffix = str("_0" + str(_numberOfIter))
         if _numberOfIter > 99:
-            _numberOfIterSuffix = "_%s" % (str(_numberOfIter))
+            _numberOfIterSuffix = str("_" + str(_numberOfIter))
         return _numberOfIterSuffix
 
     def _defineParamsName(self):
         """ Define a list with all protocol parameters names"""
-        self._paramsName = ["class2D_K", "class2D_max_res",
-                            "class2D_sigma_init_factor",
-                            "class2D_window",
-                            "class2D_recenter",
-                            "class2D_recenter_thresh",
-                            "class2D_force_max",
-                            "class2D_ctf_phase_flip_only",
-                            "class2D_num_full_iter",
-                            "class2D_num_full_iter_batch",
-                            "class2D_num_full_iter_batchsize_per_class",
-                            "class2D_init_scale",
-                            "class2D_zp_factor",
-                            "class2D_use_frc_reg",
-                            "class2D_use_frc_reg_full",
-                            "class2D_sigma_init_iter",
-                            "class2D_sigma_use_white",
-                            "compute_use_ssd",
-                            "compute_num_gpus"]
         self.lane = str(self.getAttributeValue('compute_lane'))
+
+    def assignParamValue(self):
+        params = {"class2D_K": str(self.numberOfClasses.get()),
+                  "class2D_max_res": str(self.maximunResolution.get()),
+                  "class2D_sigma_init_factor": str(self.initialClassification.get()),
+                  "class2D_window": str(self.useCircular2D.get()),
+                  "class2D_recenter": str(self.reCenter2D.get()),
+                  "class2D_recenter_thresh": str(self.reCenterMask.get()),
+                  "class2D_recenter_binary": str(self.reCenterMaskBinary.get()),
+                  "class2D_force_max": str(self.forceMaxover.get()),
+                  "class2D_ctf_phase_flip_only": str(self.ctfFlipPhases.get()),
+                  "class2D_num_full_iter": str(self.numberFinalIterator.get()),
+                  "class2D_num_full_iter_batch": str(self.numberOnlineEMIterator.get()),
+                  "class2D_num_full_iter_batchsize_per_class": str(self.batchSizeClass.get()),
+                  "class2D_init_scale": str(self.initialScale2D.get()),
+                  "class2D_zp_factor": str(self.zeropadFactor.get()),
+                  "class2D_use_frc_reg": str(self.useFRCRegularized.get()),
+                  "class2D_use_frc_reg_full": str(self.useFullFRC.get()),
+                  "class2D_sigma_init_iter": str(self.iterationToStartAnneling.get()),
+                  "class2D_sigma_num_anneal_iters": str(self.iterationToStartAnneal.get()),
+                  "class2D_sigma_use_white": str(self.useWhiteNoiseModel.get()),
+                  "intermediate_plots": str('False'),
+                  "compute_use_ssd": str(self.compute_use_ssd.get())}
+        if self.class2D_window_inner_A.get() is not None:
+                params["class2D_window_inner_A"] = str(self.class2D_window_inner_A.get())
+        if self.class2D_window_outer_A.get() is not None:
+                params["class2D_window_outer_A"] = str(self.class2D_window_outer_A.get())
+        return params
 
     def doRunClass2D(self):
         """
@@ -448,22 +444,8 @@ class ProtCryo2D(ProtCryosparcBase, pwprot.ProtClassify2D):
             gpusToUse = False
             numberGPU = 1
 
-        params = {}
-
-        for paramName in self._paramsName:
-            if (paramName != 'class2D_window_inner_A' and
-                    paramName != 'class2D_window_outer_A' and
-                        paramName != 'compute_num_gpus'):
-                params[str(paramName)] = str(self.getAttributeValue(paramName))
-            elif (paramName == 'class2D_window_inner_A' and
-                  self.class2D_window_inner_A.get() is not None):
-                params["class2D_window_inner_A"] = str(self.class2D_window_inner_A.get())
-            elif (paramName == "class2D_window_outer_A" and
-                  self.class2D_window_outer_A.get() is not None):
-                params["class2D_window_outer_A"] = str(self.class2D_window_outer_A.get())
-            elif paramName == 'compute_num_gpus':
-                params[str(paramName)] = str(numberGPU)
-
+        params = self.assignParamValue()
+        params["compute_num_gpus"] = str(numberGPU)
         self.runClass2D = enqueueJob(self._className, self.projectName.get(),
                                      self.workSpaceName.get(),
                                      str(params).replace('\'', '"'),

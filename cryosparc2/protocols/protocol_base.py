@@ -227,15 +227,13 @@ class ProtCryosparcBase(pw.EMProtocol):
             lines = f.readlines()
             wv = []
             corr = []
+            factor = self._getInputParticles().getDim()[0] * imgSet.getSamplingRate()
             for x in lines[1:-1]:
-                wv.append(str(float(x.split('\t')[0]) / (
-                        int(self._getInputParticles().getDim()[0]) * float(
-                    imgSet.getSamplingRate()))))
+                wv.append(str(float(x.split('\t')[0])/factor))
                 corr.append(x.split('\t')[self._fscColumns])
             f.close()
             fsc = FSC(objLabel=self.getRunName())
             fsc.setData(wv, corr)
-            wv2, corr2 = fsc.getData()
             self._defineOutputs(outputFSC=fsc)
             self._defineSourceRelation(vol, fsc)
 
@@ -256,14 +254,11 @@ class ProtCryosparcBase(pw.EMProtocol):
             if 'text' in y:
                 z = str(y['text'])
 
-                if z.startswith('FSC Iteration') or z.startswith(
-                        'FSC iIteration'):
+                if z.startswith('FSC Iteration') or z.startswith('FSC iIteration'):
                     idd = y['imgfiles'][2]['fileid']
                     itera = z.split(',')[0][-3:]
                 elif 'Using Filter Radius' in z:
-                    nomRes = str(y['text']).split('(')[1].split(')')[
-                        0].replace(
-                        'A', 'Å')
+                    nomRes = str(y['text']).split('(')[1].split(')')[0].replace('A', 'Å')
                     self.mapResolution = pwobj.String(nomRes)
                     self._store(self)
                 elif 'Estimated Bfactor' in z:
