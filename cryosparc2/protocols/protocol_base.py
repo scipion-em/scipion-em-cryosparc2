@@ -25,6 +25,8 @@
 # *
 # **************************************************************************
 import os
+import ast
+import requests
 
 import pwem.protocols as pw
 import pyworkflow.object as pwobj
@@ -207,7 +209,6 @@ class ProtCryosparcBase(pw.EMProtocol):
         clearJob(str(self.projectName.get()), str(self.currenJob.get()))
 
     def createFSC(self, idd, imgSet, vol):
-        import requests
         # Need to get the cryosparc master address
         system_info = getSystemInfo()
         status_errors = system_info[0]
@@ -238,7 +239,6 @@ class ProtCryosparcBase(pw.EMProtocol):
             self._defineSourceRelation(vol, fsc)
 
     def findLastIteration(self, jobName):
-        import ast
         get_job_streamlog(self.projectName.get(),
                           jobName,
                           self._getFileName('stream_log'))
