@@ -34,9 +34,10 @@ from .protocol_base import ProtCryosparcBase
 from ..convert import (defineArgs, convertCs2Star, createItemMatrix,
                        setCryosparcAttributes)
 from ..utils import (addSymmetryParam, addComputeSectionParams,
-                     get_job_streamlog, calculateNewSamplingRate,
+                     calculateNewSamplingRate,
                      cryosparcValidate, gpusValidate, getSymmetry,
-                     waitForCryosparc, clearIntermediateResults, enqueueJob)
+                     waitForCryosparc, clearIntermediateResults, enqueueJob,
+                     fixVolume, copyFiles)
 from ..constants import md, NOISE_MODEL_CHOICES, REFINE_MASK_CHOICES
 
 
@@ -112,13 +113,6 @@ class ProtCryoSparcRefine3D(ProtCryosparcBase, pwprot.ProtRefine3D):
                       help='Number of extra passes through the data to do '
                            'after the GS-FSC resolution has stopped improving')
 
-        # form.addParam('refine_res_align_max', IntParam, default=None,
-        #               expertLevel=LEVEL_ADVANCED,
-        #               label="Maximum align resolution (A)",
-        #               help='Manual override for maximum resolution that is '
-        #                    'used for alignment. This value is normally set by '
-        #                    'the GS-FSC')
-
         form.addParam('refine_res_init', IntParam, default=30,
                       expertLevel=LEVEL_ADVANCED,
                       validators=[Positive],
@@ -132,25 +126,9 @@ class ProtCryoSparcRefine3D(ProtCryosparcBase, pwprot.ProtRefine3D):
                       help='Resolution beyond which two GS-FSC halves are '
                            'independent')
 
-        # form.addParam('refine_highpass_res', IntParam, default=None,
-        #               expertLevel=LEVEL_ADVANCED,
-        #               label="Highpass resolution (A)")
-
         form.addParam('refine_SPW', BooleanParam, default=False,
                       expertLevel=LEVEL_ADVANCED,
                       label="Use SPW")
-
-        # form.addParam('refine_particle_mw_kda', IntParam, default=None,
-        #               expertLevel=LEVEL_ADVANCED,
-        #               label="Particle MW (KDa)")
-
-        # form.addParam('refine_FSC_weight', StringParam, default='fsc_loosemask',
-        #               expertLevel=LEVEL_ADVANCED,
-        #               label="FSC Weighting")
-
-        # form.addParam('refine_bnb_params', StringParam, default='3D',
-        #               expertLevel=LEVEL_ADVANCED,
-        #               label="BnB Params")
 
         form.addParam('refine_clip', BooleanParam, default=False,
                       expertLevel=LEVEL_ADVANCED,
@@ -321,40 +299,25 @@ class ProtCryoSparcRefine3D(ProtCryosparcBase, pwprot.ProtRefine3D):
         """
         Create the protocol output. Convert cryosparc file to Relion file
         """
-        import ast
-        self._initializeUtilsVariables()
-        get_job_streamlog(self.projectName.get(), self.runRefine.get(),
-                          self._getFileName('stream_log'))
+        print(pwutils.yellowStr("Creating the output..."), flush=True)
+        csOutputFolder = os.path.join(self.projectPath, self.projectName.get(),
+                                      self.runRefine.get())
+        idd, itera = self.findLastIteration(self.runRefine.get())
+        csOutputPattern = "cryosparc_%s_%s_%s" % (self.projectName.get(),
+                                                  self.runRefine.get(),
+                                                  itera)
+        csParticlesName = csOutputPattern + "_particles.cs"
 
-        # Get the metadata information from stream.log
-        with open(self._getFileName('stream_log')) as f:
-            data = f.readlines()
+        fnVolName = csOutputPattern + "_volume_map.mrc"
+        half1Name = csOutputPattern + "_volume_map_half_A.mrc"
+        half2Name = csOutputPattern + "_volume_map_half_B.mrc"
 
-        x = ast.literal_eval(data[0])
+        # Copy the CS output volume and half to extra folder
+        copyFiles(csOutputFolder, self._getExtraPath(), files=[csParticlesName,
+                                                               fnVolName,
+                                                               half1Name,
+                                                               half2Name])
 
-        # Find the ID of last iteration and the map resolution
-        for y in x:
-            if 'text' in y:
-                z = str(y['text'])
-                if z.startswith('FSC'):
-                    idd = y['imgfiles'][2]['fileid']
-                    itera = z[-3:]
-                elif 'Using Filter Radius' in z:
-                    nomRes = str(y['text']).split('(')[1].split(')')[0].replace('A', 'Å')
-                    self.mapResolution = pwobj.String(nomRes)
-                    self._store(self)
-                elif 'Estimated Bfactor' in z:
-                    estBFactor = str(y['text']).split(':')[1].replace('\n', '')
-                    self.estBFactor = pwobj.String(estBFactor)
-                    self._store(self)
-
-        csParticlesName = ("cryosparc_" + self.projectName.get() + "_" +
-                           self.runRefine.get() + "_" + itera + "_particles.cs")
-        csFile = os.path.join(self.projectPath, self.projectName.get(),
-                              self.runRefine.get(), csParticlesName)
-
-        # Copy the particles to scipion output folder
-        os.system("cp -r " + csFile + " " + self._getExtraPath())
         csFile = os.path.join(self._getExtraPath(), csParticlesName)
 
         outputStarFn = self._getFileName('out_particles')
@@ -364,34 +327,13 @@ class ProtCryoSparcRefine3D(ProtCryosparcBase, pwprot.ProtRefine3D):
         args = parser.parse_args(argsList)
         convertCs2Star(args)
 
-        fnVolName = ("cryosparc_" + self.projectName.get() + "_" +
-                     self.runRefine.get() + "_" + itera + "_volume_map.mrc")
-        half1Name = ("cryosparc_" + self.projectName.get() + "_" +
-                     self.runRefine.get() + "_" + itera +
-                     "_volume_map_half_A.mrc")
-        half2Name = ("cryosparc_" + self.projectName.get() + "_" +
-                     self.runRefine.get() + "_" + itera +
-                     "_volume_map_half_B.mrc")
-
-        fnVol = os.path.join(self.projectPath, self.projectName.get(),
-                             self.runRefine.get(), fnVolName)
-        half1 = os.path.join(self.projectPath, self.projectName.get(),
-                             self.runRefine.get(), half1Name)
-        half2 = os.path.join(self.projectPath, self.projectName.get(),
-                             self.runRefine.get(), half2Name)
-
-        # Copy the volumes to extra folder
-        os.system("cp -r " + fnVol + " " + self._getExtraPath())
         fnVol = os.path.join(self._getExtraPath(), fnVolName)
-
-        os.system("cp -r " + half1 + " " + self._getExtraPath())
         half1 = os.path.join(self._getExtraPath(), half1Name)
-
-        os.system("cp -r " + half2 + " " + self._getExtraPath())
         half2 = os.path.join(self._getExtraPath(), half2Name)
 
         imgSet = self._getInputParticles()
         vol = pwobj.Volume()
+        fixVolume([fnVol, half1, half2])
         vol.setFileName(fnVol)
         vol.setSamplingRate(calculateNewSamplingRate(vol.getDim(),
                                                      imgSet.getSamplingRate(),
@@ -406,27 +348,7 @@ class ProtCryoSparcRefine3D(ProtCryosparcBase, pwprot.ProtRefine3D):
         self._defineSourceRelation(self.inputParticles.get(), vol)
         self._defineOutputs(outputParticles=outImgSet)
         self._defineTransformRelation(self.inputParticles.get(), outImgSet)
-        # Need to get the host IP address if it is not stanalone installation
-        os.system("wget 127.0.0.1:39000/file/" + idd + " -nd -P" +
-                  self._getExtraPath())
-        os.system("mv " + self._getExtraPath() + "/" + idd + " " +
-                  self._getExtraPath()+"/fsc.txt")
-        # Convert into scipion fsc format
-        f = open(self._getExtraPath()+"/fsc.txt", "r")
-        lines = f.readlines()
-        wv = []
-        corr = []
-        for x in lines[1:-1]:
-            wv.append(str(float(x.split('\t')[0])/(int(self._getInputParticles().getDim()[0])*float(imgSet.getSamplingRate()))))
-            corr.append(x.split('\t')[self._fscColumns])
-        f.close()
-
-        fsc = pwobj.FSC(objLabel=self.getRunName())
-        fsc.setData(wv, corr)
-        wv2, corr2 = fsc.getData()
-
-        self._defineOutputs(outputFSC=fsc)
-        self._defineSourceRelation(vol, fsc)
+        self.createFSC(idd, imgSet, vol)
 
     def _validate(self):
         validateMsgs = cryosparcValidate()

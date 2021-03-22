@@ -36,7 +36,8 @@ from .protocol_base import ProtCryosparcBase
 from ..convert import (rowToAlignment, defineArgs, convertCs2Star,
                        cryosparcToLocation)
 from ..utils import (addComputeSectionParams, cryosparcValidate, gpusValidate,
-                     enqueueJob, waitForCryosparc, clearIntermediateResults)
+                     enqueueJob, waitForCryosparc, clearIntermediateResults,
+                     copyFiles)
 from ..constants import *
 
 
@@ -254,93 +255,41 @@ class ProtCryo2D(ProtCryosparcBase, pwprot.ProtClassify2D):
         """
         Create the protocol output. Convert cryosparc file to Relion file
         """
-        self._initializeUtilsVariables()
         print(pwutils.yellowStr("Creating the output..."), flush=True)
-        _numberOfIter = self.numberOnlineEMIterator.get() + self.numberFinalIterator.get() - 1
-        _numberOfIterSuffix = str("_00" + str(self.numberOnlineEMIterator.get()))
-        if _numberOfIter > 9:
-            _numberOfIterSuffix = str("_0" + str(_numberOfIter))
-        if _numberOfIter > 99:
-            _numberOfIterSuffix = str("_" + str(_numberOfIter))
+        self._initializeUtilsVariables()
 
-        csParticlesName = ("cryosparc_" + self.projectName.get() +
-                           "_" + self.runClass2D.get() + _numberOfIterSuffix +
-                           "_particles.cs")
-        csFile = os.path.join(self.projectPath, self.projectName.get(),
-                              self.runClass2D.get(), csParticlesName)
+        csOutputFolder = os.path.join(self.projectPath, self.projectName.get(),
+                                      self.runClass2D.get())
+        _numberOfIterSuffix = self._getNumberOfIterSuffix()
+        csOutputPattern = "cryosparc_%s_%s%s" % (self.projectName.get(),
+                                                 self.runClass2D.get(),
+                                                 _numberOfIterSuffix)
+        csParticlesName = csOutputPattern + "_particles.cs"
+        csClassAveragesName = csOutputPattern + "_class_averages.cs"
+        mrcFileName = csOutputPattern + "_class_averages.mrc"
 
-        outputFolder = self._getExtraPath() + '/' + self.runClass2D.get()
-        os.system("mkdir " + outputFolder)
+        # Copy the CS output to extra folder
+        copyFiles(csOutputFolder, self._getExtraPath(), files=[csParticlesName,
+                                                               csClassAveragesName,
+                                                               mrcFileName])
 
-        # Copy the particles to scipion output folder
-        os.system("cp -r " + csFile + " " + outputFolder)
-        csFile = os.path.join(outputFolder, csParticlesName)
-
+        csPartFile = os.path.join(self._getExtraPath(), csParticlesName)
         outputStarFn = self._getFileName('out_particles')
-        argsList = [csFile, outputStarFn]
+        argsList = [csPartFile, outputStarFn]
 
         parser = defineArgs()
         args = parser.parse_args(argsList)
         convertCs2Star(args)
 
-        csClassAveragesName = ("cryosparc_" + self.projectName.get() + "_" +
-                               self.runClass2D.get() + _numberOfIterSuffix +
-                               "_class_averages.cs")
-
-        csFile = os.path.join(self.projectPath, self.projectName.get(),
-                              self.runClass2D.get(), csClassAveragesName)
-
-        # Copy the particles to scipion output folder
-        os.system("cp -r " + csFile + " " + outputFolder)
-        csFile = os.path.join(outputFolder, csClassAveragesName)
-
+        csClassAverageFile = os.path.join(self._getExtraPath(), csClassAveragesName)
         outputClassFn = self._getFileName('out_class')
-        argsList = [csFile, outputClassFn]
+        argsList = [csClassAverageFile, outputClassFn]
 
         parser = defineArgs()
         args = parser.parse_args(argsList)
         convertCs2Star(args)
 
-        # Copy the mrc file to scipion output folder
-        mrcFileName = ("cryosparc_" + self.projectName.get() + "_" +
-                       self.runClass2D.get() + _numberOfIterSuffix +
-                       "_class_averages.mrc")
-
-        csFile = os.path.join(self.projectPath, self.projectName.get(),
-                              self.runClass2D.get(), mrcFileName)
-
-        # Copy the particles to scipion output folder
-        os.system("cp -r " + csFile + " " + outputFolder)
-
-        with open(self._getFileName('out_class'), 'r') as input_file, \
-                open(self._getFileName('out_class_m2'), 'w') as output_file:
-            j = 0  # mutex lock
-            i = 0  # start
-            k = 1
-            l = 0
-            for line in input_file:
-                if line.startswith("_rln"):
-                    output_file.write(line)
-                    i = 1
-                elif i == 0:
-                    output_file.write(line)
-                elif j == 0:
-                    for n, m in enumerate(line.split()):
-                        if '@' in m:
-                            break
-                    output_file.write(" ".join(line.split()[:n]) + " " +
-                                      line.split()[n].split('@')[0] + '@' +
-                                      self._getExtraPath() + "/" +
-                                      line.split()[n].split('@')[1] + " " +
-                                      " ".join(line.split()[n+1:])+"\n")
-                    j = 1
-                else:
-                    output_file.write(" ".join(line.split()[:n]) + " " +
-                                      line.split()[n].split('@')[0] + '@' +
-                                      self._getExtraPath() + "/" +
-                                      line.split()[n].split('@')[1] + " " +
-                                      " ".join(line.split()[n+1:])+"\n")
-        
+        self._createModelFile()
         self._loadClassesInfo(self._getFileName('out_class_m2'))
         inputParticles = self._getInputParticles()
         classes2DSet = self._createSetOfClasses2D(inputParticles)
@@ -423,29 +372,33 @@ class ProtCryo2D(ProtCryosparcBase, pwprot.ProtClassify2D):
             class2Drep.setLocation(index, fn)
             class2Drep.setSamplingRate(class2D.getSamplingRate())
 
+    def _createModelFile(self):
+        with open(self._getFileName('out_class'), 'r') as input_file, \
+                open(self._getFileName('out_class_m2'), 'w') as output_file:
+            for line in input_file:
+                if "@" in line:
+                    row = "%s@%s/%s"
+                    classNumber = line.split('@')[0]
+                    image = line.split('/')[1]
+                    output_file.write(row % (classNumber, self._getExtraPath(), image))
+                else:
+                    output_file.write(line)
+
+    def _getNumberOfIterSuffix(self):
+        _numberOfIter = (self.numberOnlineEMIterator.get() +
+                         self.numberFinalIterator.get() - 1)
+        _numberOfIterSuffix = "_00%s" % str(self.numberOnlineEMIterator.get())
+        if _numberOfIter > 9:
+            _numberOfIterSuffix = "_0%s" % str(_numberOfIter)
+        if _numberOfIter > 99:
+            _numberOfIterSuffix = "_%s" % str(_numberOfIter)
+        return _numberOfIterSuffix
+
     def _defineParamsName(self):
         """ Define a list with all protocol parameters names"""
         self.lane = str(self.getAttributeValue('compute_lane'))
 
-    def doRunClass2D(self):
-        """
-        do_run_class_2D:  do_job(job_type, puid='P1', wuid='W1',
-                                 uuid='devuser', params={},
-                                 input_group_connects={})
-        returns: the new uid of the job that was created
-        """
-        # {'particles' : 'JXX.imported_particles' }
-        input_group_conect = {"particles": str(self.par)}
-
-        # Determinate the GPUs or the number of GPUs to use (in dependence of
-        # the cryosparc version)
-        try:
-            gpusToUse = self.getGpuList()
-            numberGPU = len(gpusToUse)
-        except Exception:
-            gpusToUse = False
-            numberGPU = 1
-
+    def assignParamValue(self):
         params = {"class2D_K": str(self.numberOfClasses.get()),
                   "class2D_max_res": str(self.maximunResolution.get()),
                   "class2D_sigma_init_factor": str(self.initialClassification.get()),
@@ -466,19 +419,39 @@ class ProtCryo2D(ProtCryosparcBase, pwprot.ProtClassify2D):
                   "class2D_sigma_num_anneal_iters": str(self.iterationToStartAnneal.get()),
                   "class2D_sigma_use_white": str(self.useWhiteNoiseModel.get()),
                   "intermediate_plots": str('False'),
-                  "compute_use_ssd": str(self.compute_use_ssd.get()),
-                  "compute_num_gpus": str(numberGPU)}
-
+                  "compute_use_ssd": str(self.compute_use_ssd.get())}
         if self.class2D_window_inner_A.get() is not None:
-            params["class2D_window_inner_A"] = str(self.class2D_window_inner_A.get())
+                params["class2D_window_inner_A"] = str(self.class2D_window_inner_A.get())
         if self.class2D_window_outer_A.get() is not None:
-            params["class2D_window_outer_A"] = str(self.class2D_window_outer_A.get())
+                params["class2D_window_outer_A"] = str(self.class2D_window_outer_A.get())
+        return params
 
+    def doRunClass2D(self):
+        """
+        do_run_class_2D:  do_job(job_type, puid='P1', wuid='W1',
+                                 uuid='devuser', params={},
+                                 input_group_connects={})
+        returns: the new uid of the job that was created
+        """
+        # {'particles' : 'JXX.imported_particles' }
+        input_group_conect = {"particles": str(self.par)}
+
+        # Determinate the GPUs or the number of GPUs to use (in dependence of
+        # the cryosparc version)
+        try:
+            gpusToUse = self.getGpuList()
+            numberGPU = len(gpusToUse)
+        except Exception:
+            gpusToUse = False
+            numberGPU = 1
+
+        params = self.assignParamValue()
+        params["compute_num_gpus"] = str(numberGPU)
         self.runClass2D = enqueueJob(self._className, self.projectName.get(),
-                                self.workSpaceName.get(),
-                                str(params).replace('\'', '"'),
-                                str(input_group_conect).replace('\'', '"'),
-                                self.lane, gpusToUse)
+                                     self.workSpaceName.get(),
+                                     str(params).replace('\'', '"'),
+                                     str(input_group_conect).replace('\'', '"'),
+                                     self.lane, gpusToUse)
         self.currenJob.set(self.runClass2D.get())
         self._store(self)
 

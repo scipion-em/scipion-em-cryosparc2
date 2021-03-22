@@ -83,8 +83,6 @@ class CryosPARCViewerInitialModel(ProtocolViewer):
     def _visualizeVolumes(self, paramName=None):
         if self.displayVol == DATA_VIEWER:
             return self._showVolumesDataViewer()
-        # elif self.displayVol == VOLUME_SLICES:
-        #     return self._createVolumesSqlite()
         elif self.displayVol == VOLUME_CRYOSPARC:
             return self._showCryoSPARVolume()
 

@@ -38,7 +38,8 @@ from ..convert import (convertBinaryVol, defineArgs, convertCs2Star,
 from ..utils import (addSymmetryParam, addComputeSectionParams, doImportVolumes,
                      get_job_streamlog, calculateNewSamplingRate,
                      cryosparcValidate, gpusValidate, getSymmetry, enqueueJob,
-                     waitForCryosparc, clearIntermediateResults)
+                     waitForCryosparc, clearIntermediateResults, fixVolume,
+                     copyFiles)
 from ..constants import *
 
 
@@ -263,40 +264,20 @@ class ProtCryoSparc3DClassification(ProtCryosparcBase):
         """
         Create the protocol output. Convert cryosparc file to Relion file
         """
-        import ast
         self._initializeUtilsVariables()
         print(pwutils.yellowStr("Creating the output..."), flush=True)
-        get_job_streamlog(self.projectName.get(), self.run3dClassification.get(),
-                          self._getFileName('stream_log'))
 
-        # Get the metadata information from stream.log
-        with open(self._getFileName('stream_log')) as f:
-            data = f.readlines()
+        csOutputFolder = os.path.join(self.projectPath, self.projectName.get(),
+                              self.run3dClassification.get())
+        itera = self.findLastIteration(self.run3dClassification.get())
 
-        x = ast.literal_eval(data[0])
+        csParticlesName = "cryosparc_%s_%s_00%s_particles.cs" % (self.projectName.get(),
+                                                                 self.run3dClassification.get(),
+                                                                 itera)
+        # Copy the CS output particles to extra folder
+        copyFiles(csOutputFolder, self._getExtraPath(), files=[csParticlesName])
 
-        # Find the ID of last iteration and the map resolution
-        for y in x:
-            if 'text' in y:
-                z = str(y['text'])
-                if z.startswith('FSC Iteration'):
-                    itera = z.split(' ')[2]
-
-        csParticlesName = ("cryosparc_" + self.projectName.get() + "_" +
-                           self.run3dClassification.get() + "_00" + itera +
-                           "_particles.cs")
-        csFile = os.path.join(self.projectPath, self.projectName.get(),
-                              self.run3dClassification.get(), csParticlesName)
-
-        # Create the output folder
-        ouputsPath = os.path.join(self.projectPath, self.projectName.get(),
-                                  self.run3dClassification.get())
-        outputFolder = self._getExtraPath() + '/' + self.run3dClassification.get()
-        os.system("mkdir " + outputFolder)
-
-        # Copy the particles to scipion output folder
-        os.system("cp -r " + csFile + " " + outputFolder)
-        csFile = os.path.join(outputFolder, csParticlesName)
+        csFile = os.path.join(self._getExtraPath(), csParticlesName)
 
         outputStarFn = self._getFileName('out_particles')
         argsList = [csFile, outputStarFn]
@@ -305,25 +286,7 @@ class ProtCryoSparc3DClassification(ProtCryosparcBase):
         args = parser.parse_args(argsList)
         convertCs2Star(args)
 
-        # Create model files for 3D classification
-        with open(self._getFileName('out_class'), 'w') as output_file:
-            output_file.write('\n')
-            output_file.write('data_images')
-            output_file.write('\n\n')
-            output_file.write('loop_')
-            output_file.write('\n')
-            output_file.write('_rlnReferenceImage')
-            output_file.write('\n')
-            numOfClass = len(self.importVolumes)
-            for i in range(numOfClass):
-                csVolName = ("cryosparc_" + self.projectName.get() + "_" +
-                             self.run3dClassification.get() + "_class_%02d" % i +
-                                  "_00" + itera + "_volume.mrc")
-                os.system("cp -r " + ouputsPath + "/" + csVolName + " " + outputFolder)
-                output_file.write("%02d" % (
-                            i + 1) + "@" + self._getExtraPath() + "/" + self.run3dClassification.get() + "/cryosparc_" +
-                                  self.projectName.get() + "_" + self.run3dClassification.get() + "_class_%02d" % i +
-                                  "_00" + itera + "_volume.mrc\n")
+        self._createModelFile(csOutputFolder, itera)
 
         imgSet = self._getInputParticles()
         classes3D = self._createSetOfClasses3D(imgSet)
@@ -360,12 +323,12 @@ class ProtCryoSparc3DClassification(ProtCryosparcBase):
                 row.getValue('rlnReferenceImage'))
             # Store info indexed by id, we need to store the row.clone() since
             # the same reference is used for iteration
-            self._classesInfo[classNumber + 1] = (index, fn, row.clone())
+            scaledFile = self._getScaledAveragesFile(fn, force=True)
+            self._classesInfo[classNumber + 1] = (index, scaledFile, row.clone())
 
     def _fillClassesFromIter(self, clsSet, filename):
         """ Create the SetOfClasses3D """
         self._loadClassesInfo(self._getFileName('out_class'))
-        outImgsFn = self._getFileName('out_class')
         clsSet.classifyItems(updateItemCallback=self._updateParticle,
                              updateClassCallback=self._updateClass,
                              itemDataIterator=md.iterRows(filename,
@@ -379,13 +342,57 @@ class ProtCryoSparc3DClassification(ProtCryosparcBase):
         classId = item.getObjId()
         if classId in self._classesInfo:
             index, fn, row = self._classesInfo[classId]
-            fn += ":mrc"
+            fixVolume(fn)
             item.setAlignmentProj()
             vol = item.getRepresentative()
             vol.setLocation(index, fn)
             vol.setSamplingRate(calculateNewSamplingRate(vol.getDim(),
                                                          self._getInputParticles().getSamplingRate(),
                                                          self._getInputParticles().getDim()))
+
+    def _createModelFile(self, csOutputFolder, itera):
+        # Create model files for 3D classification
+        with open(self._getFileName('out_class'), 'w') as output_file:
+            output_file.write('\n')
+            output_file.write('data_images')
+            output_file.write('\n\n')
+            output_file.write('loop_')
+            output_file.write('\n')
+            output_file.write('_rlnReferenceImage')
+            output_file.write('\n')
+            numOfClass = len(self.importVolumes)
+            for i in range(numOfClass):
+                csVolName = ("cryosparc_%s_%s_class_%02d_00%s_volume.mrc" %
+                             (self.projectName.get(),
+                              self.run3dClassification.get(), i, itera))
+
+                copyFiles(csOutputFolder, self._getExtraPath(), files=[csVolName])
+
+                row = ("%02d@%s/cryosparc_%s_%s_class_%02d_00%s_volume.mrc\n" %
+                       (i+1, self._getExtraPath(), self.projectName.get(),
+                        self.run3dClassification.get(), i, itera))
+                output_file.write(row)
+
+    def findLastIteration(self, jobName):
+        import ast
+        get_job_streamlog(self.projectName.get(),
+                          jobName,
+                          self._getFileName('stream_log'))
+
+        # Get the metadata information from stream.log
+        with open(self._getFileName('stream_log')) as f:
+            data = f.readlines()
+
+        x = ast.literal_eval(data[0])
+
+        # Find the ID of last iteration and the map resolution
+        for y in x:
+            if 'text' in y:
+                z = str(y['text'])
+                if z.startswith('FSC Iteration'):
+                    itera = z.split(' ')[2]
+
+        return itera
 
     # --------------------------- INFO functions -------------------------------
     def _validate(self):
@@ -396,13 +403,12 @@ class ProtCryoSparc3DClassification(ProtCryosparcBase):
             if not validateMsgs:
                 particles = self._getInputParticles()
                 if not particles.hasCTF():
-                    validateMsgs.append(
-                        "The Particles has not associated a "
-                        "CTF model")
+                    validateMsgs.append("The Particles has not associated a "
+                                        "CTF model")
                 volumes = self._getInputVolume()
                 if volumes is not None and len(volumes) < 2:
-                    validateMsgs.append(
-                        "The number of initial volumes must be equal or greater than 2")
+                    validateMsgs.append("The number of initial volumes must "
+                                        "be equal or greater than 2")
         return validateMsgs
 
     def _summary(self):
