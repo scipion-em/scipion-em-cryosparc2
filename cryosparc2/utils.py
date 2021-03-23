@@ -26,12 +26,15 @@
 # **************************************************************************
 import getpass
 import os
+import shutil
+
 from pkg_resources import parse_version
 
 import pyworkflow.utils as pwutils
 from pwem.constants import SCIPION_SYM_NAME
 from pwem.constants import (SYM_CYCLIC, SYM_TETRAHEDRAL,
                             SYM_OCTAHEDRAL, SYM_I222, SYM_I222r)
+from pwem.convert import Ccp4Header
 
 from . import Plugin
 from .constants import (CS_SYM_NAME, SYM_DIHEDRAL_Y, CRYOSPARC_USER,
@@ -115,12 +118,14 @@ def cryosparcValidate():
     Validates some cryo properties that must be satisfy
     """
     if not cryosparcExists():
-        return ["cryoSPARC software not found at %s. Please, fill %s variable in scipion's config file."
-                % (getCryosparcDir(), CRYOSPARC_HOME)]
+        return ["cryoSPARC software not found at %s. Please, fill %s variable "
+                "in scipion's config file." % (getCryosparcDir(),
+                                               CRYOSPARC_HOME)]
 
     if not isCryosparcRunning():
-        return ['Failed to connect to cryoSPARC. Please, make sure cryoSPARC is running.\n'
-                'Running: *%s* might fix this.' % getCryosparcProgram("start")]
+        return ['Failed to connect to cryoSPARC. Please, make sure cryoSPARC '
+                'is running.\nRunning: *%s* might fix this.'
+                % getCryosparcProgram("start")]
 
     cryosparcVersion = parse_version(getCryosparcVersion())
     supportedVersions = Plugin.getSupportedVersions()
@@ -232,8 +237,8 @@ def getJobLog(projectDirName, projectName, job):
     """
     Return the job log
     """
-    return os.path.join(getCryosparcProjectsDir(), projectDirName, projectName, job,
-                        'job.log')
+    return os.path.join(getCryosparcProjectsDir(), projectDirName, projectName,
+                        job, 'job.log')
 
 
 def createEmptyProject(projectDir, projectTitle):
@@ -318,8 +323,10 @@ def doImportVolumes(protocol, refVolume, volType, msg):
               "volume_psize": str(
                   protocol._getInputParticles().getSamplingRate())}
 
-    importedVolume = enqueueJob(className, protocol.projectName, protocol.workSpaceName,
-                                str(params).replace('\'', '"'), '{}', protocol.lane)
+    importedVolume = enqueueJob(className, protocol.projectName,
+                                protocol.workSpaceName,
+                                str(params).replace('\'', '"'), '{}',
+                                protocol.lane)
 
     waitForCryosparc(protocol.projectName.get(), importedVolume.get(),
                      "An error occurred importing the volume. "
@@ -373,7 +380,6 @@ def enqueueJob(jobType, projectName, workSpaceName, params, input_group_connect,
                         ("'", jobType, projectName, workSpaceName,
                          getCryosparcUser(),
                          params, input_group_connect, "'"))
-
 
     exitCode, cmdOutput = runCmd(make_job_cmd)
 
@@ -656,3 +662,40 @@ def calculateNewSamplingRate(newDims, previousSR, previousDims):
     pX = previousDims[0]
     nX = newDims[0]
     return previousSR * pX / nX
+
+
+def fixVolume(paths):
+    """
+
+    :param paths: accept a string or a list of strings
+    :return:
+    """
+    if isinstance(paths, str):
+        paths = [paths]
+    for path in paths:
+        ccp4header = Ccp4Header(path, readHeader=True)
+        ccp4header.setISPG(1)
+        ccp4header.writeHeader()
+
+
+def copyFiles(src, dst, files=None):
+    """
+    Copy a list of files from src to dst. If files is None, all files of src are
+    copied to dst
+    :param src: source folder path
+    :param dst: destiny folder path
+    :param files: a list of files to be copied
+    :return:
+    """
+    try:
+        if files is None:
+            shutil.copytree(src, dst)
+        else:
+            if isinstance(files, str):
+                files = [files]
+            for file in files:
+                shutil.copy(os.path.join(src, file),
+                            os.path.join(dst, file))
+    except Exception as ex:
+        print("Unable to execute the copy: Files or directory does not exist: ",
+              ex)

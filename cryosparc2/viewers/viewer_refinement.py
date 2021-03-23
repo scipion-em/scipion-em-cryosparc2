@@ -37,7 +37,8 @@ from ..protocols import (ProtCryoSparcNonUniformRefine3D,
                          ProtCryoSparcRefine3D,
                          ProtCryoSparcLocalRefine, ProtCryoSparcHelicalRefine3D,
                          ProtCryoSparc3DHomogeneousRefine,
-                         ProtCryoSparcNewNonUniformRefine3D)
+                         ProtCryoSparcNewNonUniformRefine3D,
+                         ProtCryoSparcNaiveLocalRefine)
 from ..constants import *
 from ..utils import *
 
@@ -47,7 +48,7 @@ class CryosPARCViewer3DRefinement(EmProtocolViewer):
 
     _targets = [ProtCryoSparcRefine3D, ProtCryoSparcNonUniformRefine3D,
                 ProtCryoSparcLocalRefine, ProtCryoSparcHelicalRefine3D,
-                ProtCryoSparc3DHomogeneousRefine,
+                ProtCryoSparc3DHomogeneousRefine, ProtCryoSparcNaiveLocalRefine,
                 ProtCryoSparcNewNonUniformRefine3D]
     _environments = [DESKTOP_TKINTER, WEB_DJANGO]
     _label = 'viewer Refinement'
@@ -126,8 +127,6 @@ class CryosPARCViewer3DRefinement(EmProtocolViewer):
     def _showVolumes(self, paramName=None):
         if self.displayVol == VOLUME_CHIMERA:
             return self._showVolumesChimera()
-        # elif self.displayVol == VOLUME_SLICES:
-        #     return self._createVolumesSqlite()
         elif self.displayVol == VOLUME_CRYOSPARC:
             return self._showCryoSPARVolume()
 
@@ -176,20 +175,6 @@ class CryosPARCViewer3DRefinement(EmProtocolViewer):
             view = ChimeraClientView(volumes[0])
 
         return [view]
-
-    def _createVolumesSqlite(self):
-        """ Write an sqlite with the volumes selected for visualization. """
-
-        path = self.protocol._getExtraPath('cryosparc_viewer_volume.sqlite')
-        samplingRate = self.protocol.inputParticles.get().getSamplingRate()
-
-        files = []
-        volumes = self._getVolumeNames()
-        for volFn in volumes:
-            if os.path.exists(volFn.replace(':mrc', '')):
-                files.append(volFn)
-        self.createVolumesSqlite(files, path, samplingRate)
-        return [ObjectView(self._project, self.protocol.strId(), path)]
 
     # =========================================================================
     # plotFSC

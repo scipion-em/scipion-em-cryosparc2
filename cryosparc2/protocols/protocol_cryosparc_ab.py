@@ -42,7 +42,7 @@ from ..convert import (defineArgs, convertCs2Star, cryosparcToLocation,
 from ..utils import (addSymmetryParam, addComputeSectionParams,
                      cryosparcValidate, gpusValidate, getSymmetry, enqueueJob,
                      calculateNewSamplingRate, waitForCryosparc,
-                     clearIntermediateResults)
+                     clearIntermediateResults, fixVolume, copyFiles)
 from ..constants import *
 
 
@@ -308,43 +308,27 @@ class ProtCryoSparcInitialModel(ProtCryosparcBase, ProtInitialVolume,
         """
         Create the protocol output. Convert cryosparc file to Relion file
         """
-        self._initializeUtilsVariables()
         print(pwutils.yellowStr("Creating the output..."), flush=True)
+        self._initializeUtilsVariables()
+        csOutputFolder = os.path.join(self.projectPath, self.projectName.get(),
+                                      self.runAbinit.get())
+        csFileName = "cryosparc_%s_%s_final_particles.cs" % (self.projectName.get(),
+                                                             self.runAbinit.get())
 
-        csFileName = ("cryosparc_" + self.projectName.get() + "_" +
-                      self.runAbinit.get() + "_final_particles.cs")
+        outputFolder = os.path.join(self._getExtraPath(), self.runAbinit.get())
 
-        ouputsPath = os.path.join(self.projectPath, self.projectName.get(),
-                                  self.runAbinit.get())
+        # Copy the CS output to extra folder
+        copyFiles(csOutputFolder, outputFolder)
 
-        # Create the output folder
-        outputFolder = self._getExtraPath() + '/' + self.runAbinit.get()
-        os.system("mkdir " + outputFolder)
-
-        # Copy the particles to scipion output folder
-        os.system("cp -r " + ouputsPath + "/" + "*final*" + " " + outputFolder)
         csFile = os.path.join(outputFolder, csFileName)
-
         outputClassFn = self._getFileName('out_particles')
         argsList = [csFile, outputClassFn]
-
         parser = defineArgs()
         args = parser.parse_args(argsList)
         convertCs2Star(args)
 
         # Create model files for 3D classification
-        with open(self._getFileName('out_class'), 'w') as output_file:
-            output_file.write('\n')
-            output_file.write('data_images')
-            output_file.write('\n\n')
-            output_file.write('loop_')
-            output_file.write('\n')
-            output_file.write('_rlnReferenceImage')
-            output_file.write('\n')
-            for i in range(int(self.abinit_K.get())):
-                output_file.write("%02d" % (i+1)+"@"+self._getExtraPath() + "/" + self.runAbinit.get() + "/cryosparc_" +
-                                  self.projectName.get() + "_"+self.runAbinit.get() + "_class_%02d" % i +
-                                  "_final_volume.mrc\n")
+        self._createModelFile()
 
         imgSet = self._getInputParticles()
         classes3D = self._createSetOfClasses3D(imgSet)
@@ -434,13 +418,28 @@ class ProtCryoSparcInitialModel(ProtCryosparcBase, ProtInitialVolume,
         classId = item.getObjId()
         if classId in self._classesInfo:
             index, fn, row = self._classesInfo[classId]
-            fn += ":mrc"
+            fixVolume(fn)
             item.setAlignmentProj()
             vol = item.getRepresentative()
             vol.setLocation(index, fn)
             vol.setSamplingRate(calculateNewSamplingRate(vol.getDim(),
                                                          self._getInputParticles().getSamplingRate(),
                                                          self._getInputParticles().getDim()))
+
+    def _createModelFile(self):
+        with open(self._getFileName('out_class'), 'w') as output_file:
+            output_file.write('\n')
+            output_file.write('data_images')
+            output_file.write('\n\n')
+            output_file.write('loop_')
+            output_file.write('\n')
+            output_file.write('_rlnReferenceImage')
+            output_file.write('\n')
+            for i in range(int(self.abinit_K.get())):
+                row = ("%02d@%s/%s/cryosparc_%s_%s_class_%02d_final_volume.mrc\n"
+                       % (i+1, self._getExtraPath(), self.runAbinit.get(),
+                          self.projectName.get(), self.runAbinit.get(), i))
+                output_file.write(row)
 
     def _defineParamsName(self):
         """ Define a list with all protocol parameters names"""
