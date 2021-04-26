@@ -500,7 +500,7 @@ def convertBinaryFiles(imgSet, outputDir, extension='mrcs'):
         """
         newFn = getUniqueFileName(fn, extension)
         if not os.path.exists(newFn):
-            pwutils.createLink(fn, newFn)
+            pwutils.createAbsLink(fn, newFn)
             print("   %s -> %s" % (newFn, fn))
         return newFn
 
@@ -523,7 +523,7 @@ def convertBinaryFiles(imgSet, outputDir, extension='mrcs'):
         print("convertBinaryFiles: creating soft links.")
         print("   Root: %s -> %s" % (outputRoot, rootDir))
         mapFunc = replaceRoot
-        pwutils.createLink(rootDir, outputRoot)
+        pwutils.createAbsLink(os.path.abspath(rootDir), outputRoot)
     elif ext == 'mrc' and extension == 'mrcs':
         print("convertBinaryFiles: creating soft links (mrcs -> mrc).")
         mapFunc = createBinaryLink

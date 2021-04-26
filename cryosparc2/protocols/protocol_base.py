@@ -205,8 +205,9 @@ class ProtCryosparcBase(pw.EMProtocol):
     def setAborted(self):
         """ Set the status to aborted and updated the endTime. """
         pw.EMProtocol.setAborted(self)
-        killJob(str(self.projectName.get()), str(self.currenJob.get()))
-        clearJob(str(self.projectName.get()), str(self.currenJob.get()))
+        if hasattr(self, 'projectName'):
+            killJob(str(self.projectName.get()), str(self.currenJob.get()))
+            clearJob(str(self.projectName.get()), str(self.currenJob.get()))
 
     def createFSC(self, idd, imgSet, vol):
         # Need to get the cryosparc master address
