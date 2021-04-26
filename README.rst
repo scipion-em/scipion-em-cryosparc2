@@ -29,40 +29,10 @@ You will need to use `3.0.0 <https://scipion-em.github.io/docs/release-3.0.0/doc
 **Plugin Versions**
 ===================
 
-**v3.2.7**
+**v3.2.9**
 ----------
-* **fixed**  : Fixed the Symmetry Expansion protocol
+* **new**      : Compatibility with cryoSPARC v3.2
 
-
-**v3.2.6**
-----------
-March 10, 2021
-
-* **new**      : Added the Symmetry Expansion protocol
-
-
-**v3.2.5**
-----------
-February 20, 2021
-
-* **new**      : Added the new 3D Homogeneous Refinement
-
-* **new**      : Added the new 3D Non uniform Refinement : https://www.nature.com/articles/s41592-020-00990-8
-
-* **new**      : Added the new local Refinement
-
-
-**v3.2.4**
-----------
-February 11, 2021
-
-* **new**      : Compatibility with cryoSPARC v3.1.0
-
-* **new**      : Added Helical Refinement protocol
-
-* **update**   : Removed unused parameters(MPIs and Threads) from all protocols
-
-* **fixed**    : Use of multiple GPUs of Homogeneous and Non-Uniform Refinements
 
 
 **Installing the plugin**

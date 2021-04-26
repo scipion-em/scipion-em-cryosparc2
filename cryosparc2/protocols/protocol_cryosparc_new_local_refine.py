@@ -55,7 +55,7 @@ class ProtCryoSparcLocalRefine(ProtCryosparcBase, ProtOperateParticles):
         """
     _label = 'local refinement'
     _devStatus = BETA
-    _protCompatibility = [V3_0_0, V3_1_0]
+    _protCompatibility = [V3_0_0, V3_1_0, V3_2_0]
     _className = "new_local_refine"
     _fscColumns = 6
 
