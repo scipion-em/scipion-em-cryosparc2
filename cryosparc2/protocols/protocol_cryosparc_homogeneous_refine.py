@@ -424,11 +424,6 @@ class ProtCryoSparc3DHomogeneousRefine(ProtCryosparcBase, pwprot.ProtRefine3D):
             if [version for version in self._protCompatibility
                 if parse_version(version) >= parse_version(csVersion)]:
                 validateMsgs = gpusValidate(self.getGpuList())
-                if not validateMsgs:
-                    particles = self._getInputParticles()
-                    if not particles.hasCTF():
-                        validateMsgs.append("The Particles has not associated "
-                                            "a CTF model")
             else:
                 validateMsgs.append("The protocol is not compatible with the "
                                     "cryoSPARC version %s" % csVersion)

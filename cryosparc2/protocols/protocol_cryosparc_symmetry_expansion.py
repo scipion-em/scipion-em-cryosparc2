@@ -152,11 +152,6 @@ class ProtCryoSparcSymmetryExpansion(ProtCryosparcBase):
         if not validateMsgs:
             validateMsgs = gpusValidate(self.getGpuList(),
                                         checkSingleGPU=True)
-            if not validateMsgs:
-                particles = self._getInputParticles()
-                if not particles.hasCTF():
-                    validateMsgs.append("The Particles has not associated a "
-                                        "CTF model")
         return validateMsgs
 
     def _summary(self):

@@ -303,11 +303,6 @@ class ProtCryo2D(ProtCryosparcBase, pwprot.ProtClassify2D):
         validateMsgs = cryosparcValidate()
         if not validateMsgs:
             validateMsgs = gpusValidate(self.getGpuList())
-            if not validateMsgs:
-                particles = self._getInputParticles()
-                if not particles.hasCTF():
-                    validateMsgs.append("The Particles has not associated a "
-                                        "CTF model")
         return validateMsgs
 
     def _summary(self):

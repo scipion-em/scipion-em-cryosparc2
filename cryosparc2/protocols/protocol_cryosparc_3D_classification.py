@@ -401,10 +401,6 @@ class ProtCryoSparc3DClassification(ProtCryosparcBase):
             validateMsgs = gpusValidate(self.getGpuList(),
                                         checkSingleGPU=True)
             if not validateMsgs:
-                particles = self._getInputParticles()
-                if not particles.hasCTF():
-                    validateMsgs.append("The Particles has not associated a "
-                                        "CTF model")
                 volumes = self._getInputVolume()
                 if volumes is not None and len(volumes) < 2:
                     validateMsgs.append("The number of initial volumes must "

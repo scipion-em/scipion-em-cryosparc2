@@ -248,10 +248,6 @@ class ProtCryoSparcHelicalRefine3D(ProtCryoSparcRefine3D):
                 if parse_version(version) >= parse_version(csVersion)]:
                 validateMsgs = gpusValidate(self.getGpuList(), checkSingleGPU=True)
                 if not validateMsgs:
-                    particles = self._getInputParticles()
-                    if not particles.hasCTF():
-                        validateMsgs.append("The Particles has not associated a "
-                                            "CTF model")
                     if self.referenceVolume.get() is None and not self.use_cylindrical_model.get():
                         validateMsgs.append("Cannot generate initial model "
                                             "without in-plane rotation "

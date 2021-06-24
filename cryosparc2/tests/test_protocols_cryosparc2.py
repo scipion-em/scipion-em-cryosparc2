@@ -585,13 +585,12 @@ class TestCryosparcParticlesSubtract(TestCryosparcBase):
             protParticlesSubtract.inputParticles.set(prot3DRefinement.outputParticles)
             protParticlesSubtract.refVolume.set(prot3DRefinement.outputVolume)
             protParticlesSubtract.refMask.set(protXmippCreate3DMask.outputMask)
-            protParticlesSubtract.n_particles.set(200)
             protParticlesSubtract.compute_use_ssd.set(False)
             self.launchProtocol(protParticlesSubtract)
 
             self.assertIsNotNone(protParticlesSubtract.outputParticles)
             self.assertEqual(protParticlesSubtract.outputParticles.getSize(),
-                             protParticlesSubtract.n_particles.get())
+                             prot3DRefinement.outputParticles.getSize())
 
         _runCryosparctestParticlesSubtract(label="Cryosparc Subtract projection")
 
