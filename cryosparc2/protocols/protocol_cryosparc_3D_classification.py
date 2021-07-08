@@ -450,6 +450,8 @@ class ProtCryoSparc3DClassification(ProtCryosparcBase):
                             'multirefine_num_final_full_iters',
                             'multirefine_noise_model',
                             'multirefine_noise_init_sigmascale',
+                            'intermediate_plots',
+                            'distribution_plots',
                             'compute_use_ssd']
         self.lane = str(self.getAttributeValue('compute_lane'))
 
@@ -463,7 +465,9 @@ class ProtCryoSparc3DClassification(ProtCryosparcBase):
 
         for paramName in self._paramsName:
             if (paramName != 'multirefine_symmetry' and
-                    paramName != 'multirefine_noise_model'):
+                    paramName != 'multirefine_noise_model' and
+                    paramName != 'intermediate_plots' and
+                    paramName != 'distribution_plots'):
                 params[str(paramName)] = str(self.getAttributeValue(paramName))
 
             elif paramName == 'multirefine_symmetry':
@@ -473,6 +477,9 @@ class ProtCryoSparc3DClassification(ProtCryosparcBase):
                 params[str(paramName)] = symetryValue
             elif paramName == 'multirefine_noise_model':
                 params[str(paramName)] = str(NOISE_MODEL_CHOICES[self.multirefine_noise_model.get()])
+
+            elif paramName == 'intermediate_plots' or paramName == 'distribution_plots':
+                params[str(paramName)] = str("False")
 
         # Determinate the GPUs to use (in dependence of
         # the cryosparc version)

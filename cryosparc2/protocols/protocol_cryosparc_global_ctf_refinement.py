@@ -73,7 +73,7 @@ class ProtCryoSparcGlobalCtfRefinement(ProtCryosparcBase, pwprot.ProtParticles):
                       help='Provide a set of particles for global '
                            'CTF refinement.')
         form.addParam('inputRefinement', PointerParam,
-                      pointerClass='ProtCryoSparcRefine3D',
+                      pointerClass='ProtCryoSparcRefine3D, ProtCryoSparc3DHomogeneousRefine',
                       label="Select a Refinement protocol",
                       important=True,
                       help='Provide the refinement protocol that will be used. '
