@@ -136,7 +136,7 @@ class ProtCryoSparcSymmetryExpansion(ProtCryosparcBase):
         self.setFilePattern(imgSet.getFirstItem().getFileName())
         outImgSet = SetOfParticles.create(self._getExtraPath())
         outImgSet.copyInfo(imgSet)
-        readSetOfParticles(outputStarFn, outImgSet,
+        readSetOfParticles('particles@' + outputStarFn, outImgSet,
                            alignType=imgSet.getAlignment(),
                            postprocessImageRow=self.updateParticlePath)
 

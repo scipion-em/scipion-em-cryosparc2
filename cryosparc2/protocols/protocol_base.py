@@ -57,8 +57,8 @@ class ProtCryosparcBase(pw.EMProtocol):
         # create empty project or load an exists one
         folderPaths = getProjectPath(self.projectPath)
         if not folderPaths:
-            self.a = createEmptyProject(self.projectPath, self.projectDirName)
-            self.projectName = self.a[-1].split()[-1]
+            self.emptyProject = createEmptyProject(self.projectPath, self.projectDirName)
+            self.projectName = self.emptyProject[-1].split()[-1]
         else:
             self.projectName = str(folderPaths[0])
 
@@ -66,9 +66,9 @@ class ProtCryosparcBase(pw.EMProtocol):
         self._store(self)
 
         # create empty workspace
-        self.b = createEmptyWorkSpace(self.projectName, self.getRunName(),
+        self.emptyWorkSpace = createEmptyWorkSpace(self.projectName, self.getRunName(),
                                       self.getObjComment())
-        self.workSpaceName = pwobj.String(self.b[-1].split()[-1])
+        self.workSpaceName = pwobj.String(self.emptyWorkSpace[-1].split()[-1])
         self._store(self)
 
     def _initializeUtilsVariables(self):

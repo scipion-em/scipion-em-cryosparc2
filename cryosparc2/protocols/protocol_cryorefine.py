@@ -391,7 +391,7 @@ class ProtCryoSparcRefine3D(ProtCryosparcBase, pwprot.ProtRefine3D):
         return self.referenceVolume.get()
 
     def _fillDataFromIter(self, imgSet):
-        outImgsFn = self._getFileName('out_particles')
+        outImgsFn = 'particles@' + self._getFileName('out_particles')
         imgSet.setAlignmentProj()
         imgSet.copyItems(self._getInputParticles(),
                          updateItemCallback=self._createItemMatrix,

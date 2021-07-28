@@ -398,11 +398,11 @@ class ProtCryoSparcInitialModel(ProtCryosparcBase, ProtInitialVolume,
 
     def _fillClassesFromIter(self, clsSet, filename):
         """ Create the SetOfClasses3D """
-        outImgsFn = self._getFileName('out_class')
+        outImgsFn = 'images@' + self._getFileName('out_class')
         self._loadClassesInfo(outImgsFn)
         clsSet.classifyItems(updateItemCallback=self._updateParticle,
                              updateClassCallback=self._updateClass,
-                             itemDataIterator=md.iterRows(filename,
+                             itemDataIterator=md.iterRows('particles@'+ filename,
                                                           sortByLabel=md.RLN_IMAGE_ID))
 
     def _updateParticle(self, item, row):

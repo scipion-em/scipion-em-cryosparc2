@@ -333,7 +333,8 @@ class ProtCryo2D(ProtCryosparcBase, pwprot.ProtClassify2D):
         """
         self._classesInfo = {}  # store classes info, indexed by class id
 
-        mdClasses = md.MetaData(filename)
+        # mdClasses = md.MetaData(filename)
+        mdClasses = md.MetaData('%s@%s' % ('particles', filename))
 
         for classNumber, row in enumerate(md.iterRows(mdClasses)):
             index, fn = cryosparcToLocation(row.getValue('rlnImageName'))
@@ -347,7 +348,7 @@ class ProtCryo2D(ProtCryosparcBase, pwprot.ProtClassify2D):
         """ Create the SetOfClasses2D from a given iteration. """
 
         # the particle with orientation parameters (all_parameters)
-        xmpMd = self._getFileName("out_particles")
+        xmpMd = 'particles@' + self._getFileName("out_particles")
 
         clsSet.classifyItems(updateItemCallback=self._updateParticle,
                              updateClassCallback=self._updateClass,

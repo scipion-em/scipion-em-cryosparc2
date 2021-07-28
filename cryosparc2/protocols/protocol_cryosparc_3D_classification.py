@@ -27,6 +27,7 @@
 import os
 
 import pyworkflow.utils as pwutils
+from pyworkflow import BETA
 from pyworkflow.protocol.params import (FloatParam, LEVEL_ADVANCED,
                                         PointerParam, MultiPointerParam,
                                         CsvList, Positive, IntParam,
@@ -53,6 +54,7 @@ class ProtCryoSparc3DClassification(ProtCryosparcBase):
     """
     _label = '3D classification'
     _className = "hetero_refine"
+    _devStatus = BETA
 
     def _initialize(self):
         self._defineFileNames()
@@ -271,7 +273,7 @@ class ProtCryoSparc3DClassification(ProtCryosparcBase):
                               self.run3dClassification.get())
         itera = self.findLastIteration(self.run3dClassification.get())
 
-        csParticlesName = "cryosparc_%s_%s_00%s_particles.cs" % (self.projectName.get(),
+        csParticlesName = "cryosparc_%s_%s_000%s_particles.cs" % (self.projectName.get(),
                                                                  self.run3dClassification.get(),
                                                                  itera)
         # Copy the CS output particles to extra folder
@@ -328,10 +330,11 @@ class ProtCryoSparc3DClassification(ProtCryosparcBase):
 
     def _fillClassesFromIter(self, clsSet, filename):
         """ Create the SetOfClasses3D """
+        xmpMd = 'micrographs@' + filename
         self._loadClassesInfo(self._getFileName('out_class'))
         clsSet.classifyItems(updateItemCallback=self._updateParticle,
                              updateClassCallback=self._updateClass,
-                             itemDataIterator=md.iterRows(filename,
+                             itemDataIterator=md.iterRows(xmpMd,
                                                           sortByLabel=md.RLN_IMAGE_ID))
 
     def _updateParticle(self, item, row):
@@ -362,13 +365,13 @@ class ProtCryoSparc3DClassification(ProtCryosparcBase):
             output_file.write('\n')
             numOfClass = len(self.importVolumes)
             for i in range(numOfClass):
-                csVolName = ("cryosparc_%s_%s_class_%02d_00%s_volume.mrc" %
+                csVolName = ("cryosparc_%s_%s_class_%02d_000%s_volume.mrc" %
                              (self.projectName.get(),
                               self.run3dClassification.get(), i, itera))
 
                 copyFiles(csOutputFolder, self._getExtraPath(), files=[csVolName])
 
-                row = ("%02d@%s/cryosparc_%s_%s_class_%02d_00%s_volume.mrc\n" %
+                row = ("%02d@%s/cryosparc_%s_%s_class_%02d_000%s_volume.mrc\n" %
                        (i+1, self._getExtraPath(), self.projectName.get(),
                         self.run3dClassification.get(), i, itera))
                 output_file.write(row)
@@ -389,7 +392,7 @@ class ProtCryoSparc3DClassification(ProtCryosparcBase):
         for y in x:
             if 'text' in y:
                 z = str(y['text'])
-                if z.startswith('FSC Iteration'):
+                if z.startswith('Done iteration'):
                     itera = z.split(' ')[2]
 
         return itera
@@ -488,12 +491,13 @@ class ProtCryoSparc3DClassification(ProtCryosparcBase):
         except Exception:
             gpusToUse = False
 
-        self.run3dClassification = enqueueJob(self._className, self.projectName.get(),
-                                    self.workSpaceName.get(),
-                                    str(params).replace('\'', '"'),
-                                    str(input_group_conect).replace('\'',
+        self.run3dClassification = enqueueJob(self._className,
+                                              self.projectName.get(),
+                                              self.workSpaceName.get(),
+                                              str(params).replace('\'', '"'),
+                                              str(input_group_conect).replace('\'',
                                                                     '"'),
-                                    self.lane, gpusToUse, group_connect)
+                                              self.lane, gpusToUse, group_connect)
 
         self.currenJob.set(self.run3dClassification.get())
         self._store(self)

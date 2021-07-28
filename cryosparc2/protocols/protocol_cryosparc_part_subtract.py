@@ -188,7 +188,7 @@ class ProtCryoSparcSubtract(ProtCryosparcBase, ProtOperateParticles):
 
     def _fillDataFromIter(self, imgSet):
 
-        outImgsFn = self._getFileName('out_particles')
+        outImgsFn = 'particles@' + self._getFileName('out_particles')
         readSetOfParticles(outImgsFn, imgSet,
                            postprocessImageRow=self._updateItem,
                            alignType=ALIGN_PROJ)

@@ -64,5 +64,5 @@ class Plugin(em.Plugin):
 
     @classmethod
     def defineBinaries(cls, env):
-        pyemLibcmd = 'pip install git+https://github.com/asarnow/pyem.git@d46691bcacae63043346e98cec9ff7b621ca1427'
+        pyemLibcmd = 'pip install git+https://github.com/asarnow/pyem.git@ed0527f98657d21d887357426b74e5240d477fae'
         env.addPipModule('pyem', version='0.4', pipCmd=pyemLibcmd)
