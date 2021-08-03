@@ -506,6 +506,5 @@ class ProtCryoSparc3DClassification(ProtCryosparcBase):
                          "An error occurred in the 3D Classification process. "
                          "Please, go to cryosPARC software for more "
                          "details.")
-        print(pwutils.yellowStr("Removing intermediate results..."), flush=True)
         self.clearIntResults = clearIntermediateResults(self.projectName.get(),
                                                         self.run3dClassification.get())

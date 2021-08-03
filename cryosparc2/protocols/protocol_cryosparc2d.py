@@ -455,7 +455,6 @@ class ProtCryo2D(ProtCryosparcBase, pwprot.ProtClassify2D):
                         "An error occurred in the 2D classification process. "
                         "Please, go to cryosPARC software for more "
                         "details.")
-        print(pwutils.yellowStr("Removing intermediate results..."), flush=True)
         self.clearIntResults = clearIntermediateResults(self.projectName.get(),
                                                         self.runClass2D.get())
 

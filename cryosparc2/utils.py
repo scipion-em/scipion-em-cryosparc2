@@ -27,6 +27,7 @@
 import getpass
 import os
 import shutil
+import time
 
 from pkg_resources import parse_version
 
@@ -521,16 +522,19 @@ def clearJob(projectName, job):
     runCmd(clear_job_cmd, printCmd=False)
 
 
-def clearIntermediateResults(projectName, job):
+def clearIntermediateResults(projectName, job, wait=3):
     """
      Clear the intermediate result from a specific Job
     :param projectName: the uid of the project that contains the job to clear
     :param job: the uid of the job to clear
     """
+    print(pwutils.yellowStr("Removing intermediate results..."), flush=True)
     clear_int_results_cmd = (getCryosparcProgram() +
                              ' %sclear_intermediate_results("%s", "%s")%s'
                              % ("'", projectName, job, "'"))
     runCmd(clear_int_results_cmd, printCmd=False)
+    # wait a delay in order to delete intermediate results correctly
+    time.sleep(wait)
 
 
 def getSystemInfo():
