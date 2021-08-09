@@ -159,16 +159,6 @@ class ProtCryoSparcGlobalCtfRefinement(ProtCryosparcBase, pwprot.ProtParticles):
                             'compute_use_ssd']
         self.lane = str(self.getAttributeValue('compute_lane'))
 
-    def _getInputMask(self):
-        if self.refMask.get() is not None:
-            return self.refMask.get()
-        else:
-            inputProtocolMask = self._getInputPostProcessProtocol().refMask.get()
-            if inputProtocolMask is not None:
-                return inputProtocolMask
-
-        return None
-
     # --------------------------- STEPS functions ------------------------------
     def processStep(self):
         self.vol = self.importVolume.get() + '.imported_volume.map'
