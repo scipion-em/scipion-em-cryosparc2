@@ -313,16 +313,15 @@ def doImportParticlesStar(protocol):
     return import_particles
 
 
-def doImportVolumes(protocol, refVolume, volType, msg):
+def doImportVolumes(protocol, refVolumePath, refVolume, volType, msg):
     """
     :return:
     """
     print(pwutils.yellowStr(msg), flush=True)
     className = "import_volumes"
-    params = {"volume_blob_path": str(refVolume),
+    params = {"volume_blob_path": str(refVolumePath),
               "volume_out_name": str(volType),
-              "volume_psize": str(
-                  protocol._getInputParticles().getSamplingRate())}
+              "volume_psize": str(refVolume.getSamplingRate())}
 
     importedVolume = enqueueJob(className, protocol.projectName,
                                 protocol.workSpaceName,

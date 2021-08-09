@@ -431,8 +431,8 @@ class ProtCryoSparcInitialModel(ProtCryosparcBase, ProtInitialVolume,
             output_file.write('_rlnReferenceImage')
             output_file.write('\n')
             for i in range(int(self.abinit_K.get())):
-                row = ("%02d@%s/%s/cryosparc_%s_%s_class_%02d_final_volume.mrc\n"
-                       % (i+1, self._getExtraPath(), self.runAbinit.get(),
+                row = ("%s/%s/cryosparc_%s_%s_class_%02d_final_volume.mrc\n"
+                       % (self._getExtraPath(), self.runAbinit.get(),
                           self.projectName.get(), self.runAbinit.get(), i))
                 output_file.write(row)
 

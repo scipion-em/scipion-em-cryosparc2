@@ -69,20 +69,16 @@ class ProtCryoSparcLocalCtfRefinement(ProtCryosparcBase, ProtParticles):
                       pointerClass='SetOfParticles',
                       pointerCondition='hasAlignmentProj',
                       label="Input particles", important=True,
-                      help='Provide a set of particles for global '
+                      help='Provide a set of particles for local '
                            'CTF refinement.')
-        form.addParam('inputRefinement', PointerParam,
-                      pointerClass='ProtCryoSparcRefine3D, ProtCryoSparc3DHomogeneousRefine',
-                      label="Select a Refinement protocol",
+        form.addParam('refVolume', PointerParam, pointerClass='Volume',
                       important=True,
-                      help='Provide the refinement protocol that will be used. '
-                           'If mask_refinement is present, use that, otherwise '
-                           'use a selected mask. If mask does not present, '
-                           'the protocol will fail')
+                      label="Input volume",
+                      help='Provide a reference volume for local '
+                           'CTF refinement.')
         form.addParam('refMask', PointerParam, pointerClass='VolumeMask',
                       label='Mask to be applied to this map',
                       important=True,
-                      allowsNull=True,
                       help="Provide a soft mask. if mask is present, use that, "
                            "otherwise use mask_refine if present, otherwise "
                            "fail")
@@ -146,12 +142,6 @@ class ProtCryoSparcLocalCtfRefinement(ProtCryosparcBase, ProtParticles):
                             'crl_df_range',
                             'compute_use_ssd']
         self.lane = str(self.getAttributeValue('compute_lane'))
-
-    def _getInputPostProcessProtocol(self):
-        return self.inputRefinement.get()
-
-    def _getInputVolume(self):
-        return self._getInputPostProcessProtocol().outputVolume
 
     def _getInputMask(self):
         if self.refMask.get() is not None:

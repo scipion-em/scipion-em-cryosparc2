@@ -251,7 +251,7 @@ class ProtCryoSparc3DClassification(ProtCryosparcBase):
                                        convertBinaryVol(
                                            vol,
                                            self._getTmpPath()))
-            self.importVolume = doImportVolumes(self, self.vol_fn, 'map',
+            self.importVolume = doImportVolumes(self, self.vol_fn, vol, 'map',
                                                 'Importing volume...')
             self.importVolumes.append(self.importVolume.get())
             self.currenJob.set(self.importVolume.get())
@@ -371,8 +371,8 @@ class ProtCryoSparc3DClassification(ProtCryosparcBase):
 
                 copyFiles(csOutputFolder, self._getExtraPath(), files=[csVolName])
 
-                row = ("%02d@%s/cryosparc_%s_%s_class_%02d_000%s_volume.mrc\n" %
-                       (i+1, self._getExtraPath(), self.projectName.get(),
+                row = ("%s/cryosparc_%s_%s_class_%02d_000%s_volume.mrc\n" %
+                       (self._getExtraPath(), self.projectName.get(),
                         self.run3dClassification.get(), i, itera))
                 output_file.write(row)
 
