@@ -585,13 +585,12 @@ class TestCryosparcParticlesSubtract(TestCryosparcBase):
             protParticlesSubtract.inputParticles.set(prot3DRefinement.outputParticles)
             protParticlesSubtract.refVolume.set(prot3DRefinement.outputVolume)
             protParticlesSubtract.refMask.set(protXmippCreate3DMask.outputMask)
-            protParticlesSubtract.n_particles.set(200)
             protParticlesSubtract.compute_use_ssd.set(False)
             self.launchProtocol(protParticlesSubtract)
 
             self.assertIsNotNone(protParticlesSubtract.outputParticles)
             self.assertEqual(protParticlesSubtract.outputParticles.getSize(),
-                             protParticlesSubtract.n_particles.get())
+                             prot3DRefinement.outputParticles.getSize())
 
         _runCryosparctestParticlesSubtract(label="Cryosparc Subtract projection")
 
@@ -623,8 +622,7 @@ class TestCryosparcSharppening(TestCryosparcBase):
             prot3DRefinement.compute_use_ssd.set(False)
             self.launchProtocol(prot3DRefinement)
             
-
-            protSharppening.inputRefinement.set(prot3DRefinement)
+            protSharppening.refVolume.set(prot3DRefinement.outputVolume)
             protSharppening.sharp_bfactor.set(-80)
             protSharppening.compute_use_ssd.set(False)
             self.launchProtocol(protSharppening)
@@ -669,7 +667,7 @@ class TestCryosparcGlobalCtfRefinement(TestCryosparcBase):
             protXmippCreate3DMask = self.runCreate3DMask(prot3DRefinement.outputVolume)
 
             protGlobalCtfRefinement.inputParticles.set(prot3DRefinement.outputParticles)
-            protGlobalCtfRefinement.inputRefinement.set(prot3DRefinement)
+            protGlobalCtfRefinement.refVolume.set(prot3DRefinement.outputVolume)
             protGlobalCtfRefinement.refMask.set(protXmippCreate3DMask.outputMask)
             protGlobalCtfRefinement.compute_use_ssd.set(False)
             self.launchProtocol(protGlobalCtfRefinement)
@@ -714,7 +712,7 @@ class TestCryosparcLocalCtfRefinement(TestCryosparcBase):
             protXmippCreate3DMask = self.runCreate3DMask(prot3DRefinement.outputVolume)
 
             protLocalCtfRefinement.inputParticles.set(prot3DRefinement.outputParticles)
-            protLocalCtfRefinement.inputRefinement.set(prot3DRefinement)
+            protLocalCtfRefinement.refVolume.set(prot3DRefinement.outputVolume)
             protLocalCtfRefinement.refMask.set(protXmippCreate3DMask.outputMask)
             protLocalCtfRefinement.compute_use_ssd.set(False)
             self.launchProtocol(protLocalCtfRefinement)

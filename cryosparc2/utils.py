@@ -27,6 +27,7 @@
 import getpass
 import os
 import shutil
+import time
 
 from pkg_resources import parse_version
 
@@ -52,10 +53,11 @@ STATUS_RUNNING = "running"
 STATUS_QUEUED = "queued"
 STATUS_LAUNCHED = "launched"
 STATUS_STARTED = "started"
+STATUS_BUILDING = "building"
 
 STOP_STATUSES = [STATUS_ABORTED, STATUS_COMPLETED, STATUS_FAILED, STATUS_KILLED]
 ACTIVE_STATUSES = [STATUS_QUEUED, STATUS_RUNNING, STATUS_STARTED,
-                   STATUS_LAUNCHED]
+                   STATUS_LAUNCHED, STATUS_BUILDING]
 
 # Module variables
 _csVersion = None  # Lazy variable: never use it directly. Use getCryosparcVersion instead
@@ -312,16 +314,15 @@ def doImportParticlesStar(protocol):
     return import_particles
 
 
-def doImportVolumes(protocol, refVolume, volType, msg):
+def doImportVolumes(protocol, refVolumePath, refVolume, volType, msg):
     """
     :return:
     """
     print(pwutils.yellowStr(msg), flush=True)
     className = "import_volumes"
-    params = {"volume_blob_path": str(refVolume),
+    params = {"volume_blob_path": str(refVolumePath),
               "volume_out_name": str(volType),
-              "volume_psize": str(
-                  protocol._getInputParticles().getSamplingRate())}
+              "volume_psize": str(refVolume.getSamplingRate())}
 
     importedVolume = enqueueJob(className, protocol.projectName,
                                 protocol.workSpaceName,
@@ -521,16 +522,19 @@ def clearJob(projectName, job):
     runCmd(clear_job_cmd, printCmd=False)
 
 
-def clearIntermediateResults(projectName, job):
+def clearIntermediateResults(projectName, job, wait=3):
     """
      Clear the intermediate result from a specific Job
     :param projectName: the uid of the project that contains the job to clear
     :param job: the uid of the job to clear
     """
+    print(pwutils.yellowStr("Removing intermediate results..."), flush=True)
     clear_int_results_cmd = (getCryosparcProgram() +
                              ' %sclear_intermediate_results("%s", "%s")%s'
                              % ("'", projectName, job, "'"))
     runCmd(clear_int_results_cmd, printCmd=False)
+    # wait a delay in order to delete intermediate results correctly
+    time.sleep(wait)
 
 
 def getSystemInfo():

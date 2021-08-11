@@ -31,7 +31,7 @@ import pyworkflow.utils as pwutils
 
 from .constants import *
 
-__version__ = '3.2.10'
+__version__ = '3.2.11'
 _references = ['Punjani2017', 'Brubaker2017', 'daniel_asarnow_2019_3576630']
 _logo = 'cryosparc2_logo.png'
 
@@ -64,5 +64,5 @@ class Plugin(em.Plugin):
 
     @classmethod
     def defineBinaries(cls, env):
-        pyemLibcmd = 'pip install git+https://github.com/asarnow/pyem.git@d46691bcacae63043346e98cec9ff7b621ca1427'
+        pyemLibcmd = 'pip install git+https://github.com/asarnow/pyem.git@ed0527f98657d21d887357426b74e5240d477fae'
         env.addPipModule('pyem', version='0.4', pipCmd=pyemLibcmd)

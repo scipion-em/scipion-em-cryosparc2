@@ -65,7 +65,8 @@ class ProtCryoSparcHelicalRefine3D(ProtCryoSparcRefine3D):
                       help='Particle stacks to use. Multiple stacks will '
                            'be concatenated.')
         form.addParam('referenceVolume', PointerParam, pointerClass='Volume',
-                      important=True,
+                      default=None,
+                      allowsNull=True,
                       label="Initial volume",
                       help='Initial volume to use for helical refinement.')
         form.addParam('refMask', PointerParam, pointerClass='VolumeMask',
@@ -177,6 +178,22 @@ class ProtCryoSparcHelicalRefine3D(ProtCryoSparcRefine3D):
                       label="Generate a cylindrical initial model?",
                       help='Whether or not to generate a cylindrical initial model')
 
+        form.addParam('filament_outer_diameter', FloatParam,
+                      default=None,
+                      allowsNull=True,
+                      label="Filament Outer Diameter (Angstrom)",
+                      help='Approximate outer diameter of the filament in Angstroms')
+
+        form.addParam('filament_inner_diameter', FloatParam,
+                      default=0,
+                      label="Filament Inner Diameter (Angstrom)",
+                      help='Approximate inner diameter of the filament in Angstroms')
+
+        form.addParam('filament_far_dist_A', FloatParam,
+                      default=6,
+                      label="Far distance (Angstrom)",
+                      help='Distance over which the model is padded, with voxel values fading to 0.')
+
         form.addSection(label='Refinement')
 
         form.addParam('refine_res_align_max', FloatParam,
@@ -215,6 +232,13 @@ class ProtCryoSparcHelicalRefine3D(ProtCryoSparcRefine3D):
     def _insertAllSteps(self):
         ProtCryoSparcRefine3D._insertAllSteps(self)
 
+    def processStep(self):
+        self.vol = None
+        if self.referenceVolume.get() is not None:
+            self.vol = self.importVolume.get() + '.imported_volume.map'
+        print(pwutils.yellowStr("Refinement started..."), flush=True)
+        self.doRunRefine()
+
     # --------------------------- INFO functions -------------------------------
     def _validate(self):
         validateMsgs = cryosparcValidate()
@@ -224,10 +248,18 @@ class ProtCryoSparcHelicalRefine3D(ProtCryoSparcRefine3D):
                 if parse_version(version) >= parse_version(csVersion)]:
                 validateMsgs = gpusValidate(self.getGpuList(), checkSingleGPU=True)
                 if not validateMsgs:
-                    particles = self._getInputParticles()
-                    if not particles.hasCTF():
-                        validateMsgs.append("The Particles has not associated a "
-                                            "CTF model")
+                    if self.referenceVolume.get() is None and not self.use_cylindrical_model.get():
+                        validateMsgs.append("Cannot generate initial model "
+                                            "without in-plane rotation "
+                                            "information. Please input an "
+                                            "initial model from a previous ab-initio or "
+                                            "refinement protocol, or activate the "
+                                            "'Generate a cylindrical initial "
+                                            "model?' parameter")
+
+                    if self.use_cylindrical_model.get() and self.filament_outer_diameter.get() is None:
+                        validateMsgs.append("Must set the filament outer diameter to use a cylindrical model")
+
             else:
                 validateMsgs.append("The protocol is not compatible with the "
                                     "cryoSPARC version %s" % csVersion)
@@ -249,17 +281,18 @@ class ProtCryoSparcHelicalRefine3D(ProtCryoSparcRefine3D):
                             'refine_res_gsfsc_split',
                             'refine_mask',
                             'refine_dynamic_mask_thresh_factor',
+                            'filament_outer_diameter',
+                            'filament_inner_diameter',
+                            'filament_far_dist_A',
                             'compute_use_ssd']
         self.lane = str(self.getAttributeValue('compute_lane'))
 
     def doRunRefine(self):
+        input_group_conect = {"particles": str(self.par)}
+        if self.vol is not None:
+            input_group_conect["volume"] = str(self.vol)
         if self.mask is not None:
-            input_group_conect = {"particles": str(self.par),
-                                  "volume": str(self.vol),
-                                  "mask": str(self.mask)}
-        else:
-            input_group_conect = {"particles": str(self.par),
-                                  "volume": str(self.vol)}
+            input_group_conect["mask"] = str(self.mask)
         # {'particles' : 'JXX.imported_particles' }
         params = {}
 
@@ -268,6 +301,7 @@ class ProtCryoSparcHelicalRefine3D(ProtCryoSparcRefine3D):
                     paramName != 'refine_pg_symmetry' and
                     paramName != "refine_init_twist" and
                     paramName != "refine_init_shift" and
+                    paramName != 'filament_outer_diameter' and
                     paramName != 'refine_res_align_max'):
                 params[str(paramName)] = str(self.getAttributeValue(paramName))
             elif paramName == 'refine_pg_symmetry':
@@ -297,6 +331,5 @@ class ProtCryoSparcHelicalRefine3D(ProtCryoSparcRefine3D):
                          "An error occurred in the Refinement process. "
                          "Please, go to cryosPARC software for more "
                          "details.")
-        print(pwutils.yellowStr("Removing intermediate results..."), flush=True)
         self.clearIntResults = clearIntermediateResults(self.projectName.get(),
                                                         self.runRefine.get())

@@ -93,11 +93,6 @@ class ProtCryoSparcSubtract(ProtCryosparcBase, ProtOperateParticles):
         # -----------[Particles Subtraction]------------------------
         form.addSection(label="Particle Subtraction")
 
-        form.addParam('n_particles', IntParam, default=None,
-                      allowsNull=True,
-                      label='Number of particles to subtract:',
-                      help='Leave as None to process all particles.')
-
         form.addParam('inner_radius', FloatParam, default=0.85,
                       validators=[Positive],
                       label='Inner radius of reference window',
@@ -193,7 +188,7 @@ class ProtCryoSparcSubtract(ProtCryosparcBase, ProtOperateParticles):
 
     def _fillDataFromIter(self, imgSet):
 
-        outImgsFn = self._getFileName('out_particles')
+        outImgsFn = 'particles@' + self._getFileName('out_particles')
         readSetOfParticles(outImgsFn, imgSet,
                            postprocessImageRow=self._updateItem,
                            alignType=ALIGN_PROJ)
@@ -248,8 +243,7 @@ class ProtCryoSparcSubtract(ProtCryosparcBase, ProtOperateParticles):
 
     def _defineParamsName(self):
         """ Define a list with all protocol parameters names"""
-        self._paramsName = ['n_particles',
-                            'inner_radius',
+        self._paramsName = ['inner_radius',
                             'outer_radius',
                             'use_premult',
                             'use_halfmaps',
@@ -270,7 +264,7 @@ class ProtCryoSparcSubtract(ProtCryosparcBase, ProtOperateParticles):
         params = {}
 
         for paramName in self._paramsName:
-            if paramName != 'lpf_volume' and paramName != 'mask_threshold' and paramName != 'n_particles':
+            if paramName != 'lpf_volume' and paramName != 'mask_threshold':
                 params[str(paramName)] = str(self.getAttributeValue(paramName))
             elif paramName == 'lpf_volume' and self.getAttributeValue(paramName) is not None:
                 if float(self.getAttributeValue(paramName)) > 0:
@@ -278,10 +272,6 @@ class ProtCryoSparcSubtract(ProtCryosparcBase, ProtOperateParticles):
             elif paramName == 'mask_threshold' and self.getAttributeValue(paramName) is not None:
                 if float(self.getAttributeValue(paramName)) > 0:
                     params[str(paramName)] = str(self.getAttributeValue(paramName))
-            elif (paramName == 'n_particles' and
-                  self.getAttributeValue(paramName) is not None and
-                  int(self.getAttributeValue(paramName)) > 0):
-                params[str(paramName)] = str(self.getAttributeValue(paramName))
 
         # Determinate the GPUs to use (in dependence of
         # the cryosparc version)
@@ -303,6 +293,5 @@ class ProtCryoSparcSubtract(ProtCryosparcBase, ProtOperateParticles):
                          "An error occurred in the particles subtraction process. "
                          "Please, go to cryosPARC software for more "
                          "details.")
-        print(pwutils.yellowStr("Removing intermediate results..."), flush=True)
         self.clearIntResults = clearIntermediateResults(self.projectName.get(),
                                                         self.runPartStract.get())

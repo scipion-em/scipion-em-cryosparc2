@@ -303,11 +303,6 @@ class ProtCryo2D(ProtCryosparcBase, pwprot.ProtClassify2D):
         validateMsgs = cryosparcValidate()
         if not validateMsgs:
             validateMsgs = gpusValidate(self.getGpuList())
-            if not validateMsgs:
-                particles = self._getInputParticles()
-                if not particles.hasCTF():
-                    validateMsgs.append("The Particles has not associated a "
-                                        "CTF model")
         return validateMsgs
 
     def _summary(self):
@@ -338,7 +333,8 @@ class ProtCryo2D(ProtCryosparcBase, pwprot.ProtClassify2D):
         """
         self._classesInfo = {}  # store classes info, indexed by class id
 
-        mdClasses = md.MetaData(filename)
+        # mdClasses = md.MetaData(filename)
+        mdClasses = md.MetaData('%s@%s' % ('particles', filename))
 
         for classNumber, row in enumerate(md.iterRows(mdClasses)):
             index, fn = cryosparcToLocation(row.getValue('rlnImageName'))
@@ -352,7 +348,7 @@ class ProtCryo2D(ProtCryosparcBase, pwprot.ProtClassify2D):
         """ Create the SetOfClasses2D from a given iteration. """
 
         # the particle with orientation parameters (all_parameters)
-        xmpMd = self._getFileName("out_particles")
+        xmpMd = 'particles@' + self._getFileName("out_particles")
 
         clsSet.classifyItems(updateItemCallback=self._updateParticle,
                              updateClassCallback=self._updateClass,
@@ -459,7 +455,6 @@ class ProtCryo2D(ProtCryosparcBase, pwprot.ProtClassify2D):
                         "An error occurred in the 2D classification process. "
                         "Please, go to cryosPARC software for more "
                         "details.")
-        print(pwutils.yellowStr("Removing intermediate results..."), flush=True)
         self.clearIntResults = clearIntermediateResults(self.projectName.get(),
                                                         self.runClass2D.get())
 

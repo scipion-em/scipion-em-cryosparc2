@@ -38,7 +38,8 @@ from ..utils import (getProjectPath, createEmptyProject,
                      createEmptyWorkSpace, getProjectName,
                      getCryosparcProjectsDir, createProjectDir,
                      doImportParticlesStar, doImportVolumes, killJob, clearJob,
-                     get_job_streamlog, getSystemInfo)
+                     get_job_streamlog, getSystemInfo, getJobStatus,
+                     STOP_STATUSES)
 
 
 class ProtCryosparcBase(pw.EMProtocol):
@@ -57,8 +58,8 @@ class ProtCryosparcBase(pw.EMProtocol):
         # create empty project or load an exists one
         folderPaths = getProjectPath(self.projectPath)
         if not folderPaths:
-            self.a = createEmptyProject(self.projectPath, self.projectDirName)
-            self.projectName = self.a[-1].split()[-1]
+            self.emptyProject = createEmptyProject(self.projectPath, self.projectDirName)
+            self.projectName = self.emptyProject[-1].split()[-1]
         else:
             self.projectName = str(folderPaths[0])
 
@@ -66,9 +67,12 @@ class ProtCryosparcBase(pw.EMProtocol):
         self._store(self)
 
         # create empty workspace
-        self.b = createEmptyWorkSpace(self.projectName, self.getRunName(),
+        self.emptyWorkSpace = createEmptyWorkSpace(self.projectName, self.getRunName(),
                                       self.getObjComment())
-        self.workSpaceName = pwobj.String(self.b[-1].split()[-1])
+        self.workSpaceName = pwobj.String(self.emptyWorkSpace[-1].split()[-1])
+        self._store(self)
+
+        self.currenJob = pwobj.String()
         self._store(self)
 
     def _initializeUtilsVariables(self):
@@ -169,11 +173,10 @@ class ProtCryosparcBase(pw.EMProtocol):
         return None
 
     def _importVolume(self):
+        vol = self._getInputVolume()
         self.vol_fn = os.path.join(os.getcwd(),
-                                   convertBinaryVol(
-                                       self._getInputVolume(),
-                                       self._getTmpPath()))
-        self.importVolume = doImportVolumes(self, self.vol_fn, 'map',
+                                   convertBinaryVol(vol, self._getTmpPath()))
+        self.importVolume = doImportVolumes(self, self.vol_fn, vol, 'map',
                                             'Importing volume...')
         self.currenJob.set(self.importVolume.get())
         self._store(self)
@@ -184,7 +187,8 @@ class ProtCryosparcBase(pw.EMProtocol):
                                        self._getInputMask(),
                                        self._getTmpPath()))
 
-        self.importMask = doImportVolumes(self, self.maskFn, 'mask',
+        self.importMask = doImportVolumes(self, self.maskFn,
+                                          self._getInputMask(), 'mask',
                                           'Importing mask... ')
         self.currenJob.set(self.importMask.get())
         self._store(self)
@@ -205,9 +209,11 @@ class ProtCryosparcBase(pw.EMProtocol):
     def setAborted(self):
         """ Set the status to aborted and updated the endTime. """
         pw.EMProtocol.setAborted(self)
-        if hasattr(self, 'projectName'):
-            killJob(str(self.projectName.get()), str(self.currenJob.get()))
-            clearJob(str(self.projectName.get()), str(self.currenJob.get()))
+        if hasattr(self, 'projectName') and hasattr(self, 'currenJob') and self.currenJob.get() is not None:
+            status = getJobStatus(self.projectName.get(), self.currenJob.get())
+            if status not in STOP_STATUSES:
+                killJob(str(self.projectName.get()), str(self.currenJob.get()))
+                clearJob(str(self.projectName.get()), str(self.currenJob.get()))
 
     def createFSC(self, idd, imgSet, vol):
         # Need to get the cryosparc master address

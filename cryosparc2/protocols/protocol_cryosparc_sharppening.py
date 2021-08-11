@@ -48,15 +48,10 @@ class ProtCryoSparcSharppening(ProtCryosparcBase, ProtAnalysis3D):
 
     def _defineParams(self, form):
         form.addSection(label='Input')
-        form.addParam('inputRefinement', PointerParam,
-                      pointerClass='ProtCryoSparcRefine3D, '
-                                   'ProtCryoSparcLocalRefine',
-                      label="Select a Refinement protocol",
+        form.addParam('refVolume', PointerParam, pointerClass='Volume',
                       important=True,
-                      help='Provide the refinement protocol that will be used. '
-                           'If mask_refinement is present, use that, otherwise '
-                           'use a selected mask. If mask does not present, '
-                           'the protocol will fail')
+                      label="Input volume",
+                      help='Provide a reference volume for sharpening')
 
         # -----------[Sharppening]------------------------
         form.addSection(label="Sharpening")
@@ -120,24 +115,15 @@ class ProtCryoSparcSharppening(ProtCryosparcBase, ProtAnalysis3D):
     def _insertAllSteps(self):
         self._defineParamsName()
         self._initializeCryosparcProject()
-        self._insertFunctionStep("convertInputStep")
-        self._insertFunctionStep('processStep')
-        self._insertFunctionStep('createOutputStep')
+        self._insertFunctionStep(self.convertInputStep)
+        self._insertFunctionStep(self.processStep)
+        self._insertFunctionStep(self.createOutputStep)
 
     def convertInputStep(self):
         self.currenJob = String()
         volume = self._getInputVolume()
         if volume is not None:
             self._importVolume()
-
-    def _getInputParticles(self):
-        return self._getInputPostProcessProtocol().outputParticles
-
-    def _getInputPostProcessProtocol(self):
-        return self.inputRefinement.get()
-
-    def _getInputVolume(self):
-        return self._getInputPostProcessProtocol().outputVolume
 
     # --------------------------- STEPS functions ------------------------------
 
@@ -242,6 +228,5 @@ class ProtCryoSparcSharppening(ProtCryosparcBase, ProtAnalysis3D):
                          "An error occurred in the particles subtraction process. "
                          "Please, go to cryosPARC software for more "
                          "details.")
-        print(pwutils.yellowStr("Removing intermediate results..."), flush=True)
         self.clearIntResults = clearIntermediateResults(self.projectName.get(),
                                                         self.runSharppening.get())

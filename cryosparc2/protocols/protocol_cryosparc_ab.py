@@ -356,11 +356,6 @@ class ProtCryoSparcInitialModel(ProtCryosparcBase, ProtInitialVolume,
         validateMsgs = cryosparcValidate()
         if not validateMsgs:
             validateMsgs = gpusValidate(self.getGpuList(), checkSingleGPU=True)
-            if not validateMsgs:
-                particles = self._getInputParticles()
-                if not particles.hasCTF():
-                    validateMsgs.append("The Particles has not associated a "
-                                        "CTF model")
         return validateMsgs
 
     def _summary(self):
@@ -403,11 +398,11 @@ class ProtCryoSparcInitialModel(ProtCryosparcBase, ProtInitialVolume,
 
     def _fillClassesFromIter(self, clsSet, filename):
         """ Create the SetOfClasses3D """
-        outImgsFn = self._getFileName('out_class')
+        outImgsFn = 'images@' + self._getFileName('out_class')
         self._loadClassesInfo(outImgsFn)
         clsSet.classifyItems(updateItemCallback=self._updateParticle,
                              updateClassCallback=self._updateClass,
-                             itemDataIterator=md.iterRows(filename,
+                             itemDataIterator=md.iterRows('particles@'+ filename,
                                                           sortByLabel=md.RLN_IMAGE_ID))
 
     def _updateParticle(self, item, row):
@@ -436,8 +431,8 @@ class ProtCryoSparcInitialModel(ProtCryosparcBase, ProtInitialVolume,
             output_file.write('_rlnReferenceImage')
             output_file.write('\n')
             for i in range(int(self.abinit_K.get())):
-                row = ("%02d@%s/%s/cryosparc_%s_%s_class_%02d_final_volume.mrc\n"
-                       % (i+1, self._getExtraPath(), self.runAbinit.get(),
+                row = ("%s/%s/cryosparc_%s_%s_class_%02d_final_volume.mrc\n"
+                       % (self._getExtraPath(), self.runAbinit.get(),
                           self.projectName.get(), self.runAbinit.get(), i))
                 output_file.write(row)
 
@@ -508,6 +503,6 @@ class ProtCryoSparcInitialModel(ProtCryosparcBase, ProtInitialVolume,
                          "An error occurred in the initial volume process. "
                          "Please, go to cryosPARC software for more "
                          "details.")
-        print(pwutils.yellowStr("Removing intermediate results..."), flush=True)
         self.clearIntResults = clearIntermediateResults(self.projectName.get(),
-                                                        self.runAbinit.get())
+                                                        self.runAbinit.get(),
+                                                        wait=7)

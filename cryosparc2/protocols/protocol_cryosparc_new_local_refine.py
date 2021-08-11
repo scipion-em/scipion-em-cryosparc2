@@ -332,7 +332,7 @@ class ProtCryoSparcLocalRefine(ProtCryosparcBase, ProtOperateParticles):
     # ---------------Utils Functions------------------------------------
 
     def _fillDataFromIter(self, imgSet):
-        outImgsFn = self._getFileName('out_particles')
+        outImgsFn = 'particles@' + self._getFileName('out_particles')
         imgSet.setAlignmentProj()
         imgSet.copyItems(self._getInputParticles(),
                          updateItemCallback=self._createItemMatrix,
@@ -430,6 +430,5 @@ class ProtCryoSparcLocalRefine(ProtCryosparcBase, ProtOperateParticles):
                          "An error occurred in the local refinement process. "
                          "Please, go to cryosPARC software for more "
                          "details.")
-        print(pwutils.yellowStr("Removing intermediate results..."), flush=True)
         self.clearIntResults = clearIntermediateResults(self.projectName.get(),
                                                         self.runLocalRefinement.get())

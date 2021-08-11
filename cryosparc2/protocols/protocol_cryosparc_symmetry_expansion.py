@@ -136,7 +136,7 @@ class ProtCryoSparcSymmetryExpansion(ProtCryosparcBase):
         self.setFilePattern(imgSet.getFirstItem().getFileName())
         outImgSet = SetOfParticles.create(self._getExtraPath())
         outImgSet.copyInfo(imgSet)
-        readSetOfParticles(outputStarFn, outImgSet,
+        readSetOfParticles('particles@' + outputStarFn, outImgSet,
                            alignType=imgSet.getAlignment(),
                            postprocessImageRow=self.updateParticlePath)
 
@@ -152,11 +152,6 @@ class ProtCryoSparcSymmetryExpansion(ProtCryosparcBase):
         if not validateMsgs:
             validateMsgs = gpusValidate(self.getGpuList(),
                                         checkSingleGPU=True)
-            if not validateMsgs:
-                particles = self._getInputParticles()
-                if not particles.hasCTF():
-                    validateMsgs.append("The Particles has not associated a "
-                                        "CTF model")
         return validateMsgs
 
     def _summary(self):
@@ -222,7 +217,6 @@ class ProtCryoSparcSymmetryExpansion(ProtCryosparcBase):
                          "An error occurred in the particles subtraction process. "
                          "Please, go to cryosPARC software for more "
                          "details.")
-        print(pwutils.yellowStr("Removing intermediate results..."), flush=True)
         self.clearIntResults = clearIntermediateResults(self.projectName.get(),
                                                         self.runSymExp.get())
 

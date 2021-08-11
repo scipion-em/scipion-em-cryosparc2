@@ -72,18 +72,14 @@ class ProtCryoSparcGlobalCtfRefinement(ProtCryosparcBase, pwprot.ProtParticles):
                       label="Input particles", important=True,
                       help='Provide a set of particles for global '
                            'CTF refinement.')
-        form.addParam('inputRefinement', PointerParam,
-                      pointerClass='ProtCryoSparcRefine3D',
-                      label="Select a Refinement protocol",
+        form.addParam('refVolume', PointerParam, pointerClass='Volume',
                       important=True,
-                      help='Provide the refinement protocol that will be used. '
-                           'If mask_refinement is present, use that, otherwise '
-                           'use a selected mask. If mask does not present, '
-                           'the protocol will fail')
+                      label="Input volume",
+                      help='Provide a reference volume for global '
+                           'CTF refinement.')
         form.addParam('refMask', PointerParam, pointerClass='VolumeMask',
                       label='Mask to be applied to this map',
                       important=True,
-                      allowsNull=True,
                       help="Provide a soft mask. if mask is present, use that, "
                            "otherwise use mask_refine if present, otherwise "
                            "fail")
@@ -163,22 +159,6 @@ class ProtCryoSparcGlobalCtfRefinement(ProtCryosparcBase, pwprot.ProtParticles):
                             'compute_use_ssd']
         self.lane = str(self.getAttributeValue('compute_lane'))
 
-    def _getInputPostProcessProtocol(self):
-        return self.inputRefinement.get()
-
-    def _getInputVolume(self):
-        return self._getInputPostProcessProtocol().outputVolume
-
-    def _getInputMask(self):
-        if self.refMask.get() is not None:
-            return self.refMask.get()
-        else:
-            inputProtocolMask = self._getInputPostProcessProtocol().refMask.get()
-            if inputProtocolMask is not None:
-                return inputProtocolMask
-
-        return None
-
     # --------------------------- STEPS functions ------------------------------
     def processStep(self):
         self.vol = self.importVolume.get() + '.imported_volume.map'
@@ -217,7 +197,7 @@ class ProtCryoSparcGlobalCtfRefinement(ProtCryosparcBase, pwprot.ProtParticles):
         self._defineTransformRelation(imgSet, outImgSet)
 
     def _fillDataFromIter(self, imgSet):
-        outImgsFn = self._getFileName('out_particles')
+        outImgsFn = 'particles@' + self._getFileName('out_particles')
         imgSet.setAlignmentProj()
         imgSet.copyItems(self._getInputParticles(),
                          updateItemCallback=self._createItemMatrix,
