@@ -38,7 +38,8 @@ from ..utils import (getProjectPath, createEmptyProject,
                      createEmptyWorkSpace, getProjectName,
                      getCryosparcProjectsDir, createProjectDir,
                      doImportParticlesStar, doImportVolumes, killJob, clearJob,
-                     get_job_streamlog, getSystemInfo)
+                     get_job_streamlog, getSystemInfo, getJobStatus,
+                     STOP_STATUSES)
 
 
 class ProtCryosparcBase(pw.EMProtocol):
@@ -69,6 +70,9 @@ class ProtCryosparcBase(pw.EMProtocol):
         self.emptyWorkSpace = createEmptyWorkSpace(self.projectName, self.getRunName(),
                                       self.getObjComment())
         self.workSpaceName = pwobj.String(self.emptyWorkSpace[-1].split()[-1])
+        self._store(self)
+
+        self.currenJob = pwobj.String()
         self._store(self)
 
     def _initializeUtilsVariables(self):
@@ -205,9 +209,11 @@ class ProtCryosparcBase(pw.EMProtocol):
     def setAborted(self):
         """ Set the status to aborted and updated the endTime. """
         pw.EMProtocol.setAborted(self)
-        if hasattr(self, 'projectName'):
-            killJob(str(self.projectName.get()), str(self.currenJob.get()))
-            clearJob(str(self.projectName.get()), str(self.currenJob.get()))
+        if hasattr(self, 'projectName') and hasattr(self, 'currenJob') and self.currenJob.get() is not None:
+            status = getJobStatus(self.projectName.get(), self.currenJob.get())
+            if status not in STOP_STATUSES:
+                killJob(str(self.projectName.get()), str(self.currenJob.get()))
+                clearJob(str(self.projectName.get()), str(self.currenJob.get()))
 
     def createFSC(self, idd, imgSet, vol):
         # Need to get the cryosparc master address

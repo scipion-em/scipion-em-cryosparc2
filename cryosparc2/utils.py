@@ -53,10 +53,11 @@ STATUS_RUNNING = "running"
 STATUS_QUEUED = "queued"
 STATUS_LAUNCHED = "launched"
 STATUS_STARTED = "started"
+STATUS_BUILDING = "building"
 
 STOP_STATUSES = [STATUS_ABORTED, STATUS_COMPLETED, STATUS_FAILED, STATUS_KILLED]
 ACTIVE_STATUSES = [STATUS_QUEUED, STATUS_RUNNING, STATUS_STARTED,
-                   STATUS_LAUNCHED]
+                   STATUS_LAUNCHED, STATUS_BUILDING]
 
 # Module variables
 _csVersion = None  # Lazy variable: never use it directly. Use getCryosparcVersion instead
