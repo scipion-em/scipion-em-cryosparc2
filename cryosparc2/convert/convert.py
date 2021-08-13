@@ -44,21 +44,20 @@ def convertCs2Star(args):
     log = logging.getLogger('root')
     hdlr = logging.StreamHandler(sys.stdout)
     log.addHandler(hdlr)
-    # log.setLevel(logging.getLevelName(args.loglevel.upper()))
-    log.setLevel(logging.DEBUG)
+    log.setLevel(logging.getLevelName(args.loglevel.upper()))
+
     if args.input[0].endswith(".cs"):
         log.debug("Detected CryoSPARC 2+ .cs file")
         cs = np.load(args.input[0])
         try:
-            df = metadata.parse_cryosparc_2_cs(cs,
+            df = metadata.parse_cryosparc_2_cs(cs, passthroughs=args.input[1:],
                                                minphic=args.minphic,
                                                boxsize=args.boxsize,
                                                swapxy=args.swapxy)
         except (KeyError, ValueError) as e:
-            log.error(e.message)
+            log.error(e, exc_info=True)
             log.error(
-                "A passthrough file may be required (check inside the cryoSPARC 2+ job directory)")
-            log.debug(e, exc_info=True)
+                "Required fields could not be mapped. Are you using the right input file(s)?")
             return 1
     else:
         log.debug("Detected CryoSPARC 0.6.5 .csv file")
@@ -74,11 +73,10 @@ def convertCs2Star(args):
         df = star.select_classes(df, args.cls)
 
     if args.copy_micrograph_coordinates is not None:
+        df = star.augment_star_ucsf(df, inplace=True)
         coord_star = pd.concat(
-            (star.parse_star(inp, keep_index=False) for inp in
+            (star.parse_star(inp, keep_index=False, augment=True) for inp in
              glob(args.copy_micrograph_coordinates)), join="inner")
-        star.augment_star_ucsf(coord_star)
-        star.augment_star_ucsf(df)
         key = star.merge_key(df, coord_star)
         log.debug("Coordinates merge key: %s" % key)
         if args.cached or key == star.Relion.IMAGE_NAME:
@@ -98,7 +96,9 @@ def convertCs2Star(args):
         df = star.transform_star(df, r, inplace=True)
 
     # Write Relion .star file with correct headers.
-    star.write_star(args.output, df)
+    df = star.remove_deprecated_relion2(df, inplace=True)
+    star.write_star(args.output, df, resort_records=True, optics=True)
+
     log.info("Output fields: %s" % ", ".join(df.columns))
     return 0
 
