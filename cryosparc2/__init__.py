@@ -64,7 +64,7 @@ class Plugin(em.Plugin):
 
     @classmethod
     def defineBinaries(cls, env):
-        PYEM_INSTALLED = 'pyem-0.4'
+        PYEM_INSTALLED = 'pyem-0.4_installed'
         installationCmd = 'pip install git+https://github.com/asarnow/pyem.git@ed0527f98657d21d887357426b74e5240d477fae'
         installationCmd += ' && touch %s' % PYEM_INSTALLED
 
