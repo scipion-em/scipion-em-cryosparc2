@@ -46,19 +46,15 @@ class Plugin(em.Plugin):
 
     @classmethod
     def _defineVariables(cls):
-        cls._defineVar(CRYOSPARC_HOME, os.environ.get(CRYOSPARC_DIR) or "")
+        cls._defineVar(CRYOSPARC_HOME, os.environ.get(CRYOSPARC_DIR, ""))
         cls._defineVar(CRYO_PROJECTS_DIR, "scipion_projects")
 
     @classmethod
     def getEnviron(cls):
         """ Setup the environment variables needed to launch cryoSparc. """
         environ = pwutils.Environ(os.environ)
-
-        environ.update({
-            'PATH': Plugin.getHome(),
-            'LD_LIBRARY_PATH': str.join(cls.getHome(), 'cryosparclib')
-                               + ":" + cls.getHome(),
-        }, position=pwutils.Environ.BEGIN)
+        environ.update({'PATH': cls.getHome()},
+                       position=pwutils.Environ.BEGIN)
 
         return environ
 
@@ -68,8 +64,6 @@ class Plugin(em.Plugin):
         installationCmd = 'pip install git+https://github.com/asarnow/pyem.git@ed0527f98657d21d887357426b74e5240d477fae'
         installationCmd += ' && touch %s' % PYEM_INSTALLED
 
-        environ = cls.getEnviron()
-        environ.update(cls.getVars())
         env.addPackage('pyem', commands=[(installationCmd, PYEM_INSTALLED)],
-                       vars=environ, version='0.4', tar='void.tgz',
+                       version='0.4', tar='void.tgz',
                        createBuildDir=True, buildDir='pyem-0.4', default=True)
