@@ -31,7 +31,7 @@ import pyworkflow.utils as pwutils
 
 from .constants import *
 
-__version__ = '3.2.11'
+__version__ = '3.2.12'
 _references = ['Punjani2017', 'Brubaker2017', 'daniel_asarnow_2019_3576630']
 _logo = 'cryosparc2_logo.png'
 
@@ -46,23 +46,24 @@ class Plugin(em.Plugin):
 
     @classmethod
     def _defineVariables(cls):
-        cls._defineVar(CRYOSPARC_HOME, os.environ.get(CRYOSPARC_DIR) or "")
+        cls._defineVar(CRYOSPARC_HOME, os.environ.get(CRYOSPARC_DIR, ""))
         cls._defineVar(CRYO_PROJECTS_DIR, "scipion_projects")
 
     @classmethod
     def getEnviron(cls):
         """ Setup the environment variables needed to launch cryoSparc. """
         environ = pwutils.Environ(os.environ)
-
-        environ.update({
-            'PATH': Plugin.getHome(),
-            'LD_LIBRARY_PATH': str.join(cls.getHome(), 'cryosparclib')
-                               + ":" + cls.getHome(),
-        }, position=pwutils.Environ.BEGIN)
+        environ.update({'PATH': cls.getHome()},
+                       position=pwutils.Environ.BEGIN)
 
         return environ
 
     @classmethod
     def defineBinaries(cls, env):
-        pyemLibcmd = 'pip install git+https://github.com/asarnow/pyem.git@ed0527f98657d21d887357426b74e5240d477fae'
-        env.addPipModule('pyem', version='0.4', pipCmd=pyemLibcmd)
+        PYEM_INSTALLED = 'pyem-0.4_installed'
+        installationCmd = 'pip install git+https://github.com/asarnow/pyem.git@ed0527f98657d21d887357426b74e5240d477fae'
+        installationCmd += ' && touch %s' % PYEM_INSTALLED
+
+        env.addPackage('pyem', commands=[(installationCmd, PYEM_INSTALLED)],
+                       version='0.4', tar='void.tgz',
+                       createBuildDir=True, buildDir='pyem-0.4', default=True)
