@@ -467,8 +467,7 @@ class ProtCryoSparcInitialModel(ProtCryosparcBase, ProtInitialVolume,
         "\", \"" + self.workSpaceName + "\", \"\'" + self._user + "\'\", \""
         + self.par + "\",\"\'1\'\")\'")
         """
-        input_group_conect = {"particles": str(self.par)}
-        # {'particles' : 'JXX.imported_particles' }
+        input_group_connect = {"particles": str(self.par)}
         params = {}
 
         if self.hasExpert():
@@ -490,11 +489,11 @@ class ProtCryoSparcInitialModel(ProtCryosparcBase, ProtInitialVolume,
             gpusToUse = False
 
         self.runAbinit = enqueueJob(self._className, self.projectName.get(),
-                               self.workSpaceName.get(),
-                               str(params).replace('\'', '"'),
-                               str(input_group_conect).replace('\'', '"'),
-                               self.lane,
-                               gpusToUse)
+                                    self.workSpaceName.get(),
+                                    str(params).replace('\'', '"'),
+                                    str(input_group_connect).replace('\'', '"'),
+                                    self.lane,
+                                    gpusToUse)
 
         self.currenJob.set(self.runAbinit.get())
         self._store(self)

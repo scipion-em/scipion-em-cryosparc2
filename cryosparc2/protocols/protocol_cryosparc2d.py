@@ -430,7 +430,7 @@ class ProtCryo2D(ProtCryosparcBase, pwprot.ProtClassify2D):
         returns: the new uid of the job that was created
         """
         # {'particles' : 'JXX.imported_particles' }
-        input_group_conect = {"particles": str(self.par)}
+        input_group_connect = {"particles": str(self.par)}
 
         # Determinate the GPUs or the number of GPUs to use (in dependence of
         # the cryosparc version)
@@ -446,15 +446,15 @@ class ProtCryo2D(ProtCryosparcBase, pwprot.ProtClassify2D):
         self.runClass2D = enqueueJob(self._className, self.projectName.get(),
                                      self.workSpaceName.get(),
                                      str(params).replace('\'', '"'),
-                                     str(input_group_conect).replace('\'', '"'),
+                                     str(input_group_connect).replace('\'', '"'),
                                      self.lane, gpusToUse)
         self.currenJob.set(self.runClass2D.get())
         self._store(self)
 
         waitForCryosparc(self.projectName.get(), self.runClass2D.get(),
-                        "An error occurred in the 2D classification process. "
-                        "Please, go to cryosPARC software for more "
-                        "details.")
+                         "An error occurred in the 2D classification process. "
+                         "Please, go to cryosPARC software for more "
+                         "details.")
         self.clearIntResults = clearIntermediateResults(self.projectName.get(),
                                                         self.runClass2D.get())
 

@@ -182,8 +182,7 @@ class ProtCryoSparcSymmetryExpansion(ProtCryosparcBase):
         """
         :return:
         """
-        input_group_conect = {"particles": str(self.par)}
-        # {'particles' : 'JXX.imported_particles' }
+        input_group_connect = {"particles": str(self.par)}
         params = {}
 
         for paramName in self._paramsName:
@@ -205,10 +204,10 @@ class ProtCryoSparcSymmetryExpansion(ProtCryosparcBase):
             gpusToUse = False
 
         self.runSymExp = enqueueJob(self._className, self.projectName.get(),
-                                  self.workSpaceName.get(),
-                                  str(params).replace('\'', '"'),
-                                  str(input_group_conect).replace('\'', '"'),
-                                  self.lane, gpusToUse)
+                                    self.workSpaceName.get(),
+                                    str(params).replace('\'', '"'),
+                                    str(input_group_connect).replace('\'', '"'),
+                                    self.lane, gpusToUse)
 
         self.currenJob.set(self.runSymExp.get())
         self._store(self)

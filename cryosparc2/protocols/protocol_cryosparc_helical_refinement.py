@@ -288,12 +288,11 @@ class ProtCryoSparcHelicalRefine3D(ProtCryoSparcRefine3D):
         self.lane = str(self.getAttributeValue('compute_lane'))
 
     def doRunRefine(self):
-        input_group_conect = {"particles": str(self.par)}
+        input_group_connect = {"particles": str(self.par)}
         if self.vol is not None:
-            input_group_conect["volume"] = str(self.vol)
+            input_group_connect["volume"] = str(self.vol)
         if self.mask is not None:
-            input_group_conect["mask"] = str(self.mask)
-        # {'particles' : 'JXX.imported_particles' }
+            input_group_connect["mask"] = str(self.mask)
         params = {}
 
         for paramName in self._paramsName:
@@ -319,10 +318,10 @@ class ProtCryoSparcHelicalRefine3D(ProtCryoSparcRefine3D):
             gpusToUse = False
 
         self.runRefine = enqueueJob(self._className, self.projectName.get(),
-                              self.workSpaceName.get(),
-                              str(params).replace('\'', '"'),
-                              str(input_group_conect).replace('\'', '"'),
-                              self.lane, gpusToUse)
+                                    self.workSpaceName.get(),
+                                    str(params).replace('\'', '"'),
+                                    str(input_group_connect).replace('\'', '"'),
+                                    self.lane, gpusToUse)
 
         self.currenJob.set(self.runRefine.get())
         self._store(self)

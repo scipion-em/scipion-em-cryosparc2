@@ -236,10 +236,17 @@ class ProtCryoSparcLocalCtfRefinement(ProtCryosparcBase, ProtParticles):
         """
          :return:
          """
-        input_group_conect = {"particles": str(self.par),
+        input_group_connect = {"particles": str(self.par),
                               "volume": str(self.vol),
                               "mask": str(self.mask)}
-        # {'particles' : 'JXX.imported_particles' }
+
+        input_result_connect = None
+        if self._getInputVolume().hasHalfMaps():
+            self.halfA = self.importVolumeHalfA.get() + '.imported_volume.map_half_A'
+            self.halfB = self.importVolumeHalfB.get() + '.imported_volume.map_half_B'
+            input_result_connect = {"volume.0.map_half_A": self.halfA,
+                                    "volume.0.map_half_B": self.halfB}
+
         params = {}
 
         for paramName in self._paramsName:
@@ -258,11 +265,11 @@ class ProtCryoSparcLocalCtfRefinement(ProtCryosparcBase, ProtParticles):
             gpusToUse = False
 
         self.runLocalCtfRefinement = enqueueJob(self._className, self.projectName.get(),
-                                        self.workSpaceName.get(),
-                                        str(params).replace('\'', '"'),
-                                        str(input_group_conect).replace('\'',
-                                                                        '"'),
-                                        self.lane, gpusToUse)
+                                                self.workSpaceName.get(),
+                                                str(params).replace('\'', '"'),
+                                                str(input_group_connect).replace('\'', '"'),
+                                                self.lane, gpusToUse,
+                                                result_connect=input_result_connect)
 
         self.currenJob.set(self.runLocalCtfRefinement.get())
         self._store(self)

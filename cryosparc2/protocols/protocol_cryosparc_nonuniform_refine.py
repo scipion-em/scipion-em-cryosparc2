@@ -222,13 +222,13 @@ class ProtCryoSparcNonUniformRefine3D(ProtCryoSparcRefine3D):
         :return:
         """
         if self.mask is not None:
-            input_group_conect = {"particles": str(self.par),
-                                  "volume": str(self.vol),
-                                  "mask": str(self.mask)}
+            input_group_connect = {"particles": str(self.par),
+                                   "volume": str(self.vol),
+                                   "mask": str(self.mask)}
         else:
-            input_group_conect = {"particles": str(self.par),
-                                  "volume": str(self.vol)}
-        # {'particles' : 'JXX.imported_particles' }
+            input_group_connect = {"particles": str(self.par),
+                                   "volume": str(self.vol)}
+
         params = {}
 
         for paramName in self._paramsName:
@@ -263,10 +263,10 @@ class ProtCryoSparcNonUniformRefine3D(ProtCryoSparcRefine3D):
             gpusToUse = False
 
         self.runRefine = enqueueJob(self._className, self.projectName.get(),
-                              self.workSpaceName.get(),
-                              str(params).replace('\'', '"'),
-                              str(input_group_conect).replace('\'', '"'),
-                              self.lane, gpusToUse)
+                                    self.workSpaceName.get(),
+                                    str(params).replace('\'', '"'),
+                                    str(input_group_connect).replace('\'', '"'),
+                                    self.lane, gpusToUse)
 
         self.currenJob.set(self.runRefine.get())
         self._store(self)

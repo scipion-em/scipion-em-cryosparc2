@@ -178,6 +178,16 @@ class ProtCryosparcBase(pw.EMProtocol):
                                    convertBinaryVol(vol, self._getTmpPath()))
         self.importVolume = doImportVolumes(self, self.vol_fn, vol, 'map',
                                             'Importing volume...')
+        if vol.hasHalfMaps():
+            halfMaps = vol.getHalfMaps().split(",")
+            map_half_A_fn = os.path.abspath(halfMaps[0])
+            self.importVolumeHalfA = doImportVolumes(self, map_half_A_fn, vol,
+                                                     'map_half_A',
+                                                     'Importing half volume A...')
+            map_half_B_fn = os.path.abspath(halfMaps[1])
+            self.importVolumeHalfB = doImportVolumes(self, map_half_B_fn, vol,
+                                                     'map_half_B',
+                                                     'Importing half volume B...')
         self.currenJob.set(self.importVolume.get())
         self._store(self)
 

@@ -461,9 +461,8 @@ class ProtCryoSparc3DClassification(ProtCryosparcBase):
     def do3DClasification(self):
         """
         """
-        input_group_conect = {"particles": str(self.par)}
+        input_group_connect = {"particles": str(self.par)}
         group_connect = {"volume": self.vol}
-        # {'particles' : 'JXX.imported_particles' }
         params = {}
 
         for paramName in self._paramsName:
@@ -495,9 +494,9 @@ class ProtCryoSparc3DClassification(ProtCryosparcBase):
                                               self.projectName.get(),
                                               self.workSpaceName.get(),
                                               str(params).replace('\'', '"'),
-                                              str(input_group_conect).replace('\'',
-                                                                    '"'),
-                                              self.lane, gpusToUse, group_connect)
+                                              str(input_group_connect).replace('\'', '"'),
+                                              self.lane, gpusToUse,
+                                              group_connect=group_connect)
 
         self.currenJob.set(self.run3dClassification.get())
         self._store(self)

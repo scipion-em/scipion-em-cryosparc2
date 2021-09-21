@@ -258,8 +258,7 @@ class ProtCryoSparc3DHomogeneousRefine(ProtCryosparcBase, pwprot.ProtRefine3D):
 
         form.addSection(label='Defocus Refinement')
         form.addParam('refine_defocus_refine', BooleanParam,
-                      expertLevel=LEVEL_ADVANCED,
-                      default=False,
+                      default=True,
                       label="Optimize per-particle defocus",
                       help='Minimize over per-particle defocus at each '
                            'iteration of refinement. The optimal defocus will'
@@ -272,6 +271,7 @@ class ProtCryoSparc3DHomogeneousRefine(ProtCryosparcBase, pwprot.ProtRefine3D):
 
         form.addParam('crl_num_plots', IntParam,
                       default=3,
+                      expertLevel=LEVEL_ADVANCED,
                       validators=[Positive],
                       label="Num. particles to plot",
                       help='Number of particles to make plots for. After '
@@ -279,6 +279,7 @@ class ProtCryoSparc3DHomogeneousRefine(ProtCryosparcBase, pwprot.ProtRefine3D):
 
         form.addParam('crl_min_res_A', FloatParam,
                       default=20,
+                      condition='refine_defocus_refine==True',
                       validators=[Positive],
                       label="Minimum Fit Res (A)",
                       help='The minimum resolution to use during refinement '
@@ -286,6 +287,7 @@ class ProtCryoSparc3DHomogeneousRefine(ProtCryosparcBase, pwprot.ProtRefine3D):
 
         form.addParam('crl_df_range', FloatParam,
                       default=2000,
+                      condition='refine_defocus_refine==True',
                       validators=[Positive],
                       label="Defocus Search Range (A +/-)",
                       help='Defocus search range in Angstroms, searching '
@@ -295,8 +297,7 @@ class ProtCryoSparc3DHomogeneousRefine(ProtCryosparcBase, pwprot.ProtRefine3D):
         form.addSection(label='Global CTF Refinement')
 
         form.addParam('refine_ctf_global_refine', BooleanParam,
-                      expertLevel=LEVEL_ADVANCED,
-                      default=False,
+                      default=True,
                       label="Optimize per-group CTF params",
                       help='Optimize the per-exposure-group CTF parameters '
                            '(for higher-order aberrations) at each iteration '
@@ -309,6 +310,7 @@ class ProtCryoSparc3DHomogeneousRefine(ProtCryosparcBase, pwprot.ProtRefine3D):
 
         form.addParam('crg_num_plots', IntParam,
                       default=3,
+                      expertLevel=LEVEL_ADVANCED,
                       validators=[Positive],
                       label="Num. groups to plot",
                       help='Number of exposure groups to make plots for. '
@@ -316,27 +318,32 @@ class ProtCryoSparc3DHomogeneousRefine(ProtCryosparcBase, pwprot.ProtRefine3D):
 
         form.addParam('crg_min_res_A', FloatParam,
                       default=10,
+                      condition="refine_ctf_global_refine == True",
                       validators=[Positive],
                       label="Minimum Fit Res (A)",
                       help='The minimum resolution to use during refinement '
                            'of image aberrations.')
 
         form.addParam('crg_do_tilt', BooleanParam,
+                      condition="refine_ctf_global_refine == True",
                       default=True,
                       label="Fit Tilt",
                       help='Whether to fit beam tilt.')
 
         form.addParam('crg_do_trefoil', BooleanParam,
+                      condition="refine_ctf_global_refine == True",
                       default=True,
                       label="Fit Trefoil",
                       help='Whether to fit beam trefoil.')
 
         form.addParam('crg_do_spherical', BooleanParam,
+                      condition="refine_ctf_global_refine == True",
                       default=True,
                       label="Fit Spherical Aberration",
                       help='Whether to fit spherical aberration.')
 
         form.addParam('crg_do_tetrafoil', BooleanParam,
+                      condition="refine_ctf_global_refine == True",
                       default=True,
                       label="Fit Tetrafoil",
                       help='Whether to fit beam tetrafoil.')
@@ -518,13 +525,12 @@ class ProtCryoSparc3DHomogeneousRefine(ProtCryosparcBase, pwprot.ProtRefine3D):
         :return:
         """
         if self.mask is not None:
-            input_group_conect = {"particles": str(self.par),
-                                  "volume": str(self.vol),
-                                  "mask": str(self.mask)}
+            input_group_connect = {"particles": str(self.par),
+                                   "volume": str(self.vol),
+                                   "mask": str(self.mask)}
         else:
-            input_group_conect = {"particles": str(self.par),
-                                  "volume": str(self.vol)}
-        # {'particles' : 'JXX.imported_particles' }
+            input_group_connect = {"particles": str(self.par),
+                                   "volume": str(self.vol)}
         params = {}
 
         for paramName in self._paramsName:
@@ -563,7 +569,7 @@ class ProtCryoSparc3DHomogeneousRefine(ProtCryosparcBase, pwprot.ProtRefine3D):
         self.runRefine = enqueueJob(self._className, self.projectName.get(),
                                     self.workSpaceName.get(),
                                     str(params).replace('\'', '"'),
-                                    str(input_group_conect).replace('\'', '"'),
+                                    str(input_group_connect).replace('\'', '"'),
                                     self.lane, gpusToUse)
 
         self.currenJob.set(self.runRefine.get())

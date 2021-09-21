@@ -370,13 +370,13 @@ class ProtCryoSparcLocalRefine(ProtCryosparcBase, ProtOperateParticles):
         :return:
         """
         if self.mask is not None:
-            input_group_conect = {"particles": str(self.par),
+            input_group_connect = {"particles": str(self.par),
                                   "volume": str(self.vol),
                                   "mask": str(self.mask)}
         else:
-            input_group_conect = {"particles": str(self.par),
+            input_group_connect = {"particles": str(self.par),
                                   "volume": str(self.vol)}
-        # {'particles' : 'JXX.imported_particles' }
+
         params = {}
 
         for paramName in self._paramsName:
@@ -419,7 +419,7 @@ class ProtCryoSparcLocalRefine(ProtCryosparcBase, ProtOperateParticles):
         self.runLocalRefinement = enqueueJob(self._className, self.projectName.get(),
                                              self.workSpaceName.get(),
                                              str(params).replace('\'', '"'),
-                                             str(input_group_conect).replace('\'',
+                                             str(input_group_connect).replace('\'',
                                                                              '"'),
                                              self.lane, gpusToUse)
 
