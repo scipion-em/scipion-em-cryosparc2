@@ -64,7 +64,7 @@ class CryosPARCViewer3DRefinement(EmProtocolViewer):
         group = form.addGroup('Volume')
 
         group.addParam('displayVol', EnumParam, choices=['chimera', 'cryoSPARC'],
-                       default=VOLUME_CHIMERA, display=EnumParam.DISPLAY_LIST,
+                       default=VOLUME_CRYOSPARC, display=EnumParam.DISPLAY_LIST,
                        label='Display volume with',
                        help='*chimera*: display volumes as surface with Chimera.\n'
                             '*cryoSPARC: display volumes as surface with cryoSPARC')

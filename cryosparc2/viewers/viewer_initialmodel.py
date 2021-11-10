@@ -55,7 +55,7 @@ class CryosPARCViewerInitialModel(ProtocolViewer):
         group = form.addGroup('Volume')
 
         group.addParam('displayVol', EnumParam, choices=['dataViewer', 'cryoSPARC'],
-                       default=DATA_VIEWER, display=EnumParam.DISPLAY_HLIST,
+                       default=VOLUME_CRYOSPARC, display=EnumParam.DISPLAY_HLIST,
                        label='Display volume with',
                        help='*dataViewer*: display volumes as surface with Scipion.\n'
                             '*cryoSPARC: display volumes as surface with cryoSPARC')
