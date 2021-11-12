@@ -31,6 +31,7 @@ import pwem.protocols as pwprot
 
 import pyworkflow.utils as pwutils
 from pyworkflow import BETA
+from pyworkflow.object import String
 from pyworkflow.protocol.params import (PointerParam, FloatParam, IntParam,
                                         LEVEL_ADVANCED, Positive, BooleanParam)
 
@@ -140,9 +141,9 @@ class ProtCryoSparcGlobalCtfRefinement(ProtCryosparcBase, pwprot.ProtParticles):
         self._createFilenameTemplates()
         self._defineParamsName()
         self._initializeCryosparcProject()
-        self._insertFunctionStep("convertInputStep")
-        self._insertFunctionStep('processStep')
-        self._insertFunctionStep('createOutputStep')
+        self._insertFunctionStep(self.convertInputStep)
+        self._insertFunctionStep(self.processStep)
+        self._insertFunctionStep(self.createOutputStep)
 
     # -------------------------- UTILS functions ------------------------------
 
@@ -161,8 +162,6 @@ class ProtCryoSparcGlobalCtfRefinement(ProtCryosparcBase, pwprot.ProtParticles):
 
     # --------------------------- STEPS functions ------------------------------
     def processStep(self):
-        self.vol = self.importVolume.get() + '.imported_volume.map'
-        self.mask = self.importMask.get() + '.imported_mask.mask'
         print(pwutils.yellowStr("Ctf Refinement started..."), flush=True)
         self.doGlobalCtfRefinement()
 
@@ -242,17 +241,15 @@ class ProtCryoSparcGlobalCtfRefinement(ProtCryosparcBase, pwprot.ProtParticles):
 
     def doGlobalCtfRefinement(self):
         """
-                :return:
-                """
-        input_group_connect = {"particles": str(self.par),
-                               "volume": str(self.vol),
-                               "mask": str(self.mask)}
+        :return:
+        """
+        input_group_connect = {"particles": self.particles.get(),
+                               "volume": self.volume.get(),
+                               "mask": self.mask.get()}
         input_result_connect = None
         if self._getInputVolume().hasHalfMaps():
-            self.halfA = self.importVolumeHalfA.get() + '.imported_volume.map_half_A'
-            self.halfB = self.importVolumeHalfB.get() + '.imported_volume.map_half_B'
-            input_result_connect = {"volume.0.map_half_A": self.halfA,
-                                    "volume.0.map_half_B": self.halfB}
+            input_result_connect = {"volume.0.map_half_A": self.importVolumeHalfA.get(),
+                                    "volume.0.map_half_B": self.importVolumeHalfB.get()}
         params = {}
 
         for paramName in self._paramsName:
@@ -265,14 +262,15 @@ class ProtCryoSparcGlobalCtfRefinement(ProtCryosparcBase, pwprot.ProtParticles):
         except Exception:
             gpusToUse = False
 
-        self.runGlobalCtfRefinement = enqueueJob(self._className, self.projectName.get(),
+        runGlobalCtfRefinementJob = enqueueJob(self._className, self.projectName.get(),
                                                  self.workSpaceName.get(),
                                                  str(params).replace('\'', '"'),
                                                  str(input_group_connect).replace('\'', '"'),
                                                  self.lane, gpusToUse,
                                                  result_connect=input_result_connect)
 
-        self.currenJob.set(self.runGlobalCtfRefinement.get())
+        self.runGlobalCtfRefinement = String(runGlobalCtfRefinementJob)
+        self.currenJob.set(runGlobalCtfRefinementJob.get())
         self._store(self)
 
         waitForCryosparc(self.projectName.get(), self.runGlobalCtfRefinement.get(),

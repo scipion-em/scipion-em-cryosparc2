@@ -28,6 +28,7 @@ import os
 
 import pyworkflow.utils as pwutils
 from pyworkflow import BETA
+from pyworkflow.object import String
 from pyworkflow.protocol.params import (FloatParam, LEVEL_ADVANCED,
                                         PointerParam, MultiPointerParam,
                                         CsvList, Positive, IntParam,
@@ -230,23 +231,23 @@ class ProtCryoSparc3DClassification(ProtCryosparcBase):
         self._defineFileNames()
         self._defineParamsName()
         self._initializeCryosparcProject()
-        self._insertFunctionStep("convertInputStep")
-        self._insertFunctionStep('processStep')
-        self._insertFunctionStep('createOutputStep')
+        self._insertFunctionStep(self.convertInputStep)
+        self._insertFunctionStep(self.processStep)
+        self._insertFunctionStep(self.createOutputStep)
 
     # --------------------------- STEPS functions ------------------------------
     def _getInputVolume(self):
         if self.hasAttribute('refVolumes'):
-            self.volumes = []
+            self.vols = []
             for volume in self.refVolumes:
                 vol = volume.get()
-                self.volumes.append(vol)
-            return self.volumes
+                self.vols.append(vol)
+            return self.vols
         return None
 
     def _importVolume(self):
         self.importVolumes = CsvList()
-        for vol in self.volumes:
+        for vol in self.vols:
             self.vol_fn = os.path.join(os.getcwd(),
                                        convertBinaryVol(
                                            vol,
@@ -255,10 +256,9 @@ class ProtCryoSparc3DClassification(ProtCryosparcBase):
                                                 'Importing volume...')
             self.importVolumes.append(self.importVolume.get())
             self.currenJob.set(self.importVolume.get())
-            self._store(self)
 
     def processStep(self):
-        self.vol = [vol + '.imported_volume.map' for vol in self.importVolumes]
+        self.volumes = [vol + '.imported_volume.map' for vol in self.importVolumes]
         print(pwutils.yellowStr("3D Classification started..."), flush=True)
         self.do3DClasification()
 
@@ -461,8 +461,8 @@ class ProtCryoSparc3DClassification(ProtCryosparcBase):
     def do3DClasification(self):
         """
         """
-        input_group_connect = {"particles": str(self.par)}
-        group_connect = {"volume": self.vol}
+        input_group_connect = {"particles": self.particles.get()}
+        group_connect = {"volume": self.volumes}
         params = {}
 
         for paramName in self._paramsName:
@@ -490,7 +490,7 @@ class ProtCryoSparc3DClassification(ProtCryosparcBase):
         except Exception:
             gpusToUse = False
 
-        self.run3dClassification = enqueueJob(self._className,
+        run3dClassificationJob = enqueueJob(self._className,
                                               self.projectName.get(),
                                               self.workSpaceName.get(),
                                               str(params).replace('\'', '"'),
@@ -498,12 +498,12 @@ class ProtCryoSparc3DClassification(ProtCryosparcBase):
                                               self.lane, gpusToUse,
                                               group_connect=group_connect)
 
-        self.currenJob.set(self.run3dClassification.get())
+        self.run3dClassification = String(run3dClassificationJob.get())
+        self.currenJob.set(run3dClassificationJob.get())
         self._store(self)
 
         waitForCryosparc(self.projectName.get(), self.run3dClassification.get(),
                          "An error occurred in the 3D Classification process. "
                          "Please, go to cryosPARC software for more "
                          "details.")
-        self.clearIntResults = clearIntermediateResults(self.projectName.get(),
-                                                        self.run3dClassification.get())
+        clearIntermediateResults(self.projectName.get(), self.run3dClassification.get())

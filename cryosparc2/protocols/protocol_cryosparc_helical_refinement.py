@@ -31,6 +31,7 @@ from pwem import SCIPION_SYM_NAME
 
 import pyworkflow.utils as pwutils
 from pyworkflow import BETA
+from pyworkflow.object import String
 from pyworkflow.protocol.params import (FloatParam, Positive, IntParam,
                                         BooleanParam, EnumParam, PointerParam)
 
@@ -64,7 +65,7 @@ class ProtCryoSparcHelicalRefine3D(ProtCryoSparcRefine3D):
                       validators=[Positive],
                       help='Particle stacks to use. Multiple stacks will '
                            'be concatenated.')
-        form.addParam('referenceVolume', PointerParam, pointerClass='Volume',
+        form.addParam('refVolume', PointerParam, pointerClass='Volume',
                       default=None,
                       allowsNull=True,
                       label="Initial volume",
@@ -233,9 +234,6 @@ class ProtCryoSparcHelicalRefine3D(ProtCryoSparcRefine3D):
         ProtCryoSparcRefine3D._insertAllSteps(self)
 
     def processStep(self):
-        self.vol = None
-        if self.referenceVolume.get() is not None:
-            self.vol = self.importVolume.get() + '.imported_volume.map'
         print(pwutils.yellowStr("Refinement started..."), flush=True)
         self.doRunRefine()
 
@@ -248,7 +246,7 @@ class ProtCryoSparcHelicalRefine3D(ProtCryoSparcRefine3D):
                 if parse_version(version) >= parse_version(csVersion)]:
                 validateMsgs = gpusValidate(self.getGpuList(), checkSingleGPU=True)
                 if not validateMsgs:
-                    if self.referenceVolume.get() is None and not self.use_cylindrical_model.get():
+                    if self.refVolume.get() is None and not self.use_cylindrical_model.get():
                         validateMsgs.append("Cannot generate initial model "
                                             "without in-plane rotation "
                                             "information. Please input an "
@@ -288,11 +286,11 @@ class ProtCryoSparcHelicalRefine3D(ProtCryoSparcRefine3D):
         self.lane = str(self.getAttributeValue('compute_lane'))
 
     def doRunRefine(self):
-        input_group_connect = {"particles": str(self.par)}
-        if self.vol is not None:
-            input_group_connect["volume"] = str(self.vol)
-        if self.mask is not None:
-            input_group_connect["mask"] = str(self.mask)
+        input_group_connect = {"particles": self.particles.get()}
+        if self.volume.get() is not None:
+            input_group_connect["volume"] = self.volume.get()
+        if self.mask.get() is not None:
+            input_group_connect["mask"] = self.mask.get()
         params = {}
 
         for paramName in self._paramsName:
@@ -317,18 +315,18 @@ class ProtCryoSparcHelicalRefine3D(ProtCryoSparcRefine3D):
         except Exception:
             gpusToUse = False
 
-        self.runRefine = enqueueJob(self._className, self.projectName.get(),
+        runRefineJob = enqueueJob(self._className, self.projectName.get(),
                                     self.workSpaceName.get(),
                                     str(params).replace('\'', '"'),
                                     str(input_group_connect).replace('\'', '"'),
                                     self.lane, gpusToUse)
 
-        self.currenJob.set(self.runRefine.get())
+        self.runRefine = String(runRefineJob.get())
+        self.currenJob.set(runRefineJob.get())
         self._store(self)
 
         waitForCryosparc(self.projectName.get(), self.runRefine.get(),
                          "An error occurred in the Refinement process. "
                          "Please, go to cryosPARC software for more "
                          "details.")
-        self.clearIntResults = clearIntermediateResults(self.projectName.get(),
-                                                        self.runRefine.get())
+        clearIntermediateResults(self.projectName.get(), self.runRefine.get())

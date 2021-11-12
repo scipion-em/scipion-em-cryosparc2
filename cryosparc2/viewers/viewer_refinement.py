@@ -38,7 +38,8 @@ from ..protocols import (ProtCryoSparcNonUniformRefine3D,
                          ProtCryoSparcLocalRefine, ProtCryoSparcHelicalRefine3D,
                          ProtCryoSparc3DHomogeneousRefine,
                          ProtCryoSparcNewNonUniformRefine3D,
-                         ProtCryoSparcNaiveLocalRefine)
+                         ProtCryoSparcNaiveLocalRefine,
+                         ProtCryoSparcHomogeneousReconstruct)
 from ..constants import *
 from ..utils import *
 
@@ -49,7 +50,7 @@ class CryosPARCViewer3DRefinement(EmProtocolViewer):
     _targets = [ProtCryoSparcRefine3D, ProtCryoSparcNonUniformRefine3D,
                 ProtCryoSparcLocalRefine, ProtCryoSparcHelicalRefine3D,
                 ProtCryoSparc3DHomogeneousRefine, ProtCryoSparcNaiveLocalRefine,
-                ProtCryoSparcNewNonUniformRefine3D]
+                ProtCryoSparcNewNonUniformRefine3D, ProtCryoSparcHomogeneousReconstruct]
     _environments = [DESKTOP_TKINTER, WEB_DJANGO]
     _label = 'viewer Refinement'
 
@@ -63,8 +64,8 @@ class CryosPARCViewer3DRefinement(EmProtocolViewer):
 
         group = form.addGroup('Volume')
 
-        group.addParam('displayVol', EnumParam, choices=['chimera', 'cryoSPARC'],
-                       default=VOLUME_CHIMERA, display=EnumParam.DISPLAY_LIST,
+        group.addParam('displayVol', EnumParam, choices=['cryoSPARC', 'chimera'],
+                       default=VOLUME_CRYOSPARC, display=EnumParam.DISPLAY_LIST,
                        label='Display volume with',
                        help='*chimera*: display volumes as surface with Chimera.\n'
                             '*cryoSPARC: display volumes as surface with cryoSPARC')
