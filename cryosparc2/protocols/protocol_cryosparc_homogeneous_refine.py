@@ -72,7 +72,7 @@ class ProtCryoSparc3DHomogeneousRefine(ProtCryosparcBase, pwprot.ProtRefine3D):
                       label="Input particles", important=True,
                       validators=[Positive],
                       help='Select the input images from the project.')
-        form.addParam('refVolume', PointerParam, pointerClass='Volume',
+        form.addParam('referenceVolume', PointerParam, pointerClass='Volume',
                       important=True,
                       label="Input volume",
                       help='Initial reference 3D map, it should have the same '
@@ -363,6 +363,8 @@ class ProtCryoSparc3DHomogeneousRefine(ProtCryosparcBase, pwprot.ProtRefine3D):
         self._insertFunctionStep(self.createOutputStep)
 
     # --------------------------- STEPS functions ------------------------------
+    def _getInputVolume(self):
+        return self.referenceVolume.get()
 
     def processStep(self):
         print(pwutils.yellowStr("Refinement started..."), flush=True)
@@ -445,7 +447,7 @@ class ProtCryoSparc3DHomogeneousRefine(ProtCryosparcBase, pwprot.ProtRefine3D):
             summary.append("Input Particles: %s" %
                            self.getObjectTag('inputParticles'))
             summary.append("Input Volume: %s" %
-                           self.getObjectTag('refVolume'))
+                           self.getObjectTag('referenceVolume'))
             summary.append("Input Mask: %s" %
                            self.getObjectTag('refMask'))
             summary.append("Symmetry: %s" %

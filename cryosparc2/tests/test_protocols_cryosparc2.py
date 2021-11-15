@@ -299,7 +299,7 @@ class TestCryosparc3DRefinement(TestCryosparcBase):
             prot3DRefinement = self.newProtocol(ProtCryoSparcRefine3D)
 
             prot3DRefinement.inputParticles.set(self.protImportPart.outputParticles)
-            prot3DRefinement.refVolume.set(self.protImportVol.outputVolume)
+            prot3DRefinement.referenceVolume.set(self.protImportVol.outputVolume)
             prot3DRefinement.symmetryGroup.set(SYM_CYCLIC)
             prot3DRefinement.symmetryOrder.set(1)
             prot3DRefinement.compute_use_ssd.set(False)
@@ -341,7 +341,7 @@ class TestProtCryoSparc3DHomogeneousRefine(TestCryosparcBase):
             prot3DHomoRefinement = self.newProtocol(ProtCryoSparc3DHomogeneousRefine)
 
             prot3DHomoRefinement.inputParticles.set(self.protImportPart.outputParticles)
-            prot3DHomoRefinement.refVolume.set(self.protImportVol.outputVolume)
+            prot3DHomoRefinement.referenceVolume.set(self.protImportVol.outputVolume)
             prot3DHomoRefinement.symmetryGroup.set(SYM_CYCLIC)
             prot3DHomoRefinement.symmetryOrder.set(1)
             prot3DHomoRefinement.compute_use_ssd.set(False)
@@ -382,7 +382,7 @@ class TestCryosparcNonUniformRefine3D(TestCryosparcBase):
         def _runCryosparctestNonUniformRefine3D(label=''):
             protNonUniform3DRefinement = self.newProtocol(ProtCryoSparcNonUniformRefine3D)
             protNonUniform3DRefinement.inputParticles.set(self.protImportPart.outputParticles)
-            protNonUniform3DRefinement.refVolume.set(self.protImportVolumeVol.outputVolume)
+            protNonUniform3DRefinement.referenceVolume.set(self.protImportVolumeVol.outputVolume)
             protNonUniform3DRefinement.symmetryGroup.set(SYM_CYCLIC)
             protNonUniform3DRefinement.symmetryOrder.set(1)
             protNonUniform3DRefinement.compute_use_ssd.set(False)
@@ -423,7 +423,7 @@ class TestCryosparcNewNonUniformRefine3D(TestCryosparcBase):
         def _runCryosparctestNewNonUniformRefine3D(label=''):
             protNewNonUniform3DRefinement = self.newProtocol(ProtCryoSparcNewNonUniformRefine3D)
             protNewNonUniform3DRefinement.inputParticles.set(self.protImportPart.outputParticles)
-            protNewNonUniform3DRefinement.refVolume.set(self.protImportVolumeVol.outputVolume)
+            protNewNonUniform3DRefinement.referenceVolume.set(self.protImportVolumeVol.outputVolume)
             protNewNonUniform3DRefinement.symmetryGroup.set(SYM_CYCLIC)
             protNewNonUniform3DRefinement.symmetryOrder.set(1)
             protNewNonUniform3DRefinement.compute_use_ssd.set(False)
@@ -463,7 +463,7 @@ class TestCryosparcHelicalRefine3D(TestCryosparcBase):
         def _runCryosparctestHelicalRefine3D(label=''):
             protHelical3DRefinement = self.newProtocol(ProtCryoSparcHelicalRefine3D)
             protHelical3DRefinement.inputParticles.set(self.protImportPart.outputParticles)
-            protHelical3DRefinement.refVolume.set(self.protImportVolumeVol.outputVolume)
+            protHelical3DRefinement.referenceVolume.set(self.protImportVolumeVol.outputVolume)
             protHelical3DRefinement.symmetryGroup.set(SYM_CYCLIC)
             protHelical3DRefinement.symmetryOrder.set(1)
             protHelical3DRefinement.compute_use_ssd.set(False)
@@ -507,7 +507,7 @@ class TestCryosparc3DClassification(TestCryosparcBase):
 
 
             protNonUniform3DRefinement.inputParticles.set(self.protImportPart.outputParticles)
-            protNonUniform3DRefinement.refVolume.set(self.protImportVolumeVol.outputVolume)
+            protNonUniform3DRefinement.referenceVolume.set(self.protImportVolumeVol.outputVolume)
             protNonUniform3DRefinement.symmetryGroup.set(SYM_CYCLIC)
             protNonUniform3DRefinement.symmetryOrder.set(1)
             protNonUniform3DRefinement.compute_use_ssd.set(False)
@@ -520,7 +520,7 @@ class TestCryosparc3DClassification(TestCryosparcBase):
 
             protNonUniform3DRefinement1.inputParticles.set(
                 self.protImportPart.outputParticles)
-            protNonUniform3DRefinement1.refVolume.set(
+            protNonUniform3DRefinement1.referenceVolume.set(
                 self.protImportVolumeVol.outputVolume)
             protNonUniform3DRefinement1.symmetryGroup.set(SYM_CYCLIC)
             protNonUniform3DRefinement1.symmetryOrder.set(1)
@@ -572,7 +572,7 @@ class TestCryosparcParticlesSubtract(TestCryosparcBase):
 
             prot3DRefinement = self.newProtocol(ProtCryoSparcRefine3D)
             prot3DRefinement.inputParticles.set(self.protImportPart.outputParticles)
-            prot3DRefinement.refVolume.set(self.protImportVol.outputVolume)
+            prot3DRefinement.referenceVolume.set(self.protImportVol.outputVolume)
             prot3DRefinement.symmetryGroup.set(SYM_CYCLIC)
             prot3DRefinement.compute_use_ssd.set(False)
             prot3DRefinement.symmetryOrder.set(1)
@@ -616,7 +616,7 @@ class TestCryosparcSharppening(TestCryosparcBase):
 
             prot3DRefinement = self.newProtocol(ProtCryoSparcRefine3D)
             prot3DRefinement.inputParticles.set(self.protImportPart.outputParticles)
-            prot3DRefinement.refVolume.set(self.protImportVol.outputVolume)
+            prot3DRefinement.referenceVolume.set(self.protImportVol.outputVolume)
             prot3DRefinement.symmetryGroup.set(SYM_CYCLIC)
             prot3DRefinement.symmetryOrder.set(1)
             prot3DRefinement.compute_use_ssd.set(False)
@@ -657,7 +657,7 @@ class TestCryosparcGlobalCtfRefinement(TestCryosparcBase):
 
             prot3DRefinement = self.newProtocol(ProtCryoSparcRefine3D)
             prot3DRefinement.inputParticles.set(self.protImportPart.outputParticles)
-            prot3DRefinement.refVolume.set(self.protImportVol.outputVolume)
+            prot3DRefinement.referenceVolume.set(self.protImportVol.outputVolume)
             prot3DRefinement.symmetryGroup.set(SYM_CYCLIC)
             prot3DRefinement.symmetryOrder.set(1)
             prot3DRefinement.compute_use_ssd.set(False)
@@ -702,7 +702,7 @@ class TestCryosparcLocalCtfRefinement(TestCryosparcBase):
 
             prot3DRefinement = self.newProtocol(ProtCryoSparcRefine3D)
             prot3DRefinement.inputParticles.set(self.protImportPart.outputParticles)
-            prot3DRefinement.refVolume.set(self.protImportVol.outputVolume)
+            prot3DRefinement.referenceVolume.set(self.protImportVol.outputVolume)
             prot3DRefinement.symmetryGroup.set(SYM_CYCLIC)
             prot3DRefinement.symmetryOrder.set(1)
             prot3DRefinement.compute_use_ssd.set(False)
@@ -747,7 +747,7 @@ class TestCryosparcSymetryExpansion(TestCryosparcBase):
 
             prot3DRefinement = self.newProtocol(ProtCryoSparcRefine3D)
             prot3DRefinement.inputParticles.set(self.protImportPart.outputParticles)
-            prot3DRefinement.refVolume.set(self.protImportVol.outputVolume)
+            prot3DRefinement.referenceVolume.set(self.protImportVol.outputVolume)
             prot3DRefinement.symmetryGroup.set(SYM_CYCLIC)
             prot3DRefinement.symmetryOrder.set(1)
             prot3DRefinement.compute_use_ssd.set(False)
@@ -791,7 +791,7 @@ class TestCryosparcNaiveLocalRefine(TestCryosparcBase):
 
             prot3DRefinement = self.newProtocol(ProtCryoSparcRefine3D)
             prot3DRefinement.inputParticles.set(self.protImportPart.outputParticles)
-            prot3DRefinement.refVolume.set(self.protImportVol.outputVolume)
+            prot3DRefinement.referenceVolume.set(self.protImportVol.outputVolume)
             prot3DRefinement.symmetryGroup.set(SYM_CYCLIC)
             prot3DRefinement.symmetryOrder.set(1)
             prot3DRefinement.compute_use_ssd.set(False)
@@ -836,7 +836,7 @@ class TestCryosparcLocalRefine(TestCryosparcBase):
 
             prot3DRefinement = self.newProtocol(ProtCryoSparcRefine3D)
             prot3DRefinement.inputParticles.set(self.protImportPart.outputParticles)
-            prot3DRefinement.refVolume.set(self.protImportVol.outputVolume)
+            prot3DRefinement.referenceVolume.set(self.protImportVol.outputVolume)
             prot3DRefinement.symmetryGroup.set(SYM_CYCLIC)
             prot3DRefinement.symmetryOrder.set(1)
             prot3DRefinement.compute_use_ssd.set(False)
@@ -879,7 +879,7 @@ class TestCryosparcHomogeneousReconstruction(TestCryosparcBase):
 
             prot3DRefinement = self.newProtocol(ProtCryoSparcRefine3D)
             prot3DRefinement.inputParticles.set(self.protImportPart.outputParticles)
-            prot3DRefinement.refVolume.set(self.protImportVol.outputVolume)
+            prot3DRefinement.referenceVolume.set(self.protImportVol.outputVolume)
             prot3DRefinement.symmetryGroup.set(SYM_CYCLIC)
             prot3DRefinement.symmetryOrder.set(1)
             prot3DRefinement.compute_use_ssd.set(False)

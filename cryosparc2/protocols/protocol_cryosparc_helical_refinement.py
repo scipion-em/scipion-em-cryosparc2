@@ -65,7 +65,7 @@ class ProtCryoSparcHelicalRefine3D(ProtCryoSparcRefine3D):
                       validators=[Positive],
                       help='Particle stacks to use. Multiple stacks will '
                            'be concatenated.')
-        form.addParam('refVolume', PointerParam, pointerClass='Volume',
+        form.addParam('referenceVolume', PointerParam, pointerClass='Volume',
                       default=None,
                       allowsNull=True,
                       label="Initial volume",
@@ -246,7 +246,7 @@ class ProtCryoSparcHelicalRefine3D(ProtCryoSparcRefine3D):
                 if parse_version(version) >= parse_version(csVersion)]:
                 validateMsgs = gpusValidate(self.getGpuList(), checkSingleGPU=True)
                 if not validateMsgs:
-                    if self.refVolume.get() is None and not self.use_cylindrical_model.get():
+                    if self.referenceVolume.get() is None and not self.use_cylindrical_model.get():
                         validateMsgs.append("Cannot generate initial model "
                                             "without in-plane rotation "
                                             "information. Please input an "
