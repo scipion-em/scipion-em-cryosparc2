@@ -1,3 +1,4 @@
+Nov 12, 2021  - Adding homogenous reconstruction protocol
 Feb 11, 2021  - Compatibility with v3.X.X CS versions Adding a new protocol(helical refinement)
 Dec 18, 2020  - Cleaning intermediates results
 Dec 14, 2020  - Fixing some bugs taking the las iteration in the 2D classification

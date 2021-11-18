@@ -28,6 +28,7 @@
 import os
 
 import pyworkflow.utils as pwutils
+from pyworkflow.object import String
 from pyworkflow.protocol.params import (PointerParam, FloatParam,
                                         LEVEL_ADVANCED, IntParam, Positive,
                                         BooleanParam, EnumParam)
@@ -295,9 +296,9 @@ class ProtCryoSparcInitialModel(ProtCryosparcBase, ProtInitialVolume,
         self._defineFileNames()
         self._defineParamsName()
         self._initializeCryosparcProject()
-        self._insertFunctionStep("convertInputStep")
-        self._insertFunctionStep('processStep')
-        self._insertFunctionStep('createOutputStep')
+        self._insertFunctionStep(self.convertInputStep)
+        self._insertFunctionStep(self.processStep)
+        self._insertFunctionStep(self.createOutputStep)
 
     # --------------------------- STEPS functions ------------------------------
     def processStep(self):
@@ -467,7 +468,7 @@ class ProtCryoSparcInitialModel(ProtCryosparcBase, ProtInitialVolume,
         "\", \"" + self.workSpaceName + "\", \"\'" + self._user + "\'\", \""
         + self.par + "\",\"\'1\'\")\'")
         """
-        input_group_connect = {"particles": str(self.par)}
+        input_group_connect = {"particles": self.particles.get()}
         params = {}
 
         if self.hasExpert():
@@ -488,13 +489,14 @@ class ProtCryoSparcInitialModel(ProtCryosparcBase, ProtInitialVolume,
         except Exception:
             gpusToUse = False
 
-        self.runAbinit = enqueueJob(self._className, self.projectName.get(),
+        runAbinitJob = enqueueJob(self._className, self.projectName.get(),
                                     self.workSpaceName.get(),
                                     str(params).replace('\'', '"'),
                                     str(input_group_connect).replace('\'', '"'),
                                     self.lane,
                                     gpusToUse)
 
+        self.runAbinit = String(runAbinitJob.get())
         self.currenJob.set(self.runAbinit.get())
         self._store(self)
 
@@ -502,6 +504,4 @@ class ProtCryoSparcInitialModel(ProtCryosparcBase, ProtInitialVolume,
                          "An error occurred in the initial volume process. "
                          "Please, go to cryosPARC software for more "
                          "details.")
-        self.clearIntResults = clearIntermediateResults(self.projectName.get(),
-                                                        self.runAbinit.get(),
-                                                        wait=7)
+        clearIntermediateResults(self.projectName.get(), self.runAbinit.get(), wait=7)

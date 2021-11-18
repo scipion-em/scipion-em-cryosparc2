@@ -28,6 +28,7 @@
 import os
 import pwem.protocols as pwprot
 from pwem import ALIGN_2D
+from pyworkflow.object import String
 from pyworkflow.protocol.params import (PointerParam, FloatParam, IntParam,
                                         BooleanParam, Positive)
 import pyworkflow.utils as pwutils
@@ -239,9 +240,9 @@ class ProtCryo2D(ProtCryosparcBase, pwprot.ProtClassify2D):
         self._defineFileNames()
         self._defineParamsName()
         self._initializeCryosparcProject()
-        self._insertFunctionStep("convertInputStep")
-        self._insertFunctionStep('processStep')
-        self._insertFunctionStep('createOutputStep')
+        self._insertFunctionStep(self.convertInputStep)
+        self._insertFunctionStep(self.processStep)
+        self._insertFunctionStep(self.createOutputStep)
 
     # --------------------------- STEPS functions ------------------------------
     def processStep(self):
@@ -430,7 +431,7 @@ class ProtCryo2D(ProtCryosparcBase, pwprot.ProtClassify2D):
         returns: the new uid of the job that was created
         """
         # {'particles' : 'JXX.imported_particles' }
-        input_group_connect = {"particles": str(self.par)}
+        input_group_connect = {"particles": self.particles.get()}
 
         # Determinate the GPUs or the number of GPUs to use (in dependence of
         # the cryosparc version)
@@ -443,18 +444,19 @@ class ProtCryo2D(ProtCryosparcBase, pwprot.ProtClassify2D):
 
         params = self.assignParamValue()
         params["compute_num_gpus"] = str(numberGPU)
-        self.runClass2D = enqueueJob(self._className, self.projectName.get(),
+        runClass2DJob = enqueueJob(self._className, self.projectName.get(),
                                      self.workSpaceName.get(),
                                      str(params).replace('\'', '"'),
                                      str(input_group_connect).replace('\'', '"'),
                                      self.lane, gpusToUse)
-        self.currenJob.set(self.runClass2D.get())
+
+        self.runClass2D = String(runClass2DJob.get())
+        self.currenJob.set(runClass2DJob.get())
         self._store(self)
 
         waitForCryosparc(self.projectName.get(), self.runClass2D.get(),
                          "An error occurred in the 2D classification process. "
                          "Please, go to cryosPARC software for more "
                          "details.")
-        self.clearIntResults = clearIntermediateResults(self.projectName.get(),
-                                                        self.runClass2D.get())
+        clearIntermediateResults(self.projectName.get(), self.runClass2D.get())
 

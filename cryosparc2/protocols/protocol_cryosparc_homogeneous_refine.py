@@ -358,14 +358,15 @@ class ProtCryoSparc3DHomogeneousRefine(ProtCryosparcBase, pwprot.ProtRefine3D):
         self._defineFileNames()
         self._defineParamsName()
         self._initializeCryosparcProject()
-        self._insertFunctionStep("convertInputStep")
-        self._insertFunctionStep('processStep')
-        self._insertFunctionStep('createOutputStep')
+        self._insertFunctionStep(self.convertInputStep)
+        self._insertFunctionStep(self.processStep)
+        self._insertFunctionStep(self.createOutputStep)
 
     # --------------------------- STEPS functions ------------------------------
+    def _getInputVolume(self):
+        return self.referenceVolume.get()
 
     def processStep(self):
-        self.vol = self.importVolume.get() + '.imported_volume.map'
         print(pwutils.yellowStr("Refinement started..."), flush=True)
         self.doRunRefine()
 
@@ -469,9 +470,6 @@ class ProtCryoSparc3DHomogeneousRefine(ProtCryosparcBase, pwprot.ProtRefine3D):
 
     # -------------------------- UTILS functions ------------------------------
 
-    def _getInputVolume(self):
-        return self.referenceVolume.get()
-
     def _fillDataFromIter(self, imgSet):
         outImgsFn = 'particles@' + self._getFileName('out_particles')
         imgSet.setAlignmentProj()
@@ -524,13 +522,13 @@ class ProtCryoSparc3DHomogeneousRefine(ProtCryosparcBase, pwprot.ProtRefine3D):
         """
         :return:
         """
-        if self.mask is not None:
-            input_group_connect = {"particles": str(self.par),
-                                   "volume": str(self.vol),
-                                   "mask": str(self.mask)}
+        if self.mask.get() is not None:
+            input_group_connect = {"particles": self.particles.get(),
+                                   "volume": self.volume.get(),
+                                   "mask": self.mask.get()}
         else:
-            input_group_connect = {"particles": str(self.par),
-                                   "volume": str(self.vol)}
+            input_group_connect = {"particles": self.particles.get(),
+                                   "volume": self.volume.get()}
         params = {}
 
         for paramName in self._paramsName:
@@ -566,12 +564,13 @@ class ProtCryoSparc3DHomogeneousRefine(ProtCryosparcBase, pwprot.ProtRefine3D):
         except Exception:
             gpusToUse = False
 
-        self.runRefine = enqueueJob(self._className, self.projectName.get(),
-                                    self.workSpaceName.get(),
-                                    str(params).replace('\'', '"'),
-                                    str(input_group_connect).replace('\'', '"'),
-                                    self.lane, gpusToUse)
+        runRefineJob = enqueueJob(self._className, self.projectName.get(),
+                                  self.workSpaceName.get(),
+                                  str(params).replace('\'', '"'),
+                                  str(input_group_connect).replace('\'', '"'),
+                                  self.lane, gpusToUse)
 
+        self.runRefine = pwobj.String(runRefineJob.get())
         self.currenJob.set(self.runRefine.get())
         self._store(self)
 
@@ -579,8 +578,7 @@ class ProtCryoSparc3DHomogeneousRefine(ProtCryosparcBase, pwprot.ProtRefine3D):
                          "An error occurred in the Refinement process. "
                          "Please, go to cryosPARC software for more "
                          "details.")
-        self.clearIntResults = clearIntermediateResults(self.projectName.get(),
-                                                        self.runRefine.get())
+        clearIntermediateResults(self.projectName.get(), self.runRefine.get())
 
 
 
