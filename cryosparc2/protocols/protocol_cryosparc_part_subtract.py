@@ -262,7 +262,7 @@ class ProtCryoSparcSubtract(ProtCryosparcBase, ProtOperateParticles):
         input_result_connect = None
         if self._getInputVolume().hasHalfMaps():
             input_result_connect = {"volume.0.map_half_A": self.importVolumeHalfA.get(),
-                                    "volume.0.map_half_B": self.importVolumeHalfA.get()}
+                                    "volume.0.map_half_B": self.importVolumeHalfB.get()}
 
         params = {}
 

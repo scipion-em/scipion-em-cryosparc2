@@ -41,7 +41,7 @@ from ..utils import (addSymmetryParam, addComputeSectionParams,
                      waitForCryosparc, clearIntermediateResults, enqueueJob,
                      getCryosparcVersion, fixVolume, copyFiles)
 from ..constants import (md, NOISE_MODEL_CHOICES, REFINE_MASK_CHOICES, V3_0_0,
-                         V3_1_0, V3_2_0, REFINE_FILTER_TYPE)
+                         V3_1_0, V3_2_0, V3_3_0, V3_3_1, REFINE_FILTER_TYPE)
 
 
 class ProtCryoSparc3DHomogeneousRefine(ProtCryosparcBase, pwprot.ProtRefine3D):
@@ -53,7 +53,7 @@ class ProtCryoSparc3DHomogeneousRefine(ProtCryosparcBase, pwprot.ProtRefine3D):
     _devStatus = NEW
     _fscColumns = 6
     _className = "homo_refine_new"
-    _protCompatibility = [V3_0_0, V3_1_0, V3_2_0]
+    _protCompatibility = [V3_0_0, V3_1_0, V3_2_0, V3_3_0, V3_3_1]
 
     # --------------------------- DEFINE param functions ----------------------
     def _defineFileNames(self):

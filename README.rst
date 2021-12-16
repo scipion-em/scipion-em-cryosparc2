@@ -25,13 +25,14 @@ You will need to use `3.0.0 <https://scipion-em.github.io/docs/release-3.0.0/doc
 * **3D Non uniform Refinement(new)**: Apply non-uniform refinement to achieve higher resolution and map quality. Specially designed for small proteins and membrane proteins.
 * **3D Local Refinement(new)**  Refine a masked region within a consensus structure by allowing particle alignments to vary only slightly.
 * **Symmetry Expansion**: Duplicate particles around a point-group symmetry.
+* **Homogeneous Reconstruction**: Reconstruct half-maps from input particles with alignments
 
-**Plugin Versions**
-===================
+**Latest plugin version**
+=========================
 
-**v3.2.9**
+**v3.3.1**
 ----------
-* **new**      : Compatibility with cryoSPARC v3.2
+* **new**      : Compatibility with cryoSPARC v3.3.1
 
 
 

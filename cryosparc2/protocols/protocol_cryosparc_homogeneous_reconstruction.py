@@ -54,7 +54,7 @@ class ProtCryoSparcHomogeneousReconstruct(ProtCryosparcBase):
     _label = 'homogeneous reconstruction'
     _className = "homo_reconstruct"
     _fscColumns = 6
-    _protCompatibility = [V3_0_0, V3_1_0, V3_2_0]
+    _protCompatibility = [V3_0_0, V3_1_0, V3_2_0, V3_3_0, V3_3_1]
 
     def _initialize(self):
         self._defineFileNames()

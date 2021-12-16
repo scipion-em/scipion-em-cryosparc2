@@ -247,6 +247,7 @@ class ProtCryoSparc3DClassification(ProtCryosparcBase):
 
     def _importVolume(self):
         self.importVolumes = CsvList()
+        self._initializeVolumeSuffix()
         for vol in self.vols:
             self.vol_fn = os.path.join(os.getcwd(),
                                        convertBinaryVol(
@@ -258,7 +259,7 @@ class ProtCryoSparc3DClassification(ProtCryosparcBase):
             self.currenJob.set(self.importVolume.get())
 
     def processStep(self):
-        self.volumes = [vol + '.imported_volume.map' for vol in self.importVolumes]
+        self.volumes = [vol + self.outputVolumeSuffix for vol in self.importVolumes]
         print(pwutils.yellowStr("3D Classification started..."), flush=True)
         self.do3DClasification()
 

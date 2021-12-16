@@ -42,7 +42,7 @@ class Plugin(em.Plugin):
     _pathVars = [CRYOSPARC_HOME]
     _supportedVersions = [V2_5_0, V2_8_0, V2_9_0, V2_11_0, V2_12_0, V2_12_2,
                           V2_12_4, V2_13_0, V2_13_2, V2_14_0, V2_14_2, V2_15_0,
-                          V3_0_0, V3_0_1, V3_1_0, V3_2_0]
+                          V3_0_0, V3_0_1, V3_1_0, V3_2_0, V3_3_0, V3_3_1]
 
     @classmethod
     def _defineVariables(cls):
