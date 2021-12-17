@@ -34,7 +34,7 @@ import pyworkflow.object as pwobj
 import pyworkflow.utils as pwutils
 from pwem.objects import FSC
 
-from ..constants import V3_0_0
+from ..constants import V3_0_0, V3_3_1
 from ..convert import convertBinaryVol, writeSetOfParticles, ImageHandler
 from ..utils import (getProjectPath, createEmptyProject,
                      createEmptyWorkSpace, getProjectName,
@@ -186,7 +186,7 @@ class ProtCryosparcBase(pw.EMProtocol):
         self.outputMaskSuffix = '.imported_mask.map'
         self.outputVolumeHalf_A = '.imported_volume.map_half_A'
         self.outputVolumeHalf_B = '.imported_volume.map_half_B'
-        if cryosparcVersion >= parse_version(V3_0_0):
+        if cryosparcVersion >= parse_version(V3_3_1):
             self.outputVolumeSuffix = '.imported_volume_1.map'
             self.outputMaskSuffix = '.imported_mask_1.map'
             self.outputVolumeHalf_A = '.imported_volume_1.map_half_A'
