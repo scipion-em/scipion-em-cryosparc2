@@ -198,7 +198,7 @@ class ProtCryosparcBase(pw.EMProtocol):
         """
         cryosparcVersion = parse_version(getCryosparcVersion())
         self.outputMaskSuffix = '.imported_mask.map'
-        if cryosparcVersion >= parse_version(V3_0_0):
+        if cryosparcVersion >= parse_version(V3_3_1):
             self.outputMaskSuffix = '.imported_mask_1.map'
 
     def _importVolume(self):
