@@ -861,6 +861,45 @@ class TestCryosparcLocalRefine(TestCryosparcBase):
         _checkAsserts(cryosparcProtGpu)
 
 
+class TestCryosparcHomogeneousReconstruction(TestCryosparcBase):
+
+    @classmethod
+    def setUpClass(cls):
+        setupTestProject(cls)
+        setupTestProject(cls)
+        dataProject = 'grigorieff'
+        dataset = DataSet.getDataSet(dataProject)
+        TestCryosparcBase.setData()
+        cls.protImportPart = cls.runImportParticleCryoSPARC(cls.partFn2)
+        cls.protImportVol = cls.runImportVolumesCryoSPARC(cls.volFn)
+        cls.protXmippCreate3DMask = cls.runCreate3DMask(cls.protImportVol.outputVolume)
+
+    def testCryosparcHomogeneousReconstruction(self):
+        def _runCryosparctestHomogeneousReconstruction(label=''):
+
+            prot3DRefinement = self.newProtocol(ProtCryoSparcRefine3D)
+            prot3DRefinement.inputParticles.set(self.protImportPart.outputParticles)
+            prot3DRefinement.referenceVolume.set(self.protImportVol.outputVolume)
+            prot3DRefinement.symmetryGroup.set(SYM_CYCLIC)
+            prot3DRefinement.symmetryOrder.set(1)
+            prot3DRefinement.compute_use_ssd.set(False)
+            self.launchProtocol(prot3DRefinement)
+
+            protHomogeneousReconst = self.newProtocol(ProtCryoSparcHomogeneousReconstruct)
+            protHomogeneousReconst.inputParticles.set(prot3DRefinement.outputParticles)
+            protHomogeneousReconst.refMask.set(self.protXmippCreate3DMask.outputMask)
+            self.launchProtocol(protHomogeneousReconst)
+
+            return protHomogeneousReconst
+
+        def _checkAsserts(cryosparcProt):
+            self.assertIsNotNone(cryosparcProt.outputParticles,
+                                 "There was a problem with Cryosparc subtract projection")
+
+        cryosparcProtGpu = _runCryosparctestHomogeneousReconstruction(label="Cryosparc Homogeneous Reconstruction")
+        _checkAsserts(cryosparcProtGpu)
+
+
 
 
 

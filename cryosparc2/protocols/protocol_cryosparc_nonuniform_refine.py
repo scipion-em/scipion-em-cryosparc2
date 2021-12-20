@@ -25,7 +25,7 @@
 # *
 # **************************************************************************
 
-import pyworkflow.utils as pwutils
+from pyworkflow.object import String
 from pyworkflow.protocol.params import (FloatParam, LEVEL_ADVANCED, Positive,
                                         IntParam, BooleanParam, EnumParam,
                                         StringParam)
@@ -221,14 +221,14 @@ class ProtCryoSparcNonUniformRefine3D(ProtCryoSparcRefine3D):
         """
         :return:
         """
-        if self.mask is not None:
-            input_group_conect = {"particles": str(self.par),
-                                  "volume": str(self.vol),
-                                  "mask": str(self.mask)}
+        if self.mask.get() is not None:
+            input_group_connect = {"particles": self.particles.get(),
+                                   "volume": self.volume.get(),
+                                   "mask": self.mask.get()}
         else:
-            input_group_conect = {"particles": str(self.par),
-                                  "volume": str(self.vol)}
-        # {'particles' : 'JXX.imported_particles' }
+            input_group_connect = {"particles": self.particles.get(),
+                                   "volume": self.volume.get()}
+
         params = {}
 
         for paramName in self._paramsName:
@@ -262,21 +262,21 @@ class ProtCryoSparcNonUniformRefine3D(ProtCryoSparcRefine3D):
         except Exception:
             gpusToUse = False
 
-        self.runRefine = enqueueJob(self._className, self.projectName.get(),
-                              self.workSpaceName.get(),
-                              str(params).replace('\'', '"'),
-                              str(input_group_conect).replace('\'', '"'),
-                              self.lane, gpusToUse)
+        runRefineJob = enqueueJob(self._className, self.projectName.get(),
+                                    self.workSpaceName.get(),
+                                    str(params).replace('\'', '"'),
+                                    str(input_group_connect).replace('\'', '"'),
+                                    self.lane, gpusToUse)
 
-        self.currenJob.set(self.runRefine.get())
+        self.runRefine = String(runRefineJob.get())
+        self.currenJob.set(runRefineJob.get())
         self._store(self)
 
         waitForCryosparc(self.projectName.get(), self.runRefine.get(),
                          "An error occurred in the Refinement process. "
                          "Please, go to cryosPARC software for more "
                          "details.")
-        self.clearIntResults = clearIntermediateResults(self.projectName.get(),
-                                                        self.runRefine.get())
+        clearIntermediateResults(self.projectName.get(), self.runRefine.get())
 
 
 

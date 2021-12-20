@@ -31,6 +31,7 @@ from pwem.objects import SetOfParticles
 
 import pyworkflow.utils as pwutils
 from pyworkflow import NEW
+from pyworkflow.object import String
 from pyworkflow.protocol.params import (PointerParam, FloatParam,
                                         IntParam)
 
@@ -102,9 +103,9 @@ class ProtCryoSparcSymmetryExpansion(ProtCryosparcBase):
         self._createFilenameTemplates()
         self._defineParamsName()
         self._initializeCryosparcProject()
-        self._insertFunctionStep("convertInputStep")
-        self._insertFunctionStep('processStep')
-        self._insertFunctionStep('createOutputStep')
+        self._insertFunctionStep(self.convertInputStep)
+        self._insertFunctionStep(self.processStep)
+        self._insertFunctionStep(self.createOutputStep)
 
     # --------------------------- STEPS functions ------------------------------
 
@@ -180,10 +181,9 @@ class ProtCryoSparcSymmetryExpansion(ProtCryosparcBase):
 
     def doSymmetryExpansion(self):
         """
-        :return:
+        Launch a symmetry expansion job
         """
-        input_group_conect = {"particles": str(self.par)}
-        # {'particles' : 'JXX.imported_particles' }
+        input_group_connect = {"particles": self.particles.get()}
         params = {}
 
         for paramName in self._paramsName:
@@ -204,12 +204,13 @@ class ProtCryoSparcSymmetryExpansion(ProtCryosparcBase):
         except Exception:
             gpusToUse = False
 
-        self.runSymExp = enqueueJob(self._className, self.projectName.get(),
-                                  self.workSpaceName.get(),
-                                  str(params).replace('\'', '"'),
-                                  str(input_group_conect).replace('\'', '"'),
-                                  self.lane, gpusToUse)
+        runSymExpJob = enqueueJob(self._className, self.projectName.get(),
+                                    self.workSpaceName.get(),
+                                    str(params).replace('\'', '"'),
+                                    str(input_group_connect).replace('\'', '"'),
+                                    self.lane, gpusToUse)
 
+        self.runSymExp = String(runSymExpJob.get())
         self.currenJob.set(self.runSymExp.get())
         self._store(self)
 
@@ -217,6 +218,5 @@ class ProtCryoSparcSymmetryExpansion(ProtCryosparcBase):
                          "An error occurred in the particles subtraction process. "
                          "Please, go to cryosPARC software for more "
                          "details.")
-        self.clearIntResults = clearIntermediateResults(self.projectName.get(),
-                                                        self.runSymExp.get())
+        clearIntermediateResults(self.projectName.get(), self.runSymExp.get())
 

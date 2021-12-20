@@ -27,19 +27,21 @@
 import os
 import ast
 import requests
+from pkg_resources import parse_version
 
 import pwem.protocols as pw
 import pyworkflow.object as pwobj
 import pyworkflow.utils as pwutils
 from pwem.objects import FSC
 
+from ..constants import V3_0_0, V3_3_1
 from ..convert import convertBinaryVol, writeSetOfParticles, ImageHandler
 from ..utils import (getProjectPath, createEmptyProject,
                      createEmptyWorkSpace, getProjectName,
                      getCryosparcProjectsDir, createProjectDir,
                      doImportParticlesStar, doImportVolumes, killJob, clearJob,
                      get_job_streamlog, getSystemInfo, getJobStatus,
-                     STOP_STATUSES)
+                     STOP_STATUSES, getCryosparcVersion)
 
 
 class ProtCryosparcBase(pw.EMProtocol):
@@ -104,7 +106,8 @@ class ProtCryosparcBase(pw.EMProtocol):
         if mask is not None:
             self._importMask()
         else:
-            self.mask = None
+            self.mask = pwobj.String()
+        self._store(self)
 
     def _getScaledAveragesFile(self, csAveragesFile, force=False):
 
@@ -160,7 +163,9 @@ class ProtCryosparcBase(pw.EMProtocol):
         part.setFileName(newFileName)
 
     def _getInputParticles(self):
-        return self.inputParticles.get()
+        if self.hasAttribute('inputParticles'):
+            return self.inputParticles.get()
+        return None
 
     def _getInputVolume(self):
         if self.hasAttribute('refVolume'):
@@ -172,39 +177,68 @@ class ProtCryosparcBase(pw.EMProtocol):
             return self.refMask.get()
         return None
 
+    def _initializeVolumeSuffix(self):
+        """
+        Create a output volume suffix depend of the CS version
+        """
+        cryosparcVersion = parse_version(getCryosparcVersion())
+        self.outputVolumeSuffix = '.imported_volume.map'
+        self.outputMaskSuffix = '.imported_mask.map'
+        self.outputVolumeHalf_A = '.imported_volume.map_half_A'
+        self.outputVolumeHalf_B = '.imported_volume.map_half_B'
+        if cryosparcVersion >= parse_version(V3_3_1):
+            self.outputVolumeSuffix = '.imported_volume_1.map'
+            self.outputMaskSuffix = '.imported_mask_1.map'
+            self.outputVolumeHalf_A = '.imported_volume_1.map_half_A'
+            self.outputVolumeHalf_B = '.imported_volume_1.map_half_B'
+
+    def _initializeMaskSuffix(self):
+        """
+        Create a output mask suffix depend of the CS version
+        """
+        cryosparcVersion = parse_version(getCryosparcVersion())
+        self.outputMaskSuffix = '.imported_mask.map'
+        if cryosparcVersion >= parse_version(V3_3_1):
+            self.outputMaskSuffix = '.imported_mask_1.map'
+
     def _importVolume(self):
         vol = self._getInputVolume()
-        self.vol_fn = os.path.join(os.getcwd(),
-                                   convertBinaryVol(vol, self._getTmpPath()))
-        self.importVolume = doImportVolumes(self, self.vol_fn, vol, 'map',
-                                            'Importing volume...')
-        self.currenJob.set(self.importVolume.get())
-        self._store(self)
+        self._initializeVolumeSuffix()
+        vol_fn = os.path.join(os.getcwd(), convertBinaryVol(vol, self._getTmpPath()))
+        importVolumeJob = doImportVolumes(self, vol_fn, vol, 'map', 'Importing volume...')
+        self.volume = pwobj.String(str(importVolumeJob.get()) + self.outputVolumeSuffix)
+
+        if vol.hasHalfMaps():
+            halfMaps = vol.getHalfMaps().split(",")
+            map_half_A_fn = os.path.abspath(halfMaps[0])
+            importVolumeHalfAJob = doImportVolumes(self, map_half_A_fn, vol,
+                                                   'map_half_A', 'Importing half volume A...')
+            self.importVolumeHalfA = pwobj.String(str(importVolumeHalfAJob.get()) + self.outputVolumeHalf_A)
+
+            map_half_B_fn = os.path.abspath(halfMaps[1])
+            importVolumeHalfBJob = doImportVolumes(self, map_half_B_fn, vol,
+                                                   'map_half_B', 'Importing half volume B...')
+            self.importVolumeHalfB = pwobj.String(str(importVolumeHalfBJob.get()) + self.outputVolumeHalf_B)
+
+        self.currenJob.set(importVolumeJob.get())
 
     def _importMask(self):
-        self.maskFn = os.path.join(os.getcwd(),
-                                   convertBinaryVol(
-                                       self._getInputMask(),
-                                       self._getTmpPath()))
+        self._initializeMaskSuffix()
+        maskFn = os.path.join(os.getcwd(), convertBinaryVol(self._getInputMask(),
+                                                            self._getTmpPath()))
 
-        self.importMask = doImportVolumes(self, self.maskFn,
-                                          self._getInputMask(), 'mask',
-                                          'Importing mask... ')
-        self.currenJob.set(self.importMask.get())
-        self._store(self)
-        self.mask = self.importMask.get() + '.imported_mask.mask'
+        importMaskJob = doImportVolumes(self, maskFn, self._getInputMask(),
+                                        'mask', 'Importing mask... ')
+        self.currenJob.set(importMaskJob.get())
+        self.mask = pwobj.String(str(importMaskJob.get()) + self.outputMaskSuffix)
 
     def _importParticles(self):
 
         # import_particles_star
-        self.importedParticles = doImportParticlesStar(self)
-        self.currenJob = pwobj.String(self.importedParticles.get())
-        self._store(self)
-
-        self.currenJob = pwobj.String(self.importedParticles.get())
-        self._store(self)
-        self.par = pwobj.String(self.importedParticles.get() +
-                                '.imported_particles')
+        importedParticlesJob = doImportParticlesStar(self)
+        self.currenJob = pwobj.String(str(importedParticlesJob.get()))
+        self.particles = pwobj.String(str(importedParticlesJob.get()) +
+                                      '.imported_particles')
 
     def setAborted(self):
         """ Set the status to aborted and updated the endTime. """
@@ -264,9 +298,6 @@ class ProtCryosparcBase(pw.EMProtocol):
                 if z.startswith('FSC Iteration') or z.startswith('FSC iIteration'):
                     idd = y['imgfiles'][2]['fileid']
                     itera = z.split(',')[0][-3:]
-                elif 'Using Filter Radius' in z:
-                    nomRes = str(y['text']).split('(')[1].split(')')[0].replace('A', 'Å')
-                    self.mapResolution = pwobj.String(nomRes)
                     self._store(self)
                 elif 'Estimated Bfactor' in z:
                     estBFactor = str(y['text']).split(':')[1].replace('\n',

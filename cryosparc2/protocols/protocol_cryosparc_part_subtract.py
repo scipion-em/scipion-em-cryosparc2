@@ -30,6 +30,7 @@ from pwem import ALIGN_PROJ
 from pwem.protocols import ProtOperateParticles
 
 import pyworkflow.utils as pwutils
+from pyworkflow.object import String
 from pyworkflow.protocol.params import (PointerParam, FloatParam,
                                         LEVEL_ADVANCED, Positive, BooleanParam,
                                         IntParam)
@@ -145,15 +146,12 @@ class ProtCryoSparcSubtract(ProtCryosparcBase, ProtOperateParticles):
         self._createFilenameTemplates()
         self._defineParamsName()
         self._initializeCryosparcProject()
-        self._insertFunctionStep("convertInputStep")
-        self._insertFunctionStep('processStep')
-        self._insertFunctionStep('createOutputStep')
+        self._insertFunctionStep(self.convertInputStep)
+        self._insertFunctionStep(self.processStep)
+        self._insertFunctionStep(self.createOutputStep)
 
     # --------------------------- STEPS functions ------------------------------
     def processStep(self):
-        self.vol = self.importVolume.get() + '.imported_volume.map'
-        self.mask = self.importMask.get() + '.imported_mask.mask'
-
         print(pwutils.yellowStr("Particles Subtraction started..."), flush=True)
         self.doPartStract()
 
@@ -257,10 +255,15 @@ class ProtCryoSparcSubtract(ProtCryosparcBase, ProtOperateParticles):
         """
         :return:
         """
-        input_group_conect = {"particles": str(self.par),
-                              "volume": str(self.vol),
-                              "mask": str(self.mask)}
-        # {'particles' : 'JXX.imported_particles' }
+        input_group_connect = {"particles": self.particles.get(),
+                               "volume": self.volume.get(),
+                               "mask": self.mask.get()}
+
+        input_result_connect = None
+        if self._getInputVolume().hasHalfMaps():
+            input_result_connect = {"volume.0.map_half_A": self.importVolumeHalfA.get(),
+                                    "volume.0.map_half_B": self.importVolumeHalfB.get()}
+
         params = {}
 
         for paramName in self._paramsName:
@@ -280,12 +283,14 @@ class ProtCryoSparcSubtract(ProtCryosparcBase, ProtOperateParticles):
         except Exception:
             gpusToUse = False
 
-        self.runPartStract = enqueueJob(self._className, self.projectName.get(),
-                                  self.workSpaceName.get(),
-                                  str(params).replace('\'', '"'),
-                                  str(input_group_conect).replace('\'', '"'),
-                                  self.lane, gpusToUse)
+        runPartStractJob = enqueueJob(self._className, self.projectName.get(),
+                                        self.workSpaceName.get(),
+                                        str(params).replace('\'', '"'),
+                                        str(input_group_connect).replace('\'', '"'),
+                                        self.lane, gpusToUse,
+                                        result_connect=input_result_connect)
 
+        self.runPartStract = String(runPartStractJob.get())
         self.currenJob.set(self.runPartStract.get())
         self._store(self)
 
@@ -293,5 +298,4 @@ class ProtCryoSparcSubtract(ProtCryosparcBase, ProtOperateParticles):
                          "An error occurred in the particles subtraction process. "
                          "Please, go to cryosPARC software for more "
                          "details.")
-        self.clearIntResults = clearIntermediateResults(self.projectName.get(),
-                                                        self.runPartStract.get())
+        clearIntermediateResults(self.projectName.get(), self.runPartStract.get())

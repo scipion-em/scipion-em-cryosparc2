@@ -119,16 +119,9 @@ class ProtCryoSparcSharppening(ProtCryosparcBase, ProtAnalysis3D):
         self._insertFunctionStep(self.processStep)
         self._insertFunctionStep(self.createOutputStep)
 
-    def convertInputStep(self):
-        self.currenJob = String()
-        volume = self._getInputVolume()
-        if volume is not None:
-            self._importVolume()
-
     # --------------------------- STEPS functions ------------------------------
 
     def processStep(self):
-        self.vol = self.importVolume.get() + '.imported_volume.map'
         print(pwutils.yellowStr("Sharppening started..."), flush=True)
         self.doSharppening()
 
@@ -196,7 +189,13 @@ class ProtCryoSparcSharppening(ProtCryosparcBase, ProtAnalysis3D):
 
     def doSharppening(self):
 
-        input_group_conect = {"volume": str(self.vol)}
+        input_group_connect = {"volume": self.volume.get()}
+
+        input_result_connect = None
+        if self._getInputVolume().hasHalfMaps():
+            input_result_connect = {"volume.0.map_half_A": self.importVolumeHalfA.get(),
+                                    "volume.0.map_half_B": self.importVolumeHalfB.get()}
+
         params = {}
 
         for paramName in self._paramsName:
@@ -209,18 +208,16 @@ class ProtCryoSparcSharppening(ProtCryosparcBase, ProtAnalysis3D):
         except Exception:
             gpusToUse = False
 
-        self.runSharppening = enqueueJob(self._className,
+        runSharppeningJob = enqueueJob(self._className,
                                          self.projectName.get(),
                                          self.workSpaceName.get(),
-                                         str(params).replace('\'',
-                                                             '"'),
-                                         str(
-                                             input_group_conect).replace(
-                                             '\'',
-                                             '"'),
-                                         self.lane, gpusToUse)
+                                         str(params).replace('\'', '"'),
+                                         str(input_group_connect).replace('\'', '"'),
+                                         self.lane, gpusToUse,
+                                         result_connect=input_result_connect)
 
-        self.currenJob.set(self.runSharppening.get())
+        self.runSharppening = String(runSharppeningJob.get())
+        self.currenJob.set(runSharppeningJob.get())
         self._store(self)
 
         waitForCryosparc(self.projectName.get(),
@@ -228,5 +225,4 @@ class ProtCryoSparcSharppening(ProtCryosparcBase, ProtAnalysis3D):
                          "An error occurred in the particles subtraction process. "
                          "Please, go to cryosPARC software for more "
                          "details.")
-        self.clearIntResults = clearIntermediateResults(self.projectName.get(),
-                                                        self.runSharppening.get())
+        clearIntermediateResults(self.projectName.get(), self.runSharppening.get())

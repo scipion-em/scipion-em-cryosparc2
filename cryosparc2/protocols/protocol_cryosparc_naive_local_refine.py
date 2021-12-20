@@ -30,6 +30,7 @@ from pwem import ALIGN_PROJ
 from pwem.protocols import ProtOperateParticles
 
 import pyworkflow.utils as pwutils
+from pyworkflow.object import String
 from pyworkflow.protocol.params import (PointerParam, FloatParam,
                                         LEVEL_ADVANCED, IntParam, Positive,
                                         BooleanParam, EnumParam)
@@ -292,15 +293,12 @@ class ProtCryoSparcNaiveLocalRefine(ProtCryosparcBase, ProtOperateParticles):
         self._defineFileNames()
         self._defineParamsName()
         self._initializeCryosparcProject()
-        self._insertFunctionStep("convertInputStep")
-        self._insertFunctionStep('processStep')
-        self._insertFunctionStep('createOutputStep')
+        self._insertFunctionStep(self.convertInputStep)
+        self._insertFunctionStep(self.processStep)
+        self._insertFunctionStep(self.createOutputStep)
 
     # --------------------------- STEPS functions ------------------------------
     def processStep(self):
-        self.vol = self.importVolume.get() + '.imported_volume.map'
-        self.mask = self.importMask.get() + '.imported_mask.mask'
-
         print(pwutils.yellowStr("Local Refinement started..."), flush=True)
         self.doLocalRefine()
 
@@ -396,7 +394,7 @@ class ProtCryoSparcNaiveLocalRefine(ProtCryosparcBase, ProtOperateParticles):
                 summary.append('\nEstimated Bfactor: %s' % self.estBFactor.get())
         return summary
 
-    # ---------------Utils Functions-----------------------------------------------------------
+    # ---------------Utils Functions-------------------------------------------
 
     def _fillDataFromIter(self, imgSet):
         outImgsFn = 'particles@' + self._getFileName('out_particles')
@@ -441,14 +439,19 @@ class ProtCryoSparcNaiveLocalRefine(ProtCryosparcBase, ProtOperateParticles):
         """
         :return:
         """
-        if self.mask is not None:
-            input_group_conect = {"particles": str(self.par),
-                                  "volume": str(self.vol),
-                                  "mask": str(self.mask)}
+        if self.mask.get() is not None:
+            input_group_connect = {"particles": self.particles.get(),
+                                   "volume": self.volume.get(),
+                                   "mask": self.mask.get()}
         else:
-            input_group_conect = {"particles": str(self.par),
-                                  "volume": str(self.vol)}
-        # {'particles' : 'JXX.imported_particles' }
+            input_group_connect = {"particles": self.particles.get(),
+                                   "volume": self.volume.get()}
+
+        input_result_connect = None
+        if self._getInputVolume().hasHalfMaps():
+            input_result_connect = {"volume.0.map_half_A": self.importVolumeHalfA.get(),
+                                    "volume.0.map_half_B": self.importVolumeHalfB.get()}
+
         params = {}
 
         for paramName in self._paramsName:
@@ -470,19 +473,19 @@ class ProtCryoSparcNaiveLocalRefine(ProtCryosparcBase, ProtOperateParticles):
         except Exception:
             gpusToUse = False
 
-        self.runLocalRefinement = enqueueJob(self._className, self.projectName.get(),
+        runLocalRefinementJob = enqueueJob(self._className, self.projectName.get(),
                                              self.workSpaceName.get(),
                                              str(params).replace('\'', '"'),
-                                             str(input_group_conect).replace('\'',
-                                                                             '"'),
-                                             self.lane, gpusToUse)
+                                             str(input_group_connect).replace('\'', '"'),
+                                             self.lane, gpusToUse,
+                                             result_connect=input_result_connect)
 
-        self.currenJob.set(self.runLocalRefinement.get())
+        self.runLocalRefinement = String(runLocalRefinementJob.get())
+        self.currenJob.set(runLocalRefinementJob.get())
         self._store(self)
 
         waitForCryosparc(self.projectName.get(), self.runLocalRefinement.get(),
                          "An error occurred in the local refinement process. "
                          "Please, go to cryosPARC software for more "
                          "details.")
-        self.clearIntResults = clearIntermediateResults(self.projectName.get(),
-                                                        self.runLocalRefinement.get())
+        clearIntermediateResults(self.projectName.get(), self.runLocalRefinement.get())

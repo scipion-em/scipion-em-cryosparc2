@@ -352,7 +352,7 @@ def doJob(jobType, projectName, workSpaceName, params, input_group_connect):
 
 
 def enqueueJob(jobType, projectName, workSpaceName, params, input_group_connect,
-               lane, gpusToUse=False, group_connect=None):
+               lane, gpusToUse=False, group_connect=None, result_connect=None):
     """
     make_job(job_type, project_uid, workspace_uid, user_id,
              created_by_job_uid=None, params={}, input_group_connects={})
@@ -387,13 +387,20 @@ def enqueueJob(jobType, projectName, workSpaceName, params, input_group_connect,
     # Extract the jobId
     jobId = String(cmdOutput.split()[-1])
 
-    if group_connect:
+    if group_connect is not None:
         for key, valuesList in group_connect.items():
             for value in valuesList:
                 job_connect_group = (getCryosparcProgram() +
                                      ' %sjob_connect_group("%s", "%s", "%s")%s' %
                                      ("'", projectName, value, (str(jobId) + "." + key), "'"))
                 runCmd(job_connect_group, printCmd=False)
+
+    if result_connect is not None:
+        for key, value in result_connect.items():
+            job_connect_group = (getCryosparcProgram() +
+                                 ' %sjob_connect_result("%s", "%s", "%s")%s' %
+                                 ("'", projectName, value, (str(jobId) + "." + key), "'"))
+            runCmd(job_connect_group, printCmd=True)
 
     print(pwutils.greenStr("Got %s for JobId" % jobId), flush=True)
 

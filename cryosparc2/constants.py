@@ -59,6 +59,8 @@ V3_0_0 = 'v3.0.0'
 V3_0_1 = 'v3.0.1'
 V3_1_0 = 'v3.1.0'
 V3_2_0 = 'v3.2.0'
+V3_3_0 = 'v3.3.0'
+V3_3_1 = 'v3.3.1'
 
 # Symmetry dict
 CS_SYM_NAME = dict()
@@ -96,8 +98,8 @@ ANGDIST_CHIMERA = 1
 
 
 # VOLUME_SLICES = 0
-VOLUME_CHIMERA = 0
-VOLUME_CRYOSPARC = 1
+VOLUME_CHIMERA = 1
+VOLUME_CRYOSPARC = 0
 DATA_VIEWER = 0
 
 FSC_UNMASK = 0

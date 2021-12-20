@@ -34,6 +34,7 @@ from pwem.protocols import ProtOperateParticles
 
 import pyworkflow.utils as pwutils
 from pyworkflow import BETA
+from pyworkflow.object import String
 from pyworkflow.protocol.params import (PointerParam, FloatParam, IntParam,
                                         Positive, BooleanParam, EnumParam)
 from pwem.objects import Volume
@@ -55,7 +56,7 @@ class ProtCryoSparcLocalRefine(ProtCryosparcBase, ProtOperateParticles):
         """
     _label = 'local refinement'
     _devStatus = BETA
-    _protCompatibility = [V3_0_0, V3_1_0, V3_2_0]
+    _protCompatibility = [V3_0_0, V3_1_0, V3_2_0, V3_3_0, V3_3_1]
     _className = "new_local_refine"
     _fscColumns = 6
 
@@ -208,15 +209,12 @@ class ProtCryoSparcLocalRefine(ProtCryosparcBase, ProtOperateParticles):
         self._defineFileNames()
         self._defineParamsName()
         self._initializeCryosparcProject()
-        self._insertFunctionStep("convertInputStep")
-        self._insertFunctionStep('processStep')
-        self._insertFunctionStep('createOutputStep')
+        self._insertFunctionStep(self.convertInputStep)
+        self._insertFunctionStep(self.processStep)
+        self._insertFunctionStep(self.createOutputStep)
 
     # --------------------------- STEPS functions ------------------------------
     def processStep(self):
-        self.vol = self.importVolume.get() + '.imported_volume.map'
-        self.mask = self.importMask.get() + '.imported_mask.mask'
-
         print(pwutils.yellowStr("Local Refinement started..."), flush=True)
         self.doLocalRefine()
 
@@ -369,14 +367,14 @@ class ProtCryoSparcLocalRefine(ProtCryosparcBase, ProtOperateParticles):
         """
         :return:
         """
-        if self.mask is not None:
-            input_group_conect = {"particles": str(self.par),
-                                  "volume": str(self.vol),
-                                  "mask": str(self.mask)}
+        if self.mask.get() is not None:
+            input_group_connect = {"particles": self.particles.get(),
+                                  "volume": self.volume.get(),
+                                  "mask": self.mask.get()}
         else:
-            input_group_conect = {"particles": str(self.par),
-                                  "volume": str(self.vol)}
-        # {'particles' : 'JXX.imported_particles' }
+            input_group_connect = {"particles": self.particles.get(),
+                                  "volume": self.volume.get()}
+
         params = {}
 
         for paramName in self._paramsName:
@@ -416,19 +414,19 @@ class ProtCryoSparcLocalRefine(ProtCryosparcBase, ProtOperateParticles):
         except Exception:
             gpusToUse = False
 
-        self.runLocalRefinement = enqueueJob(self._className, self.projectName.get(),
+        runLocalRefinementJob = enqueueJob(self._className, self.projectName.get(),
                                              self.workSpaceName.get(),
                                              str(params).replace('\'', '"'),
-                                             str(input_group_conect).replace('\'',
+                                             str(input_group_connect).replace('\'',
                                                                              '"'),
                                              self.lane, gpusToUse)
 
-        self.currenJob.set(self.runLocalRefinement.get())
+        self.runLocalRefinement = String(runLocalRefinementJob.get())
+        self.currenJob.set(runLocalRefinementJob.get())
         self._store(self)
 
         waitForCryosparc(self.projectName.get(), self.runLocalRefinement.get(),
                          "An error occurred in the local refinement process. "
                          "Please, go to cryosPARC software for more "
                          "details.")
-        self.clearIntResults = clearIntermediateResults(self.projectName.get(),
-                                                        self.runLocalRefinement.get())
+        clearIntermediateResults(self.projectName.get(), self.runLocalRefinement.get())
