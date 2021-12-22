@@ -53,9 +53,8 @@ class ProtCryoSparc3DClassification(ProtCryosparcBase):
     differences between structures which may not be obvious at low resolutions,
     and also to re-classify particles to aid in sorting.
     """
-    _label = '3D classification'
+    _label = '3D Heterogeneous Refinement'
     _className = "hetero_refine"
-    _devStatus = BETA
 
     def _initialize(self):
         self._defineFileNames()
@@ -405,10 +404,16 @@ class ProtCryoSparc3DClassification(ProtCryosparcBase):
             validateMsgs = gpusValidate(self.getGpuList(),
                                         checkSingleGPU=True)
             if not validateMsgs:
-                volumes = self._getInputVolume()
-                if volumes is not None and len(volumes) < 2:
-                    validateMsgs.append("The number of initial volumes must "
-                                        "be equal or greater than 2")
+                particles = self._getInputParticles()
+                if not particles.hasCTF():
+                    validateMsgs.append(
+                        "The Particles has not associated a "
+                        "CTF model")
+                if not validateMsgs:
+                    volumes = self._getInputVolume()
+                    if volumes is not None and len(volumes) < 2:
+                        validateMsgs.append("The number of initial volumes must "
+                                            "be equal or greater than 2")
         return validateMsgs
 
     def _summary(self):

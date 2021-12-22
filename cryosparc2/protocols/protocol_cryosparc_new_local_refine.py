@@ -33,7 +33,7 @@ from pwem import ALIGN_PROJ
 from pwem.protocols import ProtOperateParticles
 
 import pyworkflow.utils as pwutils
-from pyworkflow import BETA
+from pyworkflow import NEW
 from pyworkflow.object import String
 from pyworkflow.protocol.params import (PointerParam, FloatParam, IntParam,
                                         Positive, BooleanParam, EnumParam)
@@ -55,7 +55,7 @@ class ProtCryoSparcLocalRefine(ProtCryosparcBase, ProtOperateParticles):
         Subtract projections of a masked volume from particles.
         """
     _label = 'local refinement'
-    _devStatus = BETA
+    _devStatus = NEW
     _protCompatibility = [V3_0_0, V3_1_0, V3_2_0, V3_3_0, V3_3_1]
     _className = "new_local_refine"
     _fscColumns = 6

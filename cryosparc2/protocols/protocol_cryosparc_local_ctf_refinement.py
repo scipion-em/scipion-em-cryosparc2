@@ -50,7 +50,6 @@ class ProtCryoSparcLocalCtfRefinement(ProtCryosparcBase, ProtParticles):
     against a given 3D reference structure.
     """
     _label = 'local ctf refinement'
-    _devStatus = BETA
     _className = "ctf_refine_local"
 
     def _initialize(self):

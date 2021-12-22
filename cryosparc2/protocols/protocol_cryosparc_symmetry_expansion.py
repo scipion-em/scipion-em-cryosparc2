@@ -47,7 +47,6 @@ class ProtCryoSparcSymmetryExpansion(ProtCryosparcBase):
     """
     _label = 'symmetry expansion'
     _className = "sym_expand"
-    _devStatus = NEW
 
     def _initialize(self):
         self._createFilenameTemplates()

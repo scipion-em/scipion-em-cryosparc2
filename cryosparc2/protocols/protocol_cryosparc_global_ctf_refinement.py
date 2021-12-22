@@ -51,7 +51,6 @@ class ProtCryoSparcGlobalCtfRefinement(ProtCryosparcBase, pwprot.ProtParticles):
     aberrations, against a given 3D reference
     """
     _label = 'global ctf refinement'
-    _devStatus = BETA
     _className = "ctf_refine_global"
 
     def _initialize(self):

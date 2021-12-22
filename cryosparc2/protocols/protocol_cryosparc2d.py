@@ -48,7 +48,7 @@ class ProtCryo2D(ProtCryosparcBase, pwprot.ProtClassify2D):
         and removal of junk particles. Also useful as a sanity check to
         investigate particle quality.
     """
-    _label = '2d classification'
+    _label = '2D classification'
     IS_2D = True
     _className = "class_2D"
     

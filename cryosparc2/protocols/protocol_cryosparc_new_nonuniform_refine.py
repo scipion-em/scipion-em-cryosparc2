@@ -43,7 +43,6 @@ class ProtCryoSparcNewNonUniformRefine3D(ProtCryoSparc3DHomogeneousRefine):
     """
     _label = '3D non-uniform refinement'
     _className = "nonuniform_refine_new"
-    _devStatus = NEW
 
     def _defineParams(self, form):
         ProtCryoSparc3DHomogeneousRefine._defineParams(self, form)

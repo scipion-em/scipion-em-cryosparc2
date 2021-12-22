@@ -50,7 +50,6 @@ class ProtCryoSparc3DHomogeneousRefine(ProtCryosparcBase, pwprot.ProtRefine3D):
         validate using the gold-standard FSC.
     """
     _label = '3D homogeneous refinement'
-    _devStatus = NEW
     _fscColumns = 6
     _className = "homo_refine_new"
     _protCompatibility = [V3_0_0, V3_1_0, V3_2_0, V3_3_0, V3_3_1]
@@ -432,6 +431,12 @@ class ProtCryoSparc3DHomogeneousRefine(ProtCryosparcBase, pwprot.ProtRefine3D):
             if [version for version in self._protCompatibility
                 if parse_version(version) >= parse_version(csVersion)]:
                 validateMsgs = gpusValidate(self.getGpuList())
+                if not validateMsgs:
+                    particles = self._getInputParticles()
+                    if not particles.hasCTF():
+                        validateMsgs.append(
+                            "The Particles has not associated a "
+                            "CTF model")
             else:
                 validateMsgs.append("The protocol is not compatible with the "
                                     "cryoSPARC version %s" % csVersion)
