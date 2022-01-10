@@ -27,7 +27,6 @@
 import os
 
 import pyworkflow.utils as pwutils
-from pyworkflow import BETA
 from pyworkflow.object import String
 from pyworkflow.protocol.params import (FloatParam, LEVEL_ADVANCED,
                                         PointerParam, MultiPointerParam,
@@ -259,7 +258,7 @@ class ProtCryoSparc3DClassification(ProtCryosparcBase):
 
     def processStep(self):
         self.volumes = [vol + self.outputVolumeSuffix for vol in self.importVolumes]
-        print(pwutils.yellowStr("3D Classification started..."), flush=True)
+        print(pwutils.yellowStr("3D Heterogeneous Refinement started..."), flush=True)
         self.do3DClasification()
 
     def createOutputStep(self):

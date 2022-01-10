@@ -25,7 +25,6 @@
 # *
 # **************************************************************************
 
-from pyworkflow import NEW
 from pyworkflow.protocol.params import (FloatParam, Positive, IntParam,
                                         BooleanParam, EnumParam)
 from .protocol_cryosparc_homogeneous_refine import ProtCryoSparc3DHomogeneousRefine

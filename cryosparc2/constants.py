@@ -88,6 +88,8 @@ REFINE_FULCRUM_LOCATION = ['mask_center',
 COMPUTE_FACILITY_CHOICES = ['GPU',
                             'CPU']
 
+CLASS_3D_INIT_MODE = ['simple', 'PCA', 'input']
+
 # Viewer constants
 LAST_ITER = 0
 ALL_ITERS = 1
