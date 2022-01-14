@@ -178,3 +178,14 @@ ALIGNMENT_DICT = OrderedDict([
     ("_rlnAngleTilt", md.RLN_ORIENT_TILT),
     ("_rlnAnglePsi", md.RLN_ORIENT_PSI),
 ])
+import enum
+
+
+class RELIONCOLUMNS(enum.Enum):
+    rlnOriginX = 'rlnOriginX'
+    rlnOriginY = 'rlnOriginY'
+    rlnAngleRot = 'rlnAngleRot'
+    rlnAnglePsi = 'rlnAnglePsi'
+    rlnOriginZ = 'rlnOriginZ'
+    rlnClassNumber = 'rlnClassNumber'
+    rlnImageName = 'rlnImageName'

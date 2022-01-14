@@ -26,6 +26,9 @@
 # *
 # **************************************************************************
 import os
+
+import emtable
+
 import pwem.protocols as pwprot
 from pwem import ALIGN_2D
 from pyworkflow.object import String
@@ -335,14 +338,16 @@ class ProtCryo2D(ProtCryosparcBase, pwprot.ProtClassify2D):
         self._classesInfo = {}  # store classes info, indexed by class id
 
         # mdClasses = md.MetaData(filename)
-        mdClasses = md.MetaData('%s@%s' % ('particles', filename))
+        mdFileName = '%s@%s' % ('particles', filename)
+        table = emtable.Table(fileName=filename)
 
-        for classNumber, row in enumerate(md.iterRows(mdClasses)):
-            index, fn = cryosparcToLocation(row.getValue('rlnImageName'))
+        for classNumber, row in enumerate(table.iterRows(mdFileName)):
+            index, fn = cryosparcToLocation(row.get(RELIONCOLUMNS.rlnImageName.value))
+
             # Store info indexed by id, we need to store the row.clone() since
             # the same reference is used for iteration
             scaledFile = self._getScaledAveragesFile(fn)
-            self._classesInfo[classNumber + 1] = (index, scaledFile, row.clone())
+            self._classesInfo[classNumber + 1] = (index, scaledFile, row)
         self._numClass = index
 
     def _fillClassesFromLevel(self, clsSet):
@@ -353,11 +358,10 @@ class ProtCryo2D(ProtCryosparcBase, pwprot.ProtClassify2D):
 
         clsSet.classifyItems(updateItemCallback=self._updateParticle,
                              updateClassCallback=self._updateClass,
-                             itemDataIterator=md.iterRows(xmpMd,
-                                                          sortByLabel=md.MDL_ITEM_ID))  # relion style
+                             itemDataIterator=emtable.Table.iterRows(xmpMd))  # relion style
 
     def _updateParticle(self, item, row):
-        item.setClassId(row.getValue(md.RLN_PARTICLE_CLASS))
+        item.setClassId(row.get(RELIONCOLUMNS.rlnClassNumber.value))
         item.setTransform(rowToAlignment(row, ALIGN_2D))
         
     def _updateClass(self, class2D):

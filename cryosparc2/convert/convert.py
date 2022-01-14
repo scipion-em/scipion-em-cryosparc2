@@ -411,19 +411,19 @@ def rowToAlignment(alignmentRow, alignType):
 
     is2D = alignType == ALIGN_2D
     inverseTransform = alignType == ALIGN_PROJ
-    if alignmentRow.containsAny(ALIGNMENT_DICT):
+    if alignmentRow.hasAllColumns(ALIGNMENT_DICT):
         alignment = Transform()
         angles = np.zeros(3)
         shifts = np.zeros(3)
-        shifts[0] = alignmentRow.getValue(md.RLN_ORIENT_ORIGIN_X, 0.)
-        shifts[1] = alignmentRow.getValue(md.RLN_ORIENT_ORIGIN_Y, 0.)
+        shifts[0] = alignmentRow.get(RELIONCOLUMNS.rlnOriginX.value, default=0.)
+        shifts[1] = alignmentRow.get(RELIONCOLUMNS.rlnOriginY.value, default=0.)
         if not is2D:
-            angles[0] = alignmentRow.getValue(md.RLN_ORIENT_ROT, 0.)
-            angles[1] = alignmentRow.getValue(md.RLN_ORIENT_TILT, 0.)
-            angles[2] = alignmentRow.getValue(md.RLN_ORIENT_PSI, 0.)
-            shifts[2] = alignmentRow.getValue(md.RLN_ORIENT_ORIGIN_Z, 0.)
+            angles[0] = alignmentRow.get(RELIONCOLUMNS.rlnAngleRot.value, default=0.)
+            angles[1] = alignmentRow.get(RELIONCOLUMNS.rlnAngleTilt.value, default=0.)
+            angles[2] = alignmentRow.get(RELIONCOLUMNS.rlnAnglePsi.value, default=0.)
+            shifts[2] = alignmentRow.get(RELIONCOLUMNS.rlnOriginZ.value, default=0.)
         else:
-            angles[2] = - alignmentRow.getValue(md.RLN_ORIENT_PSI, 0.)
+            angles[2] = - alignmentRow.get(RELIONCOLUMNS.rlnAnglePsi.value, default=0.)
         M = matrixFromGeometry(shifts, angles, inverseTransform)
         alignment.setMatrix(M)
     else:
