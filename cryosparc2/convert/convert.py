@@ -17,7 +17,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
+import emtable
 import numpy as np
 import os
 import argparse
@@ -203,7 +203,7 @@ def particleToRow(part, partRow, **kwargs):
     imageToRow(part, partRow, md.RLN_IMAGE_NAME, **kwargs)
 
 
-def imageToRow(img, imgRow, imgLabel=md.RLN_IMAGE_NAME, **kwargs):
+def imageToRow(img, imgRow, imgLabel=RELIONCOLUMNS.rlnImageName.value, **kwargs):
     # Provide a hook to be used if something is needed to be
     # done for special cases before converting image to row
     preprocessImageRow = kwargs.get('preprocessImageRow', None)
@@ -216,7 +216,7 @@ def imageToRow(img, imgRow, imgLabel=md.RLN_IMAGE_NAME, **kwargs):
     filesDict = kwargs.get('filesDict', {})
     filename = filesDict.get(fn, fn)
 
-    imgRow.setValue(imgLabel, locationToCryosparc(index, filename))
+    imgRow.set(imgLabel, locationToCryosparc(index, filename))
 
     if kwargs.get('writeCtf', True) and img.hasCTF():
         ctfModelToRow(img.getCTF(), imgRow)
@@ -254,7 +254,7 @@ def ctfModelToRow(ctfModel, ctfRow):
     phaseShift = ctfModel.getPhaseShift()
 
     if phaseShift is not None:
-        ctfRow.setValue(md.RLN_CTF_PHASESHIFT, phaseShift)
+        ctfRow.set(RELIONCOLUMNS.rlnPhaseShift.value, phaseShift)
 
     objectToRow(ctfModel, ctfRow, CTF_DICT, extraLabels=CTF_EXTRA_LABELS)
 
@@ -282,12 +282,12 @@ def alignmentToRow(alignment, alignmentRow, alignType):
     matrix = alignment.getMatrix()
     shifts, angles = geometryFromMatrix(matrix, inverseTransform)
 
-    alignmentRow.setValue(md.RLN_ORIENT_ORIGIN_X, shifts[0])
-    alignmentRow.setValue(md.RLN_ORIENT_ORIGIN_Y, shifts[1])
+    alignmentRow.set(RELIONCOLUMNS.rlnOriginX.value, shifts[0])
+    alignmentRow.set(RELIONCOLUMNS.rlnOriginY.value, shifts[1])
 
     if is2D:
         angle = angles[0] + angles[2]
-        alignmentRow.setValue(md.RLN_ORIENT_PSI, -angle)
+        alignmentRow.set(RELIONCOLUMNS.rlnAnglePsi.value, -angle)
 
         flip = bool(np.linalg.det(matrix[0:2, 0:2]) < 0)
         if flip:
@@ -300,10 +300,10 @@ def alignmentToRow(alignment, alignmentRow, alignType):
                         "with angles or set 'Consider previous alignment?' "
                         "to No")
     else:
-        alignmentRow.setValue(md.RLN_ORIENT_ORIGIN_Z, shifts[2])
-        alignmentRow.setValue(md.RLN_ORIENT_ROT, angles[0])
-        alignmentRow.setValue(md.RLN_ORIENT_TILT, angles[1])
-        alignmentRow.setValue(md.RLN_ORIENT_PSI, angles[2])
+        alignmentRow.set(RELIONCOLUMNS.rlnOriginZ.value, shifts[2])
+        alignmentRow.set(RELIONCOLUMNS.rlnAngleRot.value, angles[0])
+        alignmentRow.set(RELIONCOLUMNS.rlnAngleTilt.value, angles[1])
+        alignmentRow.set(RELIONCOLUMNS.rlnAnglePsi.value, angles[2])
 
 
 def geometryFromMatrix(matrix, inverseTransform):
@@ -343,24 +343,24 @@ def objectToRow(obj, row, attrDict, extraLabels=[]):
         extraLabels: a list with extra labels that could be included
             as _xmipp_labelName
     """
-    row.setValue(md.RLN_IMAGE_ENABLED, obj.isEnabled())
+    row.set(RELIONCOLUMNS.rlnEnabled.value, obj.isEnabled())
 
     for attr, label in attrDict.items():
         if hasattr(obj, attr):
             valueType = md.label2Python(label)
-            row.setValue(label, valueType(getattr(obj, attr).get()))
+            row.set(label, valueType(getattr(obj, attr).get()))
 
     attrLabels = attrDict.values()
 
     for label in extraLabels:
-        attrName = '_' + md.label2Str(label)
+        attrName = '_' + label
         if label not in attrLabels and hasattr(obj, attrName):
             value = obj.getAttributeValue(attrName)
             row.setValue(label, value)
 
 
-def setRowId(mdRow, obj, label=md.RLN_IMAGE_ID):
-    mdRow.setValue(label, int(obj.getObjId()))
+def setRowId(mdRow, obj, label=RELIONCOLUMNS.rlnImageId.value):
+    mdRow.set(label, int(obj.getObjId()))
 
 
 def convertBinaryVol(vol, outputDir):
@@ -411,7 +411,7 @@ def rowToAlignment(alignmentRow, alignType):
 
     is2D = alignType == ALIGN_2D
     inverseTransform = alignType == ALIGN_PROJ
-    if alignmentRow.hasAllColumns(ALIGNMENT_DICT):
+    if alignmentRow.hasAnyColumn(ALIGNMENT_DICT.values()):
         alignment = Transform()
         angles = np.zeros(3)
         shifts = np.zeros(3)
@@ -438,8 +438,8 @@ def setCryosparcAttributes(obj, objRow, *labels):
     and the datatype will be set correctly.
     """
     for label in labels:
-        setattr(obj, '_%s' % md.label2Str(label),
-                objRow.getValueAsObject(label))
+        setattr(obj, '_%s' % label,
+                objRow.get(label))
 
 
 def matrixFromGeometry(shifts, angles, inverseTransform):
@@ -581,12 +581,12 @@ def cryosPARCwriteSetOfParticles(imgSet, starFile, outputDir, **kwargs):
 
 def rowToCtfModel(ctfRow):
     """ Create a CTFModel from a row of a meta """
-    if ctfRow.containsAll(CTF_DICT):
+    if ctfRow.hasAllColumns(CTF_DICT.values()):
         ctfModel = CTFModel()
 
         rowToObject(ctfRow, ctfModel, CTF_DICT, extraLabels=CTF_EXTRA_LABELS)
-        if ctfRow.hasLabel(md.RLN_CTF_PHASESHIFT):
-            ctfModel.setPhaseShift(ctfRow.getValue(md.RLN_CTF_PHASESHIFT, 0))
+        if ctfRow.hasColumn(RELIONCOLUMNS.rlnPhaseShift.value):
+            ctfModel.setPhaseShift(ctfRow.get(RELIONCOLUMNS.rlnPhaseShift.value, 0))
         ctfModel.standardize()
         setPsdFiles(ctfModel, ctfRow)
     else:
@@ -601,8 +601,8 @@ def setPsdFiles(ctfModel, ctfRow):
     the ctfRow if present.
     """
     for attr, label in CTF_PSD_DICT.items():
-        if ctfRow.containsLabel(label):
-            setattr(ctfModel, attr, String(ctfRow.getValue(label)))
+        if ctfRow.hasColumn(label):
+            setattr(ctfModel, attr, String(ctfRow.get(label)))
 
 
 def rowToObject(row, obj, attrDict, extraLabels=[]):
@@ -615,10 +615,10 @@ def rowToObject(row, obj, attrDict, extraLabels=[]):
         extraLabels: a list with extra labels that could be included
             as properties with the label name such as: _rlnSomeThing
     """
-    obj.setEnabled(row.getValue(md.RLN_IMAGE_ENABLED, 1) > 0)
+    obj.setEnabled(row.get(RELIONCOLUMNS.rlnEnabled.value, 1) > 0)
 
     for attr, label in attrDict.items():
-        value = row.getValue(label)
+        value = row.get(label)
         if not hasattr(obj, attr):
             setattr(obj, attr, ObjectWrap(value))
         else:
@@ -627,13 +627,12 @@ def rowToObject(row, obj, attrDict, extraLabels=[]):
     attrLabels = attrDict.values()
 
     for label in extraLabels:
-        if label not in attrLabels and row.hasLabel(label):
-            labelStr = md.label2Str(label)
-            setattr(obj, '_' + labelStr, row.getValueAsObject(label))
+        if label not in attrLabels and row.hasColumn(label):
+            setattr(obj, '_' + label, ObjectWrap(row.get(label)))
 
 
-def setObjId(obj, mdRow, label=md.RLN_IMAGE_ID):
-    obj.setObjId(mdRow.getValue(label, None))
+def setObjId(obj, mdRow, label=RELIONCOLUMNS.rlnImageId.value):
+    obj.setObjId(mdRow.get(label, None))
 
 
 def rowToParticle(partRow, particleClass=Particle, **kwargs):
@@ -647,11 +646,11 @@ def rowToParticle(partRow, particleClass=Particle, **kwargs):
         preprocessImageRow(img, partRow)
 
     # Decompose Relion filename
-    index, filename = cryosparcToLocation(partRow.getValue(md.RLN_IMAGE_NAME))
+    index, filename = cryosparcToLocation(partRow.get(RELIONCOLUMNS.rlnImageName.value))
     img.setLocation(index, filename)
 
-    if partRow.containsLabel(md.RLN_PARTICLE_CLASS):
-        img.setClassId(partRow.getValue(md.RLN_PARTICLE_CLASS))
+    if partRow.hasColumn(RELIONCOLUMNS.rlnClassNumber.value):
+        img.setClassId(partRow.get(RELIONCOLUMNS.rlnClassNumber.value))
 
     if kwargs.get('readCtf', True):
         img.setCTF(rowToCtfModel(partRow))
@@ -678,12 +677,12 @@ def rowToParticle(partRow, particleClass=Particle, **kwargs):
     img.setCoordinate(rowToCoordinate(partRow))
 
     # copy micId if available from row to particle
-    if partRow.hasLabel(md.RLN_MICROGRAPH_ID):
-        img.setMicId(partRow.getValue(md.RLN_MICROGRAPH_ID))
+    if partRow.hasColumn(RELIONCOLUMNS.rlnMicrographId.value):
+        img.setMicId(partRow.get(RELIONCOLUMNS.rlnMicrographId.value))
 
     # copy particleId if available from row to particle
-    if partRow.hasLabel(md.RLN_PARTICLE_ID):
-        img._rlnParticleId = Integer(partRow.getValue(md.RLN_PARTICLE_ID))
+    if partRow.hasColumn(RELIONCOLUMNS.rlnParticleId.value):
+        img._rlnParticleId = Integer(partRow.get(RELIONCOLUMNS.rlnParticleId.value))
 
     # Provide a hook to be used if something is needed to be
     # done for special cases before converting image to row
@@ -696,20 +695,20 @@ def rowToParticle(partRow, particleClass=Particle, **kwargs):
 def rowToCoordinate(coordRow):
     """ Create a Coordinate from a row of a meta """
     # Check that all required labels are present in the row
-    if coordRow.containsAll(COOR_DICT):
+    if coordRow.hasAllColumns(COOR_DICT):
         coord = Coordinate()
         rowToObject(coordRow, coord, COOR_DICT, extraLabels=COOR_EXTRA_LABELS)
 
         micName = None
 
-        if coordRow.hasLabel(md.RLN_MICROGRAPH_ID):
-            micId = int(coordRow.getValue(md.RLN_MICROGRAPH_ID))
+        if coordRow.hasColumn(RELIONCOLUMNS.rlnMicrographId.value):
+            micId = int(coordRow.get(RELIONCOLUMNS.rlnMicrographId.value))
             coord.setMicId(micId)
             # If RLN_MICROGRAPH_NAME is not present, use the id as a name
             micName = micId
 
-        if coordRow.hasLabel(md.RLN_MICROGRAPH_NAME):
-            micName = coordRow.getValue(md.RLN_MICROGRAPH_NAME)
+        if coordRow.hasLabel(RELIONCOLUMNS.rlnMicrographName.value):
+            micName = coordRow.get(RELIONCOLUMNS.rlnMicrographName.value)
 
         coord.setMicName(micName)
 
@@ -721,7 +720,7 @@ def rowToCoordinate(coordRow):
 
 def rowToAcquisition(acquisitionRow):
     """ Create an acquisition from a row of a meta """
-    if acquisitionRow.containsAll(ACQUISITION_DICT):
+    if acquisitionRow.hasAllColumns(ACQUISITION_DICT):
         acquisition = Acquisition()
         rowToObject(acquisitionRow, acquisition, ACQUISITION_DICT)
     else:
@@ -736,13 +735,7 @@ def readSetOfParticles(filename, partSet, **kwargs):
         imgSet: the SetOfParticles that will be populated.
         rowToParticle: this function will be used to convert the row to Object
     """
-    imgMd = md.MetaData(filename)
-    # By default remove disabled items from metadata
-    # be careful if you need to preserve the original number of items
-    if kwargs.get('removeDisabled', True):
-        imgMd.removeDisabled()
-
-    for imgRow in md.iterRows(imgMd):
+    for imgRow in emtable.Table.iterRows(filename):
         img = rowToParticle(imgRow, **kwargs)
         partSet.append(img)
 

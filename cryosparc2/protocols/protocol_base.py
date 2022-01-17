@@ -159,7 +159,12 @@ class ProtCryosparcBase(pw.EMProtocol):
     def updateParticlePath(self, part, row):
         fn = part.getFileName()
         baseName = os.path.basename(fn).split('.')[0]
-        newFileName = self.inputFileNamePattern % baseName
+        baseNameSplit = baseName.split('_')
+        newBaseName = baseNameSplit[1]
+        if len(baseNameSplit) > 2:
+            for st in baseName.split('_')[2:]:
+                newBaseName += '_' + st
+        newFileName = self.inputFileNamePattern % newBaseName
         part.setFileName(newFileName)
 
     def _getInputParticles(self):

@@ -27,6 +27,9 @@
 
 import os
 
+import emtable
+
+from pwem import ALIGN_PROJ
 from pwem.objects import SetOfParticles
 
 import pyworkflow.utils as pwutils
@@ -36,10 +39,14 @@ from pyworkflow.protocol.params import (PointerParam, FloatParam,
                                         IntParam)
 
 from .protocol_base import ProtCryosparcBase
-from ..convert import (defineArgs, convertCs2Star, readSetOfParticles)
+from .. import RELIONCOLUMNS
+from ..convert import (defineArgs, convertCs2Star, readSetOfParticles,
+                       createItemMatrix, setCryosparcAttributes,
+                       cryosparcToLocation)
 from ..utils import (addComputeSectionParams, cryosparcValidate, gpusValidate,
                      enqueueJob, waitForCryosparc, clearIntermediateResults,
-                     addSymmetryParam, getSymmetry, copyFiles)
+                     addSymmetryParam, getSymmetry, copyFiles,
+                     calculateNewSamplingRate)
 
 
 class ProtCryoSparcSymmetryExpansion(ProtCryosparcBase):
@@ -134,14 +141,20 @@ class ProtCryoSparcSymmetryExpansion(ProtCryosparcBase):
         convertCs2Star(args)
         imgSet = self._getInputParticles()
         self.setFilePattern(imgSet.getFirstItem().getFileName())
-        outImgSet = SetOfParticles.create(self._getExtraPath())
+        outImgSet = self._createSetOfParticles()
         outImgSet.copyInfo(imgSet)
-        readSetOfParticles('particles@' + outputStarFn, outImgSet,
-                           alignType=imgSet.getAlignment(),
-                           postprocessImageRow=self.updateParticlePath)
+        outImgSet.setDim(imgSet.getDim())
+        self._fillDataFromIter(outImgSet)
 
         self._defineOutputs(outputParticles=outImgSet)
         self._defineTransformRelation(imgSet, outImgSet)
+
+    def _fillDataFromIter(self, imgSet):
+        outImgsFn = 'particles@' + self._getFileName('out_particles')
+        readSetOfParticles(outImgsFn, imgSet,
+                           postprocessImageRow=self.updateParticlePath,
+                           alignType=imgSet.getAlignment())
+
 
     # --------------------------- INFO functions -------------------------------
     def _validate(self):

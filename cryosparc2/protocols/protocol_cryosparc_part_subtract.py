@@ -192,7 +192,7 @@ class ProtCryoSparcSubtract(ProtCryosparcBase, ProtOperateParticles):
                            alignType=ALIGN_PROJ)
 
     def _updateItem(self, item, row):
-        newFn = row.getValue(md.RLN_IMAGE_NAME)
+        newFn = row.get(RELIONCOLUMNS.rlnImageName.value)
         index, file = cryosparcToLocation(newFn)
         item.setLocation((index, self._getExtraPath(file)))
         item.setSamplingRate(calculateNewSamplingRate(item.getDim(),
