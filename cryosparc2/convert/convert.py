@@ -123,11 +123,12 @@ def convertCs2Star(args):
     else:
         df = star.remove_deprecated_relion2(df, inplace=True)
         # Changing NaN values. These values denote erroneous coordinates
-        nanValues = len(df.rlnAnglePsi.values[np.isnan(df.rlnAnglePsi.values)])
-        if nanValues:
-            df.rlnAnglePsi.values[np.isnan(df.rlnAnglePsi.values)] = 0
-            log.warning("WARNING: %d dataframes contains erroneous "
-                        "coordinates. These coordinates are removed" % nanValues)
+        if hasattr(df, RELIONCOLUMNS.rlnAnglePsi.value):
+            nanValues = len(df.rlnAnglePsi.values[np.isnan(df.rlnAnglePsi.values)])
+            if nanValues:
+                df.rlnAnglePsi.values[np.isnan(df.rlnAnglePsi.values)] = 0
+                log.warning("WARNING: %d dataframes contains erroneous "
+                            "coordinates. These coordinates are removed" % nanValues)
         star.write_star(args.output, df, resort_records=True, optics=True)
 
     log.info("Output fields: %s" % ", ".join(df.columns))
