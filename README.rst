@@ -31,11 +31,12 @@ You will need to use `3.0.0 <https://scipion-em.github.io/docs/release-3.0.0/doc
 **Latest plugin version**
 =========================
 
-**v3.3.2**
+**v3.3.3**
 ----------
 * **new**      : Compatibility with cryoSPARC v3.3.1
 * **new**      : Added Homogeneous Reconstruction protocol
 * **new**      : Added 3D Classification protocol
+* **updated**  : Improving performance when generating the outputs(use of emtable library to read star file)
 
 
 

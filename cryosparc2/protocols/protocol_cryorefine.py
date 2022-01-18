@@ -40,8 +40,8 @@ from ..utils import (addSymmetryParam, addComputeSectionParams,
                      cryosparcValidate, gpusValidate, getSymmetry,
                      waitForCryosparc, clearIntermediateResults, enqueueJob,
                      fixVolume, copyFiles)
-from ..constants import md, NOISE_MODEL_CHOICES, REFINE_MASK_CHOICES, \
-    RELIONCOLUMNS
+from ..constants import (NOISE_MODEL_CHOICES, REFINE_MASK_CHOICES,
+                         RELIONCOLUMNS)
 
 
 class ProtCryoSparcRefine3D(ProtCryosparcBase, pwprot.ProtRefine3D):

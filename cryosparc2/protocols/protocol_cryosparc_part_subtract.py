@@ -32,8 +32,7 @@ from pwem.protocols import ProtOperateParticles
 import pyworkflow.utils as pwutils
 from pyworkflow.object import String
 from pyworkflow.protocol.params import (PointerParam, FloatParam,
-                                        LEVEL_ADVANCED, Positive, BooleanParam,
-                                        IntParam)
+                                        LEVEL_ADVANCED, Positive, BooleanParam)
 
 from .protocol_base import ProtCryosparcBase
 from ..convert import (defineArgs, convertCs2Star, readSetOfParticles,

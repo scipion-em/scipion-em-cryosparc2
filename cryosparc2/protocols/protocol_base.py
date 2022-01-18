@@ -34,7 +34,7 @@ import pyworkflow.object as pwobj
 import pyworkflow.utils as pwutils
 from pwem.objects import FSC
 
-from ..constants import V3_0_0, V3_3_1
+from ..constants import V3_3_1
 from ..convert import convertBinaryVol, writeSetOfParticles, ImageHandler
 from ..utils import (getProjectPath, createEmptyProject,
                      createEmptyWorkSpace, getProjectName,
@@ -159,12 +159,7 @@ class ProtCryosparcBase(pw.EMProtocol):
     def updateParticlePath(self, part, row):
         fn = part.getFileName()
         baseName = os.path.basename(fn).split('.')[0]
-        baseNameSplit = baseName.split('_')
-        newBaseName = baseNameSplit[1]
-        if len(baseNameSplit) > 2:
-            for st in baseName.split('_')[2:]:
-                newBaseName += '_' + st
-        newFileName = self.inputFileNamePattern % newBaseName
+        newFileName = self.inputFileNamePattern % baseName
         part.setFileName(newFileName)
 
     def _getInputParticles(self):

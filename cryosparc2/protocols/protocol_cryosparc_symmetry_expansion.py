@@ -27,22 +27,14 @@
 
 import os
 
-import emtable
-
-from pwem import ALIGN_PROJ
-from pwem.objects import SetOfParticles
 
 import pyworkflow.utils as pwutils
-from pyworkflow import NEW
 from pyworkflow.object import String
 from pyworkflow.protocol.params import (PointerParam, FloatParam,
                                         IntParam)
 
 from .protocol_base import ProtCryosparcBase
-from .. import RELIONCOLUMNS
-from ..convert import (defineArgs, convertCs2Star, readSetOfParticles,
-                       createItemMatrix, setCryosparcAttributes,
-                       cryosparcToLocation)
+from ..convert import (defineArgs, convertCs2Star, readSetOfParticles)
 from ..utils import (addComputeSectionParams, cryosparcValidate, gpusValidate,
                      enqueueJob, waitForCryosparc, clearIntermediateResults,
                      addSymmetryParam, getSymmetry, copyFiles,
@@ -155,8 +147,8 @@ class ProtCryoSparcSymmetryExpansion(ProtCryosparcBase):
                            postprocessImageRow=self.updateParticlePath,
                            alignType=imgSet.getAlignment())
 
-
     # --------------------------- INFO functions -------------------------------
+
     def _validate(self):
         """ Should be overwritten in subclasses to
             return summary message for NORMAL EXECUTION.

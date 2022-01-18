@@ -27,6 +27,7 @@
 
 import os
 
+import emtable
 from pkg_resources import parse_version
 
 import pyworkflow.utils as pwutils
@@ -410,16 +411,14 @@ class ProtCryoSparcNew3DClassification(ProtCryosparcBase):
         """
         self._classesInfo = {}  # store classes info, indexed by class id
 
-        modelStar = md.MetaData(filename)
+        table = emtable.Table(fileName=filename)
 
-        for classNumber, row in enumerate(md.iterRows(modelStar)):
-            index, fn = cryosparcToLocation(
-                row.getValue('rlnReferenceImage'))
+        for classNumber, row in enumerate(table.iterRows(filename)):
+            index, fn = cryosparcToLocation(row.get(RELIONCOLUMNS.rlnReferenceImage.value))
             # Store info indexed by id, we need to store the row.clone() since
             # the same reference is used for iteration
             scaledFile = self._getScaledAveragesFile(fn, force=True)
-            self._classesInfo[classNumber + 1] = (
-            index, scaledFile, row.clone())
+            self._classesInfo[classNumber + 1] = (index, scaledFile, row)
 
     def _fillClassesFromIter(self, clsSet, filename):
         """ Create the SetOfClasses3D """
@@ -427,11 +426,10 @@ class ProtCryoSparcNew3DClassification(ProtCryosparcBase):
         self._loadClassesInfo(self._getFileName('out_class'))
         clsSet.classifyItems(updateItemCallback=self._updateParticle,
                              updateClassCallback=self._updateClass,
-                             itemDataIterator=md.iterRows(xmpMd,
-                                                          sortByLabel=md.RLN_IMAGE_ID))
+                             itemDataIterator=emtable.Table.iterRows(xmpMd))
 
     def _updateParticle(self, item, row):
-        item.setClassId(row.getValue(md.RLN_PARTICLE_CLASS))
+        item.setClassId(row.get(RELIONCOLUMNS.rlnClassNumber.value))
         item.setTransform(rowToAlignment(row, ALIGN_PROJ))
 
     def _updateClass(self, item):

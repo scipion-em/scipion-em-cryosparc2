@@ -27,6 +27,7 @@
 
 import os
 
+import emtable
 from pkg_resources import parse_version
 
 from pwem import ALIGN_PROJ
@@ -334,12 +335,12 @@ class ProtCryoSparcLocalRefine(ProtCryosparcBase, ProtOperateParticles):
         imgSet.setAlignmentProj()
         imgSet.copyItems(self._getInputParticles(),
                          updateItemCallback=self._createItemMatrix,
-                         itemDataIterator=md.iterRows(outImgsFn,
-                                                      sortByLabel=md.RLN_IMAGE_ID))
+                         itemDataIterator=emtable.Table.iterRows(outImgsFn))
 
     def _createItemMatrix(self, particle, row):
         createItemMatrix(particle, row, align=ALIGN_PROJ)
-        setCryosparcAttributes(particle, row, md.RLN_PARTICLE_RANDOM_SUBSET)
+        setCryosparcAttributes(particle, row,
+                               RELIONCOLUMNS.rlnRandomSubset.value)
 
     def _defineParamsName(self):
         """ Define a list with all protocol parameters names"""

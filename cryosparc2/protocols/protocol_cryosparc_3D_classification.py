@@ -336,8 +336,11 @@ class ProtCryoSparc3DClassification(ProtCryosparcBase):
                              itemDataIterator=emtable.Table.iterRows(xmpMd))
 
     def _updateParticle(self, item, row):
-        item.setClassId(row.get(RELIONCOLUMNS.rlnClassNumber.value))
-        item.setTransform(rowToAlignment(row, ALIGN_PROJ))
+        if row.get(RELIONCOLUMNS.rlnAnglePsi.value):
+            item.setClassId(row.get(RELIONCOLUMNS.rlnClassNumber.value))
+            item.setTransform(rowToAlignment(row, ALIGN_PROJ))
+        else:
+            item._appendItem = False
 
     def _updateClass(self, item):
         classId = item.getObjId()
