@@ -26,6 +26,8 @@
 # **************************************************************************
 import os
 
+import emtable
+
 from pwem import ALIGN_PROJ
 from pwem.protocols import ProtParticles
 import pyworkflow.utils as pwutils
@@ -35,6 +37,7 @@ from pyworkflow.protocol.params import (PointerParam, FloatParam,
                                         LEVEL_ADVANCED, IntParam, Positive)
 
 from .protocol_base import ProtCryosparcBase
+from .. import RELIONCOLUMNS
 from ..convert import (defineArgs, convertCs2Star, createItemMatrix,
                        setCryosparcAttributes)
 from ..utils import (addComputeSectionParams, cryosparcValidate, gpusValidate,
@@ -50,7 +53,6 @@ class ProtCryoSparcLocalCtfRefinement(ProtCryosparcBase, ProtParticles):
     against a given 3D reference structure.
     """
     _label = 'local ctf refinement'
-    _devStatus = BETA
     _className = "ctf_refine_local"
 
     def _initialize(self):
@@ -194,13 +196,12 @@ class ProtCryoSparcLocalCtfRefinement(ProtCryosparcBase, ProtParticles):
         imgSet.setAlignmentProj()
         imgSet.copyItems(self._getInputParticles(),
                          updateItemCallback=self._createItemMatrix,
-                         itemDataIterator=md.iterRows(outImgsFn,
-                                                      sortByLabel=md.RLN_IMAGE_ID))
+                         itemDataIterator=emtable.Table.iterRows(outImgsFn))
 
     def _createItemMatrix(self, particle, row):
         createItemMatrix(particle, row, align=ALIGN_PROJ)
         setCryosparcAttributes(particle, row,
-                               md.RLN_PARTICLE_RANDOM_SUBSET)
+                               RELIONCOLUMNS.rlnRandomSubset.value)
 
     # --------------------------- INFO functions -------------------------------
     def _validate(self):

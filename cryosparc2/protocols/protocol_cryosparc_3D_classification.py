@@ -26,8 +26,9 @@
 # **************************************************************************
 import os
 
+import emtable
+
 import pyworkflow.utils as pwutils
-from pyworkflow import BETA
 from pyworkflow.object import String
 from pyworkflow.protocol.params import (FloatParam, LEVEL_ADVANCED,
                                         PointerParam, MultiPointerParam,
@@ -53,9 +54,8 @@ class ProtCryoSparc3DClassification(ProtCryosparcBase):
     differences between structures which may not be obvious at low resolutions,
     and also to re-classify particles to aid in sorting.
     """
-    _label = '3D classification'
+    _label = '3D Heterogeneous Refinement'
     _className = "hetero_refine"
-    _devStatus = BETA
 
     def _initialize(self):
         self._defineFileNames()
@@ -260,7 +260,7 @@ class ProtCryoSparc3DClassification(ProtCryosparcBase):
 
     def processStep(self):
         self.volumes = [vol + self.outputVolumeSuffix for vol in self.importVolumes]
-        print(pwutils.yellowStr("3D Classification started..."), flush=True)
+        print(pwutils.yellowStr("3D Heterogeneous Refinement started..."), flush=True)
         self.do3DClasification()
 
     def createOutputStep(self):
@@ -318,16 +318,14 @@ class ProtCryoSparc3DClassification(ProtCryosparcBase):
         from the star file.
         """
         self._classesInfo = {}  # store classes info, indexed by class id
+        table = emtable.Table(fileName=filename)
 
-        modelStar = md.MetaData(filename)
-
-        for classNumber, row in enumerate(md.iterRows(modelStar)):
-            index, fn = cryosparcToLocation(
-                row.getValue('rlnReferenceImage'))
+        for classNumber, row in enumerate(table.iterRows(filename)):
+            index, fn = cryosparcToLocation(row.get(RELIONCOLUMNS.rlnReferenceImage.value))
             # Store info indexed by id, we need to store the row.clone() since
             # the same reference is used for iteration
             scaledFile = self._getScaledAveragesFile(fn, force=True)
-            self._classesInfo[classNumber + 1] = (index, scaledFile, row.clone())
+            self._classesInfo[classNumber + 1] = (index, scaledFile, row)
 
     def _fillClassesFromIter(self, clsSet, filename):
         """ Create the SetOfClasses3D """
@@ -335,12 +333,14 @@ class ProtCryoSparc3DClassification(ProtCryosparcBase):
         self._loadClassesInfo(self._getFileName('out_class'))
         clsSet.classifyItems(updateItemCallback=self._updateParticle,
                              updateClassCallback=self._updateClass,
-                             itemDataIterator=md.iterRows(xmpMd,
-                                                          sortByLabel=md.RLN_IMAGE_ID))
+                             itemDataIterator=emtable.Table.iterRows(xmpMd))
 
     def _updateParticle(self, item, row):
-        item.setClassId(row.getValue(md.RLN_PARTICLE_CLASS))
-        item.setTransform(rowToAlignment(row, ALIGN_PROJ))
+        if row.get(RELIONCOLUMNS.rlnAnglePsi.value):
+            item.setClassId(row.get(RELIONCOLUMNS.rlnClassNumber.value))
+            item.setTransform(rowToAlignment(row, ALIGN_PROJ))
+        else:
+            item._appendItem = False
 
     def _updateClass(self, item):
         classId = item.getObjId()
@@ -405,10 +405,16 @@ class ProtCryoSparc3DClassification(ProtCryosparcBase):
             validateMsgs = gpusValidate(self.getGpuList(),
                                         checkSingleGPU=True)
             if not validateMsgs:
-                volumes = self._getInputVolume()
-                if volumes is not None and len(volumes) < 2:
-                    validateMsgs.append("The number of initial volumes must "
-                                        "be equal or greater than 2")
+                particles = self._getInputParticles()
+                if not particles.hasCTF():
+                    validateMsgs.append(
+                        "The Particles has not associated a "
+                        "CTF model")
+                if not validateMsgs:
+                    volumes = self._getInputVolume()
+                    if volumes is not None and len(volumes) < 2:
+                        validateMsgs.append("The number of initial volumes must "
+                                            "be equal or greater than 2")
         return validateMsgs
 
     def _summary(self):

@@ -31,7 +31,7 @@ import pyworkflow.utils as pwutils
 
 from .constants import *
 
-__version__ = '3.3.1'
+__version__ = '3.3.3'
 _references = ['Punjani2017', 'Brubaker2017', 'daniel_asarnow_2019_3576630']
 _logo = 'cryosparc2_logo.png'
 
@@ -60,10 +60,12 @@ class Plugin(em.Plugin):
 
     @classmethod
     def defineBinaries(cls, env):
-        PYEM_INSTALLED = 'pyem-0.4_installed'
-        installationCmd = 'pip install git+https://github.com/asarnow/pyem.git@ed0527f98657d21d887357426b74e5240d477fae'
+        PYEM_VERSION = '22.01.18'  # This is our made up version
+        PYEM_INSTALLED = 'pyem-%s_installed' % PYEM_VERSION
+        installationCmd = 'pip uninstall pyem && pip install git+https://github.com/asarnow/pyem.git@48541ff4e2a62be3a185d0ce9b76c5a37b1da15a'
         installationCmd += ' && touch %s' % PYEM_INSTALLED
 
         env.addPackage('pyem', commands=[(installationCmd, PYEM_INSTALLED)],
-                       version='0.4', tar='void.tgz',
-                       createBuildDir=True, buildDir='pyem-0.4', default=True)
+                       version=PYEM_VERSION, tar='void.tgz',
+                       createBuildDir=True, buildDir='pyem-%s' % PYEM_VERSION,
+                       default=True)

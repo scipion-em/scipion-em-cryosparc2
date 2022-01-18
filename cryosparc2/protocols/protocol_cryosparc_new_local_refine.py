@@ -27,13 +27,14 @@
 
 import os
 
+import emtable
 from pkg_resources import parse_version
 
 from pwem import ALIGN_PROJ
 from pwem.protocols import ProtOperateParticles
 
 import pyworkflow.utils as pwutils
-from pyworkflow import BETA
+from pyworkflow import NEW
 from pyworkflow.object import String
 from pyworkflow.protocol.params import (PointerParam, FloatParam, IntParam,
                                         Positive, BooleanParam, EnumParam)
@@ -55,7 +56,7 @@ class ProtCryoSparcLocalRefine(ProtCryosparcBase, ProtOperateParticles):
         Subtract projections of a masked volume from particles.
         """
     _label = 'local refinement'
-    _devStatus = BETA
+    _devStatus = NEW
     _protCompatibility = [V3_0_0, V3_1_0, V3_2_0, V3_3_0, V3_3_1]
     _className = "new_local_refine"
     _fscColumns = 6
@@ -334,12 +335,12 @@ class ProtCryoSparcLocalRefine(ProtCryosparcBase, ProtOperateParticles):
         imgSet.setAlignmentProj()
         imgSet.copyItems(self._getInputParticles(),
                          updateItemCallback=self._createItemMatrix,
-                         itemDataIterator=md.iterRows(outImgsFn,
-                                                      sortByLabel=md.RLN_IMAGE_ID))
+                         itemDataIterator=emtable.Table.iterRows(outImgsFn))
 
     def _createItemMatrix(self, particle, row):
         createItemMatrix(particle, row, align=ALIGN_PROJ)
-        setCryosparcAttributes(particle, row, md.RLN_PARTICLE_RANDOM_SUBSET)
+        setCryosparcAttributes(particle, row,
+                               RELIONCOLUMNS.rlnRandomSubset.value)
 
     def _defineParamsName(self):
         """ Define a list with all protocol parameters names"""
