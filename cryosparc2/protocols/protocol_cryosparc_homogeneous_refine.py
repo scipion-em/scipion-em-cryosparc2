@@ -30,7 +30,6 @@ from pkg_resources import parse_version
 import pwem.objects as pwobj
 import pwem.protocols as pwprot
 import pyworkflow.utils as pwutils
-from pyworkflow import NEW
 from pyworkflow.protocol.params import *
 
 from .protocol_base import ProtCryosparcBase
@@ -49,7 +48,10 @@ from ..constants import (md, NOISE_MODEL_CHOICES, REFINE_MASK_CHOICES, V3_0_0,
 class ProtCryoSparc3DHomogeneousRefine(ProtCryosparcBase, pwprot.ProtRefine3D):
     """ Protocol to refine a 3D map using cryosparc.
         Rapidly refine a single homogeneous structure to high-resolution and
-        validate using the gold-standard FSC.
+        validate using the gold-standard FSC. Using new faster GPU code, and
+        support for higher-order aberration (beam tilt, spherical aberration,
+        trefoil, tetrafoil) correction and per-particle defocus refinement on
+        the fly.
     """
     _label = '3D homogeneous refinement'
     _fscColumns = 6
@@ -257,6 +259,16 @@ class ProtCryoSparc3DHomogeneousRefine(ProtCryosparcBase, pwprot.ProtRefine3D):
                       help='Include negative regions if they are more negative '
                            'than the threshold')
 
+        form.addParam('refine_compute_batch_size', IntParam,
+                      expertLevel=LEVEL_ADVANCED,
+                      default=None,
+                      allowsNull=True,
+                      label="GPU batch size of images",
+                      help='Batch size of images to process at a time on the '
+                           'GPU. If you run out of GPU memory, try setting '
+                           'this to a small number to override the auto-detect '
+                           'procedure.')
+
         form.addSection(label='Defocus Refinement')
         form.addParam('refine_defocus_refine', BooleanParam,
                       default=True,
@@ -294,6 +306,11 @@ class ProtCryoSparc3DHomogeneousRefine(ProtCryosparcBase, pwprot.ProtRefine3D):
                       help='Defocus search range in Angstroms, searching '
                            'both above and below the input defocus by this '
                            'amount')
+        form.addParam('crl_compute_batch_size', IntParam,
+                      expertLevel=LEVEL_ADVANCED,
+                      default=None,
+                      allowsNull=True,
+                      label="GPU batch size of images")
 
         form.addSection(label='Global CTF Refinement')
 
@@ -348,6 +365,12 @@ class ProtCryoSparc3DHomogeneousRefine(ProtCryosparcBase, pwprot.ProtRefine3D):
                       default=True,
                       label="Fit Tetrafoil",
                       help='Whether to fit beam tetrafoil.')
+
+        form.addParam('crg_compute_batch_size', IntParam,
+                      expertLevel=LEVEL_ADVANCED,
+                      default=None,
+                      allowsNull=True,
+                      label="GPU batch size of images")
 
         # --------------[Compute settings]---------------------------
         form.addSection(label="Compute settings")
@@ -519,7 +542,8 @@ class ProtCryoSparc3DHomogeneousRefine(ProtCryosparcBase, pwprot.ProtRefine3D):
                             'refine_ctf_global_refine',
                             'crg_num_plots', 'crg_min_res_A', 'crg_do_tilt',
                             'crg_do_trefoil', 'crg_do_spherical',
-                            'crg_do_tetrafoil',
+                            'crg_do_tetrafoil', 'refine_compute_batch_size',
+                            'crl_compute_batch_size', 'crg_compute_batch_size',
                             'compute_use_ssd']
         self.lane = str(self.getAttributeValue('compute_lane'))
 
@@ -541,7 +565,10 @@ class ProtCryoSparc3DHomogeneousRefine(ProtCryosparcBase, pwprot.ProtRefine3D):
                     paramName != 'refine_noise_model' and
                     paramName != 'refine_mask' and
                     paramName != 'refine_highpass_res' and
-                    paramName != 'refine_nu_filtertype'):
+                    paramName != 'refine_nu_filtertype' and
+                    paramName != 'refine_compute_batch_size' and
+                    paramName != 'crl_compute_batch_size' and
+                    paramName != 'crg_compute_batch_size'):
                 params[str(paramName)] = str(self.getAttributeValue(paramName))
             elif (paramName == 'refine_highpass_res' and self.getAttributeValue(paramName) is not None and
                   int(self.getAttributeValue(paramName)) > 0):
@@ -550,7 +577,6 @@ class ProtCryoSparc3DHomogeneousRefine(ProtCryosparcBase, pwprot.ProtRefine3D):
             elif paramName == 'refine_symmetry':
                 symetryValue = getSymmetry(self.symmetryGroup.get(),
                                            self.symmetryOrder.get())
-
                 params[str(paramName)] = symetryValue
             elif paramName == 'refine_noise_model':
                 params[str(paramName)] = str(
@@ -561,6 +587,16 @@ class ProtCryoSparc3DHomogeneousRefine(ProtCryosparcBase, pwprot.ProtRefine3D):
             elif paramName == 'refine_nu_filtertype':
                 params[str(paramName)] = str(
                     REFINE_FILTER_TYPE[self.refine_nu_filtertype.get()])
+            elif (paramName == 'refine_compute_batch_size' and self.getAttributeValue(paramName) is not None and
+                  int(self.getAttributeValue(paramName)) > 0):
+                params[str(paramName)] = str(self.getAttributeValue(paramName))
+            elif (paramName == 'crl_compute_batch_size' and self.getAttributeValue(paramName) is not None and
+                  int(self.getAttributeValue(paramName)) > 0):
+                params[str(paramName)] = str(self.getAttributeValue(paramName))
+            elif (paramName == 'crg_compute_batch_size' and self.getAttributeValue(paramName) is not None and
+                        int(self.getAttributeValue(paramName)) > 0):
+                params[str(paramName)] = str(self.getAttributeValue(paramName))
+
 
         # Determinate the GPUs to use (in dependence of
         # the cryosparc version)
