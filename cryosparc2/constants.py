@@ -90,6 +90,10 @@ COMPUTE_FACILITY_CHOICES = ['GPU',
 
 CLASS_3D_INIT_MODE = ['simple', 'PCA', 'input']
 
+EWS_CURVATURE_SIGN = ['positive', 'negative']
+
+EWS_CORRECTION_METHOD = ['simple', 'iterative']
+
 # Viewer constants
 LAST_ITER = 0
 ALL_ITERS = 1
