@@ -16,7 +16,7 @@ You will need to use `3.0.0 <https://scipion-em.github.io/docs/release-3.0.0/doc
 * **3D Non uniform Refinement**: Apply non-uniform refinement to acheive higher resolution and map quality
 * **Particle Subtraction**: Subtract projections of a masked volume from particles.
 * **3D Local Refinement** Naive local refinement.
-* **Heterogeneous Refinement (3D Classification)**: Heterogeneous Refinement simultaneously classifies particles and refines structures from n initial structures, usually obtained following an Ab-Initio Reconstruction
+* **Heterogeneous Refinement**: Heterogeneous Refinement simultaneously classifies particles and refines structures from n initial structures, usually obtained following an Ab-Initio Reconstruction
 * **Local CTF Refinement (per-particle defocus)**: Local CTF Refinement performs per-particle defocus estimation for each particle in a dataset, against a given 3D reference structure.
 * **Global CTF Refinement (per-group beam tilt, trefoil, spherical aberration, tetrafoil)**: Global CTF Refinement performs per-exposure-group CTF parameter refinement of higher-order aberrations, against a given 3D reference.
 * **Sharppening**: Sharpen a volume following refinement.
@@ -26,13 +26,16 @@ You will need to use `3.0.0 <https://scipion-em.github.io/docs/release-3.0.0/doc
 * **3D Local Refinement(new)**  Refine a masked region within a consensus structure by allowing particle alignments to vary only slightly.
 * **Symmetry Expansion**: Duplicate particles around a point-group symmetry.
 * **Homogeneous Reconstruction**: Reconstruct half-maps from input particles with alignments
+* **3D Classification**: Classify particles into multiple 3D classes and optimize 3D class densities (currently, without re-aligning particle pose or shift).
 
 **Latest plugin version**
 =========================
 
-**v3.3.1**
+**v3.3.3**
 ----------
 * **new**      : Compatibility with cryoSPARC v3.3.1
+* **new**      : Added Homogeneous Reconstruction protocol
+* **updated**  : Improving performance when generating the outputs(use of emtable library to read star file)
 
 
 

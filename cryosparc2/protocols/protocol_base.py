@@ -34,7 +34,7 @@ import pyworkflow.object as pwobj
 import pyworkflow.utils as pwutils
 from pwem.objects import FSC
 
-from ..constants import V3_0_0, V3_3_1
+from ..constants import V3_3_1
 from ..convert import convertBinaryVol, writeSetOfParticles, ImageHandler
 from ..utils import (getProjectPath, createEmptyProject,
                      createEmptyWorkSpace, getProjectName,
@@ -298,6 +298,12 @@ class ProtCryosparcBase(pw.EMProtocol):
                 if z.startswith('FSC Iteration') or z.startswith('FSC iIteration'):
                     idd = y['imgfiles'][2]['fileid']
                     itera = z.split(',')[0][-3:]
+                    self._store(self)
+                elif 'Using Filter Radius' in z:
+                    nomRes = str(y['text']).split('(')[1].split(')')[
+                        0].replace(
+                        'A', 'Å')
+                    self.mapResolution = pwobj.String(nomRes)
                     self._store(self)
                 elif 'Estimated Bfactor' in z:
                     estBFactor = str(y['text']).split(':')[1].replace('\n',

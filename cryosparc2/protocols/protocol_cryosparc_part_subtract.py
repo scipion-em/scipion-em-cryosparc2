@@ -32,8 +32,7 @@ from pwem.protocols import ProtOperateParticles
 import pyworkflow.utils as pwutils
 from pyworkflow.object import String
 from pyworkflow.protocol.params import (PointerParam, FloatParam,
-                                        LEVEL_ADVANCED, Positive, BooleanParam,
-                                        IntParam)
+                                        LEVEL_ADVANCED, Positive, BooleanParam)
 
 from .protocol_base import ProtCryosparcBase
 from ..convert import (defineArgs, convertCs2Star, readSetOfParticles,
@@ -192,7 +191,7 @@ class ProtCryoSparcSubtract(ProtCryosparcBase, ProtOperateParticles):
                            alignType=ALIGN_PROJ)
 
     def _updateItem(self, item, row):
-        newFn = row.getValue(md.RLN_IMAGE_NAME)
+        newFn = row.get(RELIONCOLUMNS.rlnImageName.value)
         index, file = cryosparcToLocation(newFn)
         item.setLocation((index, self._getExtraPath(file)))
         item.setSamplingRate(calculateNewSamplingRate(item.getDim(),

@@ -25,7 +25,6 @@
 # *
 # **************************************************************************
 
-from pyworkflow import NEW
 from pyworkflow.protocol.params import (FloatParam, Positive, IntParam,
                                         BooleanParam, EnumParam)
 from .protocol_cryosparc_homogeneous_refine import ProtCryoSparc3DHomogeneousRefine
@@ -43,7 +42,6 @@ class ProtCryoSparcNewNonUniformRefine3D(ProtCryoSparc3DHomogeneousRefine):
     """
     _label = '3D non-uniform refinement'
     _className = "nonuniform_refine_new"
-    _devStatus = NEW
 
     def _defineParams(self, form):
         ProtCryoSparc3DHomogeneousRefine._defineParams(self, form)
