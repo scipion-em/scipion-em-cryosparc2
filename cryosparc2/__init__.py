@@ -62,7 +62,7 @@ class Plugin(em.Plugin):
     def defineBinaries(cls, env):
         PYEM_VERSION = '22.01.18'  # This is our made up version
         PYEM_INSTALLED = 'pyem-%s_installed' % PYEM_VERSION
-        installationCmd = 'pip uninstall pyem && pip install git+https://github.com/asarnow/pyem.git@48541ff4e2a62be3a185d0ce9b76c5a37b1da15a'
+        installationCmd = 'pip uninstall -y pyem && pip install git+https://github.com/asarnow/pyem.git@48541ff4e2a62be3a185d0ce9b76c5a37b1da15a'
         installationCmd += ' && touch %s' % PYEM_INSTALLED
 
         env.addPackage('pyem', commands=[(installationCmd, PYEM_INSTALLED)],
