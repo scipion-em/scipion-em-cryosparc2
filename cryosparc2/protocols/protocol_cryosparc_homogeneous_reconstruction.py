@@ -160,8 +160,8 @@ class ProtCryoSparcHomogeneousReconstruct(ProtCryosparcBase):
                       label="Ignore anisomag",
                       help='Ignore the anisomag')
 
-        if [version for version in self._protCompatibility
-            if parse_version(version) >= parse_version(V3_3_1)]:
+        csVersion = getCryosparcVersion()
+        if parse_version(csVersion) >= parse_version(V3_3_1):
 
             form.addParam('refine_do_ews_correct', BooleanParam, default=False,
                           expertLevel=LEVEL_ADVANCED,
