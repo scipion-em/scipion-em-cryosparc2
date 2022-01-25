@@ -58,6 +58,7 @@ class ProtCryoSparcHomogeneousReconstruct(ProtCryosparcBase):
     _devStatus = NEW
     _fscColumns = 6
     _protCompatibility = [V3_3_0, V3_3_1]
+    ewsParamsName = []
 
     def _initialize(self):
         self._defineFileNames()
@@ -159,58 +160,69 @@ class ProtCryoSparcHomogeneousReconstruct(ProtCryosparcBase):
                       label="Ignore anisomag",
                       help='Ignore the anisomag')
 
-        form.addParam('refine_do_ews_correct', BooleanParam, default=False,
-                      expertLevel=LEVEL_ADVANCED,
-                      label="Do EWS correction",
-                      help='Whether or not to correct for the curvature of the '
-                           'Ewald Sphere.')
+        if [version for version in self._protCompatibility
+            if parse_version(version) >= parse_version(V3_3_1)]:
 
-        form.addParam('refine_ews_zsign', EnumParam,
-                      choices=['positive', 'negative'],
-                      default=0,
-                      expertLevel=LEVEL_ADVANCED,
-                      label="EWS curvature sign",
-                      help='Whether to use positive or negative curvature in '
-                           'Ewald Sphere correction.')
+            form.addParam('refine_do_ews_correct', BooleanParam, default=False,
+                          expertLevel=LEVEL_ADVANCED,
+                          label="Do EWS correction",
+                          help='Whether or not to correct for the curvature of the '
+                               'Ewald Sphere.')
 
-        form.addParam('refine_ews_simple', EnumParam,
-                      choices=['simple', 'iterative'],
-                      default=0,
-                      expertLevel=LEVEL_ADVANCED,
-                      label="EWS correction method",
-                      help='Whether to use the simple insertion method, or to '
-                           'use an iterative optimization method, for Ewald '
-                           'Sphere correction.')
+            form.addParam('refine_ews_zsign', EnumParam,
+                          choices=['positive', 'negative'],
+                          default=0,
+                          expertLevel=LEVEL_ADVANCED,
+                          label="EWS curvature sign",
+                          help='Whether to use positive or negative curvature in '
+                               'Ewald Sphere correction.')
 
-        form.addParam('refine_fsc_mask_opt', BooleanParam, default=False,
-                      expertLevel=LEVEL_ADVANCED,
-                      label="Optimize FSC mask",
-                      help='Whether or not to optimize the mask used for '
-                           'calculating FSCs')
+            form.addParam('refine_ews_simple', EnumParam,
+                          choices=['simple', 'iterative'],
+                          default=0,
+                          expertLevel=LEVEL_ADVANCED,
+                          label="EWS correction method",
+                          help='Whether to use the simple insertion method, or to '
+                               'use an iterative optimization method, for Ewald '
+                               'Sphere correction.')
 
-        form.addParam('refine_override_filter', BooleanParam, default=False,
-                      expertLevel=LEVEL_ADVANCED,
-                      label="Override FSC Filtering",
-                      help='Whether to override the FSC-filtering and use '
-                           'manual filtering and sharpening (set below) '
-                           'instead. FSC is still computed, just not used '
-                           'for filtering.')
+            form.addParam('refine_fsc_mask_opt', BooleanParam, default=False,
+                          expertLevel=LEVEL_ADVANCED,
+                          label="Optimize FSC mask",
+                          help='Whether or not to optimize the mask used for '
+                               'calculating FSCs')
 
-        form.addParam('refine_override_filter_res', FloatParam, default=None,
-                      allowsNull=True,
-                      expertLevel=LEVEL_ADVANCED,
-                      label="Override Filtering Resolution",
-                      help='Override filter corner resolution (A)')
+            form.addParam('refine_override_filter', BooleanParam, default=False,
+                          expertLevel=LEVEL_ADVANCED,
+                          label="Override FSC Filtering",
+                          help='Whether to override the FSC-filtering and use '
+                               'manual filtering and sharpening (set below) '
+                               'instead. FSC is still computed, just not used '
+                               'for filtering.')
 
-        form.addParam('refine_override_filter_order', IntParam, default=8,
-                      expertLevel=LEVEL_ADVANCED,
-                      label="Override Filtering Order",
-                      help='Override filter order (Butterworth)')
+            form.addParam('refine_override_filter_res', FloatParam, default=None,
+                          allowsNull=True,
+                          expertLevel=LEVEL_ADVANCED,
+                          label="Override Filtering Resolution",
+                          help='Override filter corner resolution (A)')
 
-        form.addParam('refine_override_filter_bfactor', FloatParam, default=0,
-                      expertLevel=LEVEL_ADVANCED,
-                      label="Override Filtering Bfactor",
-                      help='Override sharpening B-factor. Negative to sharpen')
+            form.addParam('refine_override_filter_order', IntParam, default=8,
+                          expertLevel=LEVEL_ADVANCED,
+                          label="Override Filtering Order",
+                          help='Override filter order (Butterworth)')
+
+            form.addParam('refine_override_filter_bfactor', FloatParam, default=0,
+                          expertLevel=LEVEL_ADVANCED,
+                          label="Override Filtering Bfactor",
+                          help='Override sharpening B-factor. Negative to sharpen')
+
+            self.ewsParamsName = ['refine_do_ews_correct',
+                                  'refine_ews_zsign', 'refine_fsc_mask_opt',
+                                  'refine_override_filter',
+                                  'refine_override_filter_res',
+                                  'refine_ews_simple',
+                                  'refine_override_filter_order',
+                                   'refine_override_filter_bfactor']
 
         form.addParam('recon_do_expand_mask', BooleanParam, default=False,
                       expertLevel=LEVEL_ADVANCED,
@@ -372,12 +384,7 @@ class ProtCryoSparcHomogeneousReconstruct(ProtCryosparcBase):
                             'intermediate_plots', 'refine_symmetry',
                             'refine_compute_batch_size', 'refine_helical_twist',
                             'refine_helical_shift', 'refine_hsym_order',
-                            'compute_use_ssd', 'refine_do_ews_correct',
-                            'refine_ews_zsign', 'refine_fsc_mask_opt',
-                            'refine_override_filter',
-                            'refine_override_filter_res',
-                            'refine_ews_simple', 'refine_override_filter_order',
-                            'refine_override_filter_bfactor']
+                            'compute_use_ssd'] + self.ewsParamsName
 
         self.lane = str(self.getAttributeValue('compute_lane'))
 
