@@ -80,8 +80,7 @@ class ProtCryoSparcHomogeneousReconstruct(ProtCryosparcBase):
                       help='Select the experimental particles.')
         form.addParam('refMask', PointerParam, pointerClass='VolumeMask',
                       label='Mask to be applied to this map',
-                      important=True,
-                      allowsNull=False,
+                      allowsNull=True,
                       help="Provide a soft mask where the protein density "
                            "you wish to subtract from the experimental "
                            "particles is white (1) and the rest of the "
@@ -389,8 +388,9 @@ class ProtCryoSparcHomogeneousReconstruct(ProtCryosparcBase):
         self.lane = str(self.getAttributeValue('compute_lane'))
 
     def doHomogeneousReconstruction(self):
-        input_group_connect = {"particles": self.particles.get(),
-                               "mask": self.mask.get()}
+        input_group_connect = {"particles": self.particles.get()}
+        if self.mask.get() is not None:
+            input_group_connect["mask"] = self.mask.get()
 
         params = {}
 
