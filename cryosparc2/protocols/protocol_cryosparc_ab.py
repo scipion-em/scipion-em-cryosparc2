@@ -414,7 +414,10 @@ class ProtCryoSparcInitialModel(ProtCryosparcBase, ProtInitialVolume,
                              itemDataIterator=emtable.Table.iterRows(outImgsFn))
 
     def _updateParticle(self, item, row):
-        item.setClassId(row.get(RELIONCOLUMNS.rlnClassNumber.value))
+        if row.hasColumn(RELIONCOLUMNS.rlnClassNumber.value):
+            item.setClassId(row.get(RELIONCOLUMNS.rlnClassNumber.value))
+        else:
+            item.setClassId(1)
         item.setTransform(rowToAlignment(row, ALIGN_PROJ))
 
     def _updateClass(self, item):
