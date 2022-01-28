@@ -37,6 +37,7 @@ import sys
 from pyem.star import UCSF
 
 from pwem.emlib.image import ImageHandler
+import pwem.emlib.metadata as md
 from pwem.objects import (String, Integer, Transform, Particle,
                           Coordinate, Acquisition, CTFModel)
 from pyworkflow.object import ObjectWrap

@@ -337,7 +337,6 @@ class ProtCryo2D(ProtCryosparcBase, pwprot.ProtClassify2D):
         """
         self._classesInfo = {}  # store classes info, indexed by class id
 
-        # mdClasses = md.MetaData(filename)
         mdFileName = '%s@%s' % ('particles', filename)
         table = emtable.Table(fileName=filename)
 
