@@ -98,10 +98,10 @@ class ProtCryoSparcNew3DClassification(ProtCryosparcBase):
         # --------------[3D Classification]---------------------------
         form.addSection(label='3D Classification (without alignment)')
 
-        form.addParam('class3D_N_K', IntParam, default=10,
+        form.addParam('class3D_N_K', IntParam, default=2,
                       label="Number of classes",
                       validators=[Positive],
-                      help='Number of classes')
+                      help='Number of classes. This value must be grater than 2')
 
         form.addParam('class3D_target_res', IntParam, default=4,
                       label="Target resolution (A)",
@@ -429,8 +429,11 @@ class ProtCryoSparcNew3DClassification(ProtCryosparcBase):
                              itemDataIterator=emtable.Table.iterRows(xmpMd))
 
     def _updateParticle(self, item, row):
-        item.setClassId(row.get(RELIONCOLUMNS.rlnClassNumber.value))
-        item.setTransform(rowToAlignment(row, ALIGN_PROJ))
+        if row.get(RELIONCOLUMNS.rlnAnglePsi.value):
+            item.setClassId(row.get(RELIONCOLUMNS.rlnClassNumber.value))
+            item.setTransform(rowToAlignment(row, ALIGN_PROJ))
+        else:
+            item._appendItem = False
 
     def _updateClass(self, item):
         classId = item.getObjId()
@@ -454,7 +457,7 @@ class ProtCryoSparcNew3DClassification(ProtCryosparcBase):
             output_file.write('\n')
             output_file.write('_rlnReferenceImage')
             output_file.write('\n')
-            numOfClass = len(self.importVolumes)
+            numOfClass = self.class3D_N_K.get()
             for i in range(numOfClass):
                 csVolName = ("cryosparc_%s_%s_class_%02d_000%s_volume.mrc" %
                              (self.projectName.get(),
@@ -511,7 +514,7 @@ class ProtCryoSparcNew3DClassification(ProtCryosparcBase):
 
                     inputVolumes = self._getInputVolume()
                     if not validateMsgs:
-                        if inputVolumes is not None:
+                        if inputVolumes is not None and inputVolumes:
                             if self.class3D_init_mode.get() != 2:
                                 validateMsgs.append('Input volumes detected, please set initialization mode to `input` or clear volume inputs.')
                             if len(inputVolumes) != self.class3D_N_K.get():
@@ -519,6 +522,11 @@ class ProtCryoSparcNew3DClassification(ProtCryosparcBase):
                         else:
                             if self.class3D_init_mode.get() != 0:
                                 validateMsgs.append('Please connect input volumes or change initialization mode to `simple`')
+                            elif len(particles) < 1000:
+                                validateMsgs.append('Not Enough Images! The set of particles must contain at least 1000 images')
+                        if not validateMsgs:
+                            if self.class3D_N_K.get() < 2:
+                                validateMsgs.append('The number of classes must be grater than 2')
 
             else:
                 validateMsgs.append("The protocol is not compatible with the "

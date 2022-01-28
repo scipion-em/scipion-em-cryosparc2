@@ -40,9 +40,10 @@ from ..utils import (addSymmetryParam, addComputeSectionParams,
                      cryosparcValidate, gpusValidate, getSymmetry,
                      waitForCryosparc, clearIntermediateResults, enqueueJob,
                      getCryosparcVersion, fixVolume, copyFiles)
-from ..constants import (md, NOISE_MODEL_CHOICES, REFINE_MASK_CHOICES, V3_0_0,
+from ..constants import (NOISE_MODEL_CHOICES, REFINE_MASK_CHOICES, V3_0_0,
                          V3_1_0, V3_2_0, V3_3_0, V3_3_1, REFINE_FILTER_TYPE,
-                         RELIONCOLUMNS)
+                         RELIONCOLUMNS, EWS_CURVATURE_SIGN,
+                         EWS_CORRECTION_METHOD)
 
 
 class ProtCryoSparc3DHomogeneousRefine(ProtCryosparcBase, pwprot.ProtRefine3D):
@@ -568,7 +569,9 @@ class ProtCryoSparc3DHomogeneousRefine(ProtCryosparcBase, pwprot.ProtRefine3D):
                     paramName != 'refine_nu_filtertype' and
                     paramName != 'refine_compute_batch_size' and
                     paramName != 'crl_compute_batch_size' and
-                    paramName != 'crg_compute_batch_size'):
+                    paramName != 'crg_compute_batch_size' and
+                    paramName != 'refine_ews_zsign' and
+                    paramName != 'refine_ews_simple'):
                 params[str(paramName)] = str(self.getAttributeValue(paramName))
             elif (paramName == 'refine_highpass_res' and self.getAttributeValue(paramName) is not None and
                   int(self.getAttributeValue(paramName)) > 0):
@@ -596,6 +599,12 @@ class ProtCryoSparc3DHomogeneousRefine(ProtCryosparcBase, pwprot.ProtRefine3D):
             elif (paramName == 'crg_compute_batch_size' and self.getAttributeValue(paramName) is not None and
                         int(self.getAttributeValue(paramName)) > 0):
                 params[str(paramName)] = str(self.getAttributeValue(paramName))
+            elif paramName == 'refine_ews_zsign':
+                params[str(paramName)] = str(
+                    EWS_CURVATURE_SIGN[self.refine_ews_zsign.get()])
+            elif paramName == 'refine_ews_simple':
+                params[str(paramName)] = str(
+                    EWS_CORRECTION_METHOD[self.refine_ews_simple.get()])
 
 
         # Determinate the GPUs to use (in dependence of

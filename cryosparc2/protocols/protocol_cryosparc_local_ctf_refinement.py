@@ -43,8 +43,6 @@ from ..convert import (defineArgs, convertCs2Star, createItemMatrix,
 from ..utils import (addComputeSectionParams, cryosparcValidate, gpusValidate,
                      enqueueJob, waitForCryosparc, clearIntermediateResults,
                      copyFiles)
-import pwem.emlib.metadata as md
-
 
 class ProtCryoSparcLocalCtfRefinement(ProtCryosparcBase, ProtParticles):
     """

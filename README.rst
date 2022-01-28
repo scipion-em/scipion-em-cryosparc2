@@ -34,6 +34,7 @@ You will need to use `3.0.0 <https://scipion-em.github.io/docs/release-3.0.0/doc
 **v3.3.6**
 ----------
 * **new**      : Compatibility with cryoSPARC v3.3.1
+* **new**      : Added a new 3D Classification protocol
 * **new**      : Added Homogeneous Reconstruction protocol
 * **updated**  : Improving performance when generating the outputs(use of emtable library to read star file)
 

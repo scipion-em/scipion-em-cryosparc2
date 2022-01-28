@@ -25,9 +25,13 @@
 # *
 # **************************************************************************
 
+from pkg_resources import parse_version
+
 from pyworkflow.protocol.params import (FloatParam, Positive, IntParam,
-                                        BooleanParam, EnumParam)
+                                        BooleanParam, EnumParam, LEVEL_ADVANCED)
 from .protocol_cryosparc_homogeneous_refine import ProtCryoSparc3DHomogeneousRefine
+from ..utils import getCryosparcVersion
+from ..constants import V3_3_1
 
 
 class ProtCryoSparcNewNonUniformRefine3D(ProtCryoSparc3DHomogeneousRefine):
@@ -42,6 +46,7 @@ class ProtCryoSparcNewNonUniformRefine3D(ProtCryoSparc3DHomogeneousRefine):
     """
     _label = '3D non-uniform refinement'
     _className = "nonuniform_refine_new"
+    ewsParamsName = []
 
     def _defineParams(self, form):
         ProtCryoSparc3DHomogeneousRefine._defineParams(self, form)
@@ -86,9 +91,41 @@ class ProtCryoSparcNewNonUniformRefine3D(ProtCryoSparc3DHomogeneousRefine):
                            'be higher). Default of 3 is good, can try as low '
                            'as 1.5 ')
 
+        csVersion = getCryosparcVersion()
+        if parse_version(csVersion) >= parse_version(V3_3_1):
+            form.addSection(label='Ewald Sphere Correction')
+
+            form.addParam('refine_do_ews_correct', BooleanParam, default=False,
+                          label="Do EWS correction",
+                          help='Whether or not to correct for the curvature of the Ewald Sphere.')
+
+            form.addParam('refine_do_ews_correct_align', BooleanParam, default=False,
+                          label="Do EWS correction in alignment",
+                          help='Whether or not to correct for the curvature of the Ewald Sphere.')
+
+            form.addParam('refine_ews_zsign', EnumParam,
+                          choices=['positive', 'negative'],
+                          default=0,
+                          label="EWS curvature sign",
+                          help='Whether to use positive or negative curvature in '
+                               'Ewald Sphere correction.')
+
+            form.addParam('refine_ews_simple', EnumParam,
+                          choices=['simple', 'iterative'],
+                          default=0,
+                          label="EWS correction method",
+                          help='Whether to use the simple insertion method, or to '
+                               'use an iterative optimization method, for Ewald '
+                               'Sphere correction.')
+
+            self.ewsParamsName = ['refine_do_ews_correct',
+                                  'refine_do_ews_correct_align',
+                                  'refine_ews_zsign',
+                                  'refine_ews_simple']
+
     def _defineParamsName(self):
         """ Define a list with all protocol parameters names"""
         ProtCryoSparc3DHomogeneousRefine._defineParamsName(self)
         self._paramsName += ['refine_do_marg', 'refine_do_marg',
                              'refine_nu_filtertype', 'refine_nu_order',
-                             'refine_nu_awf']
+                             'refine_nu_awf'] + self.ewsParamsName
