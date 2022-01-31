@@ -57,6 +57,7 @@ class ProtCryoSparc3DHomogeneousRefine(ProtCryosparcBase, pwprot.ProtRefine3D):
     _label = '3D homogeneous refinement'
     _fscColumns = 6
     _className = "homo_refine_new"
+    ewsParamsName = []
     _protCompatibility = [V3_0_0, V3_1_0, V3_2_0, V3_3_0, V3_3_1]
 
     # --------------------------- DEFINE param functions ----------------------
@@ -373,6 +374,39 @@ class ProtCryoSparc3DHomogeneousRefine(ProtCryosparcBase, pwprot.ProtRefine3D):
                       allowsNull=True,
                       label="GPU batch size of images")
 
+        csVersion = getCryosparcVersion()
+        if parse_version(csVersion) >= parse_version(V3_3_1):
+            form.addSection(label='Ewald Sphere Correction')
+
+            form.addParam('refine_do_ews_correct', BooleanParam, default=False,
+                          label="Do EWS correction",
+                          help='Whether or not to correct for the curvature of the Ewald Sphere.')
+
+            form.addParam('refine_do_ews_correct_align', BooleanParam,
+                          default=False,
+                          label="Do EWS correction in alignment",
+                          help='Whether or not to correct for the curvature of the Ewald Sphere.')
+
+            form.addParam('refine_ews_zsign', EnumParam,
+                          choices=['positive', 'negative'],
+                          default=0,
+                          label="EWS curvature sign",
+                          help='Whether to use positive or negative curvature in '
+                               'Ewald Sphere correction.')
+
+            form.addParam('refine_ews_simple', EnumParam,
+                          choices=['simple', 'iterative'],
+                          default=0,
+                          label="EWS correction method",
+                          help='Whether to use the simple insertion method, or to '
+                               'use an iterative optimization method, for Ewald '
+                               'Sphere correction.')
+
+            self.ewsParamsName = ['refine_do_ews_correct',
+                                  'refine_do_ews_correct_align',
+                                  'refine_ews_zsign',
+                                  'refine_ews_simple']
+
         # --------------[Compute settings]---------------------------
         form.addSection(label="Compute settings")
         addComputeSectionParams(form, allowMultipleGPUs=True)
@@ -545,7 +579,8 @@ class ProtCryoSparc3DHomogeneousRefine(ProtCryosparcBase, pwprot.ProtRefine3D):
                             'crg_do_trefoil', 'crg_do_spherical',
                             'crg_do_tetrafoil', 'refine_compute_batch_size',
                             'crl_compute_batch_size', 'crg_compute_batch_size',
-                            'compute_use_ssd']
+                            'compute_use_ssd'] + self.ewsParamsName
+
         self.lane = str(self.getAttributeValue('compute_lane'))
 
     def doRunRefine(self):
