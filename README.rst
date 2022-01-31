@@ -31,11 +31,12 @@ You will need to use `3.0.0 <https://scipion-em.github.io/docs/release-3.0.0/doc
 **Latest plugin version**
 =========================
 
-**v3.3.6**
+**v3.3.7**
 ----------
 * **new**      : Compatibility with cryoSPARC v3.3.1
 * **new**      : Added a new 3D Classification protocol
 * **new**      : Added Homogeneous Reconstruction protocol
+* **new**      : Anisotropic magnification can now be estimated during Global CTF refinement, and is corrected for in Refinement, Reconstruction, 3D Classification protocols
 * **updated**  : Improving performance when generating the outputs(use of emtable library to read star file)
 
 
