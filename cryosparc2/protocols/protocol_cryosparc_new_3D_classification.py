@@ -587,6 +587,26 @@ class ProtCryoSparcNew3DClassification(ProtCryosparcBase):
 
         self.lane = str(self.getAttributeValue('compute_lane'))
 
+
+    def _summary(self):
+        summary = []
+        if (not hasattr(self, 'outputVolumes') or
+                not hasattr(self, 'outputClasses')):
+            summary.append("Output objects not ready yet.")
+        else:
+            summary.append("Input Particles: %s" %
+                           self.getObjectTag('inputParticles'))
+            summary.append("Initial volumes: %s" %
+                           self.getObjectTag('refVolumes'))
+
+            summary.append("------------------------------------------")
+            summary.append("Output volumes %s" %
+                           self.getObjectTag('outputVolumes'))
+            summary.append("Output classes %s" %
+                           self.getObjectTag('outputClasses'))
+
+        return summary
+
     def doNew3DClasification(self):
         """
         """
