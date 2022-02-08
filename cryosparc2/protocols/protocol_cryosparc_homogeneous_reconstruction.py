@@ -448,7 +448,7 @@ class ProtCryoSparcHomogeneousReconstruct(ProtCryosparcBase):
 
         waitForCryosparc(self.projectName.get(), self.runHomogeneousReconstruction.get(),
                          "An error occurred in the homogeneous reconstruction process. "
-                         "Please, go to cryosPARC software for more "
+                         "Please, go to cryoSPARC software for more "
                          "details.")
         clearIntermediateResults(self.projectName.get(), self.runHomogeneousReconstruction.get())
 
