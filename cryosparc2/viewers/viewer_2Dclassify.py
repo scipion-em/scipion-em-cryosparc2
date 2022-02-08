@@ -43,7 +43,7 @@ AX_Z = 2
 
 class CryosPARCViewer2D(ProtocolViewer):
     """
-    Visualization tools for cryosPARC results.
+    Visualization tools for cryoSPARC results.
 
     CryoSPARC is a backend and frontend software system that provides data
     processing and image analysis capabilities for single particle cryo-EM,
