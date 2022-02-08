@@ -495,7 +495,7 @@ def convertBinaryFiles(imgSet, outputDir, extension='mrcs'):
         return newFn
 
     def createBinaryLink(fn):
-        """ Just create a link named .mrcs to cryosPARC understand
+        """ Just create a link named .mrcs to cryoSPARC understand
         that it is a binary stack file and not a volume.
         """
         newFn = getUniqueFileName(fn, extension)
