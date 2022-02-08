@@ -26,6 +26,9 @@
 # **************************************************************************
 import os
 
+import emtable
+from pkg_resources import parse_version
+
 from pwem import ALIGN_PROJ
 import pwem.protocols as pwprot
 
@@ -33,16 +36,18 @@ import pyworkflow.utils as pwutils
 from pyworkflow import BETA
 from pyworkflow.object import String
 from pyworkflow.protocol.params import (PointerParam, FloatParam, IntParam,
-                                        LEVEL_ADVANCED, Positive, BooleanParam)
+                                        LEVEL_ADVANCED, Positive, BooleanParam,
+                                        EnumParam)
 
 from .protocol_base import ProtCryosparcBase
+from .. import RELIONCOLUMNS
 from ..convert import (defineArgs, convertCs2Star, createItemMatrix,
                        setCryosparcAttributes)
 from ..utils import (addComputeSectionParams, cryosparcValidate, gpusValidate,
                      enqueueJob, waitForCryosparc, clearIntermediateResults,
-                     copyFiles)
-import pwem.emlib.metadata as md
+                     copyFiles, getCryosparcVersion)
 
+from ..constants import *
 
 class ProtCryoSparcGlobalCtfRefinement(ProtCryosparcBase, pwprot.ProtParticles):
     """
@@ -51,8 +56,9 @@ class ProtCryoSparcGlobalCtfRefinement(ProtCryosparcBase, pwprot.ProtParticles):
     aberrations, against a given 3D reference
     """
     _label = 'global ctf refinement'
-    _devStatus = BETA
     _className = "ctf_refine_global"
+    _protCompatibility = [V3_0_0, V3_1_0, V3_2_0, V3_3_0, V3_3_1]
+    newParamsName = []
 
     def _initialize(self):
         self._createFilenameTemplates()
@@ -131,6 +137,57 @@ class ProtCryoSparcGlobalCtfRefinement(ProtCryosparcBase, pwprot.ProtParticles):
                       label="Fit Tetrafoil",
                       help="Whether to fit beam tetrafoil.")
 
+        # new parameter to V3.3.1
+        csVersion = getCryosparcVersion()
+        if parse_version(csVersion) >= parse_version(V3_3_1):
+
+            form.addParam('crg_do_anisomag', BooleanParam, default=False,
+                          label="Fit Anisotropic Mag.",
+                          help="Whether to fit beam anisotropic magnification.")
+
+            form.addParam('crg_do_ews_correct', BooleanParam, default=False,
+                          label="Account for EWS curvature",
+                          expertLevel=LEVEL_ADVANCED,
+                          help="Whether or not to correct for the curvature of "
+                               "the Ewald Sphere")
+            form.addParam('crg_ews_zsign', EnumParam,
+                          choices=['positive', 'negative'],
+                          expertLevel=LEVEL_ADVANCED,
+                          default=0,
+                          label="EWS curvature sign",
+                          help='Whether to use positive or negative curvature in '
+                               'Ewald Sphere correction.')
+
+            form.addParam('ctf_reset_tilt', BooleanParam, default=False,
+                          label="Reset Tilt to default",
+                          expertLevel=LEVEL_ADVANCED,
+                          help="Reset tilt and shift CTF parameters to 0 "
+                               "before refining.")
+
+            form.addParam('ctf_reset_trefoil', BooleanParam, default=False,
+                          label="Reset Trefoil to default",
+                          expertLevel=LEVEL_ADVANCED,
+                          help="Reset trefoil CTF parameters to 0 before "
+                               "refining.")
+
+            form.addParam('ctf_reset_tetra', BooleanParam, default=False,
+                          label="Reset Tetrafoil to default",
+                          expertLevel=LEVEL_ADVANCED,
+                          help="Reset tetrafoil CTF parameters to 0 "
+                               "before refining.")
+
+            form.addParam('ctf_reset_anisomag', BooleanParam, default=False,
+                          label="Reset Anisotropic Magnification to default",
+                          expertLevel=LEVEL_ADVANCED,
+                          help="Reset anisotropic magnification parameters to "
+                               "0 before refining.")
+
+            self.newParamsName = ['ctf_reset_anisomag', 'ctf_reset_tetra',
+                                  'ctf_reset_trefoil', 'crg_do_ews_correct',
+                                  'crg_ews_zsign', 'crg_do_anisomag',
+                                  'ctf_reset_tilt']
+
+
         # --------------[Compute settings]---------------------------
         form.addSection(label="Compute settings")
         addComputeSectionParams(form, allowMultipleGPUs=False)
@@ -157,7 +214,7 @@ class ProtCryoSparcGlobalCtfRefinement(ProtCryosparcBase, pwprot.ProtParticles):
                             'crg_do_trefoil',
                             'crg_do_spherical',
                             'crg_do_tetrafoil',
-                            'compute_use_ssd']
+                            'compute_use_ssd'] + self.newParamsName
         self.lane = str(self.getAttributeValue('compute_lane'))
 
     # --------------------------- STEPS functions ------------------------------
@@ -200,13 +257,12 @@ class ProtCryoSparcGlobalCtfRefinement(ProtCryosparcBase, pwprot.ProtParticles):
         imgSet.setAlignmentProj()
         imgSet.copyItems(self._getInputParticles(),
                          updateItemCallback=self._createItemMatrix,
-                         itemDataIterator=md.iterRows(outImgsFn,
-                                                      sortByLabel=md.RLN_IMAGE_ID))
+                         itemDataIterator=emtable.Table.iterRows(outImgsFn))
 
     def _createItemMatrix(self, particle, row):
         createItemMatrix(particle, row, align=ALIGN_PROJ)
         setCryosparcAttributes(particle, row,
-                               md.RLN_PARTICLE_RANDOM_SUBSET)
+                               RELIONCOLUMNS.rlnRandomSubset.value)
 
     # --------------------------- INFO functions -------------------------------
     def _validate(self):
@@ -253,7 +309,10 @@ class ProtCryoSparcGlobalCtfRefinement(ProtCryosparcBase, pwprot.ProtParticles):
         params = {}
 
         for paramName in self._paramsName:
-            params[str(paramName)] = str(self.getAttributeValue(paramName))
+            if paramName != 'crg_ews_zsign':
+                params[str(paramName)] = str(self.getAttributeValue(paramName))
+            else:
+                params[str(paramName)] = str(EWS_CURVATURE_SIGN[self.crg_ews_zsign.get()])
 
         # Determinate the GPUs to use (in dependence of
         # the cryosparc version)

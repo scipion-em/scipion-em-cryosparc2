@@ -1,3 +1,4 @@
+Jan 18, 2022  - Using emtable library to read star files(improving the performance when generating the outputs)
 Nov 12, 2021  - Adding homogenous reconstruction protocol
 Feb 11, 2021  - Compatibility with v3.X.X CS versions Adding a new protocol(helical refinement)
 Dec 18, 2020  - Cleaning intermediates results

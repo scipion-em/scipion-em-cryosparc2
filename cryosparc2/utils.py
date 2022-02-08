@@ -179,10 +179,10 @@ def getCryosparcVersion():
     global _csVersion
     if _csVersion is None:
         try:
-            _csVersion = _getCryosparcVersionFromFile()
+            _csVersion = _getCryosparcVersionFromFile().split('+')[0]
         except Exception:
             try:
-                _csVersion = getCryosparcEnvInformation(VERSION)
+                _csVersion = getCryosparcEnvInformation(VERSION).split('+')[0]
             except Exception:
                 print("Couldn't get Cryosparc's version. Please review your config (%s)" % Plugin.getUrl())
                 _csVersion = V_UNKNOWN

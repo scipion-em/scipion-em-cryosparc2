@@ -26,6 +26,8 @@
 # **************************************************************************
 import os
 
+import emtable
+
 from pwem import ALIGN_PROJ
 from pwem.protocols import ProtOperateParticles
 
@@ -368,6 +370,12 @@ class ProtCryoSparcNaiveLocalRefine(ProtCryosparcBase, ProtOperateParticles):
             if not validateMsgs:
                 self._validateDim(self._getInputParticles(), self.refVolume.get(),
                                   validateMsgs, 'Input particles', 'Input volume')
+                if not validateMsgs:
+                    particles = self._getInputParticles()
+                    if not particles.hasCTF():
+                        validateMsgs.append(
+                            "The Particles has not associated a "
+                            "CTF model")
         return validateMsgs
 
     def _summary(self):
@@ -401,12 +409,12 @@ class ProtCryoSparcNaiveLocalRefine(ProtCryosparcBase, ProtOperateParticles):
         imgSet.setAlignmentProj()
         imgSet.copyItems(self._getInputParticles(),
                          updateItemCallback=self._createItemMatrix,
-                         itemDataIterator=md.iterRows(outImgsFn,
-                                                      sortByLabel=md.RLN_IMAGE_ID))
+                         itemDataIterator=emtable.Table.iterRows(outImgsFn))
 
     def _createItemMatrix(self, particle, row):
         createItemMatrix(particle, row, align=ALIGN_PROJ)
-        setCryosparcAttributes(particle, row, md.RLN_PARTICLE_RANDOM_SUBSET)
+        setCryosparcAttributes(particle, row,
+                               RELIONCOLUMNS.rlnRandomSubset.value)
 
     def _defineParamsName(self):
         """ Define a list with all protocol parameters names"""

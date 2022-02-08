@@ -25,6 +25,8 @@
 # *  e-mail address 'scipion@cnb.csic.es'
 # *
 # **************************************************************************
+import emtable
+
 import pwem.objects as pwobj
 import pwem.protocols as pwprot
 import pyworkflow.utils as pwutils
@@ -38,7 +40,8 @@ from ..utils import (addSymmetryParam, addComputeSectionParams,
                      cryosparcValidate, gpusValidate, getSymmetry,
                      waitForCryosparc, clearIntermediateResults, enqueueJob,
                      fixVolume, copyFiles)
-from ..constants import md, NOISE_MODEL_CHOICES, REFINE_MASK_CHOICES
+from ..constants import (NOISE_MODEL_CHOICES, REFINE_MASK_CHOICES,
+                         RELIONCOLUMNS)
 
 
 class ProtCryoSparcRefine3D(ProtCryosparcBase, pwprot.ProtRefine3D):
@@ -353,6 +356,12 @@ class ProtCryoSparcRefine3D(ProtCryosparcBase, pwprot.ProtRefine3D):
         validateMsgs = cryosparcValidate()
         if not validateMsgs:
             validateMsgs = gpusValidate(self.getGpuList())
+            if not validateMsgs:
+                particles = self._getInputParticles()
+                if not particles.hasCTF():
+                    validateMsgs.append(
+                        "The Particles has not associated a "
+                        "CTF model")
         return validateMsgs
 
     def _summary(self):
@@ -394,13 +403,11 @@ class ProtCryoSparcRefine3D(ProtCryosparcBase, pwprot.ProtRefine3D):
         imgSet.setAlignmentProj()
         imgSet.copyItems(self._getInputParticles(),
                          updateItemCallback=self._createItemMatrix,
-                         itemDataIterator=md.iterRows(outImgsFn,
-                                                      sortByLabel=md.RLN_IMAGE_ID))
+                         itemDataIterator=emtable.Table.iterRows(fileName=outImgsFn))
 
     def _createItemMatrix(self, particle, row):
         createItemMatrix(particle, row, align=pwobj.ALIGN_PROJ)
-        setCryosparcAttributes(particle, row,
-                               md.RLN_PARTICLE_RANDOM_SUBSET)
+        setCryosparcAttributes(particle, row, RELIONCOLUMNS.rlnRandomSubset.value)
 
     def _defineParamsName(self):
         """ Define a list with all protocol parameters names"""

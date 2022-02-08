@@ -25,10 +25,13 @@
 # *
 # **************************************************************************
 
-from pyworkflow import NEW
+from pkg_resources import parse_version
+
 from pyworkflow.protocol.params import (FloatParam, Positive, IntParam,
-                                        BooleanParam, EnumParam)
+                                        BooleanParam, EnumParam, LEVEL_ADVANCED)
 from .protocol_cryosparc_homogeneous_refine import ProtCryoSparc3DHomogeneousRefine
+from ..utils import getCryosparcVersion
+from ..constants import V3_3_1
 
 
 class ProtCryoSparcNewNonUniformRefine3D(ProtCryoSparc3DHomogeneousRefine):
@@ -43,7 +46,7 @@ class ProtCryoSparcNewNonUniformRefine3D(ProtCryoSparc3DHomogeneousRefine):
     """
     _label = '3D non-uniform refinement'
     _className = "nonuniform_refine_new"
-    _devStatus = NEW
+    ewsParamsName = []
 
     def _defineParams(self, form):
         ProtCryoSparc3DHomogeneousRefine._defineParams(self, form)
@@ -87,6 +90,7 @@ class ProtCryoSparcNewNonUniformRefine3D(ProtCryoSparc3DHomogeneousRefine):
                            'accurate local cross-validation test (AWF should '
                            'be higher). Default of 3 is good, can try as low '
                            'as 1.5 ')
+
 
     def _defineParamsName(self):
         """ Define a list with all protocol parameters names"""
