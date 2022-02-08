@@ -57,7 +57,7 @@ class CryosPARCViewerPartSubtract(ProtocolViewer):
     _targets = [ProtCryoSparcSubtract, ProtCryoSparcGlobalCtfRefinement,
                 ProtCryoSparcLocalCtfRefinement,
                 ProtCryoSparcSymmetryExpansion]
-    _label = 'viewer cryosPARC'
+    _label = 'viewer cryoSPARC'
 
     def __init__(self, *args, **kwargs):
         ProtocolViewer.__init__(self, **kwargs)
