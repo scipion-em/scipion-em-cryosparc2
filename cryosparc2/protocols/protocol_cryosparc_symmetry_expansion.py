@@ -216,7 +216,7 @@ class ProtCryoSparcSymmetryExpansion(ProtCryosparcBase):
 
         waitForCryosparc(self.projectName.get(), self.runSymExp.get(),
                          "An error occurred in the particles subtraction process. "
-                         "Please, go to cryosPARC software for more "
+                         "Please, go to cryoSPARC software for more "
                          "details.")
         clearIntermediateResults(self.projectName.get(), self.runSymExp.get())
 

@@ -308,7 +308,7 @@ def doImportParticlesStar(protocol):
 
     waitForCryosparc(protocol.projectName.get(), import_particles.get(),
                      "An error occurred importing particles. "
-                     "Please, go to cryosPARC software for more "
+                     "Please, go to cryoSPARC software for more "
                      "details.")
 
     return import_particles
@@ -331,7 +331,7 @@ def doImportVolumes(protocol, refVolumePath, refVolume, volType, msg):
 
     waitForCryosparc(protocol.projectName.get(), importedVolume.get(),
                      "An error occurred importing the volume. "
-                     "Please, go to cryosPARC software for more "
+                     "Please, go to cryoSPARC software for more "
                      "details."
                      )
 
