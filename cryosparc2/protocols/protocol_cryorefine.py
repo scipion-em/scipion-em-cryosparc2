@@ -367,8 +367,7 @@ class ProtCryoSparcRefine3D(ProtCryosparcBase, pwprot.ProtRefine3D):
     def _summary(self):
         summary = []
         if (not hasattr(self, 'outputVolume') or
-                not hasattr(self, 'outputParticles') or
-                not hasattr(self, 'outputFSC')):
+                not hasattr(self, 'outputParticles')):
             summary.append("Output objects not ready yet.")
         else:
             summary.append("Input Particles: %s" %
@@ -491,7 +490,7 @@ class ProtCryoSparcRefine3D(ProtCryosparcBase, pwprot.ProtRefine3D):
 
         waitForCryosparc(self.projectName.get(), self.runRefine.get(),
                          "An error occurred in the Refinement process. "
-                         "Please, go to cryosPARC software for more "
+                         "Please, go to cryoSPARC software for more "
                          "details.")
         clearIntermediateResults(self.projectName.get(), self.runRefine.get())
 

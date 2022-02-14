@@ -508,9 +508,9 @@ class ProtCryoSparcNew3DClassification(ProtCryosparcBase):
                     if not particles.hasCTF():
                         validateMsgs.append("The Particles has not associated a "
                                             "CTF model")
-                        if not validateMsgs and not particles.hasAlignment3D():
-                            validateMsgs.append("The Particles has not a 3D "
-                                                "alignment")
+                    if not validateMsgs and not particles.particles.hasAlignmentProj():
+                        validateMsgs.append("The Particles has not "
+                                            "alignment")
 
                     inputVolumes = self._getInputVolume()
                     if not validateMsgs:
@@ -586,6 +586,26 @@ class ProtCryoSparcNew3DClassification(ProtCryosparcBase):
                             'compute_use_ssd']
 
         self.lane = str(self.getAttributeValue('compute_lane'))
+
+
+    def _summary(self):
+        summary = []
+        if (not hasattr(self, 'outputVolumes') or
+                not hasattr(self, 'outputClasses')):
+            summary.append("Output objects not ready yet.")
+        else:
+            summary.append("Input Particles: %s" %
+                           self.getObjectTag('inputParticles'))
+            summary.append("Initial volumes: %s" %
+                           self.getObjectTag('refVolumes'))
+
+            summary.append("------------------------------------------")
+            summary.append("Output volumes %s" %
+                           self.getObjectTag('outputVolumes'))
+            summary.append("Output classes %s" %
+                           self.getObjectTag('outputClasses'))
+
+        return summary
 
     def doNew3DClasification(self):
         """

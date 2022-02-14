@@ -43,7 +43,7 @@ AX_Z = 2
 
 class CryosPARCViewer2D(ProtocolViewer):
     """
-    Visualization tools for cryosPARC results.
+    Visualization tools for cryoSPARC results.
 
     CryoSPARC is a backend and frontend software system that provides data
     processing and image analysis capabilities for single particle cryo-EM,
@@ -54,7 +54,7 @@ class CryosPARCViewer2D(ProtocolViewer):
 
     _environments = [DESKTOP_TKINTER]
     _targets = [ProtCryo2D]
-    _label = 'viewer cryosPARC'
+    _label = 'viewer cryoSPARC'
 
     def __init__(self, *args, **kwargs):
         ProtocolViewer.__init__(self, **kwargs)
@@ -67,7 +67,7 @@ class CryosPARCViewer2D(ProtocolViewer):
         group.addParam('displayClass2D', LabelParam,
                        label='Display particle classes with Scipion')
         group.addParam('displayCryosPARC2D', LabelParam,
-                       label='Display particle classes with cryosPARC GUI')
+                       label='Display particle classes with cryoSPARC GUI')
 
     def _getVisualizeDict(self):
         self._load()

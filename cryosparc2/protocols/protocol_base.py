@@ -32,9 +32,9 @@ from pkg_resources import parse_version
 import pwem.protocols as pw
 import pyworkflow.object as pwobj
 import pyworkflow.utils as pwutils
-from pwem.objects import FSC
+from pwem.objects import FSC, SetOfFSCs
 
-from ..constants import V3_3_1
+from ..constants import V3_3_1, excludedFSCValues, fscValues
 from ..convert import convertBinaryVol, writeSetOfParticles, ImageHandler
 from ..utils import (getProjectPath, createEmptyProject,
                      createEmptyWorkSpace, getProjectName,
@@ -262,22 +262,58 @@ class ProtCryosparcBase(pw.EMProtocol):
             fscRequest = requests.get(url, allow_redirects=True)
             fscFile = "fsc.txt"
             fscFilePath = os.path.join(self._getExtraPath(), fscFile)
+            factor = self._getInputParticles().getDim()[0] * imgSet.getSamplingRate()
 
             # Convert into scipion fsc format
             open(fscFilePath, 'wb').write(fscRequest.content)
-            f = open(fscFilePath, 'r')
-            lines = f.readlines()
-            wv = []
-            corr = []
-            factor = self._getInputParticles().getDim()[0] * imgSet.getSamplingRate()
-            for x in lines[1:-1]:
-                wv.append(str(float(x.split('\t')[0])/factor))
-                corr.append(x.split('\t')[self._fscColumns])
-            f.close()
-            fsc = FSC(objLabel=self.getRunName())
-            fsc.setData(wv, corr)
-            self._defineOutputs(outputFSC=fsc)
-            self._defineSourceRelation(vol, fsc)
+            fscSet = self.getSetOfFCSsFromFile(fscFilePath, factor)
+            self._defineOutputs(outputFSC=fscSet)
+            self._defineSourceRelation(vol, fscSet)
+
+    def getSetOfFCSsFromFile(self, file, factor):
+        f = open(file, 'r')
+        lines = f.readlines()
+        fscSet = self._createSetOfFSCs()
+        columns = lines[0].strip().split('\t')[1:]
+        col = 1
+        fsc_t = None
+        fsc_nt = None
+
+        for column in columns:
+            if column == 'fsc_tightmask':
+                fsc_t = \
+                self.getFSCFromRawData(lines, column, col, factor).getData()[1]
+            if column == 'fsc_noisesub_true':
+                fsc_nt = \
+                self.getFSCFromRawData(lines, column, col, factor).getData()[1]
+            if column not in excludedFSCValues:
+                fsc = self.getFSCFromRawData(lines, column, col, factor)
+                fscSet.append(fsc)
+            col += 1
+        f.close()
+        corr = []
+
+        if fsc_t is not None and fsc_nt is not None:  # Phase Randomized Masket Map can be calculated
+            for i in range(len(fsc_t)):
+                corr.append((fsc_t[i] - fsc_nt[i]) / (1.0 - fsc_nt[i]))
+            fsc = FSC(objLabel=fscValues['fsc_prmm'])
+            fsc_wv = fscSet.getFirstItem().getData()[0]
+            fsc.setData(fsc_wv, corr)
+            fscSet.append(fsc)
+        fscSet.write()
+        return fscSet
+
+    def getFSCFromRawData(self, lines, label, col, factor):
+        wv = []
+        corr = []
+        for x in lines[1:]:
+            wv_value = float(x.strip().split('\t')[0])
+            coor_value = x.strip().split('\t')[col]
+            wv.append(str(wv_value / factor))
+            corr.append(coor_value)
+        fsc = FSC(objLabel=fscValues[label])
+        fsc.setData(wv, corr)
+        return fsc
 
     def findLastIteration(self, jobName):
         get_job_streamlog(self.projectName.get(),

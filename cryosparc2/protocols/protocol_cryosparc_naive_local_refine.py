@@ -381,8 +381,7 @@ class ProtCryoSparcNaiveLocalRefine(ProtCryosparcBase, ProtOperateParticles):
     def _summary(self):
         summary = []
         if (not hasattr(self, 'outputVolume') or
-                not hasattr(self, 'outputParticles') or
-                not hasattr(self, 'outputFSC')):
+                not hasattr(self, 'outputParticles')):
             summary.append("Output objects not ready yet.")
         else:
             summary.append("Input Particles: %s" %
@@ -494,6 +493,6 @@ class ProtCryoSparcNaiveLocalRefine(ProtCryosparcBase, ProtOperateParticles):
 
         waitForCryosparc(self.projectName.get(), self.runLocalRefinement.get(),
                          "An error occurred in the local refinement process. "
-                         "Please, go to cryosPARC software for more "
+                         "Please, go to cryoSPARC software for more "
                          "details.")
         clearIntermediateResults(self.projectName.get(), self.runLocalRefinement.get())

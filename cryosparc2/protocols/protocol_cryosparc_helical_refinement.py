@@ -327,6 +327,6 @@ class ProtCryoSparcHelicalRefine3D(ProtCryoSparcRefine3D):
 
         waitForCryosparc(self.projectName.get(), self.runRefine.get(),
                          "An error occurred in the Refinement process. "
-                         "Please, go to cryosPARC software for more "
+                         "Please, go to cryoSPARC software for more "
                          "details.")
         clearIntermediateResults(self.projectName.get(), self.runRefine.get())

@@ -24,7 +24,7 @@
 # *  e-mail address 'scipion@cnb.csic.es'
 # *
 # **************************************************************************
-from collections import OrderedDict
+import enum
 from pwem.constants import (
     SYM_CYCLIC, SYM_TETRAHEDRAL, SYM_OCTAHEDRAL, SYM_I222,
     SYM_I222r)
@@ -107,12 +107,17 @@ VOLUME_CHIMERA = 1
 VOLUME_CRYOSPARC = 0
 DATA_VIEWER = 0
 
-FSC_UNMASK = 0
-FSC_SPHERICALMASK = 1
-FSC_LOOSEMASK = 2
-FSC_TIGHTMASK = 3
-FSC_CORRECTEDMASK = 4
-FSC_ALL = 5
+fscValues = dict()
+fscValues['fsc_nomask'] = 'No mask'
+fscValues['fsc_loosemask'] = 'Loose'
+fscValues['fsc_tightmask'] = 'Tight'
+fscValues['fsc_noisesub_raw'] = 'Noise sub_raw'
+fscValues['fsc_noisesub_true'] = 'Noise sub_true'
+fscValues['fsc_noisesub'] = 'Corrected'
+fscValues['fsc_sphericalmask'] = 'Spherical'
+fscValues['fsc_prmm'] = 'Phase randomized'
+
+excludedFSCValues = ['fsc_noisesub_raw', 'fsc_noisesub_true']
 
 HALF_EVEN = 0
 HALF_ODD = 1
@@ -125,8 +130,6 @@ OBJCMD_INITVOL = 'Show initial random volume'
 
 
 # METADATA
-import enum
-
 
 class RELIONCOLUMNS(enum.Enum):
     rlnOriginX = 'rlnOriginX'                        # RLN_ORIENT_ORIGIN_X

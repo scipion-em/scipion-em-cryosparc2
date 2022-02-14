@@ -511,6 +511,6 @@ class ProtCryoSparc3DClassification(ProtCryosparcBase):
 
         waitForCryosparc(self.projectName.get(), self.run3dClassification.get(),
                          "An error occurred in the 3D Classification process. "
-                         "Please, go to cryosPARC software for more "
+                         "Please, go to cryoSPARC software for more "
                          "details.")
         clearIntermediateResults(self.projectName.get(), self.run3dClassification.get())
