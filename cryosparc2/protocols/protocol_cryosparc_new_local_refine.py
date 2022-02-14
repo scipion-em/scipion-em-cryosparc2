@@ -305,8 +305,7 @@ class ProtCryoSparcLocalRefine(ProtCryosparcBase, ProtOperateParticles):
     def _summary(self):
         summary = []
         if (not hasattr(self, 'outputVolume') or
-                not hasattr(self, 'outputParticles') or
-                not hasattr(self, 'outputFSC')):
+                not hasattr(self, 'outputParticles')):
             summary.append("Output objects not ready yet.")
         else:
             summary.append("Input Particles: %s" %

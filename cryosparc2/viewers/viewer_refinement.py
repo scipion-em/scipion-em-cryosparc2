@@ -27,11 +27,12 @@
 import webbrowser
 
 import pwem.viewers.showj as showj
+from pwem.objects import FSC, SetOfFSCs
 from pyworkflow.protocol.constants import *
 from pyworkflow.protocol.params import (LabelParam, FloatParam, EnumParam)
 from pyworkflow.viewer import DESKTOP_TKINTER, WEB_DJANGO
 from pwem.viewers import (ChimeraView, EmPlotter, ChimeraClientView,
-                          ObjectView, EmProtocolViewer)
+                          ObjectView, EmProtocolViewer, FscViewer)
 
 from ..protocols import (ProtCryoSparcNonUniformRefine3D,
                          ProtCryoSparcRefine3D,
@@ -73,25 +74,21 @@ class CryosPARCViewer3DRefinement(EmProtocolViewer):
 
         group = form.addGroup('Resolution')
 
-        choices = ['no mask', 'spherical', 'loose', 'tight', 'corrected', 'all']
-
-        if self.protocol.__class__ == ProtCryoSparcHelicalRefine3D:
-            choices = ['no mask', 'spherical', 'loose', 'tight', 'all']
+        self.choices = self.getChoices()
 
         group.addParam('resolutionPlotsFSC', EnumParam,
-                       choices=choices,
-                       default=FSC_UNMASK, display=EnumParam.DISPLAY_COMBO,
+                       choices=list(self.choices),
+                       default=0, display=EnumParam.DISPLAY_COMBO,
                        label='Display resolution plots (FSC)',
                        help='*unmasked*: display FSC of unmasked maps.\n'
                             '*masked*: display FSC of masked maps.\n'
                             '*masked tight*: display FSC of masked tight maps.')
         group.addParam('resolutionThresholdFSC', FloatParam, default=0.143,
                        expertLevel=LEVEL_ADVANCED,
-                       label='Threshold in resolution plots',
-                       help='')
+                       label='Threshold ',
+                       help='Threshold in resolution plots')
 
     def _getVisualizeDict(self):
-        self._load()
         return {'showImagesAngularAssignment': self._showOutputParticles,
                 'displayVol': self._showVolumes,
                 'resolutionPlotsFSC': self._showFSC
@@ -177,128 +174,40 @@ class CryosPARCViewer3DRefinement(EmProtocolViewer):
 
         return [view]
 
+    def getChoices(self):
+        choices = []
+        output = self.protocol.outputFSC
+        if isinstance(output, SetOfFSCs):
+            self.setOfFSCs = self.protocol.outputFSC
+            for fsc in self.setOfFSCs.iterItems():
+                choices.append(fsc.getObjLabel())
+        else:
+            fscFile = "fsc.txt"
+            fscFilePath = os.path.join(self.protocol._getExtraPath(), fscFile)
+            inputParticles = self.protocol._getInputParticles()
+            factor = inputParticles.getDim()[0] * inputParticles.getSamplingRate()
+            self.setOfFSCs = self.protocol.getSetOfFCSsFromFile(fscFilePath, factor)
+            self.protocol.deleteOutput(output)
+            self.protocol._defineOutputs(outputFSC=self.setOfFSCs)
+            for fsc in self.setOfFSCs.iterItems():
+                choices.append(fsc.getObjLabel())
+        choices.append('All')
+
+        return choices
+
     # =========================================================================
     # plotFSC
     # =========================================================================
     def _showFSC(self, paramName=None):
-        threshold = self.resolutionThresholdFSC.get()
-        gridsize = self._getGridSize(1)
-        xplotter = EmPlotter(x=gridsize[0], y=gridsize[1],
-                             windowTitle='Resolution FSC')
 
-        plot_title = 'FSC'
-        a = xplotter.createSubPlot(plot_title, 'Angstroms^-1', 'FSC',
-                                   yformat=False)
-
-        legends = []
-        show = False
-        fsc_path = self.protocol._getExtraPath('fsc.txt')
-        if os.path.exists(fsc_path):
-            show = True
-            if self.resolutionPlotsFSC.get() == FSC_UNMASK:
-                self._plotFSC(a, fsc_path, FSC_UNMASK)
-                legends.append('No Mask')
-                xplotter.showLegend(legends)
-            elif self.resolutionPlotsFSC.get() == FSC_SPHERICALMASK:
-                self._plotFSC(a, fsc_path, FSC_SPHERICALMASK)
-                legends.append('Spherical')
-                xplotter.showLegend(legends)
-            elif self.resolutionPlotsFSC.get() == FSC_TIGHTMASK:
-                self._plotFSC(a, fsc_path, FSC_TIGHTMASK)
-                legends.append('Tight')
-                xplotter.showLegend(legends)
-            elif self.resolutionPlotsFSC.get() == FSC_LOOSEMASK:
-                self._plotFSC(a, fsc_path, FSC_LOOSEMASK)
-                legends.append('Loose')
-                xplotter.showLegend(legends)
-            elif self.resolutionPlotsFSC.get() == FSC_CORRECTEDMASK:
-                self._plotFSC(a, fsc_path, FSC_CORRECTEDMASK+1)
-                legends.append('Corrected')
-                xplotter.showLegend(legends)
-            elif self.resolutionPlotsFSC.get() == FSC_ALL:
-                self._plotFSC(a, fsc_path, FSC_UNMASK)
-                legends.append('No Mask')
-                self._plotFSC(a, fsc_path, FSC_SPHERICALMASK)
-                legends.append('Spherical')
-                self._plotFSC(a, fsc_path, FSC_LOOSEMASK)
-                legends.append('Loose')
-                self._plotFSC(a, fsc_path, FSC_TIGHTMASK)
-                legends.append('Tight')
-                if self.protocol.__class__ != ProtCryoSparcHelicalRefine3D:
-                    self._plotFSC(a, fsc_path, FSC_CORRECTEDMASK+1)
-                    legends.append('Corrected')
-                xplotter.showLegend(legends)
-
-        if show:
-            if threshold < self.maxFrc:
-                a.plot([self.minInv, self.maxInv], [threshold, threshold],
-                       color='black', linestyle='--')
-            a.grid(True)
+        fscViewer = FscViewer(project=self.getProject(),
+                              protocol=self.protocol)
+        if self.resolutionPlotsFSC.get() == len(self.choices)-1:  # Case of all plot
+            fscViewer.visualize(self.setOfFSCs)
         else:
-            raise Exception("Set a valid iteration to show its FSC")
-
-        return [xplotter]
-
-    def _plotFSC(self, a, fscFn, col):
-        resolution_inv = self._getColunmFromFilePar(fscFn, 0)
-        frc = self._getColunmFromFilePar(fscFn, col+1)
-        self.maxFrc = max(frc)
-        self.minInv = min(resolution_inv)
-        self.maxInv = max(resolution_inv)
-        self.sampligRate = self.protocol._getInputParticles().getSamplingRate()
-        factor = (2. * self.sampligRate * self.maxInv)
-        resolution_inv = [x/factor for x in resolution_inv]
-        self.minInv /= factor
-        self.maxInv /= factor
-        a.plot(resolution_inv, frc)
-        a.xaxis.set_major_formatter(self._plotFormatter)
-        a.set_ylim([-0.1, 1.1])
-
-    # =========================================================================
-    # Utils Functions
-    # =========================================================================
-    def _load(self):
-        """ Load the 3D classes for visualization mode. """
-        self.protocol._defineFileNames()
-        from matplotlib.ticker import FuncFormatter
-        self._plotFormatter = FuncFormatter(self._formatFreq)
-
-    @staticmethod
-    def _formatFreq(value, pos):
-        """ Format function for Matplotlib formatter. """
-        inv = 999.
-        if value:
-            inv = 1./value
-        return "1/%0.2f" % inv
-
-    def _getVolumeNames(self):
-        vol = []
-        vn = self.protocol.outputVolume.getFileName()
-        vol.append(vn)
-        return vol
-
-    def _getGridSize(self, n=None):
-        """ Figure out the layout of the plots given the number of
-        references. """
-        if n is None:
-            n = len(self._refsList)
-
-        if n == 1:
-            gridsize = [1, 1]
-        elif n == 2:
-            gridsize = [2, 1]
-        else:
-            gridsize = [(n + 1) / 2, 2]
-
-        return gridsize
-
-    def _getColunmFromFilePar(self, fscFn, col):
-        f1 = open(fscFn)
-        f1.readline()
-        value = []
-        for l in f1:
-            valList = l.split()
-            val = float(valList[col])
-            value.append(val)
-        f1.close()
-        return value
+            pos = 0
+            for fsc in self.setOfFSCs.iterItems():
+                if pos == self.resolutionPlotsFSC.get():
+                    fscViewer.visualize(fsc)
+                    break
+                pos += 1

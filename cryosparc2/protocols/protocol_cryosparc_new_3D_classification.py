@@ -508,8 +508,8 @@ class ProtCryoSparcNew3DClassification(ProtCryosparcBase):
                     if not particles.hasCTF():
                         validateMsgs.append("The Particles has not associated a "
                                             "CTF model")
-                    if not validateMsgs and not particles.hasAlignment3D():
-                        validateMsgs.append("The Particles has not a 3D "
+                    if not validateMsgs and not particles.particles.hasAlignmentProj():
+                        validateMsgs.append("The Particles has not "
                                             "alignment")
 
                     inputVolumes = self._getInputVolume()

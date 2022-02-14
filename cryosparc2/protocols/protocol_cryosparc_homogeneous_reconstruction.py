@@ -373,6 +373,34 @@ class ProtCryoSparcHomogeneousReconstruct(ProtCryosparcBase):
 
         return validateMsgs
 
+    def _summary(self):
+        summary = []
+        if (not hasattr(self, 'outputVolume') or
+                not hasattr(self, 'outputParticles')):
+            summary.append("Output objects not ready yet.")
+        else:
+            summary.append("Input Particles: %s" %
+                           self.getObjectTag('inputParticles'))
+            summary.append("Input Mask: %s" %
+                           self.getObjectTag('refMask'))
+            summary.append("Symmetry: %s" %
+                           getSymmetry(self.symmetryGroup.get(),
+                                       self.symmetryOrder.get())
+                           )
+            summary.append("------------------------------------------")
+            summary.append("Output particles %s" %
+                           self.getObjectTag('outputParticles'))
+            summary.append("Output volume %s" %
+                           self.getObjectTag('outputVolume'))
+
+            if self.hasAttribute('mapResolution'):
+                summary.append(
+                    "\nMap Resolution: %s" % self.mapResolution.get())
+            if self.hasAttribute('estBFactor'):
+                summary.append(
+                    '\nEstimated Bfactor: %s' % self.estBFactor.get())
+        return summary
+
     def _defineParamsName(self):
         """ Define a list with all protocol parameters names"""
         self._paramsName = ['refine_N_cmp', 'refine_gs_resplit',
