@@ -72,18 +72,19 @@ class CryosPARCViewer3DRefinement(EmProtocolViewer):
                             '*cryoSPARC: display volumes as surface with cryoSPARC')
         # '*slices*: display volumes as 2D slices along z axis.\n'
 
-        group = form.addGroup('Resolution')
+        if self.protocol.isFinished():
+            group = form.addGroup('Resolution')
 
-        self.choices = self.getChoices()
+            self.choices = self.getChoices()
 
-        group.addParam('resolutionPlotsFSC', EnumParam,
+            group.addParam('resolutionPlotsFSC', EnumParam,
                        choices=list(self.choices),
                        default=0, display=EnumParam.DISPLAY_COMBO,
                        label='Display resolution plots (FSC)',
                        help='*unmasked*: display FSC of unmasked maps.\n'
                             '*masked*: display FSC of masked maps.\n'
                             '*masked tight*: display FSC of masked tight maps.')
-        group.addParam('resolutionThresholdFSC', FloatParam, default=0.143,
+            group.addParam('resolutionThresholdFSC', FloatParam, default=0.143,
                        expertLevel=LEVEL_ADVANCED,
                        label='Threshold ',
                        help='Threshold in resolution plots')
