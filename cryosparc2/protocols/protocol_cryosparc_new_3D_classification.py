@@ -350,7 +350,7 @@ class ProtCryoSparcNew3DClassification(ProtCryosparcBase):
                                       self.run3dClassification.get())
         itera = self.findLastIteration(self.run3dClassification.get())
 
-        csParticlesName = "cryosparc_%s_%s_000%s_particles.cs" % (
+        csParticlesName = "cryosparc_%s_%s_00%s_particles.cs" % (
                                                  self.projectName.get(),
                                                  self.run3dClassification.get(),
                                                  itera)
@@ -459,14 +459,14 @@ class ProtCryoSparcNew3DClassification(ProtCryosparcBase):
             output_file.write('\n')
             numOfClass = self.class3D_N_K.get()
             for i in range(numOfClass):
-                csVolName = ("cryosparc_%s_%s_class_%02d_000%s_volume.mrc" %
+                csVolName = ("cryosparc_%s_%s_class_%02d_00%s_volume.mrc" %
                              (self.projectName.get(),
                               self.run3dClassification.get(), i, itera))
 
                 copyFiles(csOutputFolder, self._getExtraPath(),
                           files=[csVolName])
 
-                row = ("%s/cryosparc_%s_%s_class_%02d_000%s_volume.mrc\n" %
+                row = ("%s/cryosparc_%s_%s_class_%02d_00%s_volume.mrc\n" %
                        (self._getExtraPath(), self.projectName.get(),
                         self.run3dClassification.get(), i, itera))
                 output_file.write(row)
@@ -489,7 +489,10 @@ class ProtCryoSparcNew3DClassification(ProtCryosparcBase):
                 z = str(y['text'])
                 if z.startswith('Batch Class Distribution (Iteration:'):
                     it = z.split(': ')[1].split(')')[0]
-                    itera = it if int(it) > 10 else '0' + it
+                    if int(it) > 99:
+                        itera = it
+                    else:
+                        itera = '0' + it if int(it) > 10 else '00' + it
 
         return itera
 
