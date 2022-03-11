@@ -619,7 +619,7 @@ class ProtCryoSparcNew3DClassification(ProtCryosparcBase):
             group_connect["volume"] = self.volumes
 
         if self.mask.get() is not None:
-            group_connect["mask"] = self.mask
+            group_connect["mask"] = [self.mask]
         params = {}
 
 
