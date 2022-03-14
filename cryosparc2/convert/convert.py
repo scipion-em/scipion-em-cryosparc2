@@ -36,11 +36,12 @@ import sys
 
 from pyem.star import UCSF
 
+from emtable.metadata import _guessType
 from pwem.emlib.image import ImageHandler
 import pwem.emlib.metadata as md
 from pwem.objects import (String, Integer, Transform, Particle,
                           Coordinate, Acquisition, CTFModel)
-from pyworkflow.object import ObjectWrap
+from pyworkflow.object import ObjectWrap, Float
 import pyworkflow.utils as pwutils
 from pwem.constants import *
 
@@ -487,8 +488,15 @@ def setCryosparcAttributes(obj, objRow, *labels):
     and the datatype will be set correctly.
     """
     for label in labels:
-        setattr(obj, '_%s' % label,
-                objRow.get(label))
+        value = objRow.get(label)
+        valueType = _guessType(value)
+        if valueType is int:
+            value = Integer(value)
+        elif valueType is float:
+            value = Float(value)
+        else:
+            value = String(value)
+        setattr(obj, '_%s' % label, value)
 
 
 def matrixFromGeometry(shifts, angles, inverseTransform):
