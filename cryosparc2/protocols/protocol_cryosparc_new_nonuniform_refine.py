@@ -83,7 +83,7 @@ class ProtCryoSparcNewNonUniformRefine3D(ProtCryoSparc3DHomogeneousRefine):
         form.addParam('refine_nu_awf', FloatParam,
                       default=3,
                       validator=[Positive],
-                      label="Non-uniform filter order",
+                      label="Non-uniform AWF",
                       help='Adaptive Window Factor for cross-validation-optimal '
                            'regularization. Trade off between fast transitions '
                            'between regions (AWF should be lower) and more '
@@ -95,6 +95,6 @@ class ProtCryoSparcNewNonUniformRefine3D(ProtCryoSparc3DHomogeneousRefine):
     def _defineParamsName(self):
         """ Define a list with all protocol parameters names"""
         ProtCryoSparc3DHomogeneousRefine._defineParamsName(self)
-        self._paramsName += ['refine_do_marg', 'refine_do_marg',
+        self._paramsName += ['refine_do_marg', 'refine_nu_enable',
                              'refine_nu_filtertype', 'refine_nu_order',
                              'refine_nu_awf']
