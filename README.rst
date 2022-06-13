@@ -28,10 +28,16 @@ You will need to use `3.0.0 <https://scipion-em.github.io/docs/release-3.0.0/doc
 * **Homogeneous Reconstruction**: Reconstruct half-maps from input particles with alignments
 * **3D Classification**: Classify particles into multiple 3D classes and optimize 3D class densities (currently, without re-aligning particle pose or shift).
 
-**Latest plugin version**
+**Latest plugin versions**
 =========================
 
-**v3.3.9**
+**v3.3.14**
+----------
+* **new**      : Added the option to use the plugin in a CS installation in a cluster
+* **new**      : Added a wizard to select the lane where the protocols will be launched
+
+
+**v3.3.13**
 ----------
 * **new**      : Compatibility with cryoSPARC v3.3.1
 * **new**      : Added a new 3D Classification protocol
@@ -82,6 +88,16 @@ cryoSPARC v2 when new versions become available.
 
        #Folder (available to all workers) where scipion will create cryosparc projects
        CRYO_PROJECTS_DIR = <path> (default to <CRYOSPARC_HOME>/scipion_projects)
+
+       # Specifies whether the CS installation is standalone or not. If FALSE,
+       # it is assumed that CS is installed in a cluster. If the variable is not
+       # defined, by default assume that the installation is standalone and its
+       # value would be TRUE
+       CRYOSPARC_STANDALONE_INSTALLATION = <TRUE or FALSE>
+
+       # Name of the default lane where the protocols will be launched
+       CRYOSPARC_DEFAULT_LANE = <lane name>
+
 
 
 **To install in development mode**
