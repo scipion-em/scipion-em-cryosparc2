@@ -35,6 +35,8 @@ You will need to use `3.0.0 <https://scipion-em.github.io/docs/release-3.0.0/doc
 ----------
 * **new**      : Added the option to use the plugin in a CS installation in a cluster
 * **new**      : Added a wizard to select the lane where the protocols will be launched
+* **new**      : Added the varaiable CRYOSPARC_DEFAULT_LANE to define the name of the cryoSPARC default lane
+* **new**      : Added the variable CRYOSPARC_STANDALONE_INSTALLATION to specify whether the CS installation is standalone or not
 
 
 **v3.3.13**
@@ -89,11 +91,11 @@ cryoSPARC v2 when new versions become available.
        #Folder (available to all workers) where scipion will create cryosparc projects
        CRYO_PROJECTS_DIR = <path> (default to <CRYOSPARC_HOME>/scipion_projects)
 
-       # Specifies whether the CS installation is standalone or not. If FALSE,
+       # Specifies whether the CS installation is standalone or not. If False,
        # it is assumed that CS is installed in a cluster. If the variable is not
        # defined, by default assume that the installation is standalone and its
-       # value would be TRUE
-       CRYOSPARC_STANDALONE_INSTALLATION = <TRUE or FALSE>
+       # value would be True
+       CRYOSPARC_STANDALONE_INSTALLATION = <True or False>
 
        # Name of the default lane where the protocols will be launched
        CRYOSPARC_DEFAULT_LANE = <lane name>

@@ -94,11 +94,14 @@ class LanesTreeProvider(TreeProvider):
     """
     COL_LANE = 'Lane name'
 
-    def __init__(self, protocol, lanes):
+    def __init__(self, protocol):
         self.protocol = protocol
         TreeProvider.__init__(self)
         self.selectedDict = {}
-        self.lanes = lanes
+        self.lanes = self._getComputeLanes()[0]
+
+    def _getComputeLanes(self):
+        return getSchedulerLanes()
 
     def getObjects(self):
         objects = []
@@ -134,12 +137,8 @@ class LanesDialogView(pwviewer.View):
     def __init__(self, parent, protocol, **kwargs):
         self._tkParent = parent
         self._protocol = protocol
-        self.lanes = self._getComputeLanes()[0]
-        self._provider = LanesTreeProvider(protocol, self.lanes)
+        self._provider = LanesTreeProvider(protocol)
         self.selectedLane = None
-
-    def _getComputeLanes(self):
-        return getSchedulerLanes()
 
     def show(self):
         return ListDialog(self._tkParent, 'Lanes display', self._provider,

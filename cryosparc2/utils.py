@@ -25,6 +25,7 @@
 # *
 # **************************************************************************
 import getpass
+import logging
 import os
 import shutil
 import time
@@ -64,6 +65,9 @@ ACTIVE_STATUSES = [STATUS_QUEUED, STATUS_RUNNING, STATUS_STARTED,
 _csVersion = None  # Lazy variable: never use it directly. Use getCryosparcVersion instead
 _csLanes = None    # idem
 _defaultLane = None  # idem
+
+# logging variable
+logger = logging.getLogger(__name__)
 
 
 def getCryosparcDir(*paths):
@@ -206,9 +210,9 @@ def getCryosparcUser():
     return os.path.basename(os.environ.get(CRYOSPARC_USER, ""))
 
 
-def getCryosparcInstallationMode():
+def isCryosparcStandalone():
     """
-    Get the cryoSPARC installation mode. If TRUE, we have a standalone installation
+    Get the cryoSPARC installation mode. If True, we have a standalone installation
     else a cluster installation is considered. If the environment variable
     CRYOSPARC_STANDALONE_INSTALLATION isn't present, then we assume that we have
     a standalone installation and then, this method returns True
@@ -380,7 +384,7 @@ def enqueueJob(jobType, projectName, workSpaceName, params, input_group_connect,
     from pyworkflow.object import String
 
     cryosparcVersion = getCryosparcVersion()
-    standaloneInstallation = getCryosparcInstallationMode()
+    standaloneInstallation = isCryosparcStandalone()
 
     # Create a compatible job to versions < v2.14.X
     make_job_cmd = (getCryosparcProgram() +
@@ -617,10 +621,10 @@ def getSchedulerLanes():
                 defaultLane = getCryosparcDefaultLane()
                 _defaultLane = _csLanes[0] if defaultLane is None else defaultLane
                 if _defaultLane not in _csLanes:
-                    print("Couldn't get the lane %s to the cryoSPARC installation" % _defaultLane)
+                    logger.error("Couldn't get the lane %s to the cryoSPARC installation" % _defaultLane)
                     _defaultLane = _csLanes[0]
             except Exception:
-               print("Couldn't get Cryosparc's lanes")
+               logger.error("Couldn't get Cryosparc's lanes")
     return _csLanes, _defaultLane
 
 
@@ -644,7 +648,10 @@ def addComputeSectionParams(form, allowMultipleGPUs=True):
 
     # This is here because getCryosparcEnvInformation is failing in some machines
     try:
-        versionAllowGPUs = parse_version(getCryosparcVersion()) >= parse_version(V2_13_0)
+        if isCryosparcStandalone():
+            versionAllowGPUs = parse_version(getCryosparcVersion()) >= parse_version(V2_13_0)
+        else:
+            versionAllowGPUs = False
     # Code is failing to get CS info, either stop or some error
     except Exception:
         # ... we assume is a modern version
