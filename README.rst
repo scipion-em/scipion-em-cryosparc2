@@ -29,11 +29,11 @@ You will need to use `3.0.0 <https://scipion-em.github.io/docs/release-3.0.0/doc
 * **3D Classification**: Classify particles into multiple 3D classes and optimize 3D class densities (currently, without re-aligning particle pose or shift).
 
 **Latest plugin versions**
-=========================
+==========================
 
 
 **v3.3.14**
-----------
+-----------
 
 * **new**      : Added the option to use the plugin in a CS installation in a cluster
 * **new**      : Added a wizard to select the lane where the protocols will be launched
@@ -42,7 +42,7 @@ You will need to use `3.0.0 <https://scipion-em.github.io/docs/release-3.0.0/doc
 
 
 **v3.3.13**
-----------
+-----------
 
 * **new**      : Compatibility with cryoSPARC v3.3.1
 * **new**      : Added a new 3D Classification protocol
