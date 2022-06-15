@@ -25,6 +25,7 @@
 # *
 # **************************************************************************
 import getpass
+import logging
 import os
 import shutil
 import time
@@ -41,7 +42,8 @@ from . import Plugin
 from .constants import (CS_SYM_NAME, SYM_DIHEDRAL_Y, CRYOSPARC_USER,
                         CRYO_PROJECTS_DIR, V2_14_0, V2_13_0, CRYOSPARC_HOME,
                         CRYOSPARC_USE_SSD, V_UNKNOWN, V3_0_0, V2_15_0,
-                        CRYOSPARC_MASTER)
+                        CRYOSPARC_MASTER, CRYOSPARC_STANDALONE_INSTALLATION,
+                        CRYOSPARC_DEFAULT_LANE)
 
 VERSION = 'version'
 
@@ -61,6 +63,11 @@ ACTIVE_STATUSES = [STATUS_QUEUED, STATUS_RUNNING, STATUS_STARTED,
 
 # Module variables
 _csVersion = None  # Lazy variable: never use it directly. Use getCryosparcVersion instead
+_csLanes = None    # idem
+_defaultLane = None  # idem
+
+# logging variable
+logger = logging.getLogger(__name__)
 
 
 def getCryosparcDir(*paths):
@@ -201,6 +208,23 @@ def getCryosparcUser():
     Get the full name of the initial admin account
     """
     return os.path.basename(os.environ.get(CRYOSPARC_USER, ""))
+
+
+def isCryosparcStandalone():
+    """
+    Get the cryoSPARC installation mode. If True, we have a standalone installation
+    else a cluster installation is considered. If the environment variable
+    CRYOSPARC_STANDALONE_INSTALLATION isn't present, then we assume that we have
+    a standalone installation and then, this method returns True
+    """
+    return os.environ.get(CRYOSPARC_STANDALONE_INSTALLATION, 'True') == 'True'
+
+
+def getCryosparcDefaultLane():
+    """
+    Get the cryoSPARC default lane
+    """
+    return os.environ.get(CRYOSPARC_DEFAULT_LANE, None)
 
 
 def getCryosparcProjectsDir():
@@ -360,6 +384,8 @@ def enqueueJob(jobType, projectName, workSpaceName, params, input_group_connect,
     from pyworkflow.object import String
 
     cryosparcVersion = getCryosparcVersion()
+    standaloneInstallation = isCryosparcStandalone()
+
     # Create a compatible job to versions < v2.14.X
     make_job_cmd = (getCryosparcProgram() +
                     ' %smake_job("%s","%s","%s", "%s", "None", %s, %s)%s' %
@@ -412,24 +438,35 @@ def enqueueJob(jobType, projectName, workSpaceName, params, input_group_connect,
                             lane, "'"))
 
     elif parse_version(cryosparcVersion) <= parse_version(V2_15_0):
-        hostname = getCryosparcEnvInformation('master_hostname')
-        if gpusToUse:
-            gpusToUse = str(gpusToUse)
-        enqueue_job_cmd = (getCryosparcProgram() +
-                           ' %senqueue_job("%s","%s","%s", "%s", %s)%s' %
-                           ("'", projectName, jobId,
-                            lane, hostname, gpusToUse, "'"))
+        if standaloneInstallation:
+            hostname = getCryosparcEnvInformation('master_hostname')
+            if gpusToUse:
+                gpusToUse = str(gpusToUse)
+            enqueue_job_cmd = (getCryosparcProgram() +
+                               ' %senqueue_job("%s","%s","%s", "%s", %s)%s' %
+                               ("'", projectName, jobId,
+                                lane, hostname, gpusToUse, "'"))
+        else:
+            enqueue_job_cmd = (getCryosparcProgram() +
+                               ' %senqueue_job("%s","%s","%s")%s' %
+                               ("'", projectName, jobId, lane, "'"))
 
     elif parse_version(cryosparcVersion) >= parse_version(V3_0_0):
-        hostname = getCryosparcEnvInformation('master_hostname')
-        if gpusToUse:
-            gpusToUse = str(gpusToUse)
-        no_check_inputs_ready = False
-        enqueue_job_cmd = (getCryosparcProgram() +
-                           ' %senqueue_job("%s","%s","%s", "%s", %s, "%s")%s' %
-                           ("'", projectName, jobId,
-                            lane, hostname, gpusToUse,
-                            no_check_inputs_ready, "'"))
+        if standaloneInstallation:
+            hostname = getCryosparcEnvInformation('master_hostname')
+            if gpusToUse:
+                gpusToUse = str(gpusToUse)
+            no_check_inputs_ready = False
+            enqueue_job_cmd = (getCryosparcProgram() +
+                               ' %senqueue_job("%s","%s","%s", "%s", %s, "%s")%s' %
+                               ("'", projectName, jobId,
+                                lane, hostname, gpusToUse,
+                                no_check_inputs_ready, "'"))
+        else:
+            enqueue_job_cmd = (getCryosparcProgram() +
+                               ' %senqueue_job("%s","%s","%s")%s' %
+                               ("'", projectName, jobId,
+                                lane, "'"))
 
     runCmd(enqueue_job_cmd)
 
@@ -564,6 +601,33 @@ def getSystemInfo():
     return runCmd(system_info_cmd, printCmd=False)
 
 
+def getSchedulerLanes():
+    """
+     Returns a list of lanes that are registered with the master scheduler
+     list of dicts -- information about each lane
+     """
+    global _csLanes
+    global _defaultLane
+    csValidate = cryosparcValidate()
+    if not csValidate:
+        if _csLanes is None:
+            try:
+                lanes_info_cmd = (getCryosparcProgram() + " 'get_scheduler_lanes()'")
+                _csLanes = runCmd(lanes_info_cmd, printCmd=False)[1]
+                lanes_dict_list = eval(_csLanes)
+                _csLanes = []
+                for lanes in lanes_dict_list:
+                    _csLanes.append(lanes.get('name'))
+                defaultLane = getCryosparcDefaultLane()
+                _defaultLane = _csLanes[0] if defaultLane is None else defaultLane
+                if _defaultLane not in _csLanes:
+                    logger.error("Couldn't get the lane %s to the cryoSPARC installation" % _defaultLane)
+                    _defaultLane = _csLanes[0]
+            except Exception:
+               logger.error("Couldn't get Cryosparc's lanes")
+    return _csLanes, _defaultLane
+
+
 def addComputeSectionParams(form, allowMultipleGPUs=True):
     """
     Add the compute settings section
@@ -584,7 +648,10 @@ def addComputeSectionParams(form, allowMultipleGPUs=True):
 
     # This is here because getCryosparcEnvInformation is failing in some machines
     try:
-        versionAllowGPUs = parse_version(getCryosparcVersion()) >= parse_version(V2_13_0)
+        if isCryosparcStandalone():
+            versionAllowGPUs = parse_version(getCryosparcVersion()) >= parse_version(V2_13_0)
+        else:
+            versionAllowGPUs = False
     # Code is failing to get CS info, either stop or some error
     except Exception:
         # ... we assume is a modern version
@@ -607,8 +674,10 @@ def addComputeSectionParams(form, allowMultipleGPUs=True):
                                 'override the default allocation by providing a '
                                 'single GPU (0, 1, 2 or 3, etc) to use.')
 
-    form.addParam('compute_lane', StringParam, default='default',
-                  label='Lane name:',
+    laneList, defaultLane = getSchedulerLanes()
+
+    form.addParam('compute_lane', StringParam, default=defaultLane,
+                  label='Lane name:', readOnly=True,
                   help='The scheduler lane name to add the protocol execution')
 
 
