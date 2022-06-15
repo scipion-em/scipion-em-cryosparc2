@@ -31,8 +31,10 @@ You will need to use `3.0.0 <https://scipion-em.github.io/docs/release-3.0.0/doc
 **Latest plugin versions**
 =========================
 
+
 **v3.3.14**
 ----------
+
 * **new**      : Added the option to use the plugin in a CS installation in a cluster
 * **new**      : Added a wizard to select the lane where the protocols will be launched
 * **new**      : Added the varaiable CRYOSPARC_DEFAULT_LANE to define the name of the cryoSPARC default lane
@@ -41,6 +43,7 @@ You will need to use `3.0.0 <https://scipion-em.github.io/docs/release-3.0.0/doc
 
 **v3.3.13**
 ----------
+
 * **new**      : Compatibility with cryoSPARC v3.3.1
 * **new**      : Added a new 3D Classification protocol
 * **new**      : Added Homogeneous Reconstruction protocol
