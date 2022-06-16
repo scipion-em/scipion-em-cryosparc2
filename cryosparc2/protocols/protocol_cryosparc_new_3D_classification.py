@@ -61,7 +61,7 @@ class ProtCryoSparcNew3DClassification(ProtCryosparcBase):
     _label = '3D Classification'
     _className = "class_3D"
     _devStatus = BETA
-    _protCompatibility = [V3_3_1]
+    _protCompatibility = [V3_3_1, V3_3_2]
 
     def _initialize(self):
         self._defineFileNames()

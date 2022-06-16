@@ -1,3 +1,5 @@
+Jun 15, 2022  - Compatibility with v3.3.3 CS version (v3.3.15)
+
 Jun 10, 2022  - Redefining CS commands in order to launch the protocols in a cluster
                 **v3.3.14**
                 ----------
