@@ -43,7 +43,7 @@ from ..utils import (addSymmetryParam, addComputeSectionParams,
 from ..constants import (NOISE_MODEL_CHOICES, REFINE_MASK_CHOICES, V3_0_0,
                          V3_1_0, V3_2_0, V3_3_0, V3_3_1, REFINE_FILTER_TYPE,
                          RELIONCOLUMNS, EWS_CURVATURE_SIGN,
-                         EWS_CORRECTION_METHOD)
+                         EWS_CORRECTION_METHOD, V3_3_2)
 
 
 class ProtCryoSparc3DHomogeneousRefine(ProtCryosparcBase, pwprot.ProtRefine3D):
@@ -58,7 +58,7 @@ class ProtCryoSparc3DHomogeneousRefine(ProtCryosparcBase, pwprot.ProtRefine3D):
     _fscColumns = 6
     _className = "homo_refine_new"
     ewsParamsName = []
-    _protCompatibility = [V3_0_0, V3_1_0, V3_2_0, V3_3_0, V3_3_1]
+    _protCompatibility = [V3_0_0, V3_1_0, V3_2_0, V3_3_0, V3_3_1, V3_3_2]
 
     # --------------------------- DEFINE param functions ----------------------
     def _defineFileNames(self):

@@ -31,6 +31,10 @@ You will need to use `3.0.0 <https://scipion-em.github.io/docs/release-3.0.0/doc
 **Latest plugin versions**
 ==========================
 
+**v3.3.15**
+-----------
+* **new**      : Compatibility with cryoSPARC v3.3.2
+
 
 **v3.3.14**
 -----------
