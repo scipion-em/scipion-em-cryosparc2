@@ -1,3 +1,9 @@
+Jun 23, 2022  - Fixing errors (v3.3.16)
+                **v3.3.16**
+                -----------
+                * **fixed**    : Fixed an error related with the slow loading protocols
+                * **fixed**    : Fixed an error in the 3D classification protocol
+
 Jun 15, 2022  - Compatibility with v3.3.3 CS version (v3.3.15)
 
 Jun 10, 2022  - Redefining CS commands in order to launch the protocols in a cluster
