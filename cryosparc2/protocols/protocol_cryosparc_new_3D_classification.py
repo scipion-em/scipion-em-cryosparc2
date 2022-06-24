@@ -161,7 +161,7 @@ class ProtCryoSparcNew3DClassification(ProtCryosparcBase):
 
         form.addParam('class3D_N_ik', IntParam, default=1000,
                       label="PCA/simple: particles per reconstruction",
-                      expertLevel=LEVEL_ADVANCED,
+                      condition="class3D_init_mode != 2",
                       validators=[Positive],
                       help='Number of particles used to compute each density '
                            'initialization. Recommended settings -- '
@@ -169,14 +169,14 @@ class ProtCryoSparcNew3DClassification(ProtCryosparcBase):
 
         form.addParam('class3D_PCA_num_reconstructions', IntParam, default=100,
                       label="PCA: number of reconstructions",
-                      expertLevel=LEVEL_ADVANCED,
+                      condition="class3D_init_mode==1",
                       validators=[Positive],
                       help='Number of reconstructions which will be used in '
                            'PCA.')
 
         form.addParam('class3D_PCA_num_components', IntParam, default=5,
                       label="PCA: number of components",
-                      expertLevel=LEVEL_ADVANCED,
+                      condition="class3D_init_mode==1",
                       validators=[Positive],
                       help='PCA: number of components')
 
@@ -522,10 +522,7 @@ class ProtCryoSparcNew3DClassification(ProtCryosparcBase):
                                 validateMsgs.append('Input volumes detected, please set initialization mode to `input` or clear volume inputs.')
                             if len(inputVolumes) != self.class3D_N_K.get():
                                 validateMsgs.append('No. of input volumes must equal no. of classes')
-                        else:
-                            if self.class3D_init_mode.get() != 0:
-                                validateMsgs.append('Please connect input volumes or change initialization mode to `simple`')
-                            elif len(particles) < 1000:
+                        elif len(particles) < 1000:
                                 validateMsgs.append('Not Enough Images! The set of particles must contain at least 1000 images')
                         if not validateMsgs:
                             if self.class3D_N_K.get() < 2:

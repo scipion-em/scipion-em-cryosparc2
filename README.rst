@@ -31,31 +31,19 @@ You will need to use `3.0.0 <https://scipion-em.github.io/docs/release-3.0.0/doc
 **Latest plugin versions**
 ==========================
 
+**v3.3.16**
+-----------
+
+* **fixed**    : Fixed an error related with the slow loading protocols
+* **fixed**    : Fixed an error in the 3D classification protocol
+
 **v3.3.15**
 -----------
 * **new**      : Compatibility with cryoSPARC v3.3.2
-
-
-**v3.3.14**
------------
-
 * **new**      : Added the option to use the plugin in a CS installation in a cluster
 * **new**      : Added a wizard to select the lane where the protocols will be launched
 * **new**      : Added the varaiable CRYOSPARC_DEFAULT_LANE to define the name of the cryoSPARC default lane
 * **new**      : Added the variable CRYOSPARC_STANDALONE_INSTALLATION to specify whether the CS installation is standalone or not
-
-
-**v3.3.13**
------------
-
-* **new**      : Compatibility with cryoSPARC v3.3.1
-* **new**      : Added a new 3D Classification protocol
-* **new**      : Added Homogeneous Reconstruction protocol
-* **new**      : Anisotropic magnification can now be estimated during Global CTF refinement, and is corrected for in Refinement, Reconstruction, 3D Classification protocols
-* **updated**  : Improving performance when generating the outputs(use of emtable library to read star file)
-* **fixed**    : Fixed the FSC calculation in some protocols
-* **updated**  : Modifying Refinements viewer
-
 
 
 **Installing the plugin**

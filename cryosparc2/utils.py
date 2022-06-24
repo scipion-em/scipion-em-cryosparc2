@@ -63,8 +63,6 @@ ACTIVE_STATUSES = [STATUS_QUEUED, STATUS_RUNNING, STATUS_STARTED,
 
 # Module variables
 _csVersion = None  # Lazy variable: never use it directly. Use getCryosparcVersion instead
-_csLanes = None    # idem
-_defaultLane = None  # idem
 
 # logging variable
 logger = logging.getLogger(__name__)
@@ -606,25 +604,24 @@ def getSchedulerLanes():
      Returns a list of lanes that are registered with the master scheduler
      list of dicts -- information about each lane
      """
-    global _csLanes
-    global _defaultLane
+    _csLanes = ['default']
+    _defaultLane = _csLanes[0]
     csValidate = cryosparcValidate()
     if not csValidate:
-        if _csLanes is None:
-            try:
-                lanes_info_cmd = (getCryosparcProgram() + " 'get_scheduler_lanes()'")
-                _csLanes = runCmd(lanes_info_cmd, printCmd=False)[1]
-                lanes_dict_list = eval(_csLanes)
-                _csLanes = []
-                for lanes in lanes_dict_list:
-                    _csLanes.append(lanes.get('name'))
-                defaultLane = getCryosparcDefaultLane()
-                _defaultLane = _csLanes[0] if defaultLane is None else defaultLane
-                if _defaultLane not in _csLanes:
-                    logger.error("Couldn't get the lane %s to the cryoSPARC installation" % _defaultLane)
-                    _defaultLane = _csLanes[0]
-            except Exception:
-               logger.error("Couldn't get Cryosparc's lanes")
+        try:
+            lanes_info_cmd = (getCryosparcProgram() + " 'get_scheduler_lanes()'")
+            _csLanes = runCmd(lanes_info_cmd, printCmd=False)[1]
+            lanes_dict_list = eval(_csLanes)
+            _csLanes = []
+            for lanes in lanes_dict_list:
+                _csLanes.append(lanes.get('name'))
+            defaultLane = getCryosparcDefaultLane()
+            _defaultLane = _csLanes[0] if defaultLane is None else defaultLane
+            if _defaultLane not in _csLanes:
+                logger.error("Couldn't get the lane %s to the cryoSPARC installation" % _defaultLane)
+                _defaultLane = _csLanes[0]
+        except Exception:
+           logger.error("Couldn't get Cryosparc's lanes")
     return _csLanes, _defaultLane
 
 
@@ -674,8 +671,9 @@ def addComputeSectionParams(form, allowMultipleGPUs=True):
                                 'override the default allocation by providing a '
                                 'single GPU (0, 1, 2 or 3, etc) to use.')
 
-    laneList, defaultLane = getSchedulerLanes()
-
+    defaultLane = getCryosparcDefaultLane()
+    if defaultLane is None:
+        defaultLane = 'default'
     form.addParam('compute_lane', StringParam, default=defaultLane,
                   label='Lane name:', readOnly=True,
                   help='The scheduler lane name to add the protocol execution')
