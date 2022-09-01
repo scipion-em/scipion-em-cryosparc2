@@ -1,3 +1,9 @@
+Sept 1, 2022  - Fixing errors (v3.3.17)
+                **v3.3.17**
+                -----------
+                * **fixed**    : Allow 31 or more classes in the 3D classification protocol
+
+
 Jun 23, 2022  - Fixing errors (v3.3.16)
                 **v3.3.16**
                 -----------
