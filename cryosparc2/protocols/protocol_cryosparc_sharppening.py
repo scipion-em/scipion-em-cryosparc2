@@ -74,7 +74,7 @@ class ProtCryoSparcSharppening(ProtCryosparcBase, ProtAnalysis3D):
                       label='Lowpass filter offset',
                       help='Offset for corner frequency from FSC resolution shell')
 
-        form.addParam('sharp_generate_new_mask', BooleanParam, default=False,
+        form.addParam('sharp_generate_new_mask', BooleanParam, default=True,
                       expertLevel=LEVEL_ADVANCED,
                       label="Generate new FSC mask",
                       help="Create a new mask for FSC and sharpening rather "

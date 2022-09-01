@@ -31,6 +31,11 @@ You will need to use `3.0.0 <https://scipion-em.github.io/docs/release-3.0.0/doc
 **Latest plugin versions**
 ==========================
 
+**v3.3.17**
+-----------
+
+* **fixed**    : Allow 31 or more classes in the 3D classification protocol
+
 **v3.3.16**
 -----------
 

@@ -31,7 +31,7 @@ import pyworkflow.utils as pwutils
 
 from .constants import *
 
-__version__ = '3.3.16'
+__version__ = '3.3.17'
 _references = ['Punjani2017', 'Brubaker2017', 'daniel_asarnow_2019_3576630']
 _logo = 'cryosparc2_logo.png'
 
@@ -52,7 +52,7 @@ class Plugin(em.Plugin):
 
     @classmethod
     def getEnviron(cls):
-        """ Setup the environment variables needed to launch cryoSparc. """
+        """ Set up the environment variables needed to launch cryoSparc. """
         environ = pwutils.Environ(os.environ)
         environ.update({'PATH': cls.getHome()},
                        position=pwutils.Environ.BEGIN)
@@ -63,7 +63,7 @@ class Plugin(em.Plugin):
     def defineBinaries(cls, env):
         PYEM_VERSION = '22.01.18'  # This is our made up version
         PYEM_INSTALLED = 'pyem-%s_installed' % PYEM_VERSION
-        installationCmd = 'pip uninstall -y pyem && pip install git+https://github.com/asarnow/pyem.git@48541ff4e2a62be3a185d0ce9b76c5a37b1da15a'
+        installationCmd = 'pip uninstall -y pyem && pip install git+https://github.com/asarnow/pyem.git@4af3869f9657149c76134b3cdc5b1b3a55621853'
         installationCmd += ' && touch %s' % PYEM_INSTALLED
 
         env.addPackage('pyem', commands=[(installationCmd, PYEM_INSTALLED)],
