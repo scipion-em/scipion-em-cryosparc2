@@ -186,9 +186,12 @@ class ProtCryoSparcSubtract(ProtCryosparcBase, ProtOperateParticles):
     def _fillDataFromIter(self, imgSet):
 
         outImgsFn = 'particles@' + self._getFileName('out_particles')
+        hasCtf = imgSet.hasCTF()
+        hasAcquisition = True  # I think this is alway present ROB
         readSetOfParticles(outImgsFn, imgSet,
                            postprocessImageRow=self._updateItem,
-                           alignType=ALIGN_PROJ)
+                           alignType=ALIGN_PROJ, readCtf=hasCtf, 
+                           readAcquisition= hasAcquisition)
 
     def _updateItem(self, item, row):
         newFn = row.get(RELIONCOLUMNS.rlnImageName.value)
