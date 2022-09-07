@@ -788,7 +788,7 @@ def rowToAcquisition(acquisitionRow):
 
 def readSetOfParticles(filename, partSet, **kwargs):
     """read from Relion image meta
-        filename: The metadata filename where the image are.
+        filename: The metadata filename where the images are.
         imgSet: the SetOfParticles that will be populated.
         rowToParticle: this function will be used to convert the row to Object
     """

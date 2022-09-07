@@ -295,8 +295,8 @@ class ProtCryo2D(ProtCryosparcBase, pwprot.ProtClassify2D):
 
         self._createModelFile()
         self._loadClassesInfo(self._getFileName('out_class_m2'))
-        inputParticles = self._getInputParticles()
-        classes2DSet = self._createSetOfClasses2D(inputParticles)
+        # Use the pointer with extended (indirect)
+        classes2DSet = self._createSetOfClasses2D(self.inputParticles)
         self._fillClassesFromLevel(classes2DSet)
   
         self._defineOutputs(outputClasses=classes2DSet)
