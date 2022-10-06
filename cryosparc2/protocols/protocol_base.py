@@ -71,7 +71,7 @@ class ProtCryosparcBase(pw.EMProtocol):
                                                         str(folderPaths[0])))
             cryosparcVersion = getCryosparcVersion()
             if parse_version(cryosparcVersion) < parse_version(V4_0_0):
-                self.projectName = str(folderPaths[0])
+                self.projectName = pwobj.String(folderPaths[0])
             else:
                 self.projectName = pwobj.String(getCryosparcProjectId(self.projectDir))
 
