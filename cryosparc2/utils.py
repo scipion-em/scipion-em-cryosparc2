@@ -25,22 +25,27 @@
 # *
 # **************************************************************************
 import getpass
+import logging
 import os
-import ast
-import subprocess
+import shutil
+import time
+
 from pkg_resources import parse_version
+
 import pyworkflow.utils as pwutils
-from pyworkflow.object import String
 from pwem.constants import SCIPION_SYM_NAME
 from pwem.constants import (SYM_CYCLIC, SYM_TETRAHEDRAL,
                             SYM_OCTAHEDRAL, SYM_I222, SYM_I222r)
-from pyworkflow.protocol.params import (EnumParam, IntParam, Positive,
-                                        BooleanParam, StringParam, NonEmpty,
-                                        GPU_LIST)
+from pwem.convert import Ccp4Header
+
 from . import Plugin
 from .constants import (CS_SYM_NAME, SYM_DIHEDRAL_Y, CRYOSPARC_USER,
-                        CRYO_PROJECTS_DIR, CRYOSPARC_DIR, V2_14_0, V2_13_0)
+                        CRYO_PROJECTS_DIR, V2_14_0, V2_13_0, CRYOSPARC_HOME,
+                        CRYOSPARC_USE_SSD, V_UNKNOWN, V3_0_0, V2_15_0,
+                        CRYOSPARC_MASTER, CRYOSPARC_STANDALONE_INSTALLATION,
+                        CRYOSPARC_DEFAULT_LANE, V3_3_2, V4_0_0)
 
+VERSION = 'version'
 
 STATUS_FAILED = "failed"
 STATUS_ABORTED = "aborted"
@@ -50,17 +55,24 @@ STATUS_RUNNING = "running"
 STATUS_QUEUED = "queued"
 STATUS_LAUNCHED = "launched"
 STATUS_STARTED = "started"
+STATUS_BUILDING = "building"
 
 STOP_STATUSES = [STATUS_ABORTED, STATUS_COMPLETED, STATUS_FAILED, STATUS_KILLED]
 ACTIVE_STATUSES = [STATUS_QUEUED, STATUS_RUNNING, STATUS_STARTED,
-                   STATUS_LAUNCHED]
+                   STATUS_LAUNCHED, STATUS_BUILDING]
+
+# Module variables
+_csVersion = None  # Lazy variable: never use it directly. Use getCryosparcVersion instead
+
+# logging variable
+logger = logging.getLogger(__name__)
 
 
-def getCryosparcDir():
+def getCryosparcDir(*paths):
     """
     Get the root directory where cryoSPARC code and dependencies are installed.
     """
-    return Plugin.getHome()
+    return Plugin.getHome(*paths)
 
 
 def getCryosparcProgram(mode="cli"):
@@ -69,9 +81,16 @@ def getCryosparcProgram(mode="cli"):
     """
     csDir = getCryosparcDir()
 
+    # TODO Find a better way to do that
     if csDir is not None:
-        return os.path.join(csDir,
-                            'cryosparc2_master/bin/cryosparcm %s' % mode)
+        if os.path.exists(os.path.join(csDir, CRYOSPARC_MASTER, "bin")):
+            # Case of CS v3.X.X is instaled
+            return os.path.join(csDir, CRYOSPARC_MASTER, "bin",
+                                'cryosparcm %s' % mode)
+        else:
+            # Case of CS v2.X.X is instaled
+            return os.path.join(csDir, 'cryosparc2_master', "bin",
+                                'cryosparcm %s' % mode)
 
     return None
 
@@ -90,6 +109,7 @@ def isCryosparcRunning():
     Determine if cryosparc services are running
     :returns True if running, false otherwise
     """
+    import subprocess
     status = -1
     if getCryosparcProgram() is not None:
         test_conection_cmd = (getCryosparcProgram() +
@@ -105,16 +125,16 @@ def cryosparcValidate():
     Validates some cryo properties that must be satisfy
     """
     if not cryosparcExists():
-
-        return["cryoSPARC software not found at %s. Please, fill %s variable in scipion's config file."
-                   % (getCryosparcDir(), CRYOSPARC_DIR)]
+        return ["cryoSPARC software not found at %s. Please, fill %s variable "
+                "in scipion's config file." % (getCryosparcDir(),
+                                               CRYOSPARC_HOME)]
 
     if not isCryosparcRunning():
+        return ['Failed to connect to cryoSPARC. Please, make sure cryoSPARC '
+                'is running.\nRunning: *%s* might fix this.'
+                % getCryosparcProgram("start")]
 
-        return ['Failed to connect to cryoSPARC. Please, make sure cryoSPARC is running.\n'
-                'Running: *%s* might fix this.' % getCryosparcProgram("start")]
-
-    cryosparcVersion = parse_version(getCryosparcEnvInformation())
+    cryosparcVersion = parse_version(getCryosparcVersion())
     supportedVersions = Plugin.getSupportedVersions()
     minSupportedVersion = parse_version(supportedVersions[0])
     maxSupportedVersion = parse_version(supportedVersions[-1])
@@ -128,11 +148,11 @@ def cryosparcValidate():
 
     elif maxSupportedVersion < cryosparcVersion:
         print(pwutils.yellowStr("cryoSPARC %s is newer than those we've tested %s. Instead of blocking the "
-                             "execution, we are allowing this to run assuming compatibility is not broken."
-                             "If it fails, please consider:\n A - upgrade the plugin, there might be an update.\n "
-                             "B - downgrade cryosparc version.\n C - Contact plugin maintainers"
-                             " at https://github.com/scipion-em/scipion-em-cryosparc2"
-                             % (cryosparcVersion, str(supportedVersions).replace('\'', ''))))
+                                "execution, we are allowing this to run assuming compatibility is not broken."
+                                "If it fails, please consider:\n A - upgrade the plugin, there might be an update.\n "
+                                "B - downgrade cryosparc version.\n C - Contact plugin maintainers"
+                                " at https://github.com/scipion-em/scipion-em-cryosparc2"
+                                % (cryosparcVersion, str(supportedVersions).replace('\'', ''))))
 
     return []
 
@@ -147,21 +167,62 @@ def gpusValidate(gpuList, checkSingleGPU=False):
     return []
 
 
-def getCryosparcEnvInformation(envVar='version'):
+def getCryosparcEnvInformation(envVar=VERSION):
     """
-    Get the cryosparc installed version
+    Get the cryosparc environment information
     """
+    import ast
     system_info = getSystemInfo()
     dictionary = ast.literal_eval(system_info[1])
     envVariable = str(dictionary[envVar])
     return envVariable
 
 
+def getCryosparcVersion():
+    """ Gets cryosparc version 1st, from a variable if populated,
+     2nd from the version txt file, if fails, asks CS using getCryosparcEnvInformation"""
+    global _csVersion
+    if _csVersion is None:
+        try:
+            _csVersion = _getCryosparcVersionFromFile().split('+')[0]
+        except Exception:
+            try:
+                _csVersion = getCryosparcEnvInformation(VERSION).split('+')[0]
+            except Exception:
+                print("Couldn't get Cryosparc's version. Please review your config (%s)" % Plugin.getUrl())
+                _csVersion = V_UNKNOWN
+    return _csVersion.rstrip('\n')
+
+
+def _getCryosparcVersionFromFile():
+    versionFile = getCryosparcDir(CRYOSPARC_MASTER, "version")
+    # read the version file
+    with open(versionFile, "r") as fh:
+        return fh.readline()
+
+
 def getCryosparcUser():
     """
     Get the full name of the initial admin account
     """
-    return os.path.basename(os.environ.get(CRYOSPARC_USER, ""))
+    return os.path.basename(os.environ.get(CRYOSPARC_USER, "admin"))
+
+
+def isCryosparcStandalone():
+    """
+    Get the cryoSPARC installation mode. If True, we have a standalone installation
+    else a cluster installation is considered. If the environment variable
+    CRYOSPARC_STANDALONE_INSTALLATION isn't present, then we assume that we have
+    a standalone installation and then, this method returns True
+    """
+    return os.environ.get(CRYOSPARC_STANDALONE_INSTALLATION, 'True') == 'True'
+
+
+def getCryosparcDefaultLane():
+    """
+    Get the cryoSPARC default lane
+    """
+    return os.environ.get(CRYOSPARC_DEFAULT_LANE, None)
 
 
 def getCryosparcProjectsDir():
@@ -178,6 +239,21 @@ def getCryosparcProjectsDir():
     return cryoProject_Dir
 
 
+def getCryosparcProjectId(projectDir):
+    """
+    Get the project Id form project.json file.
+    :param projectDir: project directory path
+    """
+    import json
+    projectJsonFilePath = os.path.join(projectDir.get(), 'project.json')
+
+    with open(projectJsonFilePath, 'r') as file:
+        prjson = json.load(file)
+
+    pId = prjson['uid']
+    return pId
+
+
 def getProjectName(scipionProjectName):
     """ returns the name of the cryosparc project based on
     scipion project name and  a hash based on the user name"""
@@ -189,8 +265,8 @@ def getProjectName(scipionProjectName):
 def getProjectPath(projectDir):
     """
     Gets all projects of given path .
-    projectDir: Folder path to get subfolders.
-    returns: Set with all subfolders.
+    projectDir: Folder path to get sub folders.
+    returns: Set with all sub folders.
     """
     folderPaths = os.listdir(projectDir)
     return folderPaths
@@ -200,8 +276,8 @@ def getJobLog(projectDirName, projectName, job):
     """
     Return the job log
     """
-    return os.path.join(getCryosparcProjectsDir(), projectDirName, projectName, job,
-                        'job.log')
+    return os.path.join(getCryosparcProjectsDir(), projectDirName, projectName,
+                        job, 'job.log')
 
 
 def createEmptyProject(projectDir, projectTitle):
@@ -216,6 +292,50 @@ def createEmptyProject(projectDir, projectTitle):
                                    str(projectDir), str(projectTitle), "'"))
 
     return runCmd(create_empty_project_cmd, printCmd=False)
+
+
+def getProjectInformation(project_uid, info='project_dir'):
+    """
+    Get information about a single project
+    :param project_uid: the id of the project
+    :return: the information related to the project thats stored in the database
+    """
+    import ast
+    getProject_cmd = (getCryosparcProgram() +
+                                ' %sget_project("%s")%s '
+                                % ("'", str(project_uid), "'"))
+
+    project_info = runCmd(getProject_cmd, printCmd=False)
+    dictionary = ast.literal_eval(project_info[1])
+    return str(dictionary[info])
+
+
+def getUserToken(email):
+    get_user_cmd = (getCryosparcProgram() +
+                                ' %sGetUser("%s")%s '
+                                % ("'", str(email),"'"))
+
+    return runCmd(get_user_cmd, printCmd=False)
+
+
+def updateProjectDirectory(project_uid, new_project_dir):
+    """
+       Safely updates the project directory of a project given a directory. Checks
+       if the directory exists, is readable, and writeable.
+       :param project_uid: uid of the project to update
+       :param new_project_dir_container: the new directory
+       """
+    updateProjectDirectory_cmd = (getCryosparcProgram() +
+                      ' %supdate_project_directory("%s", "%s")%s '
+                      % ("'", str(project_uid), str(new_project_dir), "'"))
+
+    runCmd(updateProjectDirectory_cmd, printCmd=False)
+
+
+def getOutputPreffix(projectName):
+    cryosparcVersion = getCryosparcVersion()
+    preffix = "cryosparc_" + projectName+"_" if parse_version(cryosparcVersion) < parse_version(V4_0_0) else ""
+    return preffix
 
 
 def createProjectDir(project_container_dir):
@@ -258,47 +378,48 @@ def doImportParticlesStar(protocol):
     print(pwutils.yellowStr("Importing particles..."), flush=True)
     className = "import_particles"
     params = {"particle_meta_path": str(os.path.join(os.getcwd(),
-                                        protocol._getFileName('input_particles'))),
+                                                     protocol._getFileName('input_particles'))),
               "particle_blob_path": str(os.path.join(os.getcwd(),
-                                        protocol._getTmpPath())),
+                                                     protocol._getTmpPath())),
               "psize_A": str(protocol._getInputParticles().getSamplingRate())
               }
 
     import_particles = enqueueJob(className, protocol.projectName, protocol.workSpaceName,
-                        str(params).replace('\'', '"'), '{}', protocol.lane)
+                                  str(params).replace('\'', '"'), '{}', protocol.lane)
 
     waitForCryosparc(protocol.projectName.get(), import_particles.get(),
                      "An error occurred importing particles. "
-                     "Please, go to cryosPARC software for more "
+                     "Please, go to cryoSPARC software for more "
                      "details.")
 
     return import_particles
 
 
-def doImportVolumes(protocol, refVolume, volType, msg):
+def doImportVolumes(protocol, refVolumePath, refVolume, volType, msg):
     """
     :return:
     """
     print(pwutils.yellowStr(msg), flush=True)
     className = "import_volumes"
-    params = {"volume_blob_path": str(refVolume),
+    params = {"volume_blob_path": str(refVolumePath),
               "volume_out_name": str(volType),
-              "volume_psize": str(
-                  protocol._getInputParticles().getSamplingRate())}
+              "volume_psize": str(refVolume.getSamplingRate())}
 
-    importedVolume = enqueueJob(className, protocol.projectName, protocol.workSpaceName,
-                 str(params).replace('\'', '"'), '{}', protocol.lane)
+    importedVolume = enqueueJob(className, protocol.projectName,
+                                protocol.workSpaceName,
+                                str(params).replace('\'', '"'), '{}',
+                                protocol.lane)
 
-    waitForCryosparc(protocol.projectName.get(), importedVolume.get() ,
+    waitForCryosparc(protocol.projectName.get(), importedVolume.get(),
                      "An error occurred importing the volume. "
-                     "Please, go to cryosPARC software for more "
+                     "Please, go to cryoSPARC software for more "
                      "details."
                      )
 
     return importedVolume
 
 
-def doJob(jobType, projectName, workSpaceName, params, input_group_conect):
+def doJob(jobType, projectName, workSpaceName, params, input_group_connect):
     """
     do_job(job_type, puid='P1', wuid='W1', uuid='devuser', params={},
            input_group_connects={})
@@ -306,62 +427,120 @@ def doJob(jobType, projectName, workSpaceName, params, input_group_conect):
     do_job_cmd = (getCryosparcProgram() +
                   ' %sdo_job("%s","%s","%s", "%s", %s, %s)%s' %
                   ("'", jobType, projectName, workSpaceName, getCryosparcUser(),
-                   params, input_group_conect, "'"))
+                   params, input_group_connect, "'"))
 
     return runCmd(do_job_cmd)
 
 
-def enqueueJob(jobType, projectName, workSpaceName, params, input_group_conect,
-               lane, gpusToUse=False, group_connect=None):
+def enqueueJob(jobType, projectName, workSpaceName, params, input_group_connect,
+               lane, gpusToUse=False, group_connect=None, result_connect=None):
     """
     make_job(job_type, project_uid, workspace_uid, user_id,
              created_by_job_uid=None, params={}, input_group_connects={})
     """
+    from pyworkflow.object import String
+
+    cryosparcVersion = getCryosparcVersion()
+    standaloneInstallation = isCryosparcStandalone()
 
     # Create a compatible job to versions < v2.14.X
     make_job_cmd = (getCryosparcProgram() +
-                  ' %smake_job("%s","%s","%s", "%s", "None", %s, %s)%s' %
-                  ("'", jobType, projectName, workSpaceName, getCryosparcUser(),
-                   params, input_group_conect, "'"))
+                    ' %smake_job("%s","%s","%s", "%s", "None", %s, %s)%s' %
+                    ("'", jobType, projectName, workSpaceName, getCryosparcUser(),
+                     params, input_group_connect, "'"))
 
     # Create a compatible job to versions >= v2.14.X
-    if parse_version(getCryosparcEnvInformation()) >= parse_version(V2_14_0):
+    if parse_version(cryosparcVersion) >= parse_version(V2_14_0):
         make_job_cmd = (getCryosparcProgram() +
                         ' %smake_job("%s","%s","%s", "%s", "None", "None", %s, %s)%s' %
                         ("'", jobType, projectName, workSpaceName,
                          getCryosparcUser(),
-                         params, input_group_conect, "'"))
+                         params, input_group_connect, "'"))
+
+    # Create a compatible job to versions >= v3.0.X
+    if parse_version(cryosparcVersion) >= parse_version(V3_0_0):
+        make_job_cmd = (getCryosparcProgram() +
+                        ' %smake_job("%s","%s","%s", "%s", "None", "None", %s, %s, "False", 0)%s' %
+                        ("'", jobType, projectName, workSpaceName,
+                         getCryosparcUser(),
+                         params, input_group_connect, "'"))
 
     exitCode, cmdOutput = runCmd(make_job_cmd)
 
     # Extract the jobId
     jobId = String(cmdOutput.split()[-1])
 
-    if group_connect:
+    if group_connect is not None:
         for key, valuesList in group_connect.items():
             for value in valuesList:
                 job_connect_group = (getCryosparcProgram() +
-                            ' %sjob_connect_group("%s", "%s", "%s")%s' %
-                            ("'", projectName, value, (str(jobId) + "." + key) ,"'"))
+                                     ' %sjob_connect_group("%s", "%s", "%s")%s' %
+                                     ("'", projectName, value, (str(jobId) + "." + key), "'"))
                 runCmd(job_connect_group, printCmd=False)
+
+    if result_connect is not None:
+        for key, value in result_connect.items():
+            job_connect_group = (getCryosparcProgram() +
+                                 ' %sjob_connect_result("%s", "%s", "%s")%s' %
+                                 ("'", projectName, value, (str(jobId) + "." + key), "'"))
+            runCmd(job_connect_group, printCmd=True)
 
     print(pwutils.greenStr("Got %s for JobId" % jobId), flush=True)
 
     # Queue the job
-    if parse_version(getCryosparcEnvInformation()) < parse_version(V2_13_0):
+    if parse_version(cryosparcVersion) < parse_version(V2_13_0):
         enqueue_job_cmd = (getCryosparcProgram() +
                            ' %senqueue_job("%s","%s","%s")%s' %
                            ("'", projectName, jobId,
                             lane, "'"))
-    else:
-        hostname = getCryosparcEnvInformation('master_hostname')
-        if gpusToUse:
-            gpusToUse = str(gpusToUse)
-        enqueue_job_cmd = (getCryosparcProgram() +
-                           ' %senqueue_job("%s","%s","%s", "%s", %s)%s' %
-                           ("'", projectName, jobId,
-                            lane, hostname, gpusToUse, "'"))
 
+    elif parse_version(cryosparcVersion) <= parse_version(V2_15_0):
+        if standaloneInstallation:
+            hostname = getCryosparcEnvInformation('master_hostname')
+            if gpusToUse:
+                gpusToUse = str(gpusToUse)
+            enqueue_job_cmd = (getCryosparcProgram() +
+                               ' %senqueue_job("%s","%s","%s", "%s", %s)%s' %
+                               ("'", projectName, jobId,
+                                lane, hostname, gpusToUse, "'"))
+        else:
+            enqueue_job_cmd = (getCryosparcProgram() +
+                               ' %senqueue_job("%s","%s","%s")%s' %
+                               ("'", projectName, jobId, lane, "'"))
+
+    elif parse_version(cryosparcVersion) <= parse_version(V3_3_2):
+        if standaloneInstallation:
+            hostname = getCryosparcEnvInformation('master_hostname')
+            if gpusToUse:
+                gpusToUse = str(gpusToUse)
+            no_check_inputs_ready = False
+            enqueue_job_cmd = (getCryosparcProgram() +
+                               ' %senqueue_job("%s","%s","%s", "%s", %s, "%s")%s' %
+                               ("'", projectName, jobId,
+                                lane, hostname, gpusToUse,
+                                no_check_inputs_ready, "'"))
+        else:
+            enqueue_job_cmd = (getCryosparcProgram() +
+                               ' %senqueue_job("%s","%s","%s")%s' %
+                               ("'", projectName, jobId,
+                                lane, "'"))
+    elif parse_version(cryosparcVersion) >= parse_version(V4_0_0):
+        user = getCryosparcUser()
+        if standaloneInstallation:
+            hostname = getCryosparcEnvInformation('master_hostname')
+            if gpusToUse:
+                gpusToUse = str(gpusToUse)
+            no_check_inputs_ready = False
+            enqueue_job_cmd = (getCryosparcProgram() +
+                               ' %senqueue_job("%s","%s","%s", "%s", "%s", %s, "%s")%s' %
+                               ("'", projectName, jobId,
+                                lane, user, hostname, gpusToUse,
+                                no_check_inputs_ready, "'"))
+        else:
+            enqueue_job_cmd = (getCryosparcProgram() +
+                               ' %senqueue_job("%s","%s","%s","%s")%s' %
+                               ("'", projectName, jobId,
+                                lane, user, "'"))
     runCmd(enqueue_job_cmd)
 
     return jobId
@@ -369,8 +548,9 @@ def enqueueJob(jobType, projectName, workSpaceName, params, input_group_conect,
 
 def runCmd(cmd, printCmd=True):
     """ Runs a command and check its exit code. If different than 0 it raises an exception
-    :parameter cmd command to run"""
-
+    :parameter cmd command to run
+    :parameter printCmd (default True) prints the command"""
+    import subprocess
     if printCmd:
         print(pwutils.greenStr("Running: %s" % cmd), flush=True)
     exitCode, cmdOutput = subprocess.getstatusoutput(cmd)
@@ -426,7 +606,6 @@ def waitJob(projectName, job):
 
 
 def get_job_streamlog(projectName, job, fileName):
-
     get_job_streamlog_cmd = (getCryosparcProgram() +
                              ' %sget_job_streamlog("%s", "%s")%s%s'
                              % ("'", projectName, job, "'", ">" + fileName))
@@ -448,16 +627,31 @@ def killJob(projectName, job):
 
 def clearJob(projectName, job):
     """
-         Clear a Job (if queued) to get it back to builing state (do not clear
+         Clear a Job (if queued) to get it back to building state (do not clear
          params or inputs)
         :param projectName: the uid of the project that contains the job to clear
         :param job: the uid of the job to clear
         ** IMPORTANT: This method can be launch only if the job is queued
         """
     clear_job_cmd = (getCryosparcProgram() +
-                    ' %sclear_job("%s", "%s")%s'
-                    % ("'", projectName, job, "'"))
+                     ' %sclear_job("%s", "%s")%s'
+                     % ("'", projectName, job, "'"))
     runCmd(clear_job_cmd, printCmd=False)
+
+
+def clearIntermediateResults(projectName, job, wait=3):
+    """
+     Clear the intermediate result from a specific Job
+    :param projectName: the uid of the project that contains the job to clear
+    :param job: the uid of the job to clear
+    """
+    print(pwutils.yellowStr("Removing intermediate results..."), flush=True)
+    clear_int_results_cmd = (getCryosparcProgram() +
+                             ' %sclear_intermediate_results("%s", "%s")%s'
+                             % ("'", projectName, job, "'"))
+    runCmd(clear_int_results_cmd, printCmd=False)
+    # wait a delay in order to delete intermediate results correctly
+    time.sleep(wait)
 
 
 def getSystemInfo():
@@ -476,15 +670,47 @@ def getSystemInfo():
         'version' : get_running_version(),
     }
     """
-    system_info_cmd = (getCryosparcProgram() + ' %sget_system_info()%s') % ("'", "'")
+    system_info_cmd = (getCryosparcProgram() + " 'get_system_info()'")
     return runCmd(system_info_cmd, printCmd=False)
+
+
+def getSchedulerLanes():
+    """
+     Returns a list of lanes that are registered with the master scheduler
+     list of dicts -- information about each lane
+     """
+    _csLanes = ['default']
+    _defaultLane = _csLanes[0]
+    csValidate = cryosparcValidate()
+    if not csValidate:
+        try:
+            lanes_info_cmd = (getCryosparcProgram() + " 'get_scheduler_lanes()'")
+            _csLanes = runCmd(lanes_info_cmd, printCmd=False)[1]
+            lanes_dict_list = eval(_csLanes)
+            _csLanes = []
+            for lanes in lanes_dict_list:
+                _csLanes.append(lanes.get('name'))
+            defaultLane = getCryosparcDefaultLane()
+            _defaultLane = _csLanes[0] if defaultLane is None else defaultLane
+            if _defaultLane not in _csLanes:
+                logger.error("Couldn't get the lane %s to the cryoSPARC installation" % _defaultLane)
+                _defaultLane = _csLanes[0]
+        except Exception:
+           logger.error("Couldn't get Cryosparc's lanes")
+    return _csLanes, _defaultLane
 
 
 def addComputeSectionParams(form, allowMultipleGPUs=True):
     """
     Add the compute settings section
     """
-    form.addParam('compute_use_ssd', BooleanParam, default=True,
+    from pyworkflow.protocol.params import (BooleanParam, StringParam, NonEmpty,
+                                            GPU_LIST)
+    computeSSD = os.getenv(CRYOSPARC_USE_SSD)
+    if computeSSD is None:
+        computeSSD = False
+
+    form.addParam('compute_use_ssd', BooleanParam, default=computeSSD,
                   label='Cache particle images on SSD',
                   help='Whether or not to copy particle images to the local '
                        'SSD before running. The cache is persistent, so after '
@@ -492,15 +718,26 @@ def addComputeSectionParams(form, allowMultipleGPUs=True):
                        'subsequent jobs that require the same data. Not '
                        'using an SSD can dramatically slow down processing.')
 
-    if (not isCryosparcRunning()) or parse_version(getCryosparcEnvInformation()) >= parse_version(V2_13_0):
+    # This is here because getCryosparcEnvInformation is failing in some machines
+    try:
+        if isCryosparcStandalone():
+            versionAllowGPUs = parse_version(getCryosparcVersion()) >= parse_version(V2_13_0)
+        else:
+            versionAllowGPUs = False
+    # Code is failing to get CS info, either stop or some error
+    except Exception:
+        # ... we assume is a modern version
+        versionAllowGPUs = True
+
+    if versionAllowGPUs:
         if allowMultipleGPUs:
             form.addHidden(GPU_LIST, StringParam, default='0',
-                          label='Choose GPU IDs:', validators=[NonEmpty],
-                          help='This argument is necessary. By default, the '
-                               'protocol will attempt to launch on GPU 0. You can '
-                               'override the default allocation by providing a '
-                               'list of which GPUs (0,1,2,3, etc) to use. '
-                               'GPU are separated by ",". For example: "0,1,5"')
+                           label='Choose GPU IDs:', validators=[NonEmpty],
+                           help='This argument is necessary. By default, the '
+                                'protocol will attempt to launch on GPU 0. You can '
+                                'override the default allocation by providing a '
+                                'list of which GPUs (0,1,2,3, etc) to use. '
+                                'GPU are separated by ",". For example: "0,1,5"')
         else:
             form.addHidden(GPU_LIST, StringParam, default='0',
                            label='Choose GPU ID:', validators=[NonEmpty],
@@ -509,17 +746,21 @@ def addComputeSectionParams(form, allowMultipleGPUs=True):
                                 'override the default allocation by providing a '
                                 'single GPU (0, 1, 2 or 3, etc) to use.')
 
-    form.addParam('compute_lane', StringParam, default='default',
-                  label='Lane name:',
+    defaultLane = getCryosparcDefaultLane()
+    if defaultLane is None:
+        defaultLane = 'default'
+    form.addParam('compute_lane', StringParam, default=defaultLane,
+                  label='Lane name:', readOnly=True,
                   help='The scheduler lane name to add the protocol execution')
 
 
-def addSymmetryParam(form):
+def addSymmetryParam(form, help=""):
     """
     Add the symmetry param with the conventions
     :param form:
     :return:
     """
+    from pyworkflow.protocol.params import (EnumParam, IntParam, Positive)
     form.addParam('symmetryGroup', EnumParam,
                   choices=[CS_SYM_NAME[SYM_CYCLIC] +
                            " (" + SCIPION_SYM_NAME[SYM_CYCLIC] + ")",
@@ -538,15 +779,15 @@ def addSymmetryParam(form):
                   help="Symmetry as defined by cryosparc. Please note that "
                        "Dihedral symmetry in cryosparc is defined with respect"
                        "to y axis (Dyn).\n"
-                       "If no symmetry is present, use C1. Enforcing symmetry "
-                       "above C1 is not recommended for ab-initio reconstruction"
+                       "If no symmetry is present, use C1.\n" +
+                       help
                   )
     form.addParam('symmetryOrder', IntParam, default=1,
                   condition='symmetryGroup==%d or symmetryGroup==%d' %
-                            (SYM_DIHEDRAL_Y-11, SYM_CYCLIC),
+                            (SYM_DIHEDRAL_Y - 1, SYM_CYCLIC),
                   label='Symmetry Order',
                   validators=[Positive],
-                  help='Order of cyclic symmetry.')
+                  help='Order of symmetry.')
 
 
 def getSymmetry(symmetryGroup, symmetryOrder):
@@ -573,4 +814,41 @@ def calculateNewSamplingRate(newDims, previousSR, previousDims):
     """
     pX = previousDims[0]
     nX = newDims[0]
-    return previousSR*pX/nX
+    return previousSR * pX / nX
+
+
+def fixVolume(paths):
+    """
+
+    :param paths: accept a string or a list of strings
+    :return:
+    """
+    if isinstance(paths, str):
+        paths = [paths]
+    for path in paths:
+        ccp4header = Ccp4Header(path, readHeader=True)
+        ccp4header.setISPG(1)
+        ccp4header.writeHeader()
+
+
+def copyFiles(src, dst, files=None):
+    """
+    Copy a list of files from src to dst. If files is None, all files of src are
+    copied to dst
+    :param src: source folder path
+    :param dst: destiny folder path
+    :param files: a list of files to be copied
+    :return:
+    """
+    try:
+        if files is None:
+            shutil.copytree(src, dst)
+        else:
+            if isinstance(files, str):
+                files = [files]
+            for file in files:
+                shutil.copy(os.path.join(src, file),
+                            os.path.join(dst, file))
+    except Exception as ex:
+        print("Unable to execute the copy: Files or directory does not exist: ",
+              ex)

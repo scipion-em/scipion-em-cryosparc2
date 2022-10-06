@@ -25,10 +25,14 @@
 # *
 # **************************************************************************
 
-from pyworkflow.protocol.params import (FloatParam, LEVEL_ADVANCED)
+from pyworkflow.object import String
+from pyworkflow.protocol.params import (FloatParam, LEVEL_ADVANCED, Positive,
+                                        IntParam, BooleanParam, EnumParam,
+                                        StringParam)
 
-from . import ProtCryoSparcRefine3D
-from ..utils import *
+from .protocol_cryorefine import ProtCryoSparcRefine3D
+from ..utils import (getSymmetry, enqueueJob, waitForCryosparc,
+                     clearIntermediateResults)
 from ..constants import *
 
 
@@ -42,7 +46,8 @@ class ProtCryoSparcNonUniformRefine3D(ProtCryoSparcRefine3D):
     impacting the alignment of particles and reducing the tendency for
     refinement algorithms to over-fit disordered regions.
     """
-    _label = '3D non-uniform refinement'
+    _label = '3D non-uniform refinement(Legacy)'
+    _className = "nonuniform_refine"
 
     def _defineParams(self, form):
 
@@ -66,17 +71,6 @@ class ProtCryoSparcNonUniformRefine3D(ProtCryoSparcRefine3D):
                       label="Difference between radwn",
                       help='Difference in radius wave number between refinement '
                            'iterations for early stopping criteria')
-
-        # form.addParam('locres_box_width', FloatParam,
-        #               expertLevel=LEVEL_ADVANCED,
-        #               default=None,
-        #               validators=[Positive],
-        #               label="Kernel width in voxels",
-        #               help='Width of the sub-volume in voxels used to compute '
-        #                    'local resolution. Smaller values give more precision '
-        #                    'in locality, but less precision in wavelength '
-        #                    '(resolution). Setting this to null uses the adaptive '
-        #                    'window factor to set this automatically instead')
 
         form.addParam('locres_use_mask', BooleanParam,
                       default=True,
@@ -131,11 +125,6 @@ class ProtCryoSparcNonUniformRefine3D(ProtCryoSparcRefine3D):
                       help='Zeropadding factor applied to the selected box '
                            'width to improve resolution accuracy')
 
-        # form.addParam('locres_log_output', BooleanParam,
-        #               expertLevel=LEVEL_ADVANCED,
-        #               default=False,
-        #               label="Enable logging")
-
         form.addParam('locres_cap', BooleanParam,
                       expertLevel=LEVEL_ADVANCED,
                       default=False,
@@ -178,27 +167,12 @@ class ProtCryoSparcNonUniformRefine3D(ProtCryoSparcRefine3D):
                            'resolution during refinement iterations. Leave as '
                            'default')
 
-        # form.addParam('use_median_filter', StringParam,
-        #               default='Partial Volume',
-        #               label="Median",
-        #               help="enum_keys=['Partial Volume', 'None', 'Full Volume'], enum_values=[+1,0,-1]")
-
-        # form.addParam('median_filter_box_size', FloatParam,
-        #               default=None,
-        #               validators=[Positive],
-        #               label="Median box size")
-
         form.addParam('temporal_locres', BooleanParam,
                       expertLevel=LEVEL_ADVANCED,
                       default=False,
                       label="Enable temporal locres estimate",
                       help='Take temporal local resolution estimate into '
                            'account. Leave as default')
-
-        # form.addParam('intermediate_plots', BooleanParam,
-        #               expertLevel=LEVEL_ADVANCED,
-        #               default=True,
-        #               label="Show plots from intermediate steps")
 
         form.addParam('use_phenix_sharpen', BooleanParam,
                       default=False,
@@ -215,11 +189,6 @@ class ProtCryoSparcNonUniformRefine3D(ProtCryoSparcRefine3D):
                       expertLevel=LEVEL_ADVANCED,
                       default=False,
                       label="Sharpen before local processing")
-
-        # form.addParam('view_stats', BooleanParam,
-        #               expertLevel=LEVEL_ADVANCED,
-        #               default=False,
-        #               label="Retrieve statistic model of LocRes")
 
     # --------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
@@ -252,10 +221,14 @@ class ProtCryoSparcNonUniformRefine3D(ProtCryoSparcRefine3D):
         """
         :return:
         """
-        className = "nonuniform_refine"
-        input_group_conect = {"particles": str(self.par),
-                              "volume": str(self.vol)}
-        # {'particles' : 'JXX.imported_particles' }
+        if self.mask.get() is not None:
+            input_group_connect = {"particles": self.particles.get(),
+                                   "volume": self.volume.get(),
+                                   "mask": self.mask.get()}
+        else:
+            input_group_connect = {"particles": self.particles.get(),
+                                   "volume": self.volume.get()}
+
         params = {}
 
         for paramName in self._paramsName:
@@ -289,19 +262,21 @@ class ProtCryoSparcNonUniformRefine3D(ProtCryoSparcRefine3D):
         except Exception:
             gpusToUse = False
 
-        self.runRefine = enqueueJob(className, self.projectName.get(),
-                              self.workSpaceName.get(),
-                              str(params).replace('\'', '"'),
-                              str(input_group_conect).replace('\'', '"'),
-                              self.lane, gpusToUse)
+        runRefineJob = enqueueJob(self._className, self.projectName.get(),
+                                    self.workSpaceName.get(),
+                                    str(params).replace('\'', '"'),
+                                    str(input_group_connect).replace('\'', '"'),
+                                    self.lane, gpusToUse)
 
-        self.currenJob.set(self.runRefine.get())
+        self.runRefine = String(runRefineJob.get())
+        self.currenJob.set(runRefineJob.get())
         self._store(self)
 
         waitForCryosparc(self.projectName.get(), self.runRefine.get(),
                          "An error occurred in the Refinement process. "
-                         "Please, go to cryosPARC software for more "
+                         "Please, go to cryoSPARC software for more "
                          "details.")
+        clearIntermediateResults(self.projectName.get(), self.runRefine.get())
 
 
 

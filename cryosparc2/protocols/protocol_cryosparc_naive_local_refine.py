@@ -24,25 +24,37 @@
 # *  e-mail address 'scipion@cnb.csic.es'
 # *
 # **************************************************************************
+import os
 
-import ast
+import emtable
 
+from pwem import ALIGN_PROJ
 from pwem.protocols import ProtOperateParticles
-from pyworkflow.protocol.params import (PointerParam, FloatParam,
-                                        LEVEL_ADVANCED)
-from pwem.objects import Volume, FSC
 
-from . import ProtCryosparcBase
-from ..convert import *
-from ..utils import *
+import pyworkflow.utils as pwutils
+from pyworkflow.object import String
+from pyworkflow.protocol.params import (PointerParam, FloatParam,
+                                        LEVEL_ADVANCED, IntParam, Positive,
+                                        BooleanParam, EnumParam)
+from pwem.objects import Volume
+
+from .protocol_base import ProtCryosparcBase
+from ..convert import (defineArgs, convertCs2Star, createItemMatrix,
+                       setCryosparcAttributes)
+from ..utils import (addComputeSectionParams, calculateNewSamplingRate,
+                     cryosparcValidate, gpusValidate, enqueueJob,
+                     waitForCryosparc, clearIntermediateResults, fixVolume,
+                     copyFiles, getOutputPreffix)
 from ..constants import *
 
 
-class ProtCryoSparcLocalRefine(ProtCryosparcBase, ProtOperateParticles):
+class ProtCryoSparcNaiveLocalRefine(ProtCryosparcBase, ProtOperateParticles):
     """ Signal subtraction protocol of cryoSPARC.
         Subtract projections of a masked volume from particles.
         """
-    _label = 'Local refinement'
+    _label = 'naive local refinement(Legacy)'
+    _className = "naive_local_refine"
+    _fscColumns = 6
 
     def _initialize(self):
         self._defineFileNames()
@@ -85,31 +97,8 @@ class ProtCryoSparcLocalRefine(ProtCryosparcBase, ProtOperateParticles):
                            "That is: *the mask should INCLUDE the part of the "
                            "volume that you wish to SUBTRACT.*")
 
-        form.addParallelSection(threads=1, mpi=1)
-
         # -----------[Local Refinement]------------------------
         form.addSection(label="Naive local refinement")
-
-        # form.addParam('fulcx', IntParam, default=0,
-        #               label='Fulcrum, x-coordinate',
-        #               help='The fulcrum is the point around which the subvolume '
-        #                    'rotates with respect to the main volume')
-        #
-        # form.addParam('fulcy', IntParam, default=0,
-        #               label='Fulcrum, y-coordinate',
-        #               help='The fulcrum is the point around which the subvolume '
-        #                    'rotates with respect to the main volume')
-        #
-        # form.addParam('fulcz', IntParam, default=0,
-        #               label='Fulcrum, z-coordinate',
-        #               help='The fulcrum is the point around which the subvolume '
-        #                    'rotates with respect to the main volume')
-        #
-        # form.addParam('optimize_fulcrum', BooleanParam, default=False,
-        #               label="Optimize fulcrum placement (experimental)",
-        #               help="Attempt to move the fulcrum closer to the optimal "
-        #                    "position at each iteration. Recommended to keep "
-        #                    "off in most cases.")
 
         form.addParam('local_align_extent_pix', IntParam, default=3,
                       validators=[Positive],
@@ -306,15 +295,12 @@ class ProtCryoSparcLocalRefine(ProtCryosparcBase, ProtOperateParticles):
         self._defineFileNames()
         self._defineParamsName()
         self._initializeCryosparcProject()
-        self._insertFunctionStep("convertInputStep")
-        self._insertFunctionStep('processStep')
-        self._insertFunctionStep('createOutputStep')
+        self._insertFunctionStep(self.convertInputStep)
+        self._insertFunctionStep(self.processStep)
+        self._insertFunctionStep(self.createOutputStep)
 
     # --------------------------- STEPS functions ------------------------------
     def processStep(self):
-        self.vol = self.importVolume.get() + '.imported_volume.map'
-        self.mask = self.importMask.get() + '.imported_mask.mask'
-
         print(pwutils.yellowStr("Local Refinement started..."), flush=True)
         self.doLocalRefine()
 
@@ -323,44 +309,25 @@ class ProtCryoSparcLocalRefine(ProtCryosparcBase, ProtOperateParticles):
         Create the protocol output. Convert cryosparc file to Relion file
         """
         self._initializeUtilsVariables()
-        get_job_streamlog(self.projectName.get(), self.runLocalRefinement.get(),
-                          self._getFileName('stream_log'))
+        idd, itera = self.findLastIteration(self.runLocalRefinement.get())
+        csOutputFolder = os.path.join(self.projectDir.get(),
+                                      self.runLocalRefinement.get())
+        csOutputPattern = "%s%s_%s" % (getOutputPreffix(self.projectName.get()),
+                                       self.runLocalRefinement.get(),
+                                       itera)
+        csParticlesName = csOutputPattern + "_particles.cs"
 
-        # Get the metadata information from stream.log
-        with open(self._getFileName('stream_log')) as f:
-            data = f.readlines()
+        fnVolName = csOutputPattern + "_volume_map.mrc"
+        half1Name = csOutputPattern + "_volume_map_half_A.mrc"
+        half2Name = csOutputPattern + "_volume_map_half_B.mrc"
 
-        x = ast.literal_eval(data[0])
+        # Copy the CS output volume and half to extra folder
+        copyFiles(csOutputFolder, self._getExtraPath(), files=[csParticlesName,
+                                                               fnVolName,
+                                                               half1Name,
+                                                               half2Name])
 
-        # Find the ID of last iteration and the map resolution
-        for y in x:
-            if 'text' in y:
-                z = str(y['text'])
-                if z.startswith('FSC'):
-                    idd = y['imgfiles'][2]['fileid']
-                    itera = z[-3:]
-                elif 'Using Filter Radius' in z:
-                    nomRes = str(y['text']).split('(')[1].split(')')[0].replace(
-                        'A', 'Å')
-                    self.mapResolution = String(nomRes)
-                    self._store(self)
-                elif 'Estimated Bfactor' in z:
-                    estBFactor = str(y['text']).split(':')[1].replace('\n', '')
-                    self.estBFactor = String(estBFactor)
-                    self._store(self)
-
-        csParticlesName = ("cryosparc_" + self.projectName.get() + "_" +
-                           self.runLocalRefinement.get() + "_" + itera + "_particles.cs")
-        csFile = os.path.join(self.projectPath, self.projectName.get(),
-                              self.runLocalRefinement.get(), csParticlesName)
-
-        # Create the output folder
-        outputFolder = self._getExtraPath() + '/' + self.runLocalRefinement.get()
-        os.system("mkdir " + outputFolder)
-
-        # Copy the particles to scipion output folder
-        os.system("cp -r " + csFile + " " + outputFolder)
-        csFile = os.path.join(outputFolder, csParticlesName)
+        csFile = os.path.join(self._getExtraPath(), csParticlesName)
 
         outputStarFn = self._getFileName('out_particles')
         argsList = [csFile, outputStarFn]
@@ -369,34 +336,13 @@ class ProtCryoSparcLocalRefine(ProtCryosparcBase, ProtOperateParticles):
         args = parser.parse_args(argsList)
         convertCs2Star(args)
 
-        fnVolName = ("cryosparc_" + self.projectName.get() + "_" +
-                     self.runLocalRefinement.get() + "_" + itera + "_volume_map.mrc")
-        half1Name = ("cryosparc_" + self.projectName.get() + "_" +
-                     self.runLocalRefinement.get() + "_" + itera +
-                     "_volume_map_half_A.mrc")
-        half2Name = ("cryosparc_" + self.projectName.get() + "_" +
-                     self.runLocalRefinement.get() + "_" + itera +
-                     "_volume_map_half_B.mrc")
-
-        fnVol = os.path.join(self.projectPath, self.projectName.get(),
-                             self.runLocalRefinement.get(), fnVolName)
-        half1 = os.path.join(self.projectPath, self.projectName.get(),
-                             self.runLocalRefinement.get(), half1Name)
-        half2 = os.path.join(self.projectPath, self.projectName.get(),
-                             self.runLocalRefinement.get(), half2Name)
-
-        # Copy the volumes to extra folder
-        os.system("cp -r " + fnVol + " " + outputFolder)
-        fnVol = os.path.join(outputFolder, fnVolName)
-
-        os.system("cp -r " + half1 + " " + outputFolder)
-        half1 = os.path.join(outputFolder, half1Name)
-
-        os.system("cp -r " + half2 + " " + outputFolder)
-        half2 = os.path.join(outputFolder, half2Name)
+        fnVol = os.path.join(self._getExtraPath(), fnVolName)
+        half1 = os.path.join(self._getExtraPath(), half1Name)
+        half2 = os.path.join(self._getExtraPath(), half2Name)
 
         imgSet = self._getInputParticles()
         vol = Volume()
+        fixVolume([fnVol, half1, half2])
         vol.setFileName(fnVol)
         vol.setSamplingRate(calculateNewSamplingRate(vol.getDim(),
                                                      imgSet.getSamplingRate(),
@@ -411,28 +357,7 @@ class ProtCryoSparcLocalRefine(ProtCryosparcBase, ProtOperateParticles):
         self._defineSourceRelation(self.inputParticles.get(), vol)
         self._defineOutputs(outputParticles=outImgSet)
         self._defineTransformRelation(self.inputParticles.get(), outImgSet)
-        # Need to get the host IP address if it is not stanalone installation
-        os.system("wget 127.0.0.1:39000/file/" + idd + " -nd -P" +
-                  self._getExtraPath())
-        os.system("mv " + self._getExtraPath() + "/" + idd + " " +
-                  self._getExtraPath() + "/fsc.txt")
-        # Convert into scipion fsc format
-        f = open(self._getExtraPath() + "/fsc.txt", "r")
-        lines = f.readlines()
-        wv = []
-        corr = []
-        for x in lines[1:-1]:
-            wv.append(str(float(x.split('\t')[0]) / (
-                        int(self._getInputParticles().getDim()[0]) * float(imgSet.getSamplingRate()))))
-            corr.append(x.split('\t')[6])
-        f.close()
-
-        fsc = FSC(objLabel=self.getRunName())
-        fsc.setData(wv, corr)
-        wv2, corr2 = fsc.getData()
-
-        self._defineOutputs(outputFSC=fsc)
-        self._defineSourceRelation(vol, fsc)
+        self.createFSC(idd, imgSet, vol)
 
     # --------------------------- INFO functions -------------------------------
     def _validate(self):
@@ -445,13 +370,18 @@ class ProtCryoSparcLocalRefine(ProtCryosparcBase, ProtOperateParticles):
             if not validateMsgs:
                 self._validateDim(self._getInputParticles(), self.refVolume.get(),
                                   validateMsgs, 'Input particles', 'Input volume')
+                if not validateMsgs:
+                    particles = self._getInputParticles()
+                    if not particles.hasCTF():
+                        validateMsgs.append(
+                            "The Particles has not associated a "
+                            "CTF model")
         return validateMsgs
 
     def _summary(self):
         summary = []
         if (not hasattr(self, 'outputVolume') or
-                not hasattr(self, 'outputParticles') or
-                not hasattr(self, 'outputFSC')):
+                not hasattr(self, 'outputParticles')):
             summary.append("Output objects not ready yet.")
         else:
             summary.append("Input Particles: %s" %
@@ -471,19 +401,19 @@ class ProtCryoSparcLocalRefine(ProtCryosparcBase, ProtOperateParticles):
                 summary.append('\nEstimated Bfactor: %s' % self.estBFactor.get())
         return summary
 
-    # ---------------Utils Functions-----------------------------------------------------------
+    # ---------------Utils Functions-------------------------------------------
 
     def _fillDataFromIter(self, imgSet):
-        outImgsFn = self._getFileName('out_particles')
+        outImgsFn = 'particles@' + self._getFileName('out_particles')
         imgSet.setAlignmentProj()
         imgSet.copyItems(self._getInputParticles(),
                          updateItemCallback=self._createItemMatrix,
-                         itemDataIterator=md.iterRows(outImgsFn,
-                                                      sortByLabel=md.RLN_IMAGE_ID))
+                         itemDataIterator=emtable.Table.iterRows(outImgsFn))
 
     def _createItemMatrix(self, particle, row):
         createItemMatrix(particle, row, align=ALIGN_PROJ)
-        setCryosparcAttributes(particle, row, md.RLN_PARTICLE_RANDOM_SUBSET)
+        setCryosparcAttributes(particle, row,
+                               RELIONCOLUMNS.rlnRandomSubset.value)
 
     def _defineParamsName(self):
         """ Define a list with all protocol parameters names"""
@@ -491,7 +421,6 @@ class ProtCryoSparcLocalRefine(ProtCryosparcBase, ProtOperateParticles):
                             'local_align_max_align', 'local_align_grid_r',
                             'local_align_grid_t', 'override_final_radwn',
                             'n_iterations',
-
                             'refine_num_final_iterations',
                             'refine_res_init',
                             'refine_res_gsfsc_split',
@@ -509,22 +438,27 @@ class ProtCryoSparcLocalRefine(ProtCryosparcBase, ProtOperateParticles):
                             'refine_mask',
                             'refine_dynamic_mask_thresh_factor',
                             'refine_dynamic_mask_near_ang',
-                            'refine_dynamic_mask_far_ang']
+                            'refine_dynamic_mask_far_ang',
+                            'compute_use_ssd']
         self.lane = str(self.getAttributeValue('compute_lane'))
 
     def doLocalRefine(self):
         """
         :return:
         """
-        className = "naive_local_refine"
-        if self.mask is not None:
-            input_group_conect = {"particles": str(self.par),
-                                  "volume": str(self.vol),
-                                  "mask": str(self.mask)}
+        if self.mask.get() is not None:
+            input_group_connect = {"particles": self.particles.get(),
+                                   "volume": self.volume.get(),
+                                   "mask": self.mask.get()}
         else:
-            input_group_conect = {"particles": str(self.par),
-                                  "volume": str(self.vol)}
-        # {'particles' : 'JXX.imported_particles' }
+            input_group_connect = {"particles": self.particles.get(),
+                                   "volume": self.volume.get()}
+
+        input_result_connect = None
+        if self._getInputVolume().hasHalfMaps():
+            input_result_connect = {"volume.0.map_half_A": self.importVolumeHalfA.get(),
+                                    "volume.0.map_half_B": self.importVolumeHalfB.get()}
+
         params = {}
 
         for paramName in self._paramsName:
@@ -546,17 +480,19 @@ class ProtCryoSparcLocalRefine(ProtCryosparcBase, ProtOperateParticles):
         except Exception:
             gpusToUse = False
 
-        self.runLocalRefinement = enqueueJob(className, self.projectName.get(),
+        runLocalRefinementJob = enqueueJob(self._className, self.projectName.get(),
                                              self.workSpaceName.get(),
                                              str(params).replace('\'', '"'),
-                                             str(input_group_conect).replace('\'',
-                                                                             '"'),
-                                             self.lane, gpusToUse)
+                                             str(input_group_connect).replace('\'', '"'),
+                                             self.lane, gpusToUse,
+                                             result_connect=input_result_connect)
 
-        self.currenJob.set(self.runLocalRefinement.get())
+        self.runLocalRefinement = String(runLocalRefinementJob.get())
+        self.currenJob.set(runLocalRefinementJob.get())
         self._store(self)
 
         waitForCryosparc(self.projectName.get(), self.runLocalRefinement.get(),
                          "An error occurred in the local refinement process. "
-                         "Please, go to cryosPARC software for more "
+                         "Please, go to cryoSPARC software for more "
                          "details.")
+        clearIntermediateResults(self.projectName.get(), self.runLocalRefinement.get())

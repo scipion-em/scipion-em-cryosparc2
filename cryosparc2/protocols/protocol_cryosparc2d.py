@@ -25,29 +25,38 @@
 # *  e-mail address 'scipion@cnb.csic.es'
 # *
 # **************************************************************************
+import os
 
+import emtable
 
-from pwem.protocols import ProtClassify2D
-from pyworkflow.protocol.params import (PointerParam, FloatParam)
-from pyworkflow.utils import replaceExt, createLink
+import pwem.protocols as pwprot
+from pwem import ALIGN_2D
+from pyworkflow.object import String
+from pyworkflow.protocol.params import (PointerParam, FloatParam, IntParam,
+                                        BooleanParam, Positive)
+import pyworkflow.utils as pwutils
 
-from . import ProtCryosparcBase
-from ..convert import *
-from ..utils import *
+from .protocol_base import ProtCryosparcBase
+from ..convert import (rowToAlignment, defineArgs, convertCs2Star,
+                       cryosparcToLocation)
+from ..utils import (addComputeSectionParams, cryosparcValidate, gpusValidate,
+                     enqueueJob, waitForCryosparc, clearIntermediateResults,
+                     copyFiles, getOutputPreffix)
 from ..constants import *
 
 
-class ProtCryo2D(ProtCryosparcBase, ProtClassify2D):
+class ProtCryo2D(ProtCryosparcBase, pwprot.ProtClassify2D):
     """ Wrapper to CryoSparc 2D clustering program.
         Classify particles into multiple 2D classes to facilitate stack cleaning
         and removal of junk particles. Also useful as a sanity check to
         investigate particle quality.
     """
-    _label = '2d classification'
+    _label = '2D classification'
     IS_2D = True
+    _className = "class_2D"
     
     def __init__(self, **args):
-        ProtClassify2D.__init__(self, **args)
+        pwprot.ProtClassify2D.__init__(self, **args)
         if self.numberOfMpi.get() < 2:
             self.numberOfMpi.set(2)
     
@@ -68,7 +77,6 @@ class ProtCryo2D(ProtCryosparcBase, ProtClassify2D):
                       pointerClass='SetOfParticles',
                       label="Input particles", important=True,
                       help='Select the input images from the project.')
-        form.addParallelSection(threads=1, mpi=1)
 
         # ----------- [2D Classification] --------------------------------
 
@@ -109,6 +117,24 @@ class ProtCryo2D(ProtCryosparcBase, ProtClassify2D):
                            'each 2D class has no density outside the circular '
                            'window. By default, the window is a circle that only '
                            'masks out the corners of the 2D classes.')
+
+        form.addParam('class2D_window_inner_A', FloatParam, default=None,
+                      label='Circular mask diameter (A)',
+                      help='The inner diameter (in Angstroms) of the window '
+                            'that is applied to 2D classes during '
+                            'classification. If None, the window only masks out '
+                            'the corners of each 2D class.',
+                      allowsNull=True,
+                      condition='useCircular2D==True')
+
+        form.addParam('class2D_window_outer_A', FloatParam, default=None,
+                      label='Circular mask diameter outer (A)',
+                      help='The outer diameter (in Angstroms) of the window. '
+                           'If None, outer diameter is 20 percent larger than '
+                           'inner diameter. The window mask transitions '
+                           'smoothly between inner and outer diameters.',
+                      allowsNull=True,
+                      condition='useCircular2D==True')
 
         form.addParam('reCenter2D', BooleanParam, default=True,
                       label='Re-center 2D classes',
@@ -217,9 +243,9 @@ class ProtCryo2D(ProtCryosparcBase, ProtClassify2D):
         self._defineFileNames()
         self._defineParamsName()
         self._initializeCryosparcProject()
-        self._insertFunctionStep("convertInputStep")
-        self._insertFunctionStep('processStep')
-        self._insertFunctionStep('createOutputStep')
+        self._insertFunctionStep(self.convertInputStep)
+        self._insertFunctionStep(self.processStep)
+        self._insertFunctionStep(self.createOutputStep)
 
     # --------------------------- STEPS functions ------------------------------
     def processStep(self):
@@ -233,93 +259,45 @@ class ProtCryo2D(ProtCryosparcBase, ProtClassify2D):
         """
         Create the protocol output. Convert cryosparc file to Relion file
         """
-        self._initializeUtilsVariables()
         print(pwutils.yellowStr("Creating the output..."), flush=True)
-        _numberOfIter = str("_00" + str(self.numberOnlineEMIterator.get()))
-        if self.numberOnlineEMIterator.get() > 9:
-            _numberOfIter = str("_0" + str(self.numberOnlineEMIterator.get()))
+        self._initializeUtilsVariables()
 
-        csParticlesName = ("cryosparc_" + self.projectName.get() +
-                           "_" + self.runClass2D.get() + _numberOfIter +
-                           "_particles.cs")
-        csFile = os.path.join(self.projectPath, self.projectName.get(),
-                              self.runClass2D.get(), csParticlesName)
+        csOutputFolder = os.path.join(self.projectDir.get(),
+                                      self.runClass2D.get())
+        _numberOfIterSuffix = self._getNumberOfIterSuffix()
 
-        outputFolder = self._getExtraPath() + '/' + self.runClass2D.get()
-        os.system("mkdir " + outputFolder)
+        csOutputPattern = "%s%s%s" % (getOutputPreffix(self.projectName.get()),
+                                      self.runClass2D.get(),
+                                      _numberOfIterSuffix)
+        csParticlesName = csOutputPattern + "_particles.cs"
+        csClassAveragesName = csOutputPattern + "_class_averages.cs"
+        mrcFileName = csOutputPattern + "_class_averages.mrc"
 
-        # Copy the particles to scipion output folder
-        os.system("cp -r " + csFile + " " + outputFolder)
-        csFile = os.path.join(outputFolder, csParticlesName)
+        # Copy the CS output to extra folder
+        copyFiles(csOutputFolder, self._getExtraPath(), files=[csParticlesName,
+                                                               csClassAveragesName,
+                                                               mrcFileName])
 
+        csPartFile = os.path.join(self._getExtraPath(), csParticlesName)
         outputStarFn = self._getFileName('out_particles')
-        argsList = [csFile, outputStarFn]
+        argsList = [csPartFile, outputStarFn]
 
         parser = defineArgs()
         args = parser.parse_args(argsList)
         convertCs2Star(args)
 
-        csClassAveragesName = ("cryosparc_" + self.projectName.get() + "_" +
-                               self.runClass2D.get() + _numberOfIter +
-                               "_class_averages.cs")
-
-        csFile = os.path.join(self.projectPath, self.projectName.get(),
-                              self.runClass2D.get(), csClassAveragesName)
-
-        # Copy the particles to scipion output folder
-        os.system("cp -r " + csFile + " " + outputFolder)
-        csFile = os.path.join(outputFolder, csClassAveragesName)
-
+        csClassAverageFile = os.path.join(self._getExtraPath(), csClassAveragesName)
         outputClassFn = self._getFileName('out_class')
-        argsList = [csFile, outputClassFn]
+        argsList = [csClassAverageFile, outputClassFn]
 
         parser = defineArgs()
         args = parser.parse_args(argsList)
         convertCs2Star(args)
 
-        # Copy the mrc file to scipion output folder
-        mrcFileName = ("cryosparc_" + self.projectName.get() + "_" +
-                       self.runClass2D.get() + _numberOfIter +
-                       "_class_averages.mrc")
-
-        csFile = os.path.join(self.projectPath, self.projectName.get(),
-                              self.runClass2D.get(), mrcFileName)
-
-        # Copy the particles to scipion output folder
-        os.system("cp -r " + csFile + " " + outputFolder)
-
-        with open(self._getFileName('out_class'), 'r') as input_file, \
-                open(self._getFileName('out_class_m2'), 'w') as output_file:
-            j = 0  # mutex lock
-            i = 0  # start
-            k = 1
-            l = 0
-            for line in input_file:
-                if line.startswith("_rln"):
-                    output_file.write(line)
-                    i = 1
-                elif i == 0:
-                    output_file.write(line)
-                elif j == 0:
-                    for n, m in enumerate(line.split()):
-                        if '@' in m:
-                            break
-                    output_file.write(" ".join(line.split()[:n]) + " " +
-                                      line.split()[n].split('@')[0] + '@' +
-                                      self._getExtraPath() + "/" +
-                                      line.split()[n].split('@')[1] + " " +
-                                      " ".join(line.split()[n+1:])+"\n")
-                    j = 1
-                else:
-                    output_file.write(" ".join(line.split()[:n]) + " " +
-                                      line.split()[n].split('@')[0] + '@' +
-                                      self._getExtraPath() + "/" +
-                                      line.split()[n].split('@')[1] + " " +
-                                      " ".join(line.split()[n+1:])+"\n")
-        
+        self._createModelFile()
         self._loadClassesInfo(self._getFileName('out_class_m2'))
-        inputParticles = self._getInputParticles()
-        classes2DSet = self._createSetOfClasses2D(inputParticles)
+        # Use the pointer with extended (indirect)
+        classes2DSet = self._createSetOfClasses2D(self.inputParticles)
         self._fillClassesFromLevel(classes2DSet)
   
         self._defineOutputs(outputClasses=classes2DSet)
@@ -330,11 +308,6 @@ class ProtCryo2D(ProtCryosparcBase, ProtClassify2D):
         validateMsgs = cryosparcValidate()
         if not validateMsgs:
             validateMsgs = gpusValidate(self.getGpuList())
-            if not validateMsgs:
-                particles = self._getInputParticles()
-                if not particles.hasCTF():
-                    validateMsgs.append("The Particles has not associated a "
-                                        "CTF model")
         return validateMsgs
 
     def _summary(self):
@@ -365,56 +338,30 @@ class ProtCryo2D(ProtCryosparcBase, ProtClassify2D):
         """
         self._classesInfo = {}  # store classes info, indexed by class id
 
-        mdClasses = md.MetaData(filename)
+        mdFileName = '%s@%s' % ('particles', filename)
+        table = emtable.Table(fileName=filename)
 
-        for classNumber, row in enumerate(md.iterRows(mdClasses)):
-            index, fn = cryosparcToLocation(row.getValue('rlnImageName'))
+        for classNumber, row in enumerate(table.iterRows(mdFileName)):
+            index, fn = cryosparcToLocation(row.get(RELIONCOLUMNS.rlnImageName.value))
+
             # Store info indexed by id, we need to store the row.clone() since
             # the same reference is used for iteration
             scaledFile = self._getScaledAveragesFile(fn)
-            self._classesInfo[classNumber + 1] = (index, scaledFile, row.clone())
+            self._classesInfo[classNumber + 1] = (index, scaledFile, row)
         self._numClass = index
-
-    def _getScaledAveragesFile(self, csAveragesFile):
-
-        # For the moment this is the best possible result, scaling from 128 to 300 does not render
-        # nice results apart that the factor turns to 299x299.
-        # But without this the representative subset is wrong.
-        # return csAveragesFile
-
-        scaledFile = self._getScaledAveragesFileName(csAveragesFile)
-
-        if not os.path.exists(scaledFile):
-
-            inputSize = self._getInputParticles().getDim()[0]
-            csSize = ImageHandler().getDimensions(csAveragesFile)[0]
-
-            if csSize == inputSize:
-                print("No binning detected: linking averages cs file.", flush=True)
-                createLink(csAveragesFile, scaledFile)
-            else:
-                print("Scaling CS averages file to match particle size (%s -> %s)." % (csSize, inputSize), flush=True)
-                ImageHandler.scaleSplines(csAveragesFile, scaledFile, inputSize)
-
-        return scaledFile
-
-    def _getScaledAveragesFileName(self, csAveragesFile):
-
-        return replaceExt(csAveragesFile, "_scaled.mrc")
 
     def _fillClassesFromLevel(self, clsSet):
         """ Create the SetOfClasses2D from a given iteration. """
 
         # the particle with orientation parameters (all_parameters)
-        xmpMd = self._getFileName("out_particles")
+        xmpMd = 'particles@' + self._getFileName("out_particles")
 
         clsSet.classifyItems(updateItemCallback=self._updateParticle,
                              updateClassCallback=self._updateClass,
-                             itemDataIterator=md.iterRows(xmpMd,
-                                                          sortByLabel=md.MDL_ITEM_ID))  # relion style
+                             itemDataIterator=emtable.Table.iterRows(xmpMd))  # relion style
 
     def _updateParticle(self, item, row):
-        item.setClassId(row.getValue(md.RLN_PARTICLE_CLASS))
+        item.setClassId(row.get(RELIONCOLUMNS.rlnClassNumber.value))
         item.setTransform(rowToAlignment(row, ALIGN_2D))
         
     def _updateClass(self, class2D):
@@ -422,35 +369,37 @@ class ProtCryo2D(ProtCryosparcBase, ProtClassify2D):
         if classId in self._classesInfo:
             index, fn, row = self._classesInfo[classId]
             class2D.setAlignment2D()
-            sr = row.getValue('rlnDetectorPixelSize')
             class2Drep = class2D.getRepresentative()
             class2Drep.setLocation(index, fn)
-            class2Drep.setSamplingRate(sr)
+            class2Drep.setSamplingRate(class2D.getSamplingRate())
+
+    def _createModelFile(self):
+        with open(self._getFileName('out_class'), 'r') as input_file, \
+                open(self._getFileName('out_class_m2'), 'w') as output_file:
+            for line in input_file:
+                if "@" in line:
+                    row = "%s@%s/%s"
+                    classNumber = line.split('@')[0]
+                    image = line.split('/')[1]
+                    output_file.write(row % (classNumber, self._getExtraPath(), image))
+                else:
+                    output_file.write(line)
+
+    def _getNumberOfIterSuffix(self):
+        _numberOfIter = (self.numberOnlineEMIterator.get() +
+                         self.numberFinalIterator.get() - 1)
+        _numberOfIterSuffix = "_00%s" % str(self.numberOnlineEMIterator.get())
+        if _numberOfIter > 9:
+            _numberOfIterSuffix = "_0%s" % str(_numberOfIter)
+        if _numberOfIter > 99:
+            _numberOfIterSuffix = "_%s" % str(_numberOfIter)
+        return _numberOfIterSuffix
 
     def _defineParamsName(self):
         """ Define a list with all protocol parameters names"""
         self.lane = str(self.getAttributeValue('compute_lane'))
 
-    def doRunClass2D(self):
-        """
-        do_run_class_2D:  do_job(job_type, puid='P1', wuid='W1',
-                                 uuid='devuser', params={},
-                                 input_group_connects={})
-        returns: the new uid of the job that was created
-        """
-        className = "class_2D"
-        # {'particles' : 'JXX.imported_particles' }
-        input_group_conect = {"particles": str(self.par)}
-
-        # Determinate the GPUs or the number of GPUs to use (in dependence of
-        # the cryosparc version)
-        try:
-            gpusToUse = self.getGpuList()
-            numberGPU = len(gpusToUse)
-        except Exception:
-            gpusToUse = False
-            numberGPU = 1
-
+    def assignParamValue(self):
         params = {"class2D_K": str(self.numberOfClasses.get()),
                   "class2D_max_res": str(self.maximunResolution.get()),
                   "class2D_sigma_init_factor": str(self.initialClassification.get()),
@@ -471,19 +420,47 @@ class ProtCryo2D(ProtCryosparcBase, ProtClassify2D):
                   "class2D_sigma_num_anneal_iters": str(self.iterationToStartAnneal.get()),
                   "class2D_sigma_use_white": str(self.useWhiteNoiseModel.get()),
                   "intermediate_plots": str('False'),
-                  "compute_use_ssd": str(self.compute_use_ssd.get()),
-                  "compute_num_gpus": str(numberGPU)}
+                  "compute_use_ssd": str(self.compute_use_ssd.get())}
+        if self.class2D_window_inner_A.get() is not None:
+                params["class2D_window_inner_A"] = str(self.class2D_window_inner_A.get())
+        if self.class2D_window_outer_A.get() is not None:
+                params["class2D_window_outer_A"] = str(self.class2D_window_outer_A.get())
+        return params
 
-        self.runClass2D = enqueueJob(className, self.projectName.get(),
-                                self.workSpaceName.get(),
-                                str(params).replace('\'', '"'),
-                                str(input_group_conect).replace('\'', '"'),
-                                self.lane, gpusToUse)
-        self.currenJob.set(self.runClass2D.get())
+    def doRunClass2D(self):
+        """
+        do_run_class_2D:  do_job(job_type, puid='P1', wuid='W1',
+                                 uuid='devuser', params={},
+                                 input_group_connects={})
+        returns: the new uid of the job that was created
+        """
+        # {'particles' : 'JXX.imported_particles' }
+        input_group_connect = {"particles": self.particles.get()}
+
+        # Determinate the GPUs or the number of GPUs to use (in dependence of
+        # the cryosparc version)
+        try:
+            gpusToUse = self.getGpuList()
+            numberGPU = len(gpusToUse)
+        except Exception:
+            gpusToUse = False
+            numberGPU = 1
+
+        params = self.assignParamValue()
+        params["compute_num_gpus"] = str(numberGPU)
+        runClass2DJob = enqueueJob(self._className, self.projectName.get(),
+                                     self.workSpaceName.get(),
+                                     str(params).replace('\'', '"'),
+                                     str(input_group_connect).replace('\'', '"'),
+                                     self.lane, gpusToUse)
+
+        self.runClass2D = String(runClass2DJob.get())
+        self.currenJob.set(runClass2DJob.get())
         self._store(self)
 
         waitForCryosparc(self.projectName.get(), self.runClass2D.get(),
-                        "An error occurred in the 2D classification process. "
-                        "Please, go to cryosPARC software for more "
-                        "details.")
+                         "An error occurred in the 2D classification process. "
+                         "Please, go to cryoSPARC software for more "
+                         "details.")
+        clearIntermediateResults(self.projectName.get(), self.runClass2D.get())
 

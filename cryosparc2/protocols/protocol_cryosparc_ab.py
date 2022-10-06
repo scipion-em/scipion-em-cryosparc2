@@ -25,13 +25,28 @@
 # *  e-mail address 'scipion@cnb.csic.es'
 # *
 # **************************************************************************
+import os
+
+import emtable
+
+import pyworkflow.utils as pwutils
+from pyworkflow.object import String
 from pyworkflow.protocol.params import (PointerParam, FloatParam,
-                                        LEVEL_ADVANCED)
+                                        LEVEL_ADVANCED, IntParam, Positive,
+                                        BooleanParam, EnumParam)
+
+from pwem import ALIGN_PROJ
 from pwem.protocols import ProtInitialVolume, ProtClassify3D
 
-from . import ProtCryosparcBase
-from ..convert import *
-from ..utils import *
+from .protocol_base import ProtCryosparcBase
+from ..convert import (defineArgs, convertCs2Star, cryosparcToLocation,
+                       rowToAlignment)
+
+from ..utils import (addSymmetryParam, addComputeSectionParams,
+                     cryosparcValidate, gpusValidate, getSymmetry, enqueueJob,
+                     calculateNewSamplingRate, waitForCryosparc,
+                     clearIntermediateResults, fixVolume, copyFiles,
+                     getOutputPreffix)
 from ..constants import *
 
 
@@ -42,6 +57,7 @@ class ProtCryoSparcInitialModel(ProtCryosparcBase, ProtInitialVolume,
     CryoSparc Stochastic Gradient Descent (SGD) algorithm.
     """
     _label = 'initial model'
+    _className = "homo_abinit"
     # --------------------------- DEFINE param functions ----------------------
 
     def _defineFileNames(self):
@@ -59,7 +75,6 @@ class ProtCryoSparcInitialModel(ProtCryosparcBase, ProtInitialVolume,
                       pointerClass='SetOfParticles',
                       label="Input particles", important=True,
                       help='Select the input images from the project.')
-        form.addParallelSection(threads=1, mpi=1)
 
         # --------------[Ab-Initio reconstruction]---------------------------
 
@@ -223,7 +238,10 @@ class ProtCryoSparcInitialModel(ProtCryosparcBase, ProtInitialVolume,
                            'should have significant probability (used for '
                            'auto-tuning initial noise sigma-scale)')
 
-        addSymmetryParam(form)
+        addSymmetryParam(form, help="Symmetry enforced (C, D, I, O, T). Eg. "
+                                    "C1, D7, C4 etc. Enforcing symmetry above "
+                                    "C1 is not recommended for ab-initio "
+                                    "reconstruction")
 
         form.addParam('abinit_r_grid', FloatParam, default=25,
                       expertLevel=LEVEL_ADVANCED,
@@ -281,9 +299,9 @@ class ProtCryoSparcInitialModel(ProtCryosparcBase, ProtInitialVolume,
         self._defineFileNames()
         self._defineParamsName()
         self._initializeCryosparcProject()
-        self._insertFunctionStep("convertInputStep")
-        self._insertFunctionStep('processStep')
-        self._insertFunctionStep('createOutputStep')
+        self._insertFunctionStep(self.convertInputStep)
+        self._insertFunctionStep(self.processStep)
+        self._insertFunctionStep(self.createOutputStep)
 
     # --------------------------- STEPS functions ------------------------------
     def processStep(self):
@@ -294,43 +312,29 @@ class ProtCryoSparcInitialModel(ProtCryosparcBase, ProtInitialVolume,
         """
         Create the protocol output. Convert cryosparc file to Relion file
         """
-        self._initializeUtilsVariables()
+        import time
+        time.sleep(10)
         print(pwutils.yellowStr("Creating the output..."), flush=True)
+        self._initializeUtilsVariables()
+        csOutputFolder = os.path.join(self.projectDir.get(),
+                                      self.runAbinit.get())
+        csFileName = "%s%s_final_particles.cs" % (getOutputPreffix(self.projectName.get()),
+                                                  self.runAbinit.get())
 
-        csFileName = ("cryosparc_" + self.projectName.get() + "_" +
-                      self.runAbinit.get() + "_final_particles.cs")
+        outputFolder = os.path.join(self._getExtraPath(), self.runAbinit.get())
 
-        ouputsPath = os.path.join(self.projectPath, self.projectName.get(),
-                                  self.runAbinit.get())
+        # Copy the CS output to extra folder
+        copyFiles(csOutputFolder, outputFolder)
 
-        # Create the output folder
-        outputFolder = self._getExtraPath() + '/' + self.runAbinit.get()
-        os.system("mkdir " + outputFolder)
-
-        # Copy the particles to scipion output folder
-        os.system("cp -r " + ouputsPath + "/" + "*final*" + " " + outputFolder)
         csFile = os.path.join(outputFolder, csFileName)
-
         outputClassFn = self._getFileName('out_particles')
         argsList = [csFile, outputClassFn]
-
         parser = defineArgs()
         args = parser.parse_args(argsList)
         convertCs2Star(args)
 
         # Create model files for 3D classification
-        with open(self._getFileName('out_class'), 'w') as output_file:
-            output_file.write('\n')
-            output_file.write('data_images')
-            output_file.write('\n\n')
-            output_file.write('loop_')
-            output_file.write('\n')
-            output_file.write('_rlnReferenceImage')
-            output_file.write('\n')
-            for i in range(int(self.abinit_K.get())):
-                output_file.write("%02d" % (i+1)+"@"+self._getExtraPath() + "/" + self.runAbinit.get() + "/cryosparc_" +
-                                  self.projectName.get() + "_"+self.runAbinit.get() + "_class_%02d" % i +
-                                  "_final_volume.mrc\n")
+        self._createModelFile()
 
         imgSet = self._getInputParticles()
         classes3D = self._createSetOfClasses3D(imgSet)
@@ -361,8 +365,9 @@ class ProtCryoSparcInitialModel(ProtCryosparcBase, ProtInitialVolume,
             if not validateMsgs:
                 particles = self._getInputParticles()
                 if not particles.hasCTF():
-                    validateMsgs.append("The Particles has not associated a "
-                                        "CTF model")
+                    validateMsgs.append(
+                        "The Particles has not associated a "
+                        "CTF model")
         return validateMsgs
 
     def _summary(self):
@@ -394,38 +399,56 @@ class ProtCryoSparcInitialModel(ProtCryosparcBase, ProtInitialVolume,
         """
         self._classesInfo = {}  # store classes info, indexed by class id
 
-        modelStar = md.MetaData(filename)
+        table = emtable.Table(fileName=filename)
 
-        for classNumber, row in enumerate(md.iterRows(modelStar)):
-            index, fn = cryosparcToLocation(row.getValue('rlnReferenceImage'))
+        for classNumber, row in enumerate(table.iterRows(filename)):
+            index, fn = cryosparcToLocation(row.get(RELIONCOLUMNS.rlnReferenceImage.value))
             # Store info indexed by id, we need to store the row.clone() since
             # the same reference is used for iteration
-            self._classesInfo[classNumber+1] = (index, fn, row.clone())
+            scaledFile = self._getScaledAveragesFile(fn, force=True)
+            self._classesInfo[classNumber+1] = (index, scaledFile, row)
 
     def _fillClassesFromIter(self, clsSet, filename):
         """ Create the SetOfClasses3D """
+        outImgsFn = 'particles@' + filename
         self._loadClassesInfo(self._getFileName('out_class'))
-        outImgsFn = self._getFileName('out_class')
         clsSet.classifyItems(updateItemCallback=self._updateParticle,
                              updateClassCallback=self._updateClass,
-                             itemDataIterator=md.iterRows(filename,
-                                                          sortByLabel=md.RLN_IMAGE_ID))
+                             itemDataIterator=emtable.Table.iterRows(outImgsFn))
 
     def _updateParticle(self, item, row):
-        item.setClassId(row.getValue(md.RLN_PARTICLE_CLASS))
+        if row.hasColumn(RELIONCOLUMNS.rlnClassNumber.value):
+            item.setClassId(row.get(RELIONCOLUMNS.rlnClassNumber.value))
+        else:
+            item.setClassId(1)
         item.setTransform(rowToAlignment(row, ALIGN_PROJ))
 
     def _updateClass(self, item):
         classId = item.getObjId()
         if classId in self._classesInfo:
             index, fn, row = self._classesInfo[classId]
-            fn += ":mrc"
+            fixVolume(fn)
             item.setAlignmentProj()
             vol = item.getRepresentative()
             vol.setLocation(index, fn)
             vol.setSamplingRate(calculateNewSamplingRate(vol.getDim(),
                                                          self._getInputParticles().getSamplingRate(),
                                                          self._getInputParticles().getDim()))
+
+    def _createModelFile(self):
+        with open(self._getFileName('out_class'), 'w') as output_file:
+            output_file.write('\n')
+            output_file.write('data_images')
+            output_file.write('\n\n')
+            output_file.write('loop_')
+            output_file.write('\n')
+            output_file.write('_rlnReferenceImage')
+            output_file.write('\n')
+            for i in range(int(self.abinit_K.get())):
+                row = ("%s/%s/%s%s_class_%02d_final_volume.mrc\n"
+                       % (self._getExtraPath(), self.runAbinit.get(),
+                          getOutputPreffix(self.projectName.get()), self.runAbinit.get(), i))
+                output_file.write(row)
 
     def _defineParamsName(self):
         """ Define a list with all protocol parameters names"""
@@ -458,9 +481,7 @@ class ProtCryoSparcInitialModel(ProtCryosparcBase, ProtInitialVolume,
         "\", \"" + self.workSpaceName + "\", \"\'" + self._user + "\'\", \""
         + self.par + "\",\"\'1\'\")\'")
         """
-        className = "homo_abinit"
-        input_group_conect = {"particles": str(self.par)}
-        # {'particles' : 'JXX.imported_particles' }
+        input_group_connect = {"particles": self.particles.get()}
         params = {}
 
         if self.hasExpert():
@@ -481,17 +502,19 @@ class ProtCryoSparcInitialModel(ProtCryosparcBase, ProtInitialVolume,
         except Exception:
             gpusToUse = False
 
-        self.runAbinit = enqueueJob(className, self.projectName.get(),
-                               self.workSpaceName.get(),
-                               str(params).replace('\'', '"'),
-                               str(input_group_conect).replace('\'', '"'),
-                               self.lane,
-                               gpusToUse)
+        runAbinitJob = enqueueJob(self._className, self.projectName.get(),
+                                    self.workSpaceName.get(),
+                                    str(params).replace('\'', '"'),
+                                    str(input_group_connect).replace('\'', '"'),
+                                    self.lane,
+                                    gpusToUse)
 
+        self.runAbinit = String(runAbinitJob.get())
         self.currenJob.set(self.runAbinit.get())
         self._store(self)
 
         waitForCryosparc(self.projectName.get(), self.runAbinit.get(),
                          "An error occurred in the initial volume process. "
-                         "Please, go to cryosPARC software for more "
+                         "Please, go to cryoSPARC software for more "
                          "details.")
+        clearIntermediateResults(self.projectName.get(), self.runAbinit.get(), wait=7)

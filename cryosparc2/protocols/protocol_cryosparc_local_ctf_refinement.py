@@ -24,15 +24,25 @@
 # *  e-mail address 'scipion@cnb.csic.es'
 # *
 # **************************************************************************
+import os
+
+import emtable
+
+from pwem import ALIGN_PROJ
 from pwem.protocols import ProtParticles
+import pyworkflow.utils as pwutils
+from pyworkflow import BETA
+from pyworkflow.object import String
 from pyworkflow.protocol.params import (PointerParam, FloatParam,
-                                        LEVEL_ADVANCED)
+                                        LEVEL_ADVANCED, IntParam, Positive)
 
-from . import ProtCryosparcBase
-from ..convert import *
-from ..utils import *
-import pwem.emlib.metadata as md
-
+from .protocol_base import ProtCryosparcBase
+from .. import RELIONCOLUMNS
+from ..convert import (defineArgs, convertCs2Star, createItemMatrix,
+                       setCryosparcAttributes)
+from ..utils import (addComputeSectionParams, cryosparcValidate, gpusValidate,
+                     enqueueJob, waitForCryosparc, clearIntermediateResults,
+                     copyFiles)
 
 class ProtCryoSparcLocalCtfRefinement(ProtCryosparcBase, ProtParticles):
     """
@@ -40,7 +50,8 @@ class ProtCryoSparcLocalCtfRefinement(ProtCryosparcBase, ProtParticles):
     Performs per-particle defocus estimation for each particle in a dataset,
     against a given 3D reference structure.
     """
-    _label = 'local ctf refinement(BETA)'
+    _label = 'local ctf refinement'
+    _className = "ctf_refine_local"
 
     def _initialize(self):
         self._createFilenameTemplates()
@@ -59,25 +70,19 @@ class ProtCryoSparcLocalCtfRefinement(ProtCryosparcBase, ProtParticles):
                       pointerClass='SetOfParticles',
                       pointerCondition='hasAlignmentProj',
                       label="Input particles", important=True,
-                      help='Provide a set of particles for global '
+                      help='Provide a set of particles for local '
                            'CTF refinement.')
-        form.addParam('inputRefinement', PointerParam,
-                      pointerClass='ProtCryoSparcRefine3D',
-                      label="Select a Refinement protocol",
+        form.addParam('refVolume', PointerParam, pointerClass='Volume',
                       important=True,
-                      help='Provide the refinement protocol that will be used. '
-                           'If mask_refinement is present, use that, otherwise '
-                           'use a selected mask. If mask does not present, '
-                           'the protocol will fail')
+                      label="Input volume",
+                      help='Provide a reference volume for local '
+                           'CTF refinement.')
         form.addParam('refMask', PointerParam, pointerClass='VolumeMask',
                       label='Mask to be applied to this map',
                       important=True,
-                      allowsNull=True,
                       help="Provide a soft mask. if mask is present, use that, "
                            "otherwise use mask_refine if present, otherwise "
                            "fail")
-
-        form.addParallelSection(threads=1, mpi=1)
 
         # -----------[Global CTF Refinement]------------------------
         form.addSection(label="Local CTF Refinement")
@@ -117,15 +122,15 @@ class ProtCryoSparcLocalCtfRefinement(ProtCryosparcBase, ProtParticles):
         form.addSection(label="Compute settings")
         addComputeSectionParams(form, allowMultipleGPUs=False)
 
-        # --------------------------- INSERT steps functions -----------------------
+    # --------------------------- INSERT steps functions -----------------------
 
     def _insertAllSteps(self):
         self._createFilenameTemplates()
         self._defineParamsName()
         self._initializeCryosparcProject()
-        self._insertFunctionStep("convertInputStep")
-        self._insertFunctionStep('processStep')
-        self._insertFunctionStep('createOutputStep')
+        self._insertFunctionStep(self.convertInputStep)
+        self._insertFunctionStep(self.processStep)
+        self._insertFunctionStep(self.createOutputStep)
 
     # -------------------------- UTILS functions ------------------------------
 
@@ -139,12 +144,6 @@ class ProtCryoSparcLocalCtfRefinement(ProtCryosparcBase, ProtParticles):
                             'compute_use_ssd']
         self.lane = str(self.getAttributeValue('compute_lane'))
 
-    def _getInputPostProcessProtocol(self):
-        return self.inputRefinement.get()
-
-    def _getInputVolume(self):
-        return self._getInputPostProcessProtocol().outputVolume
-
     def _getInputMask(self):
         if self.refMask.get() is not None:
             return self.refMask.get()
@@ -157,8 +156,6 @@ class ProtCryoSparcLocalCtfRefinement(ProtCryosparcBase, ProtParticles):
 
     # --------------------------- STEPS functions ------------------------------
     def processStep(self):
-        self.vol = self.importVolume.get() + '.imported_volume.map'
-        self.mask = self.importMask.get() + '.imported_mask.mask'
         print(pwutils.yellowStr("Local Ctf Refinement started..."), flush=True)
         self.doLocalCtfRefinement()
 
@@ -168,14 +165,14 @@ class ProtCryoSparcLocalCtfRefinement(ProtCryosparcBase, ProtParticles):
         """
         self._initializeUtilsVariables()
         outputStarFn = self._getFileName('out_particles')
-
-        # Create the output folder
-        os.system("cp -r " + self.projectPath + "/" + self.projectName.get() +
-                  '/' + self.runLocalCtfRefinement.get() + " " + self._getExtraPath())
-
+        csOutputFolder = os.path.join(self.projectDir.get(),
+                                      self.runLocalCtfRefinement.get())
         csFileName = "particles.cs"
-        csFile = os.path.join(self._getExtraPath(), self.runLocalCtfRefinement.get(),
-                              csFileName)
+
+        # Copy the CS output particles to extra folder
+        copyFiles(csOutputFolder, self._getExtraPath(), files=[csFileName])
+
+        csFile = os.path.join(self._getExtraPath(), csFileName)
 
         argsList = [csFile, outputStarFn]
 
@@ -186,7 +183,6 @@ class ProtCryoSparcLocalCtfRefinement(ProtCryosparcBase, ProtParticles):
         imgSet = self._getInputParticles()
 
         outImgSet = self._createSetOfParticles()
-        imgSet.setAlignmentProj()
         outImgSet.copyInfo(imgSet)
         self._fillDataFromIter(outImgSet)
 
@@ -194,17 +190,16 @@ class ProtCryoSparcLocalCtfRefinement(ProtCryosparcBase, ProtParticles):
         self._defineTransformRelation(imgSet, outImgSet)
 
     def _fillDataFromIter(self, imgSet):
-        outImgsFn = self._getFileName('out_particles')
+        outImgsFn = 'particles@' + self._getFileName('out_particles')
         imgSet.setAlignmentProj()
         imgSet.copyItems(self._getInputParticles(),
                          updateItemCallback=self._createItemMatrix,
-                         itemDataIterator=md.iterRows(outImgsFn,
-                                                      sortByLabel=md.RLN_IMAGE_ID))
+                         itemDataIterator=emtable.Table.iterRows(outImgsFn))
 
     def _createItemMatrix(self, particle, row):
         createItemMatrix(particle, row, align=ALIGN_PROJ)
         setCryosparcAttributes(particle, row,
-                               md.RLN_PARTICLE_RANDOM_SUBSET)
+                               RELIONCOLUMNS.rlnRandomSubset.value)
 
     # --------------------------- INFO functions -------------------------------
     def _validate(self):
@@ -239,11 +234,15 @@ class ProtCryoSparcLocalCtfRefinement(ProtCryosparcBase, ProtParticles):
         """
          :return:
          """
-        className = "ctf_refine_local"
-        input_group_conect = {"particles": str(self.par),
-                              "volume": str(self.vol),
-                              "mask": str(self.mask)}
-        # {'particles' : 'JXX.imported_particles' }
+        input_group_connect = {"particles": self.particles.get(),
+                              "volume": self.volume.get(),
+                              "mask": self.mask.get()}
+
+        input_result_connect = None
+        if self._getInputVolume().hasHalfMaps():
+            input_result_connect = {"volume.0.map_half_A": self.importVolumeHalfA.get(),
+                                    "volume.0.map_half_B": self.importVolumeHalfB.get()}
+
         params = {}
 
         for paramName in self._paramsName:
@@ -261,17 +260,18 @@ class ProtCryoSparcLocalCtfRefinement(ProtCryosparcBase, ProtParticles):
         except Exception:
             gpusToUse = False
 
-        self.runLocalCtfRefinement = enqueueJob(className, self.projectName.get(),
-                                        self.workSpaceName.get(),
-                                        str(params).replace('\'', '"'),
-                                        str(input_group_conect).replace('\'',
-                                                                        '"'),
-                                        self.lane, gpusToUse)
+        runLocalCtfRefinementJob = enqueueJob(self._className, self.projectName.get(),
+                                                self.workSpaceName.get(),
+                                                str(params).replace('\'', '"'),
+                                                str(input_group_connect).replace('\'', '"'),
+                                                self.lane, gpusToUse,
+                                                result_connect=input_result_connect)
 
-        self.currenJob.set(self.runLocalCtfRefinement.get())
+        self.runLocalCtfRefinement = String(runLocalCtfRefinementJob.get())
+        self.currenJob.set(runLocalCtfRefinementJob.get())
         self._store(self)
 
         waitForCryosparc(self.projectName.get(), self.runLocalCtfRefinement.get(),
                          "An error occurred in the particles subtraction process. "
-                         "Please, go to cryosPARC software for more "
+                         "Please, go to cryoSPARC software for more "
                          "details.")

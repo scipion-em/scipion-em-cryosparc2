@@ -26,7 +26,8 @@
 # **************************************************************************
 
 from pyworkflow.protocol.params import (PointerParam, FloatParam,
-                                        LEVEL_ADVANCED, Float)
+                                        LEVEL_ADVANCED, Float, Positive,
+                                        IntParam, BooleanParam, EnumParam)
 from pwem.objects import Volume, FSC
 from pwem.protocols import ProtRefine3D
 
@@ -152,13 +153,13 @@ class ProtCryoSparc3DVariability(ProtCryosparcBase, ProtRefine3D):
         self._defineFileNames()
         self._defineParamsName()
         self._initializeCryosparcProject()
-        self._insertFunctionStep("convertInputStep")
-        self._insertFunctionStep('processStep')
-        self._insertFunctionStep('createOutputStep')
+        self._insertFunctionStep(self.convertInputStep)
+        self._insertFunctionStep(self.processStep)
+        self._insertFunctionStep(self.createOutputStep)
 
     # --------------------------- STEPS functions ------------------------------
     def processStep(self):
-        print(pwutils.greenStr("3D Variability started..."))
+        print(pwutils.yellowStr("3D Variability started..."))
         self.doRun3DVariability()
 
     def createOutputStep(self):
@@ -166,12 +167,12 @@ class ProtCryoSparc3DVariability(ProtCryosparcBase, ProtRefine3D):
         Create the protocol output. Convert cryosparc file to Relion file
         """
         self._initializeUtilsVariables()
-
-        csParticlesName = ("cryosparc_" + self.projectName.get() + "_" +
+        csOutputFolder = os.path.join(self.projectDir.get(),
+                                      self.run3DVariability.get())
+        csParticlesName = (getOutputPreffix(self.projectName.get()) +
                            self.run3DVariability.get() + "_particles.cs")
 
-        csFile = os.path.join(self.projectPath, self.projectName.get(),
-                              self.run3DVariability.get(), csParticlesName)
+        csFile = os.path.join(csOutputFolder, csParticlesName)
 
         # Copy the particles to scipion output folder
         os.system("cp -r " + csFile + " " + self._getExtraPath())
@@ -184,11 +185,10 @@ class ProtCryoSparc3DVariability(ProtCryosparcBase, ProtRefine3D):
         args = parser.parse_args(argsList)
         convertCs2Star(args)
 
-        fnVolName = ("cryosparc_" + self.projectName.get() + "_" +
+        fnVolName = (getOutputPreffix(self.projectName.get()) +
                      self.run3DVariability.get() + "_map.mrc")
 
-        fnVol = os.path.join(self.projectPath, self.projectName.get(),
-                             self.run3DVariability.get(), fnVolName)
+        fnVol = os.path.join(csOutputFolder, fnVolName)
 
         # Copy the volumes to extra folder
         os.system("cp -r " + fnVol + " " + self._getExtraPath())
@@ -208,6 +208,13 @@ class ProtCryoSparc3DVariability(ProtCryosparcBase, ProtRefine3D):
         self._defineSourceRelation(self.inputParticles.get(), vol)
         self._defineOutputs(outputParticles=outImgSet)
         self._defineTransformRelation(self.inputParticles.get(), outImgSet)
+
+    #  ----------------------------UTILS functions --------------------------
+
+    def cleanTmp(self):
+        """ Delete all files and subdirectories under Tmp folder. For this
+        protocol we need to keep the tmp folder content"""
+        pass
 
     def _validate(self):
         validateMsgs = cryosparcValidate()
@@ -247,17 +254,17 @@ class ProtCryoSparc3DVariability(ProtCryosparcBase, ProtRefine3D):
     # -------------------------- UTILS functions ------------------------------
 
     def _fillDataFromIter(self, imgSet):
-        outImgsFn = self._getFileName('out_particles')
+        outImgsFn = 'particles@' + self._getFileName('out_particles')
         imgSet.setAlignmentProj()
         imgSet.copyItems(self._getInputParticles(),
                          updateItemCallback=self._createItemMatrix,
-                         itemDataIterator=md.iterRows(outImgsFn,
-                                                      sortByLabel=md.RLN_IMAGE_ID))
+                         itemDataIterator=emtable.Table.iterRows(
+                             fileName=outImgsFn))
 
     def _createItemMatrix(self, particle, row):
         createItemMatrix(particle, row, align=ALIGN_PROJ)
         setCryosparcAttributes(particle, row,
-                               md.RLN_PARTICLE_RANDOM_SUBSET)
+                               RELIONCOLUMNS.rlnRandomSubset.value)
 
     def _defineParamsName(self):
         """ Define a list with all protocol parameters names"""
@@ -279,7 +286,7 @@ class ProtCryoSparc3DVariability(ProtCryosparcBase, ProtRefine3D):
         :return:
         """
         className = "var_3D"
-        input_group_conect = {"particles": str(self.par),
+        input_group_conect = {"particles": str(self.particles),
                               "mask": str(self.mask)}
         params = {}
 

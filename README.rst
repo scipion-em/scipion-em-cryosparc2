@@ -16,9 +16,44 @@ You will need to use `3.0.0 <https://scipion-em.github.io/docs/release-3.0.0/doc
 * **3D Non uniform Refinement**: Apply non-uniform refinement to acheive higher resolution and map quality
 * **Particle Subtraction**: Subtract projections of a masked volume from particles.
 * **3D Local Refinement** Naive local refinement.
+* **Heterogeneous Refinement**: Heterogeneous Refinement simultaneously classifies particles and refines structures from n initial structures, usually obtained following an Ab-Initio Reconstruction
 * **Local CTF Refinement (per-particle defocus)**: Local CTF Refinement performs per-particle defocus estimation for each particle in a dataset, against a given 3D reference structure.
 * **Global CTF Refinement (per-group beam tilt, trefoil, spherical aberration, tetrafoil)**: Global CTF Refinement performs per-exposure-group CTF parameter refinement of higher-order aberrations, against a given 3D reference.
 * **Sharppening**: Sharpen a volume following refinement.
+* **Helical 3D Refinement**: Reconstruct and refine a homogeneous helical assembly, with or without imposition and refinement of symmetry parameters.
+* **3D Homogeneous Refinement(new)**: Rapidly refine a single homogeneous structure to high-resolution and validate using the gold-standard FSC. Using new faster GPU code, and support for higher-order aberration (beam tilt, spherical aberration, trefoil, tetrafoil) correction and per-particle defocus refinement on the fly.
+* **3D Non uniform Refinement(new)**: Apply non-uniform refinement to achieve higher resolution and map quality. Specially designed for small proteins and membrane proteins.
+* **3D Local Refinement(new)**  Refine a masked region within a consensus structure by allowing particle alignments to vary only slightly.
+* **Symmetry Expansion**: Duplicate particles around a point-group symmetry.
+* **Homogeneous Reconstruction**: Reconstruct half-maps from input particles with alignments
+* **3D Classification**: Classify particles into multiple 3D classes and optimize 3D class densities (currently, without re-aligning particle pose or shift).
+
+**Latest plugin versions**
+==========================
+
+**v3.3.18**
+-----------
+* **new** *    : Allow to import .cs particles files
+
+**v3.3.17**
+-----------
+
+* **fixed**    : Allow 31 or more classes in the 3D classification protocol
+
+**v3.3.16**
+-----------
+
+* **fixed**    : Fixed an error related with the slow loading protocols
+* **fixed**    : Fixed an error in the 3D classification protocol
+
+**v3.3.15**
+-----------
+* **new**      : Compatibility with cryoSPARC v3.3.2
+* **new**      : Added the option to use the plugin in a CS installation in a cluster
+* **new**      : Added a wizard to select the lane where the protocols will be launched
+* **new**      : Added the varaiable CRYOSPARC_DEFAULT_LANE to define the name of the cryoSPARC default lane
+* **new**      : Added the variable CRYOSPARC_STANDALONE_INSTALLATION to specify whether the CS installation is standalone or not
+
 
 **Installing the plugin**
 =========================
@@ -50,7 +85,7 @@ cryoSPARC v2 when new versions become available.
    .. code-block::
 
        # The root directory where cryoSPARC code and dependencies is installed.
-       CRYOSPARC_DIR = <install_path>   (CRYOSPARC_DIR will work for legacy reasons)
+       CRYOSPARC_HOME = <install_path>   (CRYOSPARC_DIR will work for legacy reasons)
        
        # full name of the initial admin account to be created
        CRYOSPARC_USER = <user_name>
@@ -58,7 +93,17 @@ cryoSPARC v2 when new versions become available.
        # Optional variables
 
        #Folder (available to all workers) where scipion will create cryosparc projects
-       CRYO_PROJECTS_DIR = <path> (default to <CRYOSPARC_DIR>/scipion_projects)
+       CRYO_PROJECTS_DIR = <path> (default to <CRYOSPARC_HOME>/scipion_projects)
+
+       # Specifies whether the CS installation is standalone or not. If False,
+       # it is assumed that CS is installed in a cluster. If the variable is not
+       # defined, by default assume that the installation is standalone and its
+       # value would be True
+       CRYOSPARC_STANDALONE_INSTALLATION = <True or False>
+
+       # Name of the default lane where the protocols will be launched
+       CRYOSPARC_DEFAULT_LANE = <lane name>
+
 
 
 **To install in development mode**

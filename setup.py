@@ -36,6 +36,7 @@ from setuptools import setup, find_packages
 # To use a consistent encoding
 from codecs import open
 from os import path
+from cryosparc2  import __version__
 
 here = path.abspath(path.dirname(__file__))
 
@@ -70,7 +71,7 @@ setup(
     # For a discussion on single-sourcing the version across setup.py and the
     # project code, see
     # https://packaging.python.org/en/latest/single_source_version.html
-    version='3.0.6',  # Required
+    version=__version__,  # Required
 
     # This is a one-line description or tagline of what your project does. This
     # corresponds to the "Summary" metadata field:
@@ -95,11 +96,11 @@ setup(
 
     # This should be your name or the name of the organization which owns the
     # project.
-    author='Szu-Chi Chung, Yunior C. Fonseca Reyna',  # Optional
+    author='Yunior C. Fonseca Reyna, Szu-Chi Chung',  # Optional
 
     # This should be a valid email address corresponding to the author listed
     # above.
-    author_email='phonchi@stat.sinica.edu.tw, cfonseca@cnb.csic.es',  # Optional
+    author_email='cfonseca@cnb.csic.es, phonchi@stat.sinica.edu.tw',  # Optional
 
     # Classifiers help users find your project by categorizing it.
     #
@@ -127,7 +128,7 @@ setup(
     # project page. What does your project relate to?
     #
     # Note that this is a string of words separated by whitespace, not a list.
-    keywords='scipion electron-microscopy cryo-em structural-biology image-processing scipion-3.0 cryosparc2',  # Optional
+    keywords='scipion electron-microscopy cryo-em structural-biology image-processing scipion-3.0 cryosparc',  # Optional
 
     # You can just specify package directories manually here if your project is
     # simple. Or you can use find_packages().

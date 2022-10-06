@@ -1,3 +1,35 @@
+Sept 7, 2022  - Adding functionalities (v3.3.18)
+                **v3.3.18**
+                -----------
+                * **new** *   : Allow to import .cs particles files
+
+Sept 1, 2022  - Fixing errors (v3.3.17)
+                **v3.3.17**
+                -----------
+                * **fixed**    : Allow 31 or more classes in the 3D classification protocol
+
+
+Jun 23, 2022  - Fixing errors (v3.3.16)
+                **v3.3.16**
+                -----------
+                * **fixed**    : Fixed an error related with the slow loading protocols
+                * **fixed**    : Fixed an error in the 3D classification protocol
+
+Jun 15, 2022  - Compatibility with v3.3.3 CS version (v3.3.15)
+
+Jun 10, 2022  - Redefining CS commands in order to launch the protocols in a cluster
+                **v3.3.14**
+                ----------
+                * **new**      : Added the option to use the plugin in a CS installation in a cluster
+                * **new**      : Added a wizard to select the lane where the protocols will be launched
+                * **new**      : Added the varaiable CRYOSPARC_DEFAULT_LANE to define the name of the cryoSPARC default lane
+                * **new**      : Added the variable CRYOSPARC_STANDALONE_INSTALLATION to specify whether the CS installation is standalone or not
+
+Jan 18, 2022  - Using emtable library to read star files(improving the performance when generating the outputs)
+Nov 12, 2021  - Adding homogenous reconstruction protocol
+Feb 11, 2021  - Compatibility with v3.X.X CS versions Adding a new protocol(helical refinement)
+Dec 18, 2020  - Cleaning intermediates results
+Dec 14, 2020  - Fixing some bugs taking the las iteration in the 2D classification
 Apr 10, 2020  - Create a protocol base, Clean the code
 Apr  4, 2020  - Add the use of multiple GPUs
 Dec  9, 2019  - Migrated to python3

@@ -30,7 +30,7 @@ import webbrowser
 from pyworkflow.viewer import (ProtocolViewer, DESKTOP_TKINTER, WEB_DJANGO)
 import pwem.viewers.showj as showj
 from pwem.viewers import ObjectView
-from pyworkflow.protocol.params import (LabelParam)
+from pyworkflow.protocol.params import (LabelParam, EnumParam)
 
 from ..constants import *
 from ..utils import *
@@ -83,8 +83,6 @@ class CryosPARCViewerInitialModel(ProtocolViewer):
     def _visualizeVolumes(self, paramName=None):
         if self.displayVol == DATA_VIEWER:
             return self._showVolumesDataViewer()
-        # elif self.displayVol == VOLUME_SLICES:
-        #     return self._createVolumesSqlite()
         elif self.displayVol == VOLUME_CRYOSPARC:
             return self._showCryoSPARVolume()
 

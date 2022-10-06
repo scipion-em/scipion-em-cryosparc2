@@ -26,7 +26,9 @@
 # **************************************************************************
 
 from pyworkflow.protocol.params import (PointerParam, FloatParam,
-                                        LEVEL_ADVANCED)
+                                        LEVEL_ADVANCED, EnumParam, IntParam,
+                                        Positive, BooleanParam,
+                                        ProtocolClassParam)
 from pwem.objects import Volume, FSC
 from pwem.protocols import ProtRefine3D
 
@@ -44,26 +46,20 @@ class ProtCryoSparc3DVariabilityAnalisys(ProtCryosparcBase, ProtRefine3D):
     _label = '3D variability Display'
 
     def _defineFileNames(self):
-        """ Centralize how files are called within the protocol. """
+        """ Centralize how files are called. """
         myDict = {
-            'input_particles': self._getTmpPath('input_particles.star'),
-            'out_particles': self._getPath() + '/output_particle.star',
-            'stream_log': self._getPath() + '/stream.log'
+            'out_particles': self._getExtraPath('output_particle.star'),
+            'stream_log': self._getPath() + '/stream.log',
+            'out_class': self._getExtraPath() + '/output_class.star'
         }
         self._updateFilenamesDict(myDict)
 
     def _defineParams(self, form):
         form.addSection(label='Input')
-        form.addParam('inputParticles', PointerParam,
-                      pointerClass='SetOfParticles',
-                      pointerCondition='hasAlignmentProj',
-                      label="Input particles", important=True,
+        form.addParam('input3DVariablityAnalisysProt', PointerParam,
+                      label="3D variability analysis protocol",
+                      pointerClass='ProtCryoSparc3DVariability',
                       help='Particle stacks to use.')
-        form.addParam('refVolume', PointerParam, pointerClass='Volume',
-                      label="Consensus Volume",
-                      important=True,
-                      help='Consensus volume.')
-
         form.addParallelSection(threads=1, mpi=1)
 
         # --------------[3D Variability Display]---------------------------
@@ -72,7 +68,6 @@ class ProtCryoSparc3DVariabilityAnalisys(ProtCryosparcBase, ProtRefine3D):
         form.addParam('var_output_mode', EnumParam,
                       choices=['simple', 'cluster', 'intermediates'],
                       default=0,
-                      expertLevel=LEVEL_ADVANCED,
                       label="Output mode",
                       help='simple mode: output a simple linear "movie" of '
                            'volumes along each dimension. Number of frames is '
@@ -97,13 +92,15 @@ class ProtCryoSparc3DVariabilityAnalisys(ProtCryosparcBase, ProtRefine3D):
                       help='Percentile for computing the min and max for '
                            'each component.')
 
-        form.addParam('var_N', FloatParam, default=None,
-                      validators=[Positive],
+        form.addParam('var_N', IntParam, default=None,
+                      allowsNull=True,
+                      expertLevel=LEVEL_ADVANCED,
                       label="Downsample to box size",
                       help='Downsample the output volumes to this size.')
 
-        form.addParam('var_M', FloatParam, default=None,
-                      validators=[Positive],
+        form.addParam('var_M', IntParam, default=None,
+                      expertLevel=LEVEL_ADVANCED,
+                      allowsNull=True,
                       label="Crop to size (after downsample)",
                       help='Crop the output volumes to this size after '
                            'downsampling.')
@@ -114,7 +111,8 @@ class ProtCryoSparc3DVariabilityAnalisys(ProtCryosparcBase, ProtRefine3D):
         #               help='Only use this many particles for reconstructions.')
 
         form.addParam('var_filter_res', FloatParam, default=None,
-                      validators=[Positive],
+                      allowsNull=True,
+                      expertLevel=LEVEL_ADVANCED,
                       label="Filter resolution (A)",
                       help='Resolution at which results are filtered')
 
@@ -124,7 +122,7 @@ class ProtCryoSparc3DVariabilityAnalisys(ProtCryosparcBase, ProtRefine3D):
                       help='Order of filter')
 
         form.addParam('var_highpass_res', FloatParam, default=None,
-                      validators=[Positive],
+                      allowsNull=True,
                       expertLevel=LEVEL_ADVANCED,
                       label="Highpass resolution (A)",
                       help='Resolution at which results are filtered')
@@ -168,15 +166,58 @@ class ProtCryoSparc3DVariabilityAnalisys(ProtCryosparcBase, ProtRefine3D):
         self._defineFileNames()
         self._defineParamsName()
         self._initializeCryosparcProject()
-        self._insertFunctionStep("convertInputStep")
-        self._insertFunctionStep('processStep')
-        # self._insertFunctionStep('createOutputStep')
+        self._insertFunctionStep(self.processStep)
+        self._insertFunctionStep(self.generateStartFiles)
+        self._insertFunctionStep(self.createOutputStep)
 
     # --------------------------- STEPS functions ------------------------------
     def processStep(self):
-        print(pwutils.greenStr("3D Variability started..."))
-        self.vol = self.importVolume.get() + '.imported_volume.map'
+        print(pwutils.yellowStr("3D Variability started..."), flush=True)
         self.doRun3DVariabilityDisplay()
+
+    def generateStartFiles(self):
+        print(pwutils.yellowStr("Copying files from CS to Scipion folder..."),
+              flush=True)
+        csOutputFolder = os.path.join(self.projectPath, self.projectName.get(),
+                                      self.run3DVariabilityDisplay.get())
+        # Copy the CS output to extra folder
+        outputFolder = os.path.join(self._getExtraPath(), 'outputs')
+        pwutils.cleanPath(outputFolder)
+        copyFiles(csOutputFolder, outputFolder)
+
+        # Creating the folder where .star files will be create
+        starFilesPath = os.path.join(outputFolder, 'clustersFiles')
+        os.makedirs(starFilesPath)
+
+        # Creating the .star cluster particles
+        numOfClusters = self.var_num_frames.get()
+        for i in range(numOfClusters):
+            clusterParticlesPattern = 'cryosparc_%s_%s_cluster_%03d_particles.cs' % (self.projectName.get(),
+                                                                                     self.run3DVariabilityDisplay.get(),
+                                                                                     i)
+            passthroughParticlesPattern = '%s_%s_passthrough_particles_cluster_%d.cs' % (self.projectName.get(),
+                                                                                         self.run3DVariabilityDisplay.get(),
+                                                                                          i)
+            patterns = [clusterParticlesPattern, passthroughParticlesPattern]
+            outputs = ['output_cluster_particle%03d.star' % i,
+                       'output_passthrough_particle%03d.star' % i]
+
+            # Generating .star files
+            for j in range(len(patterns)):
+                filePath = os.path.join(outputFolder, patterns[j])
+                outputStarFn = os.path.join(starFilesPath, outputs[j])
+                argsList = [filePath, outputStarFn]
+                parser = defineArgs()
+                args = parser.parse_args(argsList)
+                convertCs2Star(args)
+
+    def createOutputStep(self):
+        self._initializeUtilsVariables()
+        print(pwutils.yellowStr("Creating the output..."), flush=True)
+
+        pass
+
+    # --------------------------- UTILS functions ------------------------------
 
     def _defineParamsName(self):
         """ Define a list with all protocol parameters names"""
@@ -195,40 +236,59 @@ class ProtCryoSparc3DVariabilityAnalisys(ProtCryosparcBase, ProtRefine3D):
                             'var_intermediate_width']
         self.lane = str(self.getAttributeValue('compute_lane'))
 
+    def _validate(self):
+        validateMsgs = cryosparcValidate()
+        if not validateMsgs:
+            validateMsgs = gpusValidate(self.getGpuList(), checkSingleGPU=True)
+        return validateMsgs
+
     def doRun3DVariabilityDisplay(self):
         """
         :return:
         """
         className = "var_3D_disp"
-        input_group_conect = {"particles": str(self.par),
-                              "volume": str(self.vol)}
+        varAnalysisJob = str(self.input3DVariablityAnalisysProt.get().run3DVariability)
+        input_group_conect = {"particles": str('%s.particles' %varAnalysisJob) ,
+                              "volume": str('%s.volume'%varAnalysisJob)}
         params = {}
 
         for paramName in self._paramsName:
-            if paramName != 'var_output_mode':
+            if (paramName != 'var_output_mode' and paramName != 'var_N' and
+                    paramName != 'var_M' and paramName != 'var_filter_res' and
+                    paramName != 'var_highpass_res'):
                 params[str(paramName)] = str(self.getAttributeValue(paramName))
             elif paramName == 'var_output_mode':
                 params[str(paramName)] = str(VAR_OUTPUT_MODE[self.var_output_mode.get()])
+            elif paramName == 'var_N' and self.var_N.get() is not None:
+                params[str(paramName)] = str(self.var_N.get())
+            elif paramName == 'var_M' and self.var_M.get() is not None:
+                params[str(paramName)] = str(self.var_M.get())
+            elif paramName == 'var_filter_res' and self.var_filter_res.get() is not None:
+                params[str(paramName)] = str(self.var_filter_res.get())
+            elif paramName == 'var_highpass_res' and self.var_highpass_res.get() is not None:
+                params[str(paramName)] = str(self.var_highpass_res.get())
 
-        # Determinate the GPUs to use (in dependence of
-        # the cryosparc version)
+        # Determinate the GPUs to use (in dependence of the cryosparc version)
         try:
             gpusToUse = self.getGpuList()
         except Exception:
             gpusToUse = False
 
-        self.run3DVariabilityDisplay = enqueueJob(className, self.projectName.get(),
-                                           self.workSpaceName.get(),
-                                           str(params).replace('\'', '"'),
-                                           str(input_group_conect).replace('\'',
-                                                                           '"'),
-                                           self.lane, gpusToUse)
+        self.run3DVariabilityDisplay = enqueueJob(className,
+                                                  self.projectName.get(),
+                                                  self.workSpaceName.get(),
+                                                  str(params).replace('\'',
+                                                                      '"'),
+                                                  str(input_group_conect).replace(
+                                                      '\'',
+                                                      '"'),
+                                                  self.lane, gpusToUse)
 
         self.currenJob.set(self.run3DVariabilityDisplay.get())
         self._store(self)
 
-        waitForCryosparc(self.projectName.get(), self.run3DVariabilityDisplay.get(),
+        waitForCryosparc(self.projectName.get(),
+                         self.run3DVariabilityDisplay.get(),
                          "An error occurred in the 3D Variability process. "
                          "Please, go to cryosPARC software for more "
                          "details.")
-

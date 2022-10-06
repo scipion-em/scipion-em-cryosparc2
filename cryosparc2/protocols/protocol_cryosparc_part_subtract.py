@@ -24,13 +24,22 @@
 # *  e-mail address 'scipion@cnb.csic.es'
 # *
 # **************************************************************************
-from pwem.protocols import ProtOperateParticles
-from pyworkflow.protocol.params import (PointerParam, FloatParam,
-                                        LEVEL_ADVANCED)
+import os
 
-from . import ProtCryosparcBase
-from ..convert import *
-from ..utils import *
+from pwem import ALIGN_PROJ
+from pwem.protocols import ProtOperateParticles
+
+import pyworkflow.utils as pwutils
+from pyworkflow.object import String
+from pyworkflow.protocol.params import (PointerParam, FloatParam,
+                                        LEVEL_ADVANCED, Positive, BooleanParam)
+
+from .protocol_base import ProtCryosparcBase
+from ..convert import (defineArgs, convertCs2Star, readSetOfParticles,
+                       cryosparcToLocation)
+from ..utils import (addComputeSectionParams, calculateNewSamplingRate,
+                     cryosparcValidate, gpusValidate, enqueueJob,
+                     waitForCryosparc, clearIntermediateResults, copyFiles)
 from ..constants import *
 
 
@@ -39,6 +48,7 @@ class ProtCryoSparcSubtract(ProtCryosparcBase, ProtOperateParticles):
         Subtract projections of a masked volume from particles.
         """
     _label = 'subtract projection'
+    _className = "particle_subtract"
 
     def _initialize(self):
         self._createFilenameTemplates()
@@ -80,14 +90,8 @@ class ProtCryoSparcSubtract(ProtCryosparcBase, ProtOperateParticles):
                            "That is: *the mask should INCLUDE the part of the "
                            "volume that you wish to SUBTRACT.*")
 
-        form.addParallelSection(threads=1, mpi=1)
-
         # -----------[Particles Subtraction]------------------------
         form.addSection(label="Particle Subtraction")
-
-        # form.addParam('n_particles', IntParam, default=-1,
-        #               label='Number of particles to subtract:',
-        #               help='Leave as -1 to process all particles.')
 
         form.addParam('inner_radius', FloatParam, default=0.85,
                       validators=[Positive],
@@ -113,30 +117,24 @@ class ProtCryoSparcSubtract(ProtCryosparcBase, ProtOperateParticles):
                            "generate it. Disabling this parameter breaks the "
                            "assumptions of gold-standard FSC calculation.")
 
-        form.addParam('lpf_volume', FloatParam, default=0.0,
+        form.addParam('lpf_volume', FloatParam, default=None,
+                      allowsNull=True,
+                      expertLevel=LEVEL_ADVANCED,
                       label='Low-pass Filter Input Structure (A)',
                       help='Apply a lowpass filter to the specified reoslution '
                            'in Angstroms to the input volume before subtraction.'
-                           'Leave 0.0 to ignore a lowpass filter')
+                           'Leave None to ignore a lowpass filter')
 
-        form.addParam('mask_threshold', FloatParam, default=0.0,
+        form.addParam('mask_threshold', FloatParam, default=None,
+                      allowsNull=True,
+                      expertLevel=LEVEL_ADVANCED,
                       label='Mask threshold',
                       help='The threshold of binarization of the mask. Must be '
-                           'set to dilate or pad. Leave 0.0 to skip mask processing.')
+                           'set to dilate or pad. Leave None to skip mask processing.')
 
         form.addParam('mask_fill_holes', BooleanParam, default=False,
                       label="Fill holes",
                       help="Fill the holes in the binarized mask")
-
-        # form.addParam('mask_dilator', FloatParam, default=0.0,
-        #               label='Mask Dilation Radius',
-        #               help='The radius of the spherical mask used to dilate '
-        #                    'the mask. Leave 0 to skip dilation.')
-        #
-        # form.addParam('mask_pad', FloatParam, default=0.0,
-        #               label='Cosine padding width',
-        #               help='The width of the cosine-padded region at the edge'
-        #                    'of the mask. Leave 0 to skip padding.')
 
         # --------------[Compute settings]---------------------------
         form.addSection(label="Compute settings")
@@ -147,15 +145,12 @@ class ProtCryoSparcSubtract(ProtCryosparcBase, ProtOperateParticles):
         self._createFilenameTemplates()
         self._defineParamsName()
         self._initializeCryosparcProject()
-        self._insertFunctionStep("convertInputStep")
-        self._insertFunctionStep('processStep')
-        self._insertFunctionStep('createOutputStep')
+        self._insertFunctionStep(self.convertInputStep)
+        self._insertFunctionStep(self.processStep)
+        self._insertFunctionStep(self.createOutputStep)
 
     # --------------------------- STEPS functions ------------------------------
     def processStep(self):
-        self.vol = self.importVolume.get() + '.imported_volume.map'
-        self.mask = self.importMask.get() + '.imported_mask.mask'
-
         print(pwutils.yellowStr("Particles Subtraction started..."), flush=True)
         self.doPartStract()
 
@@ -165,23 +160,22 @@ class ProtCryoSparcSubtract(ProtCryosparcBase, ProtOperateParticles):
         """
         self._initializeUtilsVariables()
         outputStarFn = self._getFileName('out_particles')
+        csOutputFolder = os.path.join(self.projectDir.get(),
+                                      self.runPartStract.get())
+        csFileName = "subtracted_particles.cs"
 
         # Create the output folder
-        os.system("cp -r " + self.projectPath + "/" + self.projectName.get() +
-                  '/' + self.runPartStract.get() + " " + self._getExtraPath())
+        copyFiles(csOutputFolder, os.path.join(self._getExtraPath(),
+                                               self.runPartStract.get()))
 
-        csFileName = "subtracted_particles.cs"
         csFile = os.path.join(self._getExtraPath(), self.runPartStract.get(),
                               csFileName)
-
         argsList = [csFile, outputStarFn]
-
         parser = defineArgs()
         args = parser.parse_args(argsList)
         convertCs2Star(args)
 
         imgSet = self._getInputParticles()
-
         outImgSet = self._createSetOfParticles()
         outImgSet.copyInfo(imgSet)
         self._fillDataFromIter(outImgSet)
@@ -191,13 +185,16 @@ class ProtCryoSparcSubtract(ProtCryosparcBase, ProtOperateParticles):
 
     def _fillDataFromIter(self, imgSet):
 
-        outImgsFn = self._getFileName('out_particles')
+        outImgsFn = 'particles@' + self._getFileName('out_particles')
+        hasCtf = imgSet.hasCTF()
+        hasAcquisition = True  # I think this is alway present ROB
         readSetOfParticles(outImgsFn, imgSet,
                            postprocessImageRow=self._updateItem,
-                           alignType=ALIGN_PROJ)
+                           alignType=ALIGN_PROJ, readCtf=hasCtf, 
+                           readAcquisition= hasAcquisition)
 
     def _updateItem(self, item, row):
-        newFn = row.getValue(md.RLN_IMAGE_NAME)
+        newFn = row.get(RELIONCOLUMNS.rlnImageName.value)
         index, file = cryosparcToLocation(newFn)
         item.setLocation((index, self._getExtraPath(file)))
         item.setSamplingRate(calculateNewSamplingRate(item.getDim(),
@@ -260,21 +257,25 @@ class ProtCryoSparcSubtract(ProtCryosparcBase, ProtOperateParticles):
         """
         :return:
         """
-        className = "particle_subtract"
-        input_group_conect = {"particles": str(self.par),
-                              "volume": str(self.vol),
-                              "mask": str(self.mask)}
-        # {'particles' : 'JXX.imported_particles' }
+        input_group_connect = {"particles": self.particles.get(),
+                               "volume": self.volume.get(),
+                               "mask": self.mask.get()}
+
+        input_result_connect = None
+        if self._getInputVolume().hasHalfMaps():
+            input_result_connect = {"volume.0.map_half_A": self.importVolumeHalfA.get(),
+                                    "volume.0.map_half_B": self.importVolumeHalfB.get()}
+
         params = {}
 
         for paramName in self._paramsName:
             if paramName != 'lpf_volume' and paramName != 'mask_threshold':
                 params[str(paramName)] = str(self.getAttributeValue(paramName))
-            elif paramName == 'lpf_volume':
+            elif paramName == 'lpf_volume' and self.getAttributeValue(paramName) is not None:
                 if float(self.getAttributeValue(paramName)) > 0:
                     params[str(paramName)] = str(self.getAttributeValue(paramName))
-            elif paramName == 'mask_threshold':
-                if int(self.getAttributeValue(paramName)) > 0:
+            elif paramName == 'mask_threshold' and self.getAttributeValue(paramName) is not None:
+                if float(self.getAttributeValue(paramName)) > 0:
                     params[str(paramName)] = str(self.getAttributeValue(paramName))
 
         # Determinate the GPUs to use (in dependence of
@@ -284,16 +285,19 @@ class ProtCryoSparcSubtract(ProtCryosparcBase, ProtOperateParticles):
         except Exception:
             gpusToUse = False
 
-        self.runPartStract = enqueueJob(className, self.projectName.get(),
-                                  self.workSpaceName.get(),
-                                  str(params).replace('\'', '"'),
-                                  str(input_group_conect).replace('\'', '"'),
-                                  self.lane, gpusToUse)
+        runPartStractJob = enqueueJob(self._className, self.projectName.get(),
+                                        self.workSpaceName.get(),
+                                        str(params).replace('\'', '"'),
+                                        str(input_group_connect).replace('\'', '"'),
+                                        self.lane, gpusToUse,
+                                        result_connect=input_result_connect)
 
+        self.runPartStract = String(runPartStractJob.get())
         self.currenJob.set(self.runPartStract.get())
         self._store(self)
 
         waitForCryosparc(self.projectName.get(), self.runPartStract.get(),
                          "An error occurred in the particles subtraction process. "
-                         "Please, go to cryosPARC software for more "
+                         "Please, go to cryoSPARC software for more "
                          "details.")
+        clearIntermediateResults(self.projectName.get(), self.runPartStract.get())

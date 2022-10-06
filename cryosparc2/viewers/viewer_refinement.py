@@ -27,15 +27,22 @@
 import webbrowser
 
 import pwem.viewers.showj as showj
+from pwem import Domain
+from pwem.objects import FSC, SetOfFSCs
+from pyworkflow.gui.dialog import showInfo
 from pyworkflow.protocol.constants import *
-from pyworkflow.protocol.params import (LabelParam, FloatParam)
+from pyworkflow.protocol.params import (LabelParam, FloatParam, EnumParam)
 from pyworkflow.viewer import DESKTOP_TKINTER, WEB_DJANGO
-from pwem.viewers import (ChimeraView, EmPlotter, ChimeraClientView,
-                          ObjectView, EmProtocolViewer)
+from pwem.viewers import (ChimeraView, ChimeraClientView,
+                          ObjectView, EmProtocolViewer, FscViewer)
 
 from ..protocols import (ProtCryoSparcNonUniformRefine3D,
                          ProtCryoSparcRefine3D,
-                         ProtCryoSparcLocalRefine)
+                         ProtCryoSparcLocalRefine, ProtCryoSparcHelicalRefine3D,
+                         ProtCryoSparc3DHomogeneousRefine,
+                         ProtCryoSparcNewNonUniformRefine3D,
+                         ProtCryoSparcNaiveLocalRefine,
+                         ProtCryoSparcHomogeneousReconstruct)
 from ..constants import *
 from ..utils import *
 
@@ -44,47 +51,63 @@ class CryosPARCViewer3DRefinement(EmProtocolViewer):
     """ Visualization of e2refine_easy results. """
 
     _targets = [ProtCryoSparcRefine3D, ProtCryoSparcNonUniformRefine3D,
-                ProtCryoSparcLocalRefine]
+                ProtCryoSparcLocalRefine, ProtCryoSparcHelicalRefine3D,
+                ProtCryoSparc3DHomogeneousRefine, ProtCryoSparcNaiveLocalRefine,
+                ProtCryoSparcNewNonUniformRefine3D, ProtCryoSparcHomogeneousReconstruct]
     _environments = [DESKTOP_TKINTER, WEB_DJANGO]
     _label = 'viewer Refinement'
 
     def _defineParams(self, form):
         self._env = os.environ.copy()
         form.addSection(label='Results')
-        group = form.addGroup('Particles')
 
-        group.addParam('showImagesAngularAssignment', LabelParam,
-                       label='Particles angular assignment')
+        group = form.addGroup('cryoSPARC')
 
-        group = form.addGroup('Volume')
+        group.addParam('displayCS', LabelParam,
+                       label='Display the processing with cryoSPARC')
 
-        group.addParam('displayVol', EnumParam, choices=['chimera', 'cryoSPARC'],
-                       default=VOLUME_CHIMERA, display=EnumParam.DISPLAY_LIST,
-                       label='Display volume with',
-                       help='*chimera*: display volumes as surface with Chimera.\n'
-                            '*cryoSPARC: display volumes as surface with cryoSPARC')
-        # '*slices*: display volumes as 2D slices along z axis.\n'
+        if self.protocol.isFinished():
+            group = form.addGroup('Particles')
 
-        group = form.addGroup('Resolution')
+            group.addParam('showImagesAngularAssignment', LabelParam,
+                           label='Particles angular assignment')
 
-        group.addParam('resolutionPlotsFSC', EnumParam,
-                       choices=['no mask', 'spherical', 'loose',
-                                'tight', 'corrected', 'all'],
-                       default=FSC_UNMASK, display=EnumParam.DISPLAY_COMBO,
-                       label='Display resolution plots (FSC)',
-                       help='*unmasked*: display FSC of unmasked maps.\n'
-                            '*masked*: display FSC of masked maps.\n'
-                            '*masked tight*: display FSC of masked tight maps.')
-        group.addParam('resolutionThresholdFSC', FloatParam, default=0.143,
-                       expertLevel=LEVEL_ADVANCED,
-                       label='Threshold in resolution plots',
-                       help='')
+            group = form.addGroup('Volume')
+
+            displayChoices = ['data viewer', 'chimera']
+            label = 'Display volume with'
+            help = '*data viewer: display volumes as surface with Scipion data viewer. \n ' \
+                   '*chimera*: display volumes as surface with Chimera.'
+
+            group.addParam('displayVol', EnumParam, choices=displayChoices,
+                           default=DATA_VIEWER, display=EnumParam.DISPLAY_LIST,
+                           label=label,
+                           help=help)
+            # '*slices*: display volumes as 2D slices along z axis.\n'
+
+            if self.protocol.isFinished():
+                group = form.addGroup('Resolution')
+
+                self.choices = self.getChoices()
+
+                group.addParam('resolutionPlotsFSC', EnumParam,
+                               choices=list(self.choices),
+                               default=0, display=EnumParam.DISPLAY_COMBO,
+                               label='Display resolution plots (FSC)',
+                               help='*unmasked*: display FSC of unmasked maps.\n'
+                                    '*masked*: display FSC of masked maps.\n'
+                                    '*masked tight*: display FSC of masked tight maps.')
+                group.addParam('resolutionThresholdFSC', FloatParam, default=0.143,
+                               expertLevel=LEVEL_ADVANCED,
+                               label='Threshold ',
+                               help='Threshold in resolution plots')
+
 
     def _getVisualizeDict(self):
-        self._load()
         return {'showImagesAngularAssignment': self._showOutputParticles,
                 'displayVol': self._showVolumes,
-                'resolutionPlotsFSC': self._showFSC
+                'resolutionPlotsFSC': self._showFSC,
+                'displayCS': self._showCryoSPARVolume
                 }
 
     # =========================================================================
@@ -95,22 +118,35 @@ class CryosPARCViewer3DRefinement(EmProtocolViewer):
         views = []
 
         if getattr(self.protocol, 'outputParticles', None) is not None:
-            fn = self.protocol.outputParticles.getFileName()
-            v = self.createScipionPartView(fn)
+            particles = self.protocol.outputParticles
+            fn = particles.getFileName()
+            labels = 'enabled id _filename _ctfModel._defocusU _ctfModel._defocusV _ctfModel._defocusAngle _transform._matrix'
+            viewParams = {showj.ORDER: labels,
+                          showj.VISIBLE: labels, showj.RENDER: '_filename',
+                          'labels': 'id',
+                          }
+            v = self.createScipionPartView(fn, particles,
+                                           viewParams=viewParams)
             views.append(v)
         return views
 
-    def createScipionPartView(self, filename, viewParams={}):
-        inputParticlesId = self.protocol.inputParticles.get().strId()
-        labels = 'enabled id _size _filename _transform._matrix'
-        viewParams = {showj.ORDER: labels,
-                      showj.VISIBLE: labels, showj.RENDER: '_filename',
-                      'labels': 'id',
-                      }
+    def _showOutputVolume(self, paramName=None):
+        views = []
+
+        if getattr(self.protocol, 'outputVolume', None) is not None:
+            volume = self.protocol.outputVolume
+            fn = volume.getFileName()
+            v = self.createScipionPartView(fn, volume)
+            views.append(v)
+        return views
+
+    def createScipionPartView(self, filename, obj, viewParams={}):
+        objId = obj.strId()
         return ObjectView(self._project,
                           self.protocol.strId(), filename,
-                          other=inputParticlesId,
+                          other=objId,
                           env=self._env, viewParams=viewParams)
+
 
     # =========================================================================
     # ShowVolumes
@@ -118,10 +154,8 @@ class CryosPARCViewer3DRefinement(EmProtocolViewer):
     def _showVolumes(self, paramName=None):
         if self.displayVol == VOLUME_CHIMERA:
             return self._showVolumesChimera()
-        # elif self.displayVol == VOLUME_SLICES:
-        #     return self._createVolumesSqlite()
-        elif self.displayVol == VOLUME_CRYOSPARC:
-            return self._showCryoSPARVolume()
+        elif self.displayVol == DATA_VIEWER:
+            return self._showOutputVolume()
 
     def _showCryoSPARVolume(self, paramName=None):
         views = []
@@ -136,6 +170,8 @@ class CryosPARCViewer3DRefinement(EmProtocolViewer):
             projectId = self.protocol.projectName.get()
             workspaceId = self.protocol.workSpaceName.get()
             jobId = self.protocol.currenJob.get()
+            if jobId is None:
+                jobId = ''
             url = os.path.join("http://",
                                master_hostname + ':' + port_webapp,
                                "projects", projectId, workspaceId,
@@ -149,161 +185,68 @@ class CryosPARCViewer3DRefinement(EmProtocolViewer):
 
     def _showVolumesChimera(self):
         """ Create a chimera script to visualize selected volumes. """
-        volumes = self._getVolumeNames()
 
-        if len(volumes) > 1:
-            cmdFile = self.protocol._getExtraPath('chimera_volumes.cmd')
-            f = open(cmdFile, 'w+')
-            for vol in volumes:
-                # We assume that the chimera script will be generated
-                # at the same folder than eman volumes
-                if os.path.exists(vol):
-                    localVol = os.path.relpath(vol,
-                                               self.protocol._getExtraPath())
-                    f.write("open %s\n" % localVol)
-            f.write('tile\n')
-            f.close()
-            view = ChimeraView(cmdFile)
+        # Check if Chimera is installed
+        view = []
+        chimera = Domain.importFromPlugin('chimera')
+        if chimera is not None:
+            volumes = [self.protocol.outputVolume.getFileName()]
+            if len(volumes) > 1:
+                cmdFile = self.protocol._getExtraPath('chimera_volumes.cxc')
+                f = open(cmdFile, 'w+')
+                for vol in volumes:
+                    # We assume that the chimera script will be generated
+                    # at the same folder than eman volumes
+                    if os.path.exists(vol):
+                        localVol = os.path.relpath(vol,
+                                                   self.protocol._getExtraPath())
+                        f.write("open %s\n" % localVol)
+                f.write('tile\n')
+                f.close()
+                view.append(ChimeraView(cmdFile))
+            else:
+                view.append(ChimeraClientView(volumes[0]))
         else:
-            view = ChimeraClientView(volumes[0])
+            showInfo('Info', "Chimera plugin is not installed. Please, "
+                             "install it to display the volume",
+                     self.getTkRoot())
 
-        return [view]
+        return view
 
-    def _createVolumesSqlite(self):
-        """ Write an sqlite with the volumes selected for visualization. """
+    def getChoices(self):
+        choices = []
+        output = self.protocol.outputFSC
+        if isinstance(output, SetOfFSCs):
+            self.setOfFSCs = self.protocol.outputFSC
+            for fsc in self.setOfFSCs.iterItems():
+                choices.append(fsc.getObjLabel())
+        else:
+            fscFile = "fsc.txt"
+            fscFilePath = os.path.join(self.protocol._getExtraPath(), fscFile)
+            inputParticles = self.protocol._getInputParticles()
+            factor = inputParticles.getDim()[0] * inputParticles.getSamplingRate()
+            self.setOfFSCs = self.protocol.getSetOfFCSsFromFile(fscFilePath, factor)
+            self.protocol.deleteOutput(output)
+            self.protocol._defineOutputs(outputFSC=self.setOfFSCs)
+            for fsc in self.setOfFSCs.iterItems():
+                choices.append(fsc.getObjLabel())
+        choices.append('All')
 
-        path = self.protocol._getExtraPath('cryosparc_viewer_volume.sqlite')
-        samplingRate = self.protocol.inputParticles.get().getSamplingRate()
-
-        files = []
-        volumes = self._getVolumeNames()
-        for volFn in volumes:
-            if os.path.exists(volFn.replace(':mrc', '')):
-                files.append(volFn)
-        self.createVolumesSqlite(files, path, samplingRate)
-        return [ObjectView(self._project, self.protocol.strId(), path)]
+        return choices
 
     # =========================================================================
     # plotFSC
     # =========================================================================
     def _showFSC(self, paramName=None):
-        threshold = self.resolutionThresholdFSC.get()
-        gridsize = self._getGridSize(1)
-        xplotter = EmPlotter(x=gridsize[0], y=gridsize[1],
-                             windowTitle='Resolution FSC')
 
-        plot_title = 'FSC'
-        a = xplotter.createSubPlot(plot_title, 'Angstroms^-1', 'FSC',
-                                   yformat=False)
-
-        legends = []
-        show = False
-        fsc_path = self.protocol._getExtraPath('fsc.txt')
-        if os.path.exists(fsc_path):
-            show = True
-            if self.resolutionPlotsFSC.get() == FSC_UNMASK:
-                self._plotFSC(a, fsc_path, FSC_UNMASK)
-                legends.append('No Mask')
-                xplotter.showLegend(legends)
-            elif self.resolutionPlotsFSC.get() == FSC_SPHERICALMASK:
-                self._plotFSC(a, fsc_path, FSC_SPHERICALMASK)
-                legends.append('Spherical')
-                xplotter.showLegend(legends)
-            elif self.resolutionPlotsFSC.get() == FSC_TIGHTMASK:
-                self._plotFSC(a, fsc_path, FSC_TIGHTMASK)
-                legends.append('Tight')
-                xplotter.showLegend(legends)
-            elif self.resolutionPlotsFSC.get() == FSC_LOOSEMASK:
-                self._plotFSC(a, fsc_path, FSC_LOOSEMASK)
-                legends.append('Loose')
-                xplotter.showLegend(legends)
-            elif self.resolutionPlotsFSC.get() == FSC_CORRECTEDMASK:
-                self._plotFSC(a, fsc_path, FSC_CORRECTEDMASK+1)
-                legends.append('Corrected')
-                xplotter.showLegend(legends)
-            elif self.resolutionPlotsFSC.get() == FSC_ALL:
-                self._plotFSC(a, fsc_path, FSC_UNMASK)
-                legends.append('No Mask')
-                self._plotFSC(a, fsc_path, FSC_SPHERICALMASK)
-                legends.append('Spherical')
-                self._plotFSC(a, fsc_path, FSC_LOOSEMASK)
-                legends.append('Loose')
-                self._plotFSC(a, fsc_path, FSC_TIGHTMASK)
-                legends.append('Tight')
-                self._plotFSC(a, fsc_path, FSC_CORRECTEDMASK+1)
-                legends.append('Corrected')
-                xplotter.showLegend(legends)
-
-        if show:
-            if threshold < self.maxFrc:
-                a.plot([self.minInv, self.maxInv], [threshold, threshold],
-                       color='black', linestyle='--')
-            a.grid(True)
+        fscViewer = FscViewer(project=self.getProject(),
+                              protocol=self.protocol)
+        if self.resolutionPlotsFSC.get() == len(self.choices)-1:  # Case of all plot
+            fscViewer.visualize(self.setOfFSCs)
         else:
-            raise Exception("Set a valid iteration to show its FSC")
-
-        return [xplotter]
-
-    def _plotFSC(self, a, fscFn, col):
-        resolution_inv = self._getColunmFromFilePar(fscFn, 0)
-        frc = self._getColunmFromFilePar(fscFn, col+1)
-        self.maxFrc = max(frc)
-        self.minInv = min(resolution_inv)
-        self.maxInv = max(resolution_inv)
-        self.sampligRate = self.protocol._getInputParticles().getSamplingRate()
-        factor = (2. * self.sampligRate * self.maxInv)
-        resolution_inv = [x/factor for x in resolution_inv]
-        self.minInv /= factor
-        self.maxInv /= factor
-        a.plot(resolution_inv, frc)
-        a.xaxis.set_major_formatter(self._plotFormatter)
-        a.set_ylim([-0.1, 1.1])
-
-    # =========================================================================
-    # Utils Functions
-    # =========================================================================
-    def _load(self):
-        """ Load the 3D classes for visualization mode. """
-        self.protocol._defineFileNames()
-        from matplotlib.ticker import FuncFormatter
-        self._plotFormatter = FuncFormatter(self._formatFreq)
-
-    @staticmethod
-    def _formatFreq(value, pos):
-        """ Format function for Matplotlib formatter. """
-        inv = 999.
-        if value:
-            inv = 1./value
-        return "1/%0.2f" % inv
-
-    def _getVolumeNames(self):
-        vol = []
-        vn = self.protocol.outputVolume.getFileName()
-        vol.append(vn)
-        return vol
-
-    def _getGridSize(self, n=None):
-        """ Figure out the layout of the plots given the number of
-        references. """
-        if n is None:
-            n = len(self._refsList)
-
-        if n == 1:
-            gridsize = [1, 1]
-        elif n == 2:
-            gridsize = [2, 1]
-        else:
-            gridsize = [(n + 1) / 2, 2]
-
-        return gridsize
-
-    def _getColunmFromFilePar(self, fscFn, col):
-        f1 = open(fscFn)
-        f1.readline()
-        value = []
-        for l in f1:
-            valList = l.split()
-            val = float(valList[col])
-            value.append(val)
-        f1.close()
-        return value
+            pos = 0
+            for fsc in self.setOfFSCs.iterItems():
+                if pos == self.resolutionPlotsFSC.get():
+                    fscViewer.visualize(fsc)
+                    break
+                pos += 1

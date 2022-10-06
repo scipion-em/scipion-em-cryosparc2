@@ -24,14 +24,19 @@
 # *  e-mail address 'scipion@cnb.csic.es'
 # *
 # **************************************************************************
+import os
+
 from pwem.objects import Volume
 from pwem.protocols import ProtAnalysis3D
+import pyworkflow.utils as pwutils
 from pyworkflow.protocol.params import (PointerParam, FloatParam,
-                                        LEVEL_ADVANCED)
+                                        LEVEL_ADVANCED, BooleanParam, IntParam,
+                                        String)
 
-from . import ProtCryosparcBase
-from ..convert import *
-from ..utils import *
+from .protocol_base import ProtCryosparcBase
+from ..utils import (addComputeSectionParams, cryosparcValidate, gpusValidate,
+                     enqueueJob, waitForCryosparc, clearIntermediateResults,
+                     fixVolume, copyFiles, getOutputPreffix)
 
 
 class ProtCryoSparcSharppening(ProtCryosparcBase, ProtAnalysis3D):
@@ -39,20 +44,14 @@ class ProtCryoSparcSharppening(ProtCryosparcBase, ProtAnalysis3D):
     Wrapper protocol for the Cryosparc's to calculate the sharpened map.
     """
     _label = 'sharppening'
+    _className = "sharpen"
 
     def _defineParams(self, form):
         form.addSection(label='Input')
-        form.addParam('inputRefinement', PointerParam,
-                      pointerClass='ProtCryoSparcRefine3D, '
-                                   'ProtCryoSparcLocalRefine',
-                      label="Select a Refinement protocol",
+        form.addParam('refVolume', PointerParam, pointerClass='Volume',
                       important=True,
-                      help='Provide the refinement protocol that will be used. '
-                           'If mask_refinement is present, use that, otherwise '
-                           'use a selected mask. If mask does not present, '
-                           'the protocol will fail')
-
-        form.addParallelSection(threads=1, mpi=1)
+                      label="Input volume",
+                      help='Provide a reference volume for sharpening')
 
         # -----------[Sharppening]------------------------
         form.addSection(label="Sharpening")
@@ -75,7 +74,7 @@ class ProtCryoSparcSharppening(ProtCryosparcBase, ProtAnalysis3D):
                       label='Lowpass filter offset',
                       help='Offset for corner frequency from FSC resolution shell')
 
-        form.addParam('sharp_generate_new_mask', BooleanParam, default=False,
+        form.addParam('sharp_generate_new_mask', BooleanParam, default=True,
                       expertLevel=LEVEL_ADVANCED,
                       label="Generate new FSC mask",
                       help="Create a new mask for FSC and sharpening rather "
@@ -116,29 +115,13 @@ class ProtCryoSparcSharppening(ProtCryosparcBase, ProtAnalysis3D):
     def _insertAllSteps(self):
         self._defineParamsName()
         self._initializeCryosparcProject()
-        self._insertFunctionStep("convertInputStep")
-        self._insertFunctionStep('processStep')
-        self._insertFunctionStep('createOutputStep')
-
-    def convertInputStep(self):
-        self.currenJob = String()
-        volume = self._getInputVolume()
-        if volume is not None:
-            self._importVolume()
-
-    def _getInputParticles(self):
-        return self._getInputPostProcessProtocol().outputParticles
-
-    def _getInputPostProcessProtocol(self):
-        return self.inputRefinement.get()
-
-    def _getInputVolume(self):
-        return self._getInputPostProcessProtocol().outputVolume
+        self._insertFunctionStep(self.convertInputStep)
+        self._insertFunctionStep(self.processStep)
+        self._insertFunctionStep(self.createOutputStep)
 
     # --------------------------- STEPS functions ------------------------------
 
     def processStep(self):
-        self.vol = self.importVolume.get() + '.imported_volume.map'
         print(pwutils.yellowStr("Sharppening started..."), flush=True)
         self.doSharppening()
 
@@ -146,21 +129,18 @@ class ProtCryoSparcSharppening(ProtCryosparcBase, ProtAnalysis3D):
         """
         Create the protocol output. Convert cryosparc file to Relion file
         """
-        fnVolName = ("cryosparc_" + self.projectName.get() + "_" +
-                     self.runSharppening.get() + "_map_sharp.mrc")
+        self._initializeUtilsVariables()
+        csOutputFolder = os.path.join(self.projectDir.get(),
+                                      self.runSharppening.get())
+        fnVolName = "%s%s_map_sharp.mrc" % (getOutputPreffix(self.projectName.get()),
+                                            self.runSharppening.get())
+        # Copy the CS output sharpened volume to extra folder
+        copyFiles(csOutputFolder, self._getExtraPath(),
+                  files=[fnVolName])
 
-        fnVol = os.path.join(self.projectPath, self.projectName.get(),
-                             self.runSharppening.get(), fnVolName)
-
-        # Create the output folder
-        outputFolder = self._getExtraPath() + '/' + self.runSharppening.get()
-        os.system("mkdir " + outputFolder)
-
-        # Copy the volumes to extra folder
-        os.system("cp -r " + fnVol + " " + outputFolder)
-        fnVol = os.path.join(outputFolder, fnVolName)
-
+        fnVol = os.path.join(self._getExtraPath(), fnVolName)
         vol = Volume()
+        fixVolume(fnVol)
         vol.setFileName(fnVol)
         vol.setSamplingRate(self._getInputVolume().getSamplingRate())
         self._defineOutputs(outputVolume=vol)
@@ -209,8 +189,13 @@ class ProtCryoSparcSharppening(ProtCryosparcBase, ProtAnalysis3D):
 
     def doSharppening(self):
 
-        className = "sharpen"
-        input_group_conect = {"volume": str(self.vol)}
+        input_group_connect = {"volume": self.volume.get()}
+
+        input_result_connect = None
+        if self._getInputVolume().hasHalfMaps():
+            input_result_connect = {"volume.0.map_half_A": self.importVolumeHalfA.get(),
+                                    "volume.0.map_half_B": self.importVolumeHalfB.get()}
+
         params = {}
 
         for paramName in self._paramsName:
@@ -223,22 +208,21 @@ class ProtCryoSparcSharppening(ProtCryosparcBase, ProtAnalysis3D):
         except Exception:
             gpusToUse = False
 
-        self.runSharppening = enqueueJob(className,
+        runSharppeningJob = enqueueJob(self._className,
                                          self.projectName.get(),
                                          self.workSpaceName.get(),
-                                         str(params).replace('\'',
-                                                             '"'),
-                                         str(
-                                             input_group_conect).replace(
-                                             '\'',
-                                             '"'),
-                                         self.lane, gpusToUse)
+                                         str(params).replace('\'', '"'),
+                                         str(input_group_connect).replace('\'', '"'),
+                                         self.lane, gpusToUse,
+                                         result_connect=input_result_connect)
 
-        self.currenJob.set(self.runSharppening.get())
+        self.runSharppening = String(runSharppeningJob.get())
+        self.currenJob.set(runSharppeningJob.get())
         self._store(self)
 
         waitForCryosparc(self.projectName.get(),
                          self.runSharppening.get(),
                          "An error occurred in the particles subtraction process. "
-                         "Please, go to cryosPARC software for more "
+                         "Please, go to cryoSPARC software for more "
                          "details.")
+        clearIntermediateResults(self.projectName.get(), self.runSharppening.get())

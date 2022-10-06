@@ -24,23 +24,41 @@
 # *  e-mail address 'scipion@cnb.csic.es'
 # *
 # **************************************************************************
-from pwem.protocols import ProtParticles
-from pyworkflow.protocol.params import (PointerParam, FloatParam,
-                                        LEVEL_ADVANCED)
+import os
 
-from . import ProtCryosparcBase
-from ..convert import *
-from ..utils import *
-import pwem.emlib.metadata as md
+import emtable
+from pkg_resources import parse_version
 
+from pwem import ALIGN_PROJ
+import pwem.protocols as pwprot
 
-class ProtCryoSparcGlobalCtfRefinement(ProtCryosparcBase, ProtParticles):
+import pyworkflow.utils as pwutils
+from pyworkflow import BETA
+from pyworkflow.object import String
+from pyworkflow.protocol.params import (PointerParam, FloatParam, IntParam,
+                                        LEVEL_ADVANCED, Positive, BooleanParam,
+                                        EnumParam)
+
+from .protocol_base import ProtCryosparcBase
+from .. import RELIONCOLUMNS
+from ..convert import (defineArgs, convertCs2Star, createItemMatrix,
+                       setCryosparcAttributes)
+from ..utils import (addComputeSectionParams, cryosparcValidate, gpusValidate,
+                     enqueueJob, waitForCryosparc, clearIntermediateResults,
+                     copyFiles, getCryosparcVersion)
+
+from ..constants import *
+
+class ProtCryoSparcGlobalCtfRefinement(ProtCryosparcBase, pwprot.ProtParticles):
     """
     Wrapper protocol for the Cryosparc's per-particle Global CTF refinement.
     Performs per-exposure-group CTF parameter refinement of higher-order
     aberrations, against a given 3D reference
     """
-    _label = 'global ctf refinement(BETA)'
+    _label = 'global ctf refinement'
+    _className = "ctf_refine_global"
+    _protCompatibility = [V3_0_0, V3_1_0, V3_2_0, V3_3_0, V3_3_1, V3_3_2, V4_0_0]
+    newParamsName = []
 
     def _initialize(self):
         self._createFilenameTemplates()
@@ -61,32 +79,20 @@ class ProtCryoSparcGlobalCtfRefinement(ProtCryosparcBase, ProtParticles):
                       label="Input particles", important=True,
                       help='Provide a set of particles for global '
                            'CTF refinement.')
-        form.addParam('inputRefinement', PointerParam,
-                      pointerClass='ProtCryoSparcRefine3D',
-                      label="Select a Refinement protocol",
+        form.addParam('refVolume', PointerParam, pointerClass='Volume',
                       important=True,
-                      help='Provide the refinement protocol that will be used. '
-                           'If mask_refinement is present, use that, otherwise '
-                           'use a selected mask. If mask does not present, '
-                           'the protocol will fail')
+                      label="Input volume",
+                      help='Provide a reference volume for global '
+                           'CTF refinement.')
         form.addParam('refMask', PointerParam, pointerClass='VolumeMask',
                       label='Mask to be applied to this map',
                       important=True,
-                      allowsNull=True,
                       help="Provide a soft mask. if mask is present, use that, "
                            "otherwise use mask_refine if present, otherwise "
                            "fail")
 
-        form.addParallelSection(threads=1, mpi=1)
-
         # -----------[Global CTF Refinement]------------------------
         form.addSection(label="Global CTF Refinement")
-        # form.addParam('crg_N', FloatParam, default=None,
-        #               validators=[Positive],
-        #               label='Refinement box size (Voxels)',
-        #               help='Size of reconstruction/image to use for refinement. '
-        #                    'Blank means to use the particle box size '
-        #                    '(upsampling input maps as needed)')
         form.addParam('crg_num_iters', IntParam, default=1,
                       validators=[Positive],
                       label='Number of iterations',
@@ -115,19 +121,6 @@ class ProtCryoSparcGlobalCtfRefinement(ProtCryosparcBase, ProtParticles):
                       help='The minimum resolution to use during refinement of '
                            'image aberrations.')
 
-        # form.addParam('crg_max_res_A', FloatParam, default=None,
-        #               label='Maximum Fit Res (A)',
-        #               help='The maximum resolution to use during refinement of '
-        #                    'image aberrations. If blank, use input half-maps '
-        #                    'to compute FSC and set max to FSC=0.5')
-
-        # form.addParam('crg_mode_odd', EnumParam,
-        #               choices=['dataset','groups'],
-        #               expertLevel=LEVEL_ADVANCED,
-        #               default=0,
-        #               label="Mode for tilt/trefoil",
-        #               help='Mode to fit beam tilt/trefoil')
-
         form.addParam('crg_do_tilt', BooleanParam, default=True,
                       label="Fit Tilt",
                       help="Whether to fit beam tilt.")
@@ -144,19 +137,70 @@ class ProtCryoSparcGlobalCtfRefinement(ProtCryosparcBase, ProtParticles):
                       label="Fit Tetrafoil",
                       help="Whether to fit beam tetrafoil.")
 
+        # new parameter to V3.3.1
+        csVersion = getCryosparcVersion()
+        if parse_version(csVersion) >= parse_version(V3_3_1):
+
+            form.addParam('crg_do_anisomag', BooleanParam, default=False,
+                          label="Fit Anisotropic Mag.",
+                          help="Whether to fit beam anisotropic magnification.")
+
+            form.addParam('crg_do_ews_correct', BooleanParam, default=False,
+                          label="Account for EWS curvature",
+                          expertLevel=LEVEL_ADVANCED,
+                          help="Whether or not to correct for the curvature of "
+                               "the Ewald Sphere")
+            form.addParam('crg_ews_zsign', EnumParam,
+                          choices=['positive', 'negative'],
+                          expertLevel=LEVEL_ADVANCED,
+                          default=0,
+                          label="EWS curvature sign",
+                          help='Whether to use positive or negative curvature in '
+                               'Ewald Sphere correction.')
+
+            form.addParam('ctf_reset_tilt', BooleanParam, default=False,
+                          label="Reset Tilt to default",
+                          expertLevel=LEVEL_ADVANCED,
+                          help="Reset tilt and shift CTF parameters to 0 "
+                               "before refining.")
+
+            form.addParam('ctf_reset_trefoil', BooleanParam, default=False,
+                          label="Reset Trefoil to default",
+                          expertLevel=LEVEL_ADVANCED,
+                          help="Reset trefoil CTF parameters to 0 before "
+                               "refining.")
+
+            form.addParam('ctf_reset_tetra', BooleanParam, default=False,
+                          label="Reset Tetrafoil to default",
+                          expertLevel=LEVEL_ADVANCED,
+                          help="Reset tetrafoil CTF parameters to 0 "
+                               "before refining.")
+
+            form.addParam('ctf_reset_anisomag', BooleanParam, default=False,
+                          label="Reset Anisotropic Magnification to default",
+                          expertLevel=LEVEL_ADVANCED,
+                          help="Reset anisotropic magnification parameters to "
+                               "0 before refining.")
+
+            self.newParamsName = ['ctf_reset_anisomag', 'ctf_reset_tetra',
+                                  'ctf_reset_trefoil', 'crg_do_ews_correct',
+                                  'crg_ews_zsign', 'crg_do_anisomag',
+                                  'ctf_reset_tilt']
+
+
         # --------------[Compute settings]---------------------------
         form.addSection(label="Compute settings")
         addComputeSectionParams(form, allowMultipleGPUs=False)
 
-        # --------------------------- INSERT steps functions -----------------------
+    # --------------------------- INSERT steps functions -----------------------
 
     def _insertAllSteps(self):
         self._createFilenameTemplates()
         self._defineParamsName()
         self._initializeCryosparcProject()
-        self._insertFunctionStep("convertInputStep")
-        self._insertFunctionStep('processStep')
-        self._insertFunctionStep('createOutputStep')
+        self._insertFunctionStep(self.convertInputStep)
+        self._insertFunctionStep(self.processStep)
+        self._insertFunctionStep(self.createOutputStep)
 
     # -------------------------- UTILS functions ------------------------------
 
@@ -170,29 +214,11 @@ class ProtCryoSparcGlobalCtfRefinement(ProtCryosparcBase, ProtParticles):
                             'crg_do_trefoil',
                             'crg_do_spherical',
                             'crg_do_tetrafoil',
-                            'compute_use_ssd']
+                            'compute_use_ssd'] + self.newParamsName
         self.lane = str(self.getAttributeValue('compute_lane'))
-
-    def _getInputPostProcessProtocol(self):
-        return self.inputRefinement.get()
-
-    def _getInputVolume(self):
-        return self._getInputPostProcessProtocol().outputVolume
-
-    def _getInputMask(self):
-        if self.refMask.get() is not None:
-            return self.refMask.get()
-        else:
-            inputProtocolMask = self._getInputPostProcessProtocol().refMask.get()
-            if inputProtocolMask is not None:
-                return inputProtocolMask
-
-        return None
 
     # --------------------------- STEPS functions ------------------------------
     def processStep(self):
-        self.vol = self.importVolume.get() + '.imported_volume.map'
-        self.mask = self.importMask.get() + '.imported_mask.mask'
         print(pwutils.yellowStr("Ctf Refinement started..."), flush=True)
         self.doGlobalCtfRefinement()
 
@@ -202,14 +228,14 @@ class ProtCryoSparcGlobalCtfRefinement(ProtCryosparcBase, ProtParticles):
         """
         self._initializeUtilsVariables()
         outputStarFn = self._getFileName('out_particles')
-
-        # Create the output folder
-        os.system("cp -r " + self.projectPath + "/" + self.projectName.get() +
-                  '/' + self.runGlobalCtfRefinement.get() + " " + self._getExtraPath())
-
+        csOutputFolder = os.path.join(self.projectDir.get(),
+                                      self.runGlobalCtfRefinement.get())
         csFileName = "particles.cs"
-        csFile = os.path.join(self._getExtraPath(), self.runGlobalCtfRefinement.get(),
-                              csFileName)
+
+        # Copy the CS output particles to extra folder
+        copyFiles(csOutputFolder, self._getExtraPath(), files=[csFileName])
+
+        csFile = os.path.join(self._getExtraPath(), csFileName)
 
         argsList = [csFile, outputStarFn]
 
@@ -220,7 +246,6 @@ class ProtCryoSparcGlobalCtfRefinement(ProtCryosparcBase, ProtParticles):
         imgSet = self._getInputParticles()
 
         outImgSet = self._createSetOfParticles()
-        imgSet.setAlignmentProj()
         outImgSet.copyInfo(imgSet)
         self._fillDataFromIter(outImgSet)
 
@@ -228,17 +253,16 @@ class ProtCryoSparcGlobalCtfRefinement(ProtCryosparcBase, ProtParticles):
         self._defineTransformRelation(imgSet, outImgSet)
 
     def _fillDataFromIter(self, imgSet):
-        outImgsFn = self._getFileName('out_particles')
+        outImgsFn = 'particles@' + self._getFileName('out_particles')
         imgSet.setAlignmentProj()
         imgSet.copyItems(self._getInputParticles(),
                          updateItemCallback=self._createItemMatrix,
-                         itemDataIterator=md.iterRows(outImgsFn,
-                                                      sortByLabel=md.RLN_IMAGE_ID))
+                         itemDataIterator=emtable.Table.iterRows(outImgsFn))
 
     def _createItemMatrix(self, particle, row):
         createItemMatrix(particle, row, align=ALIGN_PROJ)
         setCryosparcAttributes(particle, row,
-                               md.RLN_PARTICLE_RANDOM_SUBSET)
+                               RELIONCOLUMNS.rlnRandomSubset.value)
 
     # --------------------------- INFO functions -------------------------------
     def _validate(self):
@@ -273,17 +297,22 @@ class ProtCryoSparcGlobalCtfRefinement(ProtCryosparcBase, ProtParticles):
 
     def doGlobalCtfRefinement(self):
         """
-                :return:
-                """
-        className = "ctf_refine_global"
-        input_group_conect = {"particles": str(self.par),
-                              "volume": str(self.vol),
-                              "mask": str(self.mask)}
-        # {'particles' : 'JXX.imported_particles' }
+        :return:
+        """
+        input_group_connect = {"particles": self.particles.get(),
+                               "volume": self.volume.get(),
+                               "mask": self.mask.get()}
+        input_result_connect = None
+        if self._getInputVolume().hasHalfMaps():
+            input_result_connect = {"volume.0.map_half_A": self.importVolumeHalfA.get(),
+                                    "volume.0.map_half_B": self.importVolumeHalfB.get()}
         params = {}
 
         for paramName in self._paramsName:
-            params[str(paramName)] = str(self.getAttributeValue(paramName))
+            if paramName != 'crg_ews_zsign':
+                params[str(paramName)] = str(self.getAttributeValue(paramName))
+            else:
+                params[str(paramName)] = str(EWS_CURVATURE_SIGN[self.crg_ews_zsign.get()])
 
         # Determinate the GPUs to use (in dependence of
         # the cryosparc version)
@@ -292,17 +321,18 @@ class ProtCryoSparcGlobalCtfRefinement(ProtCryosparcBase, ProtParticles):
         except Exception:
             gpusToUse = False
 
-        self.runGlobalCtfRefinement = enqueueJob(className, self.projectName.get(),
-                                        self.workSpaceName.get(),
-                                        str(params).replace('\'', '"'),
-                                        str(input_group_conect).replace('\'',
-                                                                        '"'),
-                                        self.lane, gpusToUse)
+        runGlobalCtfRefinementJob = enqueueJob(self._className, self.projectName.get(),
+                                                 self.workSpaceName.get(),
+                                                 str(params).replace('\'', '"'),
+                                                 str(input_group_connect).replace('\'', '"'),
+                                                 self.lane, gpusToUse,
+                                                 result_connect=input_result_connect)
 
-        self.currenJob.set(self.runGlobalCtfRefinement.get())
+        self.runGlobalCtfRefinement = String(runGlobalCtfRefinementJob)
+        self.currenJob.set(runGlobalCtfRefinementJob.get())
         self._store(self)
 
         waitForCryosparc(self.projectName.get(), self.runGlobalCtfRefinement.get(),
                          "An error occurred in the particles subtraction process. "
-                         "Please, go to cryosPARC software for more "
+                         "Please, go to cryoSPARC software for more "
                          "details.")
