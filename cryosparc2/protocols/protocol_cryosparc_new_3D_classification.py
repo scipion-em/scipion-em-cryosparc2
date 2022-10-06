@@ -350,10 +350,11 @@ class ProtCryoSparcNew3DClassification(ProtCryosparcBase):
                                       self.run3dClassification.get())
         itera = self.findLastIteration(self.run3dClassification.get())
 
-        csParticlesName = "cryosparc_%s_%s_00%s_particles.cs" % (
+        #00037:   Unable to execute the copy: Files or directory does not exist:  [Errno 2] No such file or directory: '/home/roberto/cryoSPARC/scipion_projects/2022_06_20_mx2369_pkv-carmen/P3/J188/cryosparc_P3_J188_001754_particles.cs'
+        csParticlesName = "cryosparc_%s_%s_%05d_particles.cs" % (
                                                  self.projectName.get(),
                                                  self.run3dClassification.get(),
-                                                 itera)
+                                                 int(itera))
         # Copy the CS output particles to extra folder
         copyFiles(csOutputFolder, self._getExtraPath(), files=[csParticlesName])
 
@@ -459,16 +460,16 @@ class ProtCryoSparcNew3DClassification(ProtCryosparcBase):
             output_file.write('\n')
             numOfClass = self.class3D_N_K.get()
             for i in range(numOfClass):
-                csVolName = ("cryosparc_%s_%s_class_%02d_00%s_volume.mrc" %
+                csVolName = ("cryosparc_%s_%s_class_%02d_%05d_volume.mrc" %
                              (self.projectName.get(),
-                              self.run3dClassification.get(), i, itera))
+                              self.run3dClassification.get(), i, int(itera)))
 
                 copyFiles(csOutputFolder, self._getExtraPath(),
                           files=[csVolName])
 
-                row = ("%s/cryosparc_%s_%s_class_%02d_00%s_volume.mrc\n" %
+                row = ("%s/cryosparc_%s_%s_class_%02d_%05d_volume.mrc\n" %
                        (self._getExtraPath(), self.projectName.get(),
-                        self.run3dClassification.get(), i, itera))
+                        self.run3dClassification.get(), i, int(itera)))
                 output_file.write(row)
 
     def findLastIteration(self, jobName):

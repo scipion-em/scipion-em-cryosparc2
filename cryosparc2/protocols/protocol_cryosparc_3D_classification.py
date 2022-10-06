@@ -274,9 +274,9 @@ class ProtCryoSparc3DClassification(ProtCryosparcBase):
                               self.run3dClassification.get())
         itera = self.findLastIteration(self.run3dClassification.get())
 
-        csParticlesName = "cryosparc_%s_%s_000%s_particles.cs" % (self.projectName.get(),
+        csParticlesName = "cryosparc_%s_%s_%05d_particles.cs" % (self.projectName.get(),
                                                                  self.run3dClassification.get(),
-                                                                 itera)
+                                                                 int(itera))
         # Copy the CS output particles to extra folder
         copyFiles(csOutputFolder, self._getExtraPath(), files=[csParticlesName])
 
@@ -366,15 +366,15 @@ class ProtCryoSparc3DClassification(ProtCryosparcBase):
             output_file.write('\n')
             numOfClass = len(self.importVolumes)
             for i in range(numOfClass):
-                csVolName = ("cryosparc_%s_%s_class_%02d_000%s_volume.mrc" %
+                csVolName = ("cryosparc_%s_%s_class_%02d_%05d_volume.mrc" %
                              (self.projectName.get(),
-                              self.run3dClassification.get(), i, itera))
+                              self.run3dClassification.get(), i, int(itera)))
 
                 copyFiles(csOutputFolder, self._getExtraPath(), files=[csVolName])
 
-                row = ("%s/cryosparc_%s_%s_class_%02d_000%s_volume.mrc\n" %
+                row = ("%s/cryosparc_%s_%s_class_%02d_%05d_volume.mrc\n" %
                        (self._getExtraPath(), self.projectName.get(),
-                        self.run3dClassification.get(), i, itera))
+                        self.run3dClassification.get(), i, int(itera)))
                 output_file.write(row)
 
     def findLastIteration(self, jobName):
