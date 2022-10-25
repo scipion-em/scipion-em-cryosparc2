@@ -316,7 +316,10 @@ class ProtCryosparcBase(pw.EMProtocol):
 
         if fsc_t is not None and fsc_nt is not None:  # Phase Randomized Masket Map can be calculated
             for i in range(len(fsc_t)):
-                corr.append((fsc_t[i] - fsc_nt[i]) / (1.0 - fsc_nt[i]))
+                fsc_nt_value = 0.99
+                if fsc_nt[i] != 1:
+                     fsc_nt_value = fsc_nt[i]
+                corr.append((fsc_t[i] - fsc_nt[i]) / (1.0 - fsc_nt_value))
             fsc = FSC(objLabel=fscValues['fsc_prmm'])
             fsc_wv = fscSet.getFirstItem().getData()[0]
             fsc.setData(fsc_wv, corr)
