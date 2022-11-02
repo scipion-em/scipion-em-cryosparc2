@@ -25,6 +25,7 @@
 # *  e-mail address 'scipion@cnb.csic.es'
 # *
 # **************************************************************************
+import os
 import emtable
 
 import pwem.objects as pwobj

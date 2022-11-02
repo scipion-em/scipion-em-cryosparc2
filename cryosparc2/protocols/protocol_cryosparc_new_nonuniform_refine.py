@@ -25,13 +25,9 @@
 # *
 # **************************************************************************
 
-from pkg_resources import parse_version
-
 from pyworkflow.protocol.params import (FloatParam, Positive, IntParam,
-                                        BooleanParam, EnumParam, LEVEL_ADVANCED)
+                                        BooleanParam, EnumParam)
 from .protocol_cryosparc_homogeneous_refine import ProtCryoSparc3DHomogeneousRefine
-from ..utils import getCryosparcVersion
-from ..constants import V3_3_1
 
 
 class ProtCryoSparcNewNonUniformRefine3D(ProtCryoSparc3DHomogeneousRefine):
