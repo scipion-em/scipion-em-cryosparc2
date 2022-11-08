@@ -57,7 +57,8 @@ class ProtCryoSparcHomogeneousReconstruct(ProtCryosparcBase):
     _className = "homo_reconstruct"
     _devStatus = NEW
     _fscColumns = 6
-    _protCompatibility = [V3_3_0, V3_3_1, V3_3_2, V4_0_0]
+    _protCompatibility = [V3_3_0, V3_3_1, V3_3_2, V4_0_0, V4_0_1, V4_0_2,
+                          V4_0_3]
     ewsParamsName = []
 
     def _initialize(self):
