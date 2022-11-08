@@ -26,6 +26,8 @@
 # *
 # **************************************************************************
 import os
+from pkg_resources import parse_version
+
 import emtable
 
 import pwem.objects as pwobj
@@ -40,9 +42,10 @@ from ..utils import (addSymmetryParam, addComputeSectionParams,
                      calculateNewSamplingRate,
                      cryosparcValidate, gpusValidate, getSymmetry,
                      waitForCryosparc, clearIntermediateResults, enqueueJob,
-                     fixVolume, copyFiles, getOutputPreffix)
+                     fixVolume, copyFiles, getOutputPreffix,
+                     getCryosparcVersion)
 from ..constants import (NOISE_MODEL_CHOICES, REFINE_MASK_CHOICES,
-                         RELIONCOLUMNS)
+                         RELIONCOLUMNS, V4_0_0)
 
 
 class ProtCryoSparcRefine3D(ProtCryosparcBase, pwprot.ProtRefine3D):
@@ -351,7 +354,9 @@ class ProtCryoSparcRefine3D(ProtCryosparcBase, pwprot.ProtRefine3D):
         self._defineSourceRelation(self.inputParticles.get(), vol)
         self._defineOutputs(outputParticles=outImgSet)
         self._defineTransformRelation(self.inputParticles.get(), outImgSet)
-        self.createFSC(idd, imgSet, vol)
+        cryosparcVersion = getCryosparcVersion()
+        if parse_version(cryosparcVersion) < parse_version(V4_0_0):
+            self.createFSC(idd, imgSet, vol)
 
     def _validate(self):
         validateMsgs = cryosparcValidate()

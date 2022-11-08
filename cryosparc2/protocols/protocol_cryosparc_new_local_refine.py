@@ -271,7 +271,9 @@ class ProtCryoSparcLocalRefine(ProtCryosparcBase, ProtOperateParticles):
         self._defineSourceRelation(self.inputParticles.get(), vol)
         self._defineOutputs(outputParticles=outImgSet)
         self._defineTransformRelation(self.inputParticles.get(), outImgSet)
-        self.createFSC(idd, imgSet, vol)
+        cryosparcVersion = getCryosparcVersion()
+        if parse_version(cryosparcVersion) < parse_version(V4_0_0):
+            self.createFSC(idd, imgSet, vol)
 
     # --------------------------- INFO functions -------------------------------
     def _validate(self):

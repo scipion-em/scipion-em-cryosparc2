@@ -56,6 +56,7 @@ class CryosPARCViewer3DRefinement(EmProtocolViewer):
                 ProtCryoSparcNewNonUniformRefine3D, ProtCryoSparcHomogeneousReconstruct]
     _environments = [DESKTOP_TKINTER, WEB_DJANGO]
     _label = 'viewer Refinement'
+    cryosparcVersion = getCryosparcVersion()
 
     def _defineParams(self, form):
         self._env = os.environ.copy()
@@ -85,7 +86,7 @@ class CryosPARCViewer3DRefinement(EmProtocolViewer):
                            help=help)
             # '*slices*: display volumes as 2D slices along z axis.\n'
 
-            if self.protocol.isFinished():
+            if self.protocol.isFinished() and parse_version(self.cryosparcVersion) < parse_version(V4_0_0):
                 group = form.addGroup('Resolution')
 
                 self.choices = self.getChoices()

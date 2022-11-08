@@ -264,10 +264,8 @@ class ProtCryosparcBase(pw.EMProtocol):
         status_errors = system_info[0]
 
         if not status_errors:
-            token = 'L9Q/af0OVuhBRrZRmMHHThax4Gss3hQCqpK33JPlJsM='
-            head = {'Authorization': 'Bearer {}'.format(token)}
             url = self.getCSUrl(system_info, idd)
-            fscRequest = requests.get(url, allow_redirects=True, headers=head)
+            fscRequest = requests.get(url, allow_redirects=True)
             fscFile = "fsc.txt"
             fscFilePath = os.path.join(self._getExtraPath(), fscFile)
             factor = self._getInputParticles().getDim()[0] * imgSet.getSamplingRate()
