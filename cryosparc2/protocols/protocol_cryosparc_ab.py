@@ -312,8 +312,6 @@ class ProtCryoSparcInitialModel(ProtCryosparcBase, ProtInitialVolume,
         """
         Create the protocol output. Convert cryosparc file to Relion file
         """
-        import time
-        time.sleep(10)
         print(pwutils.yellowStr("Creating the output..."), flush=True)
         self._initializeUtilsVariables()
         csOutputFolder = os.path.join(self.projectDir.get(),
