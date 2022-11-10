@@ -160,7 +160,7 @@ class ProtCryoSparcSubtract(ProtCryosparcBase, ProtOperateParticles):
         """
         self._initializeUtilsVariables()
         outputStarFn = self._getFileName('out_particles')
-        csOutputFolder = os.path.join(self.projectPath, self.projectName.get(),
+        csOutputFolder = os.path.join(self.projectDir.get(),
                                       self.runPartStract.get())
         csFileName = "subtracted_particles.cs"
 

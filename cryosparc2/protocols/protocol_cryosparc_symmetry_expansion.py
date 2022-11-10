@@ -117,12 +117,12 @@ class ProtCryoSparcSymmetryExpansion(ProtCryosparcBase):
         """
         self._initializeUtilsVariables()
         outputStarFn = self._getFileName('out_particles')
+        csOutputFolder = os.path.join(self.projectDir.get(),
+                                      self.runSymExp.get())
         csFileName = "particles_expanded.cs"
 
         # Copy the CS output expanded particles to extra folder
-        copyFiles(os.path.join(self.projectPath, self.projectName.get(),
-                               self.runSymExp.get()),
-                  self._getExtraPath(), files=[csFileName])
+        copyFiles(csOutputFolder, self._getExtraPath(), files=[csFileName])
 
         csFile = os.path.join(self._getExtraPath(), csFileName)
 

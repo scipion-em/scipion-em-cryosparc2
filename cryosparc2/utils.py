@@ -43,7 +43,7 @@ from .constants import (CS_SYM_NAME, SYM_DIHEDRAL_Y, CRYOSPARC_USER,
                         CRYO_PROJECTS_DIR, V2_14_0, V2_13_0, CRYOSPARC_HOME,
                         CRYOSPARC_USE_SSD, V_UNKNOWN, V3_0_0, V2_15_0,
                         CRYOSPARC_MASTER, CRYOSPARC_STANDALONE_INSTALLATION,
-                        CRYOSPARC_DEFAULT_LANE)
+                        CRYOSPARC_DEFAULT_LANE, V3_3_2, V4_0_0)
 
 VERSION = 'version'
 
@@ -205,7 +205,7 @@ def getCryosparcUser():
     """
     Get the full name of the initial admin account
     """
-    return os.path.basename(os.environ.get(CRYOSPARC_USER, ""))
+    return os.path.basename(os.environ.get(CRYOSPARC_USER, "admin"))
 
 
 def isCryosparcStandalone():
@@ -237,6 +237,21 @@ def getCryosparcProjectsDir():
         os.mkdir(cryoProject_Dir)
 
     return cryoProject_Dir
+
+
+def getCryosparcProjectId(projectDir):
+    """
+    Get the project Id form project.json file.
+    :param projectDir: project directory path
+    """
+    import json
+    projectJsonFilePath = os.path.join(projectDir.get(), 'project.json')
+
+    with open(projectJsonFilePath, 'r') as file:
+        prjson = json.load(file)
+
+    pId = prjson['uid']
+    return pId
 
 
 def getProjectName(scipionProjectName):
@@ -277,6 +292,50 @@ def createEmptyProject(projectDir, projectTitle):
                                    str(projectDir), str(projectTitle), "'"))
 
     return runCmd(create_empty_project_cmd, printCmd=False)
+
+
+def getProjectInformation(project_uid, info='project_dir'):
+    """
+    Get information about a single project
+    :param project_uid: the id of the project
+    :return: the information related to the project thats stored in the database
+    """
+    import ast
+    getProject_cmd = (getCryosparcProgram() +
+                                ' %sget_project("%s")%s '
+                                % ("'", str(project_uid), "'"))
+
+    project_info = runCmd(getProject_cmd, printCmd=False)
+    dictionary = ast.literal_eval(project_info[1])
+    return str(dictionary[info])
+
+
+def getUserToken(email):
+    get_user_cmd = (getCryosparcProgram() +
+                                ' %sGetUser("%s")%s '
+                                % ("'", str(email),"'"))
+
+    return runCmd(get_user_cmd, printCmd=False)
+
+
+def updateProjectDirectory(project_uid, new_project_dir):
+    """
+       Safely updates the project directory of a project given a directory. Checks
+       if the directory exists, is readable, and writeable.
+       :param project_uid: uid of the project to update
+       :param new_project_dir_container: the new directory
+       """
+    updateProjectDirectory_cmd = (getCryosparcProgram() +
+                      ' %supdate_project_directory("%s", "%s")%s '
+                      % ("'", str(project_uid), str(new_project_dir), "'"))
+
+    runCmd(updateProjectDirectory_cmd, printCmd=False)
+
+
+def getOutputPreffix(projectName):
+    cryosparcVersion = getCryosparcVersion()
+    preffix = "cryosparc_" + projectName+"_" if parse_version(cryosparcVersion) < parse_version(V4_0_0) else ""
+    return preffix
 
 
 def createProjectDir(project_container_dir):
@@ -449,7 +508,7 @@ def enqueueJob(jobType, projectName, workSpaceName, params, input_group_connect,
                                ' %senqueue_job("%s","%s","%s")%s' %
                                ("'", projectName, jobId, lane, "'"))
 
-    elif parse_version(cryosparcVersion) >= parse_version(V3_0_0):
+    elif parse_version(cryosparcVersion) <= parse_version(V3_3_2):
         if standaloneInstallation:
             hostname = getCryosparcEnvInformation('master_hostname')
             if gpusToUse:
@@ -465,7 +524,23 @@ def enqueueJob(jobType, projectName, workSpaceName, params, input_group_connect,
                                ' %senqueue_job("%s","%s","%s")%s' %
                                ("'", projectName, jobId,
                                 lane, "'"))
-
+    elif parse_version(cryosparcVersion) >= parse_version(V4_0_0):
+        user = getCryosparcUser()
+        if standaloneInstallation:
+            hostname = getCryosparcEnvInformation('master_hostname')
+            if gpusToUse:
+                gpusToUse = str(gpusToUse)
+            no_check_inputs_ready = False
+            enqueue_job_cmd = (getCryosparcProgram() +
+                               ' %senqueue_job("%s","%s","%s", "%s", "%s", %s, "%s")%s' %
+                               ("'", projectName, jobId,
+                                lane, user, hostname, gpusToUse,
+                                no_check_inputs_ready, "'"))
+        else:
+            enqueue_job_cmd = (getCryosparcProgram() +
+                               ' %senqueue_job("%s","%s","%s","%s")%s' %
+                               ("'", projectName, jobId,
+                                lane, user, "'"))
     runCmd(enqueue_job_cmd)
 
     return jobId

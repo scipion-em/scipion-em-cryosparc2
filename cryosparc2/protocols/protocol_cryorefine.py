@@ -25,6 +25,9 @@
 # *  e-mail address 'scipion@cnb.csic.es'
 # *
 # **************************************************************************
+import os
+from pkg_resources import parse_version
+
 import emtable
 
 import pwem.objects as pwobj
@@ -39,9 +42,10 @@ from ..utils import (addSymmetryParam, addComputeSectionParams,
                      calculateNewSamplingRate,
                      cryosparcValidate, gpusValidate, getSymmetry,
                      waitForCryosparc, clearIntermediateResults, enqueueJob,
-                     fixVolume, copyFiles)
+                     fixVolume, copyFiles, getOutputPreffix,
+                     getCryosparcVersion)
 from ..constants import (NOISE_MODEL_CHOICES, REFINE_MASK_CHOICES,
-                         RELIONCOLUMNS)
+                         RELIONCOLUMNS, V4_0_0)
 
 
 class ProtCryoSparcRefine3D(ProtCryosparcBase, pwprot.ProtRefine3D):
@@ -302,12 +306,12 @@ class ProtCryoSparcRefine3D(ProtCryosparcBase, pwprot.ProtRefine3D):
         Create the protocol output. Convert cryosparc file to Relion file
         """
         print(pwutils.yellowStr("Creating the output..."), flush=True)
-        csOutputFolder = os.path.join(self.projectPath, self.projectName.get(),
+        csOutputFolder = os.path.join(self.projectDir.get(),
                                       self.runRefine.get())
         idd, itera = self.findLastIteration(self.runRefine.get())
-        csOutputPattern = "cryosparc_%s_%s_%s" % (self.projectName.get(),
-                                                  self.runRefine.get(),
-                                                  itera)
+        csOutputPattern = "%s%s_%s" % (getOutputPreffix(self.projectName.get()),
+                                       self.runRefine.get(),
+                                       itera)
         csParticlesName = csOutputPattern + "_particles.cs"
 
         fnVolName = csOutputPattern + "_volume_map.mrc"
@@ -350,7 +354,9 @@ class ProtCryoSparcRefine3D(ProtCryosparcBase, pwprot.ProtRefine3D):
         self._defineSourceRelation(self.inputParticles.get(), vol)
         self._defineOutputs(outputParticles=outImgSet)
         self._defineTransformRelation(self.inputParticles.get(), outImgSet)
-        self.createFSC(idd, imgSet, vol)
+        cryosparcVersion = getCryosparcVersion()
+        if parse_version(cryosparcVersion) < parse_version(V4_0_0):
+            self.createFSC(idd, imgSet, vol)
 
     def _validate(self):
         validateMsgs = cryosparcValidate()

@@ -165,7 +165,7 @@ class ProtCryoSparcLocalCtfRefinement(ProtCryosparcBase, ProtParticles):
         """
         self._initializeUtilsVariables()
         outputStarFn = self._getFileName('out_particles')
-        csOutputFolder = os.path.join(self.projectPath, self.projectName.get(),
+        csOutputFolder = os.path.join(self.projectDir.get(),
                                       self.runLocalCtfRefinement.get())
         csFileName = "particles.cs"
 

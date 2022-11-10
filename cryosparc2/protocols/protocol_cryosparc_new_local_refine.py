@@ -47,7 +47,7 @@ from ..utils import (addComputeSectionParams, calculateNewSamplingRate,
                      cryosparcValidate, gpusValidate, enqueueJob,
                      waitForCryosparc, clearIntermediateResults,
                      addSymmetryParam, getCryosparcVersion, getSymmetry,
-                     fixVolume, copyFiles)
+                     fixVolume, copyFiles, getOutputPreffix)
 from ..constants import *
 
 
@@ -57,7 +57,8 @@ class ProtCryoSparcLocalRefine(ProtCryosparcBase, ProtOperateParticles):
         """
     _label = 'local refinement'
     _devStatus = NEW
-    _protCompatibility = [V3_0_0, V3_1_0, V3_2_0, V3_3_0, V3_3_1, V3_3_2]
+    _protCompatibility = [V3_0_0, V3_1_0, V3_2_0, V3_3_0, V3_3_1, V3_3_2,
+                          V4_0_0,  V4_0_1, V4_0_2, V4_0_3]
     _className = "new_local_refine"
     _fscColumns = 6
 
@@ -226,12 +227,12 @@ class ProtCryoSparcLocalRefine(ProtCryosparcBase, ProtOperateParticles):
         self._initializeUtilsVariables()
         idd, itera = self.findLastIteration(self.runLocalRefinement.get())
 
-        csOutputFolder = os.path.join(self.projectPath, self.projectName.get(),
-                                       self.runLocalRefinement.get())
+        csOutputFolder = os.path.join(self.projectDir.get(),
+                                      self.runLocalRefinement.get())
 
-        csOutputPattern = "cryosparc_%s_%s_%s" % (self.projectName.get(),
-                                                  self.runLocalRefinement.get(),
-                                                  itera)
+        csOutputPattern = "%s%s_%s" % (getOutputPreffix(self.projectName.get()),
+                                       self.runLocalRefinement.get(),
+                                       itera)
         csParticlesName = csOutputPattern + "_particles.cs"
         fnVolName = csOutputPattern + "_volume_map.mrc"
         half1Name = csOutputPattern + "_volume_map_half_A.mrc"
@@ -270,7 +271,9 @@ class ProtCryoSparcLocalRefine(ProtCryosparcBase, ProtOperateParticles):
         self._defineSourceRelation(self.inputParticles.get(), vol)
         self._defineOutputs(outputParticles=outImgSet)
         self._defineTransformRelation(self.inputParticles.get(), outImgSet)
-        self.createFSC(idd, imgSet, vol)
+        cryosparcVersion = getCryosparcVersion()
+        if parse_version(cryosparcVersion) < parse_version(V4_0_0):
+            self.createFSC(idd, imgSet, vol)
 
     # --------------------------- INFO functions -------------------------------
     def _validate(self):

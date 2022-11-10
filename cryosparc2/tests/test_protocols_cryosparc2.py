@@ -151,7 +151,7 @@ class TestCryosparcBase(BaseTest):
         """ Create a volume mask using xmipp. """
         cls.msk = cls.newProtocol(xmippProtocols.XmippProtCreateMask3D,
                                   inputVolume=pattern,
-                                  volumeOperation=0,  # OPERATION_THRESHOLD,
+                                  volumeOperation=2,  # OPERATION_THRESHOLD,
                                   doSmall=False,
                                   smallSize=False,
                                   doBig=False,

@@ -57,7 +57,8 @@ class ProtCryoSparcGlobalCtfRefinement(ProtCryosparcBase, pwprot.ProtParticles):
     """
     _label = 'global ctf refinement'
     _className = "ctf_refine_global"
-    _protCompatibility = [V3_0_0, V3_1_0, V3_2_0, V3_3_0, V3_3_1, V3_3_2]
+    _protCompatibility = [V3_0_0, V3_1_0, V3_2_0, V3_3_0, V3_3_1, V3_3_2,
+                          V4_0_0,V4_0_1, V4_0_2, V4_0_3]
     newParamsName = []
 
     def _initialize(self):
@@ -228,7 +229,7 @@ class ProtCryoSparcGlobalCtfRefinement(ProtCryosparcBase, pwprot.ProtParticles):
         """
         self._initializeUtilsVariables()
         outputStarFn = self._getFileName('out_particles')
-        csOutputFolder = os.path.join(self.projectPath, self.projectName.get(),
+        csOutputFolder = os.path.join(self.projectDir.get(),
                                       self.runGlobalCtfRefinement.get())
         csFileName = "particles.cs"
 

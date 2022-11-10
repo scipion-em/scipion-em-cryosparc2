@@ -63,6 +63,10 @@ V3_2_0 = 'v3.2.0'
 V3_3_0 = 'v3.3.0'
 V3_3_1 = 'v3.3.1'
 V3_3_2 = 'V3.3.2'
+V4_0_0 = 'V4.0.0'
+V4_0_1 = 'V4.0.1'
+V4_0_2 = 'V4.0.2'
+V4_0_3 = 'V4.0.3'
 
 # Symmetry dict
 CS_SYM_NAME = dict()
@@ -95,6 +99,14 @@ CLASS_3D_INIT_MODE = ['simple', 'PCA', 'input']
 EWS_CURVATURE_SIGN = ['positive', 'negative']
 
 EWS_CORRECTION_METHOD = ['simple', 'iterative']
+
+VAR_USE_SCALES = ['none',
+                  'input',
+                  'optimal']
+
+VAR_OUTPUT_MODE = ['simple',
+                   'cluster',
+                   'intermediates']
 
 # Viewer constants
 LAST_ITER = 0

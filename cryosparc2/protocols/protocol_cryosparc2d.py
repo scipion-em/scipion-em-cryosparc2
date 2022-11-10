@@ -41,7 +41,7 @@ from ..convert import (rowToAlignment, defineArgs, convertCs2Star,
                        cryosparcToLocation)
 from ..utils import (addComputeSectionParams, cryosparcValidate, gpusValidate,
                      enqueueJob, waitForCryosparc, clearIntermediateResults,
-                     copyFiles)
+                     copyFiles, getOutputPreffix)
 from ..constants import *
 
 
@@ -262,12 +262,13 @@ class ProtCryo2D(ProtCryosparcBase, pwprot.ProtClassify2D):
         print(pwutils.yellowStr("Creating the output..."), flush=True)
         self._initializeUtilsVariables()
 
-        csOutputFolder = os.path.join(self.projectPath, self.projectName.get(),
+        csOutputFolder = os.path.join(self.projectDir.get(),
                                       self.runClass2D.get())
         _numberOfIterSuffix = self._getNumberOfIterSuffix()
-        csOutputPattern = "cryosparc_%s_%s%s" % (self.projectName.get(),
-                                                 self.runClass2D.get(),
-                                                 _numberOfIterSuffix)
+
+        csOutputPattern = "%s%s%s" % (getOutputPreffix(self.projectName.get()),
+                                      self.runClass2D.get(),
+                                      _numberOfIterSuffix)
         csParticlesName = csOutputPattern + "_particles.cs"
         csClassAveragesName = csOutputPattern + "_class_averages.cs"
         mrcFileName = csOutputPattern + "_class_averages.mrc"

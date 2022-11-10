@@ -36,7 +36,7 @@ from pyworkflow.protocol.params import (PointerParam, FloatParam,
 from .protocol_base import ProtCryosparcBase
 from ..utils import (addComputeSectionParams, cryosparcValidate, gpusValidate,
                      enqueueJob, waitForCryosparc, clearIntermediateResults,
-                     fixVolume, copyFiles)
+                     fixVolume, copyFiles, getOutputPreffix)
 
 
 class ProtCryoSparcSharppening(ProtCryosparcBase, ProtAnalysis3D):
@@ -130,12 +130,12 @@ class ProtCryoSparcSharppening(ProtCryosparcBase, ProtAnalysis3D):
         Create the protocol output. Convert cryosparc file to Relion file
         """
         self._initializeUtilsVariables()
-        fnVolName = "cryosparc_%s_%s_map_sharp.mrc" % (self.projectName.get(),
-                                                       self.runSharppening.get())
+        csOutputFolder = os.path.join(self.projectDir.get(),
+                                      self.runSharppening.get())
+        fnVolName = "%s%s_map_sharp.mrc" % (getOutputPreffix(self.projectName.get()),
+                                            self.runSharppening.get())
         # Copy the CS output sharpened volume to extra folder
-        copyFiles(os.path.join(self.projectPath, self.projectName.get(),
-                               self.runSharppening.get()),
-                  self._getExtraPath(),
+        copyFiles(csOutputFolder, self._getExtraPath(),
                   files=[fnVolName])
 
         fnVol = os.path.join(self._getExtraPath(), fnVolName)

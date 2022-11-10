@@ -34,14 +34,16 @@ import pyworkflow.object as pwobj
 import pyworkflow.utils as pwutils
 from pwem.objects import FSC, SetOfFSCs
 
-from ..constants import V3_3_1, excludedFSCValues, fscValues
+from ..constants import V3_3_1, excludedFSCValues, fscValues, V4_0_0
 from ..convert import convertBinaryVol, writeSetOfParticles, ImageHandler
 from ..utils import (getProjectPath, createEmptyProject,
                      createEmptyWorkSpace, getProjectName,
                      getCryosparcProjectsDir, createProjectDir,
                      doImportParticlesStar, doImportVolumes, killJob, clearJob,
                      get_job_streamlog, getSystemInfo, getJobStatus,
-                     STOP_STATUSES, getCryosparcVersion)
+                     STOP_STATUSES, getCryosparcVersion, getProjectInformation,
+                     updateProjectDirectory, getCryosparcProjectId,
+                     getCryosparcProgram)
 
 
 class ProtCryosparcBase(pw.EMProtocol):
@@ -61,11 +63,18 @@ class ProtCryosparcBase(pw.EMProtocol):
         folderPaths = getProjectPath(self.projectPath)
         if not folderPaths:
             self.emptyProject = createEmptyProject(self.projectPath, self.projectDirName)
-            self.projectName = self.emptyProject[-1].split()[-1]
+            self.projectName = pwobj.String(self.emptyProject[-1].split()[-1])
+            self.projectDir = pwobj.String(getProjectInformation(self.projectName,
+                                           info='project_dir'))
         else:
-            self.projectName = str(folderPaths[0])
+            self.projectDir = pwobj.String(os.path.join(self.projectContainerDir,
+                                                        str(folderPaths[0])))
+            cryosparcVersion = getCryosparcVersion()
+            if parse_version(cryosparcVersion) < parse_version(V4_0_0):
+                self.projectName = pwobj.String(folderPaths[0])
+            else:
+                self.projectName = pwobj.String(getCryosparcProjectId(self.projectDir))
 
-        self.projectName = pwobj.String(self.projectName)
         self._store(self)
 
         # create empty workspace
@@ -85,7 +94,7 @@ class ProtCryosparcBase(pw.EMProtocol):
         self.projectDirName = getProjectName(self.getProject().getShortName())
         self.projectPath = pw.pwutils.join(getCryosparcProjectsDir(),
                                         self.projectDirName)
-        self.projectDir = createProjectDir(self.projectPath)
+        self.projectContainerDir = createProjectDir(self.projectPath)[1]
 
     def convertInputStep(self):
         """ Create the input file in STAR format as expected by Relion.
@@ -253,12 +262,9 @@ class ProtCryosparcBase(pw.EMProtocol):
         # Need to get the cryosparc master address
         system_info = getSystemInfo()
         status_errors = system_info[0]
-        if not status_errors:
-            system_info = eval(system_info[1])
-            master_hostname = system_info.get('master_hostname')
-            port_webapp = system_info.get('port_webapp')
 
-            url = "http://%s:%s/file/%s" % (master_hostname, port_webapp, idd)
+        if not status_errors:
+            url = self.getCSUrl(system_info, idd)
             fscRequest = requests.get(url, allow_redirects=True)
             fscFile = "fsc.txt"
             fscFilePath = os.path.join(self._getExtraPath(), fscFile)
@@ -269,6 +275,19 @@ class ProtCryosparcBase(pw.EMProtocol):
             fscSet = self.getSetOfFCSsFromFile(fscFilePath, factor)
             self._defineOutputs(outputFSC=fscSet)
             self._defineSourceRelation(vol, fscSet)
+
+    def getCSUrl(self, system_info, idd):
+        cryosparcVersion = getCryosparcVersion()
+        system_info = eval(system_info[1])
+        master_hostname = system_info.get('master_hostname')
+        if parse_version(cryosparcVersion) < parse_version(V4_0_0):
+            port_webapp = system_info.get('port_webapp')
+            url = "http://%s:%s/file/%s" % (master_hostname, port_webapp, idd)
+        else:
+            port_webapp = system_info.get('port_app')
+            url = "http://%s:%s/api/files/%s" % (master_hostname, port_webapp, idd)
+
+        return url
 
     def getSetOfFCSsFromFile(self, file, factor):
         f = open(file, 'r')
@@ -335,7 +354,10 @@ class ProtCryosparcBase(pw.EMProtocol):
                 z = str(y['text'])
 
                 if z.startswith('FSC Iteration') or z.startswith('FSC iIteration'):
-                    idd = y['imgfiles'][2]['fileid']
+                    for imgfile in y['imgfiles']:
+                        if imgfile['filetype'] == 'txt':
+                            idd = imgfile['fileid']
+                            break
                     itera = z.split(',')[0][-3:]
                     self._store(self)
                 elif 'Using Filter Radius' in z:

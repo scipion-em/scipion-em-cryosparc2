@@ -1,3 +1,6 @@
+Nov 8, 2022  -  - Compatibility with v4.0.x CS version
+                **v4.0.0**
+
 Oct 25, 2022  - Hot fixes
                 **v3.3.19**
                 * **fixed**   : Fixed an error related to Phase Randomized Masket Map calculation

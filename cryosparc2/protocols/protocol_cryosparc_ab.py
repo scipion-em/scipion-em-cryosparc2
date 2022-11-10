@@ -45,7 +45,8 @@ from ..convert import (defineArgs, convertCs2Star, cryosparcToLocation,
 from ..utils import (addSymmetryParam, addComputeSectionParams,
                      cryosparcValidate, gpusValidate, getSymmetry, enqueueJob,
                      calculateNewSamplingRate, waitForCryosparc,
-                     clearIntermediateResults, fixVolume, copyFiles)
+                     clearIntermediateResults, fixVolume, copyFiles,
+                     getOutputPreffix)
 from ..constants import *
 
 
@@ -313,10 +314,10 @@ class ProtCryoSparcInitialModel(ProtCryosparcBase, ProtInitialVolume,
         """
         print(pwutils.yellowStr("Creating the output..."), flush=True)
         self._initializeUtilsVariables()
-        csOutputFolder = os.path.join(self.projectPath, self.projectName.get(),
+        csOutputFolder = os.path.join(self.projectDir.get(),
                                       self.runAbinit.get())
-        csFileName = "cryosparc_%s_%s_final_particles.cs" % (self.projectName.get(),
-                                                             self.runAbinit.get())
+        csFileName = "%s%s_final_particles.cs" % (getOutputPreffix(self.projectName.get()),
+                                                  self.runAbinit.get())
 
         outputFolder = os.path.join(self._getExtraPath(), self.runAbinit.get())
 
@@ -442,9 +443,9 @@ class ProtCryoSparcInitialModel(ProtCryosparcBase, ProtInitialVolume,
             output_file.write('_rlnReferenceImage')
             output_file.write('\n')
             for i in range(int(self.abinit_K.get())):
-                row = ("%s/%s/cryosparc_%s_%s_class_%02d_final_volume.mrc\n"
+                row = ("%s/%s/%s%s_class_%02d_final_volume.mrc\n"
                        % (self._getExtraPath(), self.runAbinit.get(),
-                          self.projectName.get(), self.runAbinit.get(), i))
+                          getOutputPreffix(self.projectName.get()), self.runAbinit.get(), i))
                 output_file.write(row)
 
     def _defineParamsName(self):

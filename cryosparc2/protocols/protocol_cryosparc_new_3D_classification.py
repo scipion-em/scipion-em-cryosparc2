@@ -46,7 +46,7 @@ from ..utils import (addComputeSectionParams, doImportVolumes,
                      get_job_streamlog, calculateNewSamplingRate,
                      cryosparcValidate, gpusValidate, enqueueJob,
                      waitForCryosparc, clearIntermediateResults, fixVolume,
-                     copyFiles, getCryosparcVersion)
+                     copyFiles, getCryosparcVersion, getOutputPreffix)
 from ..constants import *
 
 
@@ -61,7 +61,7 @@ class ProtCryoSparcNew3DClassification(ProtCryosparcBase):
     _label = '3D Classification'
     _className = "class_3D"
     _devStatus = BETA
-    _protCompatibility = [V3_3_1, V3_3_2]
+    _protCompatibility = [V3_3_1, V3_3_2, V4_0_0, V4_0_1, V4_0_2, V4_0_3]
 
     def _initialize(self):
         self._defineFileNames()
@@ -346,12 +346,12 @@ class ProtCryoSparcNew3DClassification(ProtCryosparcBase):
         self._initializeUtilsVariables()
         print(pwutils.yellowStr("Creating the output..."), flush=True)
 
-        csOutputFolder = os.path.join(self.projectPath, self.projectName.get(),
+        csOutputFolder = os.path.join(self.projectDir.get(),
                                       self.run3dClassification.get())
         itera = self.findLastIteration(self.run3dClassification.get())
 
-        csParticlesName = "cryosparc_%s_%s_00%s_particles.cs" % (
-                                                 self.projectName.get(),
+        csParticlesName = "%s%s_00%s_particles.cs" % (
+                                                 getOutputPreffix(self.projectName.get()),
                                                  self.run3dClassification.get(),
                                                  itera)
         # Copy the CS output particles to extra folder
@@ -459,15 +459,15 @@ class ProtCryoSparcNew3DClassification(ProtCryosparcBase):
             output_file.write('\n')
             numOfClass = self.class3D_N_K.get()
             for i in range(numOfClass):
-                csVolName = ("cryosparc_%s_%s_class_%02d_00%s_volume.mrc" %
-                             (self.projectName.get(),
+                csVolName = ("%s%s_class_%02d_00%s_volume.mrc" %
+                             (getOutputPreffix(self.projectName.get()),
                               self.run3dClassification.get(), i, itera))
 
                 copyFiles(csOutputFolder, self._getExtraPath(),
                           files=[csVolName])
 
-                row = ("%s/cryosparc_%s_%s_class_%02d_00%s_volume.mrc\n" %
-                       (self._getExtraPath(), self.projectName.get(),
+                row = ("%s/%s%s_class_%02d_00%s_volume.mrc\n" %
+                       (self._getExtraPath(), getOutputPreffix(self.projectName.get()),
                         self.run3dClassification.get(), i, itera))
                 output_file.write(row)
 

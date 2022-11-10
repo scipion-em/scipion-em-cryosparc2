@@ -24,6 +24,7 @@
 # *  e-mail address 'scipion@cnb.csic.es'
 # *
 # **************************************************************************
+import os
 import emtable
 from pkg_resources import parse_version
 
@@ -39,11 +40,13 @@ from ..utils import (addSymmetryParam, addComputeSectionParams,
                      calculateNewSamplingRate,
                      cryosparcValidate, gpusValidate, getSymmetry,
                      waitForCryosparc, clearIntermediateResults, enqueueJob,
-                     getCryosparcVersion, fixVolume, copyFiles)
+                     getCryosparcVersion, fixVolume, copyFiles,
+                     getOutputPreffix)
 from ..constants import (NOISE_MODEL_CHOICES, REFINE_MASK_CHOICES, V3_0_0,
                          V3_1_0, V3_2_0, V3_3_0, V3_3_1, REFINE_FILTER_TYPE,
                          RELIONCOLUMNS, EWS_CURVATURE_SIGN,
-                         EWS_CORRECTION_METHOD, V3_3_2)
+                         EWS_CORRECTION_METHOD, V3_3_2, V4_0_0, V4_0_1, V4_0_2,
+                         V4_0_3)
 
 
 class ProtCryoSparc3DHomogeneousRefine(ProtCryosparcBase, pwprot.ProtRefine3D):
@@ -58,7 +61,8 @@ class ProtCryoSparc3DHomogeneousRefine(ProtCryosparcBase, pwprot.ProtRefine3D):
     _fscColumns = 6
     _className = "homo_refine_new"
     ewsParamsName = []
-    _protCompatibility = [V3_0_0, V3_1_0, V3_2_0, V3_3_0, V3_3_1, V3_3_2]
+    _protCompatibility = [V3_0_0, V3_1_0, V3_2_0, V3_3_0, V3_3_1, V3_3_2, V4_0_0,
+                          V4_0_1, V4_0_2, V4_0_3]
 
     # --------------------------- DEFINE param functions ----------------------
     def _defineFileNames(self):
@@ -435,11 +439,11 @@ class ProtCryoSparc3DHomogeneousRefine(ProtCryosparcBase, pwprot.ProtRefine3D):
         """
         self._initializeUtilsVariables()
         idd, itera = self.findLastIteration(self.runRefine.get())
-        csOutputFolder = os.path.join(self.projectPath, self.projectName.get(),
+        csOutputFolder = os.path.join(self.projectDir.get(),
                                       self.runRefine.get())
-        csOutputPattern = "cryosparc_%s_%s_%s" % (self.projectName.get(),
-                                                  self.runRefine.get(),
-                                                  itera)
+        csOutputPattern = "%s%s_%s" % (getOutputPreffix(self.projectName.get()),
+                                       self.runRefine.get(),
+                                       itera)
         csParticlesName = csOutputPattern + "_particles.cs"
 
         fnVolName = csOutputPattern + "_volume_map.mrc"
@@ -482,7 +486,9 @@ class ProtCryoSparc3DHomogeneousRefine(ProtCryosparcBase, pwprot.ProtRefine3D):
         self._defineSourceRelation(self.inputParticles.get(), vol)
         self._defineOutputs(outputParticles=outImgSet)
         self._defineTransformRelation(self.inputParticles.get(), outImgSet)
-        self.createFSC(idd, imgSet, vol)
+        cryosparcVersion = getCryosparcVersion()
+        if parse_version(cryosparcVersion) < parse_version(V4_0_0):
+            self.createFSC(idd, imgSet, vol)
 
     def _validate(self):
         validateMsgs = cryosparcValidate()
