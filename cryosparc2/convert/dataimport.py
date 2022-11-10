@@ -102,22 +102,33 @@ class cryoSPARCImport:
         separador = os.path.sep
         dirParticlesPath = os.path.dirname(os.path.abspath(referenceFile))
         dirProject = separador.join(dirParticlesPath.split(separador)[:-1])
-
-        # Case in which the binaries associated to the .cs file are located in
-        # the cryoSPARC folders format
-        file = os.path.join(dirProject, searchFile)
+        imageName = os.path.basename(searchFile)
+        imageFolder = os.path.dirname(searchFile)
+        realdataPath = dirParticlesPath
+        folderContent = []
 
         # Case in which the binaries associated to the .cs file are in the same
         # folder of .cs file
-        file2 = os.path.join(dirParticlesPath, os.path.basename(searchFile))
+        filesPath = dirParticlesPath
+        if os.path.exists(filesPath):
+            folderContent += os.listdir(filesPath)
 
-        if os.path.exists(file):
+        # Case in which the binaries associated to the .cs file are located in
+        # the cryoSPARC folders format
+        filesPath2 = os.path.join(dirProject, imageFolder)
+        if os.path.exists(filesPath2):
+            folderContent += os.listdir(filesPath2)
+            realdataPath = filesPath2
+
+
+        matchFile = [f for f in folderContent if f.endswith(imageName)]
+        if matchFile:
+            file = os.path.join(realdataPath, matchFile[0])
             return file
-        elif os.path.exists(file2):
-            return file2
         else:
             raise Exception("The images were expected to be found in one of "
-                            "these locations: (%s) or (%s)" % (file, file2))
+                            "these locations: (%s) or (%s)" % (filesPath,
+                                                               filesPath2))
 
 
 
