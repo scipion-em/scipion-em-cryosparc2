@@ -31,6 +31,10 @@ You will need to use `3.0.0 <https://scipion-em.github.io/docs/release-3.0.0/doc
 **Latest plugin versions**
 ==========================
 
+**v4.0.0**
+-----------
+* **new** *    : Compatibility with cryoSPARC v4.0.0
+
 **v3.3.18**
 -----------
 * **new** *    : Allow to import .cs particles files
