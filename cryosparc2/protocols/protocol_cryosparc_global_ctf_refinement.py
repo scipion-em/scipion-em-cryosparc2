@@ -33,21 +33,20 @@ from pwem import ALIGN_PROJ
 import pwem.protocols as pwprot
 
 import pyworkflow.utils as pwutils
-from pyworkflow import BETA
 from pyworkflow.object import String
 from pyworkflow.protocol.params import (PointerParam, FloatParam, IntParam,
                                         LEVEL_ADVANCED, Positive, BooleanParam,
                                         EnumParam)
 
 from .protocol_base import ProtCryosparcBase
-from .. import RELIONCOLUMNS
 from ..convert import (defineArgs, convertCs2Star, createItemMatrix,
                        setCryosparcAttributes)
 from ..utils import (addComputeSectionParams, cryosparcValidate, gpusValidate,
-                     enqueueJob, waitForCryosparc, clearIntermediateResults,
-                     copyFiles, getCryosparcVersion)
+                     enqueueJob, waitForCryosparc, copyFiles,
+                     getCryosparcVersion)
 
 from ..constants import *
+
 
 class ProtCryoSparcGlobalCtfRefinement(ProtCryosparcBase, pwprot.ProtParticles):
     """
@@ -58,7 +57,7 @@ class ProtCryoSparcGlobalCtfRefinement(ProtCryosparcBase, pwprot.ProtParticles):
     _label = 'global ctf refinement'
     _className = "ctf_refine_global"
     _protCompatibility = [V3_0_0, V3_1_0, V3_2_0, V3_3_0, V3_3_1, V3_3_2,
-                          V4_0_0,V4_0_1, V4_0_2, V4_0_3]
+                          V4_0_0, V4_0_1, V4_0_2, V4_0_3, V4_1_0]
     newParamsName = []
 
     def _initialize(self):

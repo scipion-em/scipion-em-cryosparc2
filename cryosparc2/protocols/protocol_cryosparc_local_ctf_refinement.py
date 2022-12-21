@@ -31,7 +31,6 @@ import emtable
 from pwem import ALIGN_PROJ
 from pwem.protocols import ProtParticles
 import pyworkflow.utils as pwutils
-from pyworkflow import BETA
 from pyworkflow.object import String
 from pyworkflow.protocol.params import (PointerParam, FloatParam,
                                         LEVEL_ADVANCED, IntParam, Positive)
@@ -41,8 +40,7 @@ from .. import RELIONCOLUMNS
 from ..convert import (defineArgs, convertCs2Star, createItemMatrix,
                        setCryosparcAttributes)
 from ..utils import (addComputeSectionParams, cryosparcValidate, gpusValidate,
-                     enqueueJob, waitForCryosparc, clearIntermediateResults,
-                     copyFiles)
+                     enqueueJob, waitForCryosparc, copyFiles)
 
 class ProtCryoSparcLocalCtfRefinement(ProtCryosparcBase, ProtParticles):
     """

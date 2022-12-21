@@ -61,7 +61,8 @@ class ProtCryoSparcNew3DClassification(ProtCryosparcBase):
     _label = '3D Classification'
     _className = "class_3D"
     _devStatus = BETA
-    _protCompatibility = [V3_3_1, V3_3_2, V4_0_0, V4_0_1, V4_0_2, V4_0_3]
+    _protCompatibility = [V3_3_1, V3_3_2, V4_0_0, V4_0_1, V4_0_2, V4_0_3,
+                          V4_1_0]
 
     def _initialize(self):
         self._defineFileNames()
@@ -110,14 +111,6 @@ class ProtCryoSparcNew3DClassification(ProtCryosparcBase):
                            'occurs. This parameter determines the reconstruction '
                            'box size during classification (which also accounts '
                            'for input particle extent and optimal sizes for FFT ops).')
-
-        form.addParam('class3D_num_oem_epochs', IntParam, default=5,
-                      label="Number of O-EM epochs",
-                      expertLevel=LEVEL_ADVANCED,
-                      validators=[Positive],
-                      help='Number of `epochs` (traversals through the entire '
-                           'dataset) to perform during online expectation '
-                           'maximization (O-EM).')
 
         form.addParam('class3D_num_oem_epochs', IntParam, default=5,
                       label="Number of O-EM epochs",
@@ -257,14 +250,6 @@ class ProtCryoSparcNew3DClassification(ProtCryosparcBase):
                            'the optimization. This is the end iteration when '
                            'class similarity should equal 0.')
 
-        form.addParam('class3D_bootstrap_noise', BooleanParam,
-                      default=True,
-                      label="Estimate noise based on initial maps",
-                      expertLevel=LEVEL_ADVANCED,
-                      help='Estimate the initial noise distribution from '
-                           'initial maps. If false, noise will be initially '
-                           'set to a constant value.')
-
         form.addParam('class3D_use_anisomag', BooleanParam,
                       default=False,
                       label="Correct Anisotropic Magnification",
@@ -290,13 +275,6 @@ class ProtCryoSparcNew3DClassification(ProtCryosparcBase):
                       expertLevel=LEVEL_ADVANCED,
                       help='Plot at this cadence (units of O-EM iterations -- '
                            'not epochs).')
-
-        form.addParam('class3D_full_iter_out', BooleanParam,
-                      default=False,
-                      label="Output data after every full iter",
-                      expertLevel=LEVEL_ADVANCED,
-                      help='Turn on to output volumes/particles after every '
-                           'full iteration.')
 
         form.addParam('class3D_dist_plots', BooleanParam,
                       default=True,
@@ -392,15 +370,15 @@ class ProtCryoSparcNew3DClassification(ProtCryosparcBase):
 
         # Create a 3D mask
         volMask = VolumeMask()
-        maskFileName = "cryosparc_%s_%s__mask.mrc" % (
-            self.projectName.get(),
-            self.run3dClassification.get())
+        maskFileName = ("%s%s__mask_solvent.mrc" %
+                        (getOutputPreffix(self.projectName.get()),
+                         self.run3dClassification.get()))
+        # Copy the CS output particles to extra folder
         copyFiles(csOutputFolder, self._getExtraPath(), files=[maskFileName])
         maskFilePath = os.path.join(self._getExtraPath(), maskFileName)
         volMask.setFileName(maskFilePath)
         sr = self._getInputParticles().getSamplingRate()
         volMask.setSamplingRate(sr)
-
         self._defineOutputs(outputMask=volMask)
         self._defineSourceRelation(self.inputParticles.get(), self.outputMask)
 
@@ -482,6 +460,8 @@ class ProtCryoSparcNew3DClassification(ProtCryosparcBase):
             data = f.readlines()
 
         x = ast.literal_eval(data[0])
+        it = None
+        itera = None
 
         # Find the ID of last iteration and the map resolution
         for y in x:
@@ -489,6 +469,10 @@ class ProtCryoSparcNew3DClassification(ProtCryosparcBase):
                 z = str(y['text'])
                 if z.startswith('Batch Class Distribution (Iteration:'):
                     it = z.split(': ')[1].split(')')[0]
+                elif z.startswith('Viewing Direction Distribution (Iteration'):
+                    it = z.split(' ')[4].split(')')[0]
+
+                if it is not None:
                     if int(it) > 99:
                         itera = it
                     else:
@@ -580,7 +564,6 @@ class ProtCryoSparcNew3DClassification(ProtCryosparcBase):
                             'class3D_use_anisomag',
                             'class3D_zip_volumes',
                             'class3D_plot_iters',
-                            'class3D_full_iter_out',
                             'class3D_dist_plots',
                             'class3D_num_particles',
                             'compute_use_ssd']
