@@ -156,7 +156,7 @@ def cryosparcValidate():
                                 " at https://github.com/scipion-em/scipion-em-cryosparc2"
                                 % (cryosparcVersion, str(supportedVersions).replace('\'', ''))))
 
-    if cryosparcVersion >= V4_1_0 and not userExist(os.environ.get(CRYOSPARC_USER)):
+    if cryosparcVersion >= parse_version(V4_1_0) and not userExist(os.environ.get(CRYOSPARC_USER)):
         return ["You need to define the cryoSPARC user variable "
                 "(CRYOSPARC_USER) in the Scipion config file. Note that the "
                 "cryoSPARC username is the email address."]
