@@ -557,7 +557,7 @@ def convertBinaryFiles(imgSet, outputDir, extension='mrcs'):
         """
         newFn = getUniqueFileName(fn, extension)
         if not os.path.exists(newFn):
-            pwutils.createAbsLink(fn, newFn)
+            pwutils.createAbsLink(os.path.abspath(fn), newFn)
             print("   %s -> %s" % (newFn, fn))
         return newFn
 

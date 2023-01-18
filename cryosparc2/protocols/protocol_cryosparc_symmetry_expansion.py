@@ -37,8 +37,7 @@ from .protocol_base import ProtCryosparcBase
 from ..convert import (defineArgs, convertCs2Star, readSetOfParticles)
 from ..utils import (addComputeSectionParams, cryosparcValidate, gpusValidate,
                      enqueueJob, waitForCryosparc, clearIntermediateResults,
-                     addSymmetryParam, getSymmetry, copyFiles,
-                     calculateNewSamplingRate)
+                     addSymmetryParam, getSymmetry, copyFiles)
 
 
 class ProtCryoSparcSymmetryExpansion(ProtCryosparcBase):

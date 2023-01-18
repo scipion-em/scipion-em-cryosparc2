@@ -32,9 +32,9 @@ from pkg_resources import parse_version
 import pwem.protocols as pw
 import pyworkflow.object as pwobj
 import pyworkflow.utils as pwutils
-from pwem.objects import FSC, SetOfFSCs
+from pwem.objects import FSC
 
-from ..constants import V3_3_1, excludedFSCValues, fscValues, V4_0_0
+from ..constants import V3_3_1, excludedFSCValues, fscValues, V4_0_0, V4_1_0
 from ..convert import convertBinaryVol, writeSetOfParticles, ImageHandler
 from ..utils import (getProjectPath, createEmptyProject,
                      createEmptyWorkSpace, getProjectName,
@@ -42,8 +42,7 @@ from ..utils import (getProjectPath, createEmptyProject,
                      doImportParticlesStar, doImportVolumes, killJob, clearJob,
                      get_job_streamlog, getSystemInfo, getJobStatus,
                      STOP_STATUSES, getCryosparcVersion, getProjectInformation,
-                     updateProjectDirectory, getCryosparcProjectId,
-                     getCryosparcProgram)
+                     getCryosparcProjectId, _getLicenceFromFile)
 
 
 class ProtCryosparcBase(pw.EMProtocol):
@@ -264,8 +263,21 @@ class ProtCryosparcBase(pw.EMProtocol):
         status_errors = system_info[0]
 
         if not status_errors:
-            url = self.getCSUrl(system_info, idd)
-            fscRequest = requests.get(url, allow_redirects=True)
+            cryosparcVersion = getCryosparcVersion()
+            system_info = eval(system_info[1])
+            master_hostname = system_info.get('master_hostname')
+            if parse_version(cryosparcVersion) < parse_version(V4_1_0):
+                port_webapp = system_info.get('port_webapp')
+                url = "http://%s:%s/file/%s" % (master_hostname, port_webapp, idd)
+                fscRequest = requests.get(url, allow_redirects=True)
+            else:
+                port_webapp = system_info.get('port_command_vis')
+                url = "http://%s:%s/get_job_file" % (master_hostname, port_webapp)
+                jsonParam = {'fileid': idd}
+                licence_id = _getLicenceFromFile()
+                headers = {'License-ID': licence_id}
+                fscRequest = requests.post(url, json=jsonParam, headers=headers,
+                                          allow_redirects=True)
             fscFile = "fsc.txt"
             fscFilePath = os.path.join(self._getExtraPath(), fscFile)
             factor = self._getInputParticles().getDim()[0] * imgSet.getSamplingRate()
@@ -275,19 +287,6 @@ class ProtCryosparcBase(pw.EMProtocol):
             fscSet = self.getSetOfFCSsFromFile(fscFilePath, factor)
             self._defineOutputs(outputFSC=fscSet)
             self._defineSourceRelation(vol, fscSet)
-
-    def getCSUrl(self, system_info, idd):
-        cryosparcVersion = getCryosparcVersion()
-        system_info = eval(system_info[1])
-        master_hostname = system_info.get('master_hostname')
-        if parse_version(cryosparcVersion) < parse_version(V4_0_0):
-            port_webapp = system_info.get('port_webapp')
-            url = "http://%s:%s/file/%s" % (master_hostname, port_webapp, idd)
-        else:
-            port_webapp = system_info.get('port_app')
-            url = "http://%s:%s/api/files/%s" % (master_hostname, port_webapp, idd)
-
-        return url
 
     def getSetOfFCSsFromFile(self, file, factor):
         f = open(file, 'r')

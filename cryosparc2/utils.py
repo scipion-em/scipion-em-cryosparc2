@@ -43,7 +43,9 @@ from .constants import (CS_SYM_NAME, SYM_DIHEDRAL_Y, CRYOSPARC_USER,
                         CRYO_PROJECTS_DIR, V2_14_0, V2_13_0, CRYOSPARC_HOME,
                         CRYOSPARC_USE_SSD, V_UNKNOWN, V3_0_0, V2_15_0,
                         CRYOSPARC_MASTER, CRYOSPARC_STANDALONE_INSTALLATION,
-                        CRYOSPARC_DEFAULT_LANE, V3_3_2, V4_0_0)
+                        CRYOSPARC_DEFAULT_LANE, V3_3_2, V4_0_0, V4_1_0,
+                        CRYOSPARC_CONFIG_FILE, CRYOSPARC_VERSION_FILE,
+                        CRYOSPARC_LICENSE_ID_VARIABLE)
 
 VERSION = 'version'
 
@@ -154,6 +156,11 @@ def cryosparcValidate():
                                 " at https://github.com/scipion-em/scipion-em-cryosparc2"
                                 % (cryosparcVersion, str(supportedVersions).replace('\'', ''))))
 
+    if cryosparcVersion >= parse_version(V4_1_0) and not userExist(os.environ.get(CRYOSPARC_USER)):
+        return ["You need to define the cryoSPARC user variable "
+                "(CRYOSPARC_USER) in the Scipion config file. Note that the "
+                "cryoSPARC username is the email address."]
+
     return []
 
 
@@ -195,17 +202,33 @@ def getCryosparcVersion():
 
 
 def _getCryosparcVersionFromFile():
-    versionFile = getCryosparcDir(CRYOSPARC_MASTER, "version")
+    versionFile = getCryosparcDir(CRYOSPARC_MASTER, CRYOSPARC_VERSION_FILE)
     # read the version file
     with open(versionFile, "r") as fh:
         return fh.readline()
 
 
-def getCryosparcUser():
+def _getLicenceFromFile():
+    configFile = getCryosparcDir(CRYOSPARC_MASTER, CRYOSPARC_CONFIG_FILE)
+    with open(configFile, 'r') as f:
+        configContent = f.read().strip().split("\n")
+        for variable in configContent:
+            if CRYOSPARC_LICENSE_ID_VARIABLE in variable:
+                return variable.split("=")[1].replace("\"", "")
+        return None
+
+
+def getCryosparcUser(userId=True):
     """
-    Get the full name of the initial admin account
+    Get the user
     """
-    return os.path.basename(os.environ.get(CRYOSPARC_USER, "admin"))
+    user = os.environ.get(CRYOSPARC_USER, "admin")
+    cryosparcVersion = getCryosparcVersion()
+    if parse_version(cryosparcVersion) >= parse_version(V4_1_0):
+        if userId:
+            user = getUserId(user)
+
+    return user
 
 
 def isCryosparcStandalone():
@@ -363,7 +386,7 @@ def createEmptyWorkSpace(projectName, workspaceTitle, workspaceComment):
     """
     create_work_space_cmd = (getCryosparcProgram() +
                              ' %screate_empty_workspace("%s", "%s", "%s", "%s", "%s")%s '
-                             % ("'", projectName, str(getCryosparcUser()),
+                             % ("'", projectName, str(getCryosparcUser(userId=False)),
                                 "None", str(workspaceTitle),
                                 str(workspaceComment), "'"))
     return runCmd(create_work_space_cmd, printCmd=False)
@@ -672,6 +695,22 @@ def getSystemInfo():
     """
     system_info_cmd = (getCryosparcProgram() + " 'get_system_info()'")
     return runCmd(system_info_cmd, printCmd=False)
+
+
+def userExist(email):
+    """
+    Return if an user exist into cryoSPARC
+    """
+    getUser_cmd = (getCryosparcProgram() + ' %sUserExists("%s")%s' % ("'", email, "'"))
+    return runCmd(getUser_cmd, printCmd=False)[1] == 'True'
+
+
+def getUserId(email):
+    """Get the user Id taking into account the user email"""
+    import ast
+    getUser_cmd = (getCryosparcProgram() + ' %sGetUser("%s")%s' % ("'", email, "'"))
+    user = runCmd(getUser_cmd, printCmd=False)
+    return ast.literal_eval(user[1])['_id']
 
 
 def getSchedulerLanes():

@@ -31,7 +31,7 @@ import pyworkflow.utils as pwutils
 
 from .constants import *
 
-__version__ = '4.0.0'
+__version__ = '4.0.1'
 _references = ['Punjani2017', 'Brubaker2017', 'daniel_asarnow_2019_3576630']
 _logo = 'cryosparc2_logo.png'
 
@@ -43,7 +43,8 @@ class Plugin(em.Plugin):
     _supportedVersions = [V2_5_0, V2_8_0, V2_9_0, V2_11_0, V2_12_0, V2_12_2,
                           V2_12_4, V2_13_0, V2_13_2, V2_14_0, V2_14_2, V2_15_0,
                           V3_0_0, V3_0_1, V3_1_0, V3_2_0, V3_3_0, V3_3_1,
-                          V3_3_2, V4_0_0, V4_0_1, V4_0_2, V4_0_3]
+                          V3_3_2, V4_0_0, V4_0_1, V4_0_2, V4_0_3, V4_1_0,
+                          V4_1_1]
 
     @classmethod
     def _defineVariables(cls):
@@ -63,7 +64,7 @@ class Plugin(em.Plugin):
     def defineBinaries(cls, env):
         PYEM_VERSION = '22.01.18'  # This is our made up version
         PYEM_INSTALLED = 'pyem-%s_installed' % PYEM_VERSION
-        installationCmd = 'pip uninstall -y pyem && pip install git+https://github.com/asarnow/pyem.git@4af3869f9657149c76134b3cdc5b1b3a55621853'
+        installationCmd = 'pip uninstall -y pyem && pip install git+https://github.com/asarnow/pyem.git@47cf8f70488500be5988b4db1b6ef7002916e0e0'
         installationCmd += ' && touch %s' % PYEM_INSTALLED
 
         env.addPackage('pyem', commands=[(installationCmd, PYEM_INSTALLED)],
