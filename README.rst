@@ -32,7 +32,7 @@ You will need to use `3.0.0 <https://scipion-em.github.io/docs/release-3.0.0/doc
 ==========================
 **v4.0.1**
 -----------
-* **new** *    : Compatibility with cryoSPARC v4.1.0
+* **new** *    : Compatibility with cryoSPARC v4.1.0 and 4.1.1
 
 **v4.0.0**
 -----------
