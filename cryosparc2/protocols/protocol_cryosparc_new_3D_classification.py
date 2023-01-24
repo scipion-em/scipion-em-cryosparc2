@@ -400,7 +400,10 @@ class ProtCryoSparcNew3DClassification(ProtCryosparcBase):
 
     def _fillClassesFromIter(self, clsSet, filename):
         """ Create the SetOfClasses3D """
-        xmpMd = 'micrographs@' + filename
+        csVersion = getCryosparcVersion()
+        xmpMd = 'particles@' + filename
+        if parse_version(csVersion) <= parse_version(V4_1_1):
+            xmpMd = 'micrographs@' + filename
         self._loadClassesInfo(self._getFileName('out_class'))
         clsSet.classifyItems(updateItemCallback=self._updateParticle,
                              updateClassCallback=self._updateClass,
