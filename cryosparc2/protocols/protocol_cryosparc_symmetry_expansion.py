@@ -127,9 +127,7 @@ class ProtCryoSparcSymmetryExpansion(ProtCryosparcBase):
 
         argsList = [csFile, outputStarFn]
 
-        parser = defineArgs()
-        args = parser.parse_args(argsList)
-        convertCs2Star(args)
+        convertCs2Star(argsList)
         imgSet = self._getInputParticles()
         self.setFilePattern(imgSet.getFirstItem().getFileName())
         outImgSet = self._createSetOfParticles()

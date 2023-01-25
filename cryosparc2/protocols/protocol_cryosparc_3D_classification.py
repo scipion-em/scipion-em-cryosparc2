@@ -285,9 +285,7 @@ class ProtCryoSparc3DClassification(ProtCryosparcBase):
         outputStarFn = self._getFileName('out_particles')
         argsList = [csFile, outputStarFn]
 
-        parser = defineArgs()
-        args = parser.parse_args(argsList)
-        convertCs2Star(args)
+        convertCs2Star(argsList)
 
         self._createModelFile(csOutputFolder, itera)
 

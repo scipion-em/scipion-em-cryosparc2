@@ -327,9 +327,7 @@ class ProtCryoSparcInitialModel(ProtCryosparcBase, ProtInitialVolume,
         csFile = os.path.join(outputFolder, csFileName)
         outputClassFn = self._getFileName('out_particles')
         argsList = [csFile, outputClassFn]
-        parser = defineArgs()
-        args = parser.parse_args(argsList)
-        convertCs2Star(args)
+        convertCs2Star(argsList)
 
         # Create model files for 3D classification
         self._createModelFile()

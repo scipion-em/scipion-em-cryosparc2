@@ -333,9 +333,7 @@ class ProtCryoSparcNaiveLocalRefine(ProtCryosparcBase, ProtOperateParticles):
         outputStarFn = self._getFileName('out_particles')
         argsList = [csFile, outputStarFn]
 
-        parser = defineArgs()
-        args = parser.parse_args(argsList)
-        convertCs2Star(args)
+        convertCs2Star(argsList)
 
         fnVol = os.path.join(self._getExtraPath(), fnVolName)
         half1 = os.path.join(self._getExtraPath(), half1Name)

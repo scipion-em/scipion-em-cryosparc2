@@ -171,9 +171,7 @@ class ProtCryoSparcSubtract(ProtCryosparcBase, ProtOperateParticles):
         csFile = os.path.join(self._getExtraPath(), self.runPartStract.get(),
                               csFileName)
         argsList = [csFile, outputStarFn]
-        parser = defineArgs()
-        args = parser.parse_args(argsList)
-        convertCs2Star(args)
+        convertCs2Star(argsList)
 
         imgSet = self._getInputParticles()
         outImgSet = self._createSetOfParticles()

@@ -181,9 +181,7 @@ class ProtCryoSparc3DVariability(ProtCryosparcBase, ProtRefine3D):
         outputStarFn = self._getFileName('out_particles')
         argsList = [csFile, outputStarFn]
 
-        parser = defineArgs()
-        args = parser.parse_args(argsList)
-        convertCs2Star(args)
+        convertCs2Star(argsList)
 
         fnVolName = (getOutputPreffix(self.projectName.get()) +
                      self.run3DVariability.get() + "_map.mrc")

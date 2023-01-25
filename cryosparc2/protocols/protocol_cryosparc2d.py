@@ -281,18 +281,13 @@ class ProtCryo2D(ProtCryosparcBase, pwprot.ProtClassify2D):
         csPartFile = os.path.join(self._getExtraPath(), csParticlesName)
         outputStarFn = self._getFileName('out_particles')
         argsList = [csPartFile, outputStarFn]
-
-        parser = defineArgs()
-        args = parser.parse_args(argsList)
-        convertCs2Star(args)
+        convertCs2Star(argsList)
 
         csClassAverageFile = os.path.join(self._getExtraPath(), csClassAveragesName)
         outputClassFn = self._getFileName('out_class')
         argsList = [csClassAverageFile, outputClassFn]
 
-        parser = defineArgs()
-        args = parser.parse_args(argsList)
-        convertCs2Star(args)
+        convertCs2Star(argsList)
 
         self._createModelFile()
         self._loadClassesInfo(self._getFileName('out_class_m2'))
