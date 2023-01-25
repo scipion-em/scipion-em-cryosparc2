@@ -50,9 +50,8 @@ def getPyemEnvName(version):
     return 'pyem-%s' % version
 
 # pyem environment variables
-PYEM_VERSION = '22.01.18'  # This is our made up version
+PYEM_VERSION = '23.01.25'  # This is our made up version
 PYEM_ACTIVATION_CMD = 'conda activate %s' % (getPyemEnvName(PYEM_VERSION))
-PYEM_ENV_ACTIVATION = 'PYEM_ENV_ACTIVATION'
 
 # Supported versions:
 V_UNKNOWN ='v0.0.0'

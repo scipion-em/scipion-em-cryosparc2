@@ -50,11 +50,10 @@ class Plugin(em.Plugin):
     def _defineVariables(cls):
         cls._defineVar(CRYOSPARC_HOME, os.environ.get(CRYOSPARC_DIR, ""))
         cls._defineVar(CRYO_PROJECTS_DIR, "scipion_projects")
-        cls._defineVar(PYEM_ENV_ACTIVATION, PYEM_ACTIVATION_CMD)
 
     @classmethod
     def getPyemEnvActivation(cls):
-        return cls.getVar(PYEM_ENV_ACTIVATION)
+        return PYEM_ACTIVATION_CMD
 
     @classmethod
     def getEnviron(cls):
@@ -81,8 +80,9 @@ class Plugin(em.Plugin):
         PYEM_INSTALLED = f"pyem_{PYEM_VERSION}_installed"
         ENV_NAME = getPyemEnvName(PYEM_VERSION)
 
-        installCmd = [cls.getCondaActivationCmd(),
-                      f'conda create -y -n {ENV_NAME} -c conda-forge -c anaconda && ',
+        installCmd = ["pip uninstall -y pyem && ",
+                      cls.getCondaActivationCmd(),
+                      f'conda create -y -n {ENV_NAME} python=3.8 -c conda-forge -c anaconda && ',
                       f'conda activate {ENV_NAME} && pip install git+https://github.com/asarnow/pyem.git@47cf8f70488500be5988b4db1b6ef7002916e0e0']
 
         # install pyem
