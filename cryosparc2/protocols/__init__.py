@@ -25,7 +25,7 @@
 # *
 # **************************************************************************
 from .protocol_base import ProtCryosparcBase
-from .protocol_cryorefine import ProtCryoSparcRefine3D # deprecated
+#from .protocol_cryorefine import ProtCryoSparcRefine3D # deprecated
 from .protocol_cryosparc2d import ProtCryo2D
 from .protocol_cryosparc_ab import ProtCryoSparcInitialModel
 # from .protocol_cryosparc_nonuniform_refine import ProtCryoSparcNonUniformRefine3D # deprecated
