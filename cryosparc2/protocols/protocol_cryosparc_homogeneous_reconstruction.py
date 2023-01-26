@@ -40,7 +40,7 @@ from pyworkflow.protocol.params import (PointerParam, LEVEL_ADVANCED, IntParam,
 from pwem.objects import Volume
 
 from .protocol_base import ProtCryosparcBase
-from ..convert import (defineArgs, convertCs2Star, createItemMatrix,
+from ..convert import (convertCs2Star, createItemMatrix,
                        setCryosparcAttributes)
 from ..utils import (addComputeSectionParams, calculateNewSamplingRate,
                      cryosparcValidate, gpusValidate, enqueueJob,

@@ -35,7 +35,7 @@ from pyworkflow.protocol.params import (PointerParam, FloatParam,
                                         LEVEL_ADVANCED, Positive, BooleanParam)
 
 from .protocol_base import ProtCryosparcBase
-from ..convert import (defineArgs, convertCs2Star, readSetOfParticles,
+from ..convert import (convertCs2Star, readSetOfParticles,
                        cryosparcToLocation)
 from ..utils import (addComputeSectionParams, calculateNewSamplingRate,
                      cryosparcValidate, gpusValidate, enqueueJob,

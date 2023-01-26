@@ -39,7 +39,7 @@ from pwem import ALIGN_PROJ
 from pwem.protocols import ProtInitialVolume, ProtClassify3D
 
 from .protocol_base import ProtCryosparcBase
-from ..convert import (defineArgs, convertCs2Star, cryosparcToLocation,
+from ..convert import (convertCs2Star, cryosparcToLocation,
                        rowToAlignment)
 
 from ..utils import (addSymmetryParam, addComputeSectionParams,

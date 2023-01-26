@@ -37,8 +37,7 @@ from pyworkflow.protocol.params import (PointerParam, FloatParam, IntParam,
 import pyworkflow.utils as pwutils
 
 from .protocol_base import ProtCryosparcBase
-from ..convert import (rowToAlignment, defineArgs, convertCs2Star,
-                       cryosparcToLocation)
+from ..convert import (rowToAlignment, convertCs2Star,  cryosparcToLocation)
 from ..utils import (addComputeSectionParams, cryosparcValidate, gpusValidate,
                      enqueueJob, waitForCryosparc, clearIntermediateResults,
                      copyFiles, getOutputPreffix)

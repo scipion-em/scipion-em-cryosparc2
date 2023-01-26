@@ -12,10 +12,7 @@ You will need to use `3.0.0 <https://scipion-em.github.io/docs/release-3.0.0/doc
 
 * **2D Classification**: Classify particles into multiple 2D classes to facilitate stack cleaning and removal of junk particles.  Also useful as a sanity check to investigate particle quality.
 * **3D Ab-Initio Reconstruction**:  Reconstruct a single (homogeneous) or multiple (heterogeneous) 3-D maps from a set of particles, without any initial models or starting structures required.
-* **3D Homogeneous Refinement**: Rapidly refine a single homogeneous structure to high-resolution and validate using the gold-standard FSC.
-* **3D Non uniform Refinement**: Apply non-uniform refinement to acheive higher resolution and map quality
 * **Particle Subtraction**: Subtract projections of a masked volume from particles.
-* **3D Local Refinement** Naive local refinement.
 * **Heterogeneous Refinement**: Heterogeneous Refinement simultaneously classifies particles and refines structures from n initial structures, usually obtained following an Ab-Initio Reconstruction
 * **Local CTF Refinement (per-particle defocus)**: Local CTF Refinement performs per-particle defocus estimation for each particle in a dataset, against a given 3D reference structure.
 * **Global CTF Refinement (per-group beam tilt, trefoil, spherical aberration, tetrafoil)**: Global CTF Refinement performs per-exposure-group CTF parameter refinement of higher-order aberrations, against a given 3D reference.
@@ -28,39 +25,13 @@ You will need to use `3.0.0 <https://scipion-em.github.io/docs/release-3.0.0/doc
 * **Homogeneous Reconstruction**: Reconstruct half-maps from input particles with alignments
 * **3D Classification**: Classify particles into multiple 3D classes and optimize 3D class densities (currently, without re-aligning particle pose or shift).
 
-**Latest plugin versions**
+**Latest plugin version**
 ==========================
-**v4.0.1**
+**v4.0.2**
 -----------
-* **new** *    : Compatibility with cryoSPARC v4.1.0 and 4.1.1
-
-**v4.0.0**
------------
-* **new**     : Compatibility with cryoSPARC v4.0.0
-
-**v3.3.18**
------------
-* **new**     : Allow to import .cs particles files
-
-**v3.3.17**
------------
-
-* **fixed**    : Allow 31 or more classes in the 3D classification protocol
-
-**v3.3.16**
------------
-
-* **fixed**    : Fixed an error related with the slow loading protocols
-* **fixed**    : Fixed an error in the 3D classification protocol
-
-**v3.3.15**
------------
-* **new**      : Compatibility with cryoSPARC v3.3.2
-* **new**      : Added the option to use the plugin in a CS installation in a cluster
-* **new**      : Added a wizard to select the lane where the protocols will be launched
-* **new**      : Added the varaiable CRYOSPARC_DEFAULT_LANE to define the name of the cryoSPARC default lane
-* **new**      : Added the variable CRYOSPARC_STANDALONE_INSTALLATION to specify whether the CS installation is standalone or not
-
+* **new**     :  Compatibility with cryoSPARC v4.1.0, 4.1.1 and 4.1.2
+* **updated** :  Creating an environment for pyem package
+* **updated** :  3D homogeneous refinement(Legacy), 3D non-uniform refinement(Legacy) and Naive local refinement(Legacy) protocols are deprecated
 
 **Installing the plugin**
 =========================

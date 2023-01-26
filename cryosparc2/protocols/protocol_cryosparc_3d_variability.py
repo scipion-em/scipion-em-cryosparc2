@@ -25,10 +25,9 @@
 # *
 # **************************************************************************
 
-from pyworkflow.protocol.params import (PointerParam, FloatParam,
-                                        LEVEL_ADVANCED, Float, Positive,
+from pyworkflow.protocol.params import (PointerParam, FloatParam, Positive,
                                         IntParam, BooleanParam, EnumParam)
-from pwem.objects import Volume, FSC
+from pwem.objects import Volume
 from pwem.protocols import ProtRefine3D
 
 from . import ProtCryosparcBase

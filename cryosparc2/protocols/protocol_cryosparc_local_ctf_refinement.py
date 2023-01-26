@@ -37,7 +37,7 @@ from pyworkflow.protocol.params import (PointerParam, FloatParam,
 
 from .protocol_base import ProtCryosparcBase
 from .. import RELIONCOLUMNS
-from ..convert import (defineArgs, convertCs2Star, createItemMatrix,
+from ..convert import (convertCs2Star, createItemMatrix,
                        setCryosparcAttributes)
 from ..utils import (addComputeSectionParams, cryosparcValidate, gpusValidate,
                      enqueueJob, waitForCryosparc, copyFiles)

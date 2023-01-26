@@ -34,7 +34,7 @@ import pyworkflow.utils as pwutils
 from pyworkflow.protocol.params import *
 
 from .protocol_base import ProtCryosparcBase
-from ..convert import (defineArgs, convertCs2Star, createItemMatrix,
+from ..convert import (convertCs2Star, createItemMatrix,
                        setCryosparcAttributes)
 from ..utils import (addSymmetryParam, addComputeSectionParams,
                      calculateNewSamplingRate,
