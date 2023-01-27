@@ -26,6 +26,8 @@
 # *
 # **************************************************************************
 import os
+from pkg_resources import parse_version
+
 import emtable
 
 import pwem.objects as pwobj
@@ -40,9 +42,10 @@ from ..utils import (addSymmetryParam, addComputeSectionParams,
                      calculateNewSamplingRate,
                      cryosparcValidate, gpusValidate, getSymmetry,
                      waitForCryosparc, clearIntermediateResults, enqueueJob,
-                     fixVolume, copyFiles, getOutputPreffix)
+                     fixVolume, copyFiles, getOutputPreffix,
+                     getCryosparcVersion)
 from ..constants import (NOISE_MODEL_CHOICES, REFINE_MASK_CHOICES,
-                         RELIONCOLUMNS)
+                         RELIONCOLUMNS, V4_0_0)
 
 
 class ProtCryoSparcRefine3D(ProtCryosparcBase, pwprot.ProtRefine3D):
@@ -362,6 +365,12 @@ class ProtCryoSparcRefine3D(ProtCryosparcBase, pwprot.ProtRefine3D):
                         "The Particles has not associated a "
                         "CTF model")
         return validateMsgs
+
+    @classmethod
+    def isDisabled(cls):
+        if parse_version(getCryosparcVersion()) > parse_version(V4_0_0):
+            return True
+        return False
 
     def _summary(self):
         summary = []

@@ -311,9 +311,7 @@ class ProtCryoSparcHomogeneousReconstruct(ProtCryosparcBase):
         self._defineSourceRelation(self.inputParticles.get(), vol)
         self._defineOutputs(outputParticles=outImgSet)
         self._defineTransformRelation(self.inputParticles.get(), outImgSet)
-        cryosparcVersion = getCryosparcVersion()
-        if parse_version(cryosparcVersion) < parse_version(V4_0_0):
-            self.createFSC(idd, imgSet, vol)
+        self.createFSC(idd, imgSet, vol)
 
     def _fillDataFromIter(self, imgSet):
         outImgsFn = 'particles@' + self._getFileName('out_particles')

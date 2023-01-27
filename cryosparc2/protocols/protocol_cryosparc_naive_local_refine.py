@@ -356,9 +356,7 @@ class ProtCryoSparcNaiveLocalRefine(ProtCryosparcBase, ProtOperateParticles):
         self._defineSourceRelation(self.inputParticles.get(), vol)
         self._defineOutputs(outputParticles=outImgSet)
         self._defineTransformRelation(self.inputParticles.get(), outImgSet)
-        cryosparcVersion = getCryosparcVersion()
-        if parse_version(cryosparcVersion) < parse_version(V4_0_0):
-            self.createFSC(idd, imgSet, vol)
+        self.createFSC(idd, imgSet, vol)
 
     # --------------------------- INFO functions -------------------------------
     def _validate(self):
@@ -378,6 +376,12 @@ class ProtCryoSparcNaiveLocalRefine(ProtCryosparcBase, ProtOperateParticles):
                             "The Particles has not associated a "
                             "CTF model")
         return validateMsgs
+
+    @classmethod
+    def isDisabled(cls):
+        if parse_version(getCryosparcVersion()) > parse_version(V4_0_0):
+            return True
+        return False
 
     def _summary(self):
         summary = []
