@@ -39,7 +39,7 @@ from pwem import ALIGN_PROJ
 from pwem.protocols import ProtInitialVolume, ProtClassify3D
 
 from .protocol_base import ProtCryosparcBase
-from ..convert import (defineArgs, convertCs2Star, cryosparcToLocation,
+from ..convert import (convertCs2Star, cryosparcToLocation,
                        rowToAlignment)
 
 from ..utils import (addSymmetryParam, addComputeSectionParams,
@@ -327,9 +327,7 @@ class ProtCryoSparcInitialModel(ProtCryosparcBase, ProtInitialVolume,
         csFile = os.path.join(outputFolder, csFileName)
         outputClassFn = self._getFileName('out_particles')
         argsList = [csFile, outputClassFn]
-        parser = defineArgs()
-        args = parser.parse_args(argsList)
-        convertCs2Star(args)
+        convertCs2Star(argsList)
 
         # Create model files for 3D classification
         self._createModelFile()

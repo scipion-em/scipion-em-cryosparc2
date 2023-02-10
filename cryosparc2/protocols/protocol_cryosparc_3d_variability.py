@@ -25,10 +25,9 @@
 # *
 # **************************************************************************
 
-from pyworkflow.protocol.params import (PointerParam, FloatParam,
-                                        LEVEL_ADVANCED, Float, Positive,
+from pyworkflow.protocol.params import (PointerParam, FloatParam, Positive,
                                         IntParam, BooleanParam, EnumParam)
-from pwem.objects import Volume, FSC
+from pwem.objects import Volume
 from pwem.protocols import ProtRefine3D
 
 from . import ProtCryosparcBase
@@ -181,9 +180,7 @@ class ProtCryoSparc3DVariability(ProtCryosparcBase, ProtRefine3D):
         outputStarFn = self._getFileName('out_particles')
         argsList = [csFile, outputStarFn]
 
-        parser = defineArgs()
-        args = parser.parse_args(argsList)
-        convertCs2Star(args)
+        convertCs2Star(argsList)
 
         fnVolName = (getOutputPreffix(self.projectName.get()) +
                      self.run3DVariability.get() + "_map.mrc")

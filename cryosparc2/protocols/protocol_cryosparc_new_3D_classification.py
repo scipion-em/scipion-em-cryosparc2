@@ -40,7 +40,7 @@ from pyworkflow.protocol.params import (FloatParam, LEVEL_ADVANCED,
                                         BooleanParam, EnumParam)
 
 from .protocol_base import ProtCryosparcBase
-from ..convert import (convertBinaryVol, defineArgs, convertCs2Star,
+from ..convert import (convertBinaryVol, convertCs2Star,
                        rowToAlignment, ALIGN_PROJ, cryosparcToLocation)
 from ..utils import (addComputeSectionParams, doImportVolumes,
                      get_job_streamlog, calculateNewSamplingRate,
@@ -62,7 +62,7 @@ class ProtCryoSparcNew3DClassification(ProtCryosparcBase):
     _className = "class_3D"
     _devStatus = BETA
     _protCompatibility = [V3_3_1, V3_3_2, V4_0_0, V4_0_1, V4_0_2, V4_0_3,
-                          V4_1_0, V4_1_1]
+                          V4_1_0, V4_1_1, V4_1_2]
 
     def _initialize(self):
         self._defineFileNames()
@@ -340,9 +340,7 @@ class ProtCryoSparcNew3DClassification(ProtCryosparcBase):
         outputStarFn = self._getFileName('out_particles')
         argsList = [csFile, outputStarFn]
 
-        parser = defineArgs()
-        args = parser.parse_args(argsList)
-        convertCs2Star(args)
+        convertCs2Star(argsList)
 
         self._createModelFile(csOutputFolder, itera)
 
@@ -400,7 +398,10 @@ class ProtCryoSparcNew3DClassification(ProtCryosparcBase):
 
     def _fillClassesFromIter(self, clsSet, filename):
         """ Create the SetOfClasses3D """
-        xmpMd = 'micrographs@' + filename
+        csVersion = getCryosparcVersion()
+        xmpMd = 'particles@' + filename
+        if parse_version(csVersion) <= parse_version(V4_1_1):
+            xmpMd = 'micrographs@' + filename
         self._loadClassesInfo(self._getFileName('out_class'))
         clsSet.classifyItems(updateItemCallback=self._updateParticle,
                              updateClassCallback=self._updateClass,

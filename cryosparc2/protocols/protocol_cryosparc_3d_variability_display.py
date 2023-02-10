@@ -27,9 +27,7 @@
 
 from pyworkflow.protocol.params import (PointerParam, FloatParam,
                                         LEVEL_ADVANCED, EnumParam, IntParam,
-                                        Positive, BooleanParam,
-                                        ProtocolClassParam)
-from pwem.objects import Volume, FSC
+                                        Positive, BooleanParam)
 from pwem.protocols import ProtRefine3D
 
 from . import ProtCryosparcBase
@@ -207,9 +205,7 @@ class ProtCryoSparc3DVariabilityAnalisys(ProtCryosparcBase, ProtRefine3D):
                 filePath = os.path.join(outputFolder, patterns[j])
                 outputStarFn = os.path.join(starFilesPath, outputs[j])
                 argsList = [filePath, outputStarFn]
-                parser = defineArgs()
-                args = parser.parse_args(argsList)
-                convertCs2Star(args)
+                convertCs2Star(argsList)
 
     def createOutputStep(self):
         self._initializeUtilsVariables()

@@ -31,7 +31,7 @@ import pyworkflow.utils as pwutils
 
 from .constants import *
 
-__version__ = '4.0.1'
+__version__ = '4.0.2'
 _references = ['Punjani2017', 'Brubaker2017', 'daniel_asarnow_2019_3576630']
 _logo = 'cryosparc2_logo.png'
 
@@ -44,12 +44,16 @@ class Plugin(em.Plugin):
                           V2_12_4, V2_13_0, V2_13_2, V2_14_0, V2_14_2, V2_15_0,
                           V3_0_0, V3_0_1, V3_1_0, V3_2_0, V3_3_0, V3_3_1,
                           V3_3_2, V4_0_0, V4_0_1, V4_0_2, V4_0_3, V4_1_0,
-                          V4_1_1]
+                          V4_1_1, V4_1_2]
 
     @classmethod
     def _defineVariables(cls):
         cls._defineVar(CRYOSPARC_HOME, os.environ.get(CRYOSPARC_DIR, ""))
         cls._defineVar(CRYO_PROJECTS_DIR, "scipion_projects")
+
+    @classmethod
+    def getPyemEnvActivation(cls):
+        return PYEM_ACTIVATION_CMD
 
     @classmethod
     def getEnviron(cls):
@@ -61,13 +65,45 @@ class Plugin(em.Plugin):
         return environ
 
     @classmethod
-    def defineBinaries(cls, env):
-        PYEM_VERSION = '22.01.18'  # This is our made up version
-        PYEM_INSTALLED = 'pyem-%s_installed' % PYEM_VERSION
-        installationCmd = 'pip uninstall -y pyem && pip install git+https://github.com/asarnow/pyem.git@47cf8f70488500be5988b4db1b6ef7002916e0e0'
-        installationCmd += ' && touch %s' % PYEM_INSTALLED
+    def getDependencies(cls):
+        """ Return a list of dependencies. Include conda if
+            activation command was not found. """
+        condaActivationCmd = cls.getCondaActivationCmd()
+        neededProgs = ['wget']
+        if not condaActivationCmd:
+            neededProgs.append('conda')
 
-        env.addPackage('pyem', commands=[(installationCmd, PYEM_INSTALLED)],
-                       version=PYEM_VERSION, tar='void.tgz',
-                       createBuildDir=True, buildDir='pyem-%s' % PYEM_VERSION,
-                       default=True)
+        return neededProgs
+
+    @classmethod
+    def addPyemPackage(cls, env):
+        PYEM_INSTALLED = f"pyem_{PYEM_VERSION}_installed"
+        ENV_NAME = getPyemEnvName(PYEM_VERSION)
+
+        installCmd = ["pip uninstall -y pyem && ",
+                      cls.getCondaActivationCmd(),
+                      f'conda create -y -n {ENV_NAME} python=3.8 -c conda-forge -c anaconda && ',
+                      f'conda activate {ENV_NAME} && pip install git+https://github.com/asarnow/pyem.git@47cf8f70488500be5988b4db1b6ef7002916e0e0']
+
+        # install pyem
+        #installCmd.append('pip install git+https://github.com/asarnow/pyem.git@47cf8f70488500be5988b4db1b6ef7002916e0e0')
+
+        # Flag installation finished
+        installCmd.append(f'&& touch {PYEM_INSTALLED}')
+
+        pyem_commands = [(" ".join(installCmd), PYEM_INSTALLED)]
+
+        envPath = os.environ.get('PATH', "")
+        installEnvVars = {'PATH': envPath} if envPath else None
+        env.addPackage('pyem', version=PYEM_VERSION,
+                       tar='void.tgz',
+                       commands=pyem_commands,
+                       neededProgs=cls.getDependencies(),
+                       default=True,
+                       createBuildDir=True,
+                       buildDir='pyem-%s' % PYEM_VERSION,
+                       vars=installEnvVars)
+
+    @classmethod
+    def defineBinaries(cls, env):
+        cls.addPyemPackage(env)

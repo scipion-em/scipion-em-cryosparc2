@@ -39,7 +39,7 @@ from pyworkflow.protocol.params import (PointerParam, FloatParam, IntParam,
                                         EnumParam)
 
 from .protocol_base import ProtCryosparcBase
-from ..convert import (defineArgs, convertCs2Star, createItemMatrix,
+from ..convert import (convertCs2Star, createItemMatrix,
                        setCryosparcAttributes)
 from ..utils import (addComputeSectionParams, cryosparcValidate, gpusValidate,
                      enqueueJob, waitForCryosparc, copyFiles,
@@ -57,7 +57,8 @@ class ProtCryoSparcGlobalCtfRefinement(ProtCryosparcBase, pwprot.ProtParticles):
     _label = 'global ctf refinement'
     _className = "ctf_refine_global"
     _protCompatibility = [V3_0_0, V3_1_0, V3_2_0, V3_3_0, V3_3_1, V3_3_2,
-                          V4_0_0, V4_0_1, V4_0_2, V4_0_3, V4_1_0, V4_1_1]
+                          V4_0_0, V4_0_1, V4_0_2, V4_0_3, V4_1_0, V4_1_1,
+                          V4_1_2]
     newParamsName = []
 
     def _initialize(self):
@@ -239,9 +240,7 @@ class ProtCryoSparcGlobalCtfRefinement(ProtCryosparcBase, pwprot.ProtParticles):
 
         argsList = [csFile, outputStarFn]
 
-        parser = defineArgs()
-        args = parser.parse_args(argsList)
-        convertCs2Star(args)
+        convertCs2Star(argsList)
 
         imgSet = self._getInputParticles()
 

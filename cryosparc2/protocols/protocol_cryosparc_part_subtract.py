@@ -35,7 +35,7 @@ from pyworkflow.protocol.params import (PointerParam, FloatParam,
                                         LEVEL_ADVANCED, Positive, BooleanParam)
 
 from .protocol_base import ProtCryosparcBase
-from ..convert import (defineArgs, convertCs2Star, readSetOfParticles,
+from ..convert import (convertCs2Star, readSetOfParticles,
                        cryosparcToLocation)
 from ..utils import (addComputeSectionParams, calculateNewSamplingRate,
                      cryosparcValidate, gpusValidate, enqueueJob,
@@ -171,9 +171,7 @@ class ProtCryoSparcSubtract(ProtCryosparcBase, ProtOperateParticles):
         csFile = os.path.join(self._getExtraPath(), self.runPartStract.get(),
                               csFileName)
         argsList = [csFile, outputStarFn]
-        parser = defineArgs()
-        args = parser.parse_args(argsList)
-        convertCs2Star(args)
+        convertCs2Star(argsList)
 
         imgSet = self._getInputParticles()
         outImgSet = self._createSetOfParticles()

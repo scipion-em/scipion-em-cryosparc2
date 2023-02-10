@@ -44,6 +44,14 @@ CRYOSPARC_DEFAULT_LANE = 'CRYOSPARC_DEFAULT_LANE'
 CRYOSPARC_VERSION_FILE = 'version'
 CRYOSPARC_CONFIG_FILE = 'config.sh'
 CRYOSPARC_LICENSE_ID_VARIABLE = 'CRYOSPARC_LICENSE_ID'
+CRYOSPARC_CS2STAR_SCRIPT = 'cs2Start.py'
+
+def getPyemEnvName(version):
+    return 'pyem-%s' % version
+
+# pyem environment variables
+PYEM_VERSION = '23.01.25'  # This is our made up version
+PYEM_ACTIVATION_CMD = 'conda activate %s' % (getPyemEnvName(PYEM_VERSION))
 
 # Supported versions:
 V_UNKNOWN ='v0.0.0'
@@ -72,6 +80,7 @@ V4_0_2 = 'V4.0.2'
 V4_0_3 = 'V4.0.3'
 V4_1_0 = 'V4.1.0'
 V4_1_1 = 'V4.1.1'
+V4_1_2 = 'V4.1.2'
 
 # Symmetry dict
 CS_SYM_NAME = dict()

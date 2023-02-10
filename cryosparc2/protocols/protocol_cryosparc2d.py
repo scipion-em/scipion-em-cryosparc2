@@ -37,8 +37,7 @@ from pyworkflow.protocol.params import (PointerParam, FloatParam, IntParam,
 import pyworkflow.utils as pwutils
 
 from .protocol_base import ProtCryosparcBase
-from ..convert import (rowToAlignment, defineArgs, convertCs2Star,
-                       cryosparcToLocation)
+from ..convert import (rowToAlignment, convertCs2Star,  cryosparcToLocation)
 from ..utils import (addComputeSectionParams, cryosparcValidate, gpusValidate,
                      enqueueJob, waitForCryosparc, clearIntermediateResults,
                      copyFiles, getOutputPreffix)
@@ -281,18 +280,13 @@ class ProtCryo2D(ProtCryosparcBase, pwprot.ProtClassify2D):
         csPartFile = os.path.join(self._getExtraPath(), csParticlesName)
         outputStarFn = self._getFileName('out_particles')
         argsList = [csPartFile, outputStarFn]
-
-        parser = defineArgs()
-        args = parser.parse_args(argsList)
-        convertCs2Star(args)
+        convertCs2Star(argsList)
 
         csClassAverageFile = os.path.join(self._getExtraPath(), csClassAveragesName)
         outputClassFn = self._getFileName('out_class')
         argsList = [csClassAverageFile, outputClassFn]
 
-        parser = defineArgs()
-        args = parser.parse_args(argsList)
-        convertCs2Star(args)
+        convertCs2Star(argsList)
 
         self._createModelFile()
         self._loadClassesInfo(self._getFileName('out_class_m2'))

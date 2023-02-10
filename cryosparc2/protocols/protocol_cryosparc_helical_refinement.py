@@ -35,14 +35,14 @@ from pyworkflow.object import String
 from pyworkflow.protocol.params import (FloatParam, Positive, IntParam,
                                         BooleanParam, EnumParam, PointerParam)
 
-from .protocol_cryorefine import ProtCryoSparcRefine3D
+from .protocol_cryosparc_homogeneous_refine import ProtCryoSparc3DHomogeneousRefine
 from ..utils import (getSymmetry, enqueueJob, waitForCryosparc,
                      clearIntermediateResults, addComputeSectionParams,
                      cryosparcValidate, gpusValidate, getCryosparcVersion)
 from ..constants import *
 
 
-class ProtCryoSparcHelicalRefine3D(ProtCryoSparcRefine3D):
+class ProtCryoSparcHelicalRefine3D(ProtCryoSparc3DHomogeneousRefine):
     """ Reconstruct and refine a homogeneous helical assembly, with or without
     imposition and refinement of symmetry parameters. Helical Refinement (BETA)
     uses an algorithm that is conceptually similar to Egelman's Iterative
@@ -55,7 +55,7 @@ class ProtCryoSparcHelicalRefine3D(ProtCryoSparcRefine3D):
     _devStatus = BETA
     _fscColumns = 4
     _protCompatibility = [V3_0_0, V3_1_0, V3_2_0, V3_3_0, V3_3_1, V3_3_2, V4_0_0,
-                          V4_0_1, V4_0_2, V4_0_3, V4_1_0, V4_1_1]
+                          V4_0_1, V4_0_2, V4_0_3, V4_1_0, V4_1_1, V4_1_2]
     _className = "helix_refine"
 
     def _defineParams(self, form):
@@ -232,7 +232,7 @@ class ProtCryoSparcHelicalRefine3D(ProtCryoSparcRefine3D):
         addComputeSectionParams(form, allowMultipleGPUs=False)
 
     def _insertAllSteps(self):
-        ProtCryoSparcRefine3D._insertAllSteps(self)
+        ProtCryoSparc3DHomogeneousRefine._insertAllSteps(self)
 
     def processStep(self):
         print(pwutils.yellowStr("Refinement started..."), flush=True)
