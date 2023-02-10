@@ -82,7 +82,7 @@ class CryosPARCViewer3DRefinement(EmProtocolViewer):
                            help=help)
             # '*slices*: display volumes as 2D slices along z axis.\n'
 
-            if self.protocol.isFinished() and parse_version(self.cryosparcVersion) < parse_version(V4_0_0):
+            if self.protocol.isFinished() and parse_version(self.cryosparcVersion) != parse_version(V4_0_0):
                 group = form.addGroup('Resolution')
 
                 self.choices = self.getChoices()
