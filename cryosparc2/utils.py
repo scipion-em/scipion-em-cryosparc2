@@ -29,6 +29,9 @@ import logging
 import os
 import shutil
 import time
+import site
+import glob
+import pickle
 
 from pkg_resources import parse_version
 
@@ -39,13 +42,7 @@ from pwem.constants import (SYM_CYCLIC, SYM_TETRAHEDRAL,
 from pwem.convert import Ccp4Header
 
 from . import Plugin
-from .constants import (CS_SYM_NAME, SYM_DIHEDRAL_Y, CRYOSPARC_USER,
-                        CRYO_PROJECTS_DIR, V2_14_0, V2_13_0, CRYOSPARC_HOME,
-                        CRYOSPARC_USE_SSD, V_UNKNOWN, V3_0_0, V2_15_0,
-                        CRYOSPARC_MASTER, CRYOSPARC_STANDALONE_INSTALLATION,
-                        CRYOSPARC_DEFAULT_LANE, V3_3_2, V4_0_0, V4_1_0,
-                        CRYOSPARC_CONFIG_FILE, CRYOSPARC_VERSION_FILE,
-                        CRYOSPARC_LICENSE_ID_VARIABLE)
+from .constants import *
 
 VERSION = 'version'
 

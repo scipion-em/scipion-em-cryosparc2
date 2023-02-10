@@ -29,10 +29,7 @@ class cryoSPARCImport:
             csPartFile = os.path.abspath(self._csFile)
             self.outputStarFn = self.protocol._getFileName('out_particles')
             argsList = [csPartFile, self.outputStarFn]
-
-            parser = defineArgs()
-            args = parser.parse_args(argsList)
-            convertCs2Star(args)
+            convertCs2Star(argsList)
             # Validate the start file generated
             self._validateConvert()
 

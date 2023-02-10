@@ -59,11 +59,8 @@ class ProtCryo2DNumberOfClassesWizard(Wizard):
 
 class ProtCryosparcLanesWizard(Wizard):
     _targets = [(ProtCryo2D, ['compute_lane']),
-                (ProtCryoSparcRefine3D, ['compute_lane']),
                 (ProtCryoSparcInitialModel, ['compute_lane']),
-                (ProtCryoSparcNonUniformRefine3D, ['compute_lane']),
                 (ProtCryoSparcSubtract, ['compute_lane']),
-                (ProtCryoSparcNaiveLocalRefine, ['compute_lane']),
                 (ProtCryoSparcLocalRefine, ['compute_lane']),
                 (ProtCryoSparcGlobalCtfRefinement, ['compute_lane']),
                 (ProtCryoSparcLocalCtfRefinement, ['compute_lane']),

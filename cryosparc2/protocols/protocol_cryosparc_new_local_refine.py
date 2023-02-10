@@ -41,7 +41,7 @@ from pyworkflow.protocol.params import (PointerParam, FloatParam, IntParam,
 from pwem.objects import Volume
 
 from .protocol_base import ProtCryosparcBase
-from ..convert import (defineArgs, convertCs2Star, createItemMatrix,
+from ..convert import (convertCs2Star, createItemMatrix,
                        setCryosparcAttributes)
 from ..utils import (addComputeSectionParams, calculateNewSamplingRate,
                      cryosparcValidate, gpusValidate, enqueueJob,
@@ -248,9 +248,7 @@ class ProtCryoSparcLocalRefine(ProtCryosparcBase, ProtOperateParticles):
         csFile = os.path.join(self._getExtraPath(), csParticlesName)
         outputStarFn = self._getFileName('out_particles')
         argsList = [csFile, outputStarFn]
-        parser = defineArgs()
-        args = parser.parse_args(argsList)
-        convertCs2Star(args)
+        convertCs2Star(argsList)
 
         fnVol = os.path.join(self._getExtraPath(), fnVolName)
         half1 = os.path.join(self._getExtraPath(), half1Name)
@@ -272,9 +270,7 @@ class ProtCryoSparcLocalRefine(ProtCryosparcBase, ProtOperateParticles):
         self._defineSourceRelation(self.inputParticles.get(), vol)
         self._defineOutputs(outputParticles=outImgSet)
         self._defineTransformRelation(self.inputParticles.get(), outImgSet)
-        cryosparcVersion = getCryosparcVersion()
-        if parse_version(cryosparcVersion) < parse_version(V4_0_0):
-            self.createFSC(idd, imgSet, vol)
+        self.createFSC(idd, imgSet, vol)
 
     # --------------------------- INFO functions -------------------------------
     def _validate(self):

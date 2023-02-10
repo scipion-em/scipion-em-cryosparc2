@@ -1,5 +1,8 @@
-Jan 24, 2023 -  - Compatibility with v4.1.2 CS version
-                **v4.0.2**
+Jan 24, 2023 -  **v4.0.2**
+                - Compatibility with v4.1.2 CS version
+                - Creating an environment for pyem package
+                - 3D homogeneous refinement(Legacy), 3D non-uniform refinement(Legacy) and Naive local refinement(Legacy) protocols are deprecated
+
 Jan 18, 2023 -  - Compatibility with v4.1.1 CS version
                 **v4.0.1**
 Nov 8, 2022  -  - Compatibility with v4.0.x CS version

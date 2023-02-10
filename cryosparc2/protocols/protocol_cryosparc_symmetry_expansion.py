@@ -34,7 +34,7 @@ from pyworkflow.protocol.params import (PointerParam, FloatParam,
                                         IntParam)
 
 from .protocol_base import ProtCryosparcBase
-from ..convert import (defineArgs, convertCs2Star, readSetOfParticles)
+from ..convert import (convertCs2Star, readSetOfParticles)
 from ..utils import (addComputeSectionParams, cryosparcValidate, gpusValidate,
                      enqueueJob, waitForCryosparc, clearIntermediateResults,
                      addSymmetryParam, getSymmetry, copyFiles)
@@ -127,9 +127,7 @@ class ProtCryoSparcSymmetryExpansion(ProtCryosparcBase):
 
         argsList = [csFile, outputStarFn]
 
-        parser = defineArgs()
-        args = parser.parse_args(argsList)
-        convertCs2Star(args)
+        convertCs2Star(argsList)
         imgSet = self._getInputParticles()
         self.setFilePattern(imgSet.getFirstItem().getFileName())
         outImgSet = self._createSetOfParticles()

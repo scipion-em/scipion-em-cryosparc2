@@ -26,6 +26,8 @@
 # *
 # **************************************************************************
 import os
+from pkg_resources import parse_version
+
 import emtable
 
 import pwem.objects as pwobj
@@ -34,15 +36,16 @@ import pyworkflow.utils as pwutils
 from pyworkflow.protocol.params import *
 
 from .protocol_base import ProtCryosparcBase
-from ..convert import (defineArgs, convertCs2Star, createItemMatrix,
+from ..convert import (convertCs2Star, createItemMatrix,
                        setCryosparcAttributes)
 from ..utils import (addSymmetryParam, addComputeSectionParams,
                      calculateNewSamplingRate,
                      cryosparcValidate, gpusValidate, getSymmetry,
                      waitForCryosparc, clearIntermediateResults, enqueueJob,
-                     fixVolume, copyFiles, getOutputPreffix)
+                     fixVolume, copyFiles, getOutputPreffix,
+                     getCryosparcVersion)
 from ..constants import (NOISE_MODEL_CHOICES, REFINE_MASK_CHOICES,
-                         RELIONCOLUMNS)
+                         RELIONCOLUMNS, V4_0_0)
 
 
 class ProtCryoSparcRefine3D(ProtCryosparcBase, pwprot.ProtRefine3D):
@@ -326,9 +329,7 @@ class ProtCryoSparcRefine3D(ProtCryosparcBase, pwprot.ProtRefine3D):
         outputStarFn = self._getFileName('out_particles')
         argsList = [csFile, outputStarFn]
 
-        parser = defineArgs()
-        args = parser.parse_args(argsList)
-        convertCs2Star(args)
+        convertCs2Star(argsList)
 
         fnVol = os.path.join(self._getExtraPath(), fnVolName)
         half1 = os.path.join(self._getExtraPath(), half1Name)
@@ -364,6 +365,12 @@ class ProtCryoSparcRefine3D(ProtCryosparcBase, pwprot.ProtRefine3D):
                         "The Particles has not associated a "
                         "CTF model")
         return validateMsgs
+
+    @classmethod
+    def isDisabled(cls):
+        if parse_version(getCryosparcVersion()) > parse_version(V4_0_0):
+            return True
+        return False
 
     def _summary(self):
         summary = []
