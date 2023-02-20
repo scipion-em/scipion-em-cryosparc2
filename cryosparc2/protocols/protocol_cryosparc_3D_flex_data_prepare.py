@@ -123,9 +123,55 @@ class ProtCryoSparc3DFlexDataPrepare(ProtCryosparcBase):
         self.doRun3DFlexDataPrepare()
 
     def createOutputStep(self):
-        pass
+        """
+        Create the protocol output. Convert cryosparc file to Relion file
+        """
+        print(pwutils.yellowStr("Creating the output..."), flush=True)
+        csOutputFolder = os.path.join(self.projectDir.get(),
+                                      self.run3DFlexDataPrepJob.get())
+        csParticlesName = "%s_particles.cs" % self.run3DFlexDataPrepJob.get()
+        fnVolName = "%s_map.mrc" % self.run3DFlexDataPrepJob.get()
+
+        # Copy the CS output volume and half to extra folder
+        copyFiles(csOutputFolder, self._getExtraPath(), files=[csParticlesName,
+                                                               fnVolName])
+
+        csFile = os.path.join(self._getExtraPath(), csParticlesName)
+
+        outputStarFn = self._getFileName('out_particles')
+        argsList = [csFile, outputStarFn]
+
+        convertCs2Star(argsList)
+        fnVol = os.path.join(self._getExtraPath(), fnVolName)
+
+        imgSet = self._getInputParticles()
+        vol = Volume()
+        fixVolume([fnVol])
+        vol.setFileName(fnVol)
+        vol.setSamplingRate(calculateNewSamplingRate(vol.getDim(),
+                                                     imgSet.getSamplingRate(),
+                                                     imgSet.getDim()))
+        outImgSet = self._createSetOfParticles()
+        outImgSet.copyInfo(imgSet)
+        self._fillDataFromIter(outImgSet)
+
+        self._defineOutputs(outputVolume=vol)
+        self._defineSourceRelation(self.inputParticles.get(), vol)
+        self._defineOutputs(outputParticles=outImgSet)
 
     # ------------------------- Utils methods ----------------------------------
+
+    def _fillDataFromIter(self, imgSet):
+        outImgsFn = 'particles@' + self._getFileName('out_particles')
+        imgSet.setAlignmentProj()
+        imgSet.copyItems(self._getInputParticles(),
+                         updateItemCallback=self._createItemMatrix,
+                         itemDataIterator=emtable.Table.iterRows(fileName=outImgsFn))
+
+    def _createItemMatrix(self, particle, row):
+        createItemMatrix(particle, row, align=ALIGN_PROJ)
+        setCryosparcAttributes(particle, row, RELIONCOLUMNS.rlnRandomSubset.value)
+
     def _validate(self):
         validateMsgs = cryosparcValidate()
         if not validateMsgs:
