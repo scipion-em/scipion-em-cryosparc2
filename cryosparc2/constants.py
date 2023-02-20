@@ -118,8 +118,8 @@ VAR_USE_SCALES = ['none',
                   'input',
                   'optimal']
 
-VAR_OUTPUT_MODE = ['simple',
-                   'cluster',
+VAR_OUTPUT_MODE = ['cluster',
+                   'simple',
                    'intermediates']
 
 # Viewer constants

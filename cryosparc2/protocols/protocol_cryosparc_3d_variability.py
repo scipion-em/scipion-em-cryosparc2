@@ -24,7 +24,7 @@
 # *  e-mail address 'scipion@cnb.csic.es'
 # *
 # **************************************************************************
-
+from pyworkflow import BETA
 from pyworkflow.protocol.params import (PointerParam, FloatParam, Positive,
                                         IntParam, BooleanParam, EnumParam)
 from pwem.objects import Volume
@@ -42,6 +42,7 @@ class ProtCryoSparc3DVariability(ProtCryosparcBase, ProtRefine3D):
     of aligned particles
     """
     _label = '3D variability Analysis '
+    _devStatus = BETA
 
     # --------------------------- DEFINE param functions ----------------------
     def _defineFileNames(self):

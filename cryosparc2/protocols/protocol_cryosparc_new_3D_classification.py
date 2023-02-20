@@ -477,7 +477,7 @@ class ProtCryoSparcNew3DClassification(ProtCryosparcBase):
                     if int(it) > 99:
                         itera = it
                     else:
-                        itera = '0' + it if int(it) > 10 else '00' + it
+                        itera = '0' + it if int(it) >= 10 else '00' + it
 
         return itera
 
