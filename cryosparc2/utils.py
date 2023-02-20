@@ -736,7 +736,7 @@ def getSchedulerLanes():
     return _csLanes, _defaultLane
 
 
-def addComputeSectionParams(form, allowMultipleGPUs=True):
+def addComputeSectionParams(form, allowMultipleGPUs=True, needGPU=True):
     """
     Add the compute settings section
     """
@@ -765,7 +765,7 @@ def addComputeSectionParams(form, allowMultipleGPUs=True):
         # ... we assume is a modern version
         versionAllowGPUs = True
 
-    if versionAllowGPUs:
+    if needGPU and versionAllowGPUs:
         if allowMultipleGPUs:
             form.addHidden(GPU_LIST, StringParam, default='0',
                            label='Choose GPU IDs:', validators=[NonEmpty],
