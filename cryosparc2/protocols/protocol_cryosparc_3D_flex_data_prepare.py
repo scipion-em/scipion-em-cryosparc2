@@ -68,7 +68,7 @@ class ProtCryoSparc3DFlexDataPrepare(ProtCryosparcBase):
         form.addParam('refMask', PointerParam, pointerClass='VolumeMask',
                       default=None,
                       label='Input Mask',
-                      allowsNull=False,
+                      allowsNull=True,
                       help='Mask raw data')
 
         form.addSection(label='Data Prepare')
