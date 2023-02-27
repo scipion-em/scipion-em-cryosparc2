@@ -26,11 +26,8 @@
 # **************************************************************************
 
 from pyworkflow import BETA
-from pyworkflow.protocol.params import (PointerParam, FloatParam, Positive,
-                                        IntParam, BooleanParam, EnumParam,
-                                        FileParam, StringParam)
-from pwem.objects import Volume
-
+from pyworkflow.protocol.params import (PointerParam, FloatParam, IntParam,
+                                        BooleanParam, FileParam, StringParam)
 from . import ProtCryosparcBase
 from ..convert import *
 from ..utils import *
@@ -252,37 +249,38 @@ class ProtCryoSparc3DFlexDataPrepare(ProtCryosparcBase):
         """
         Create the protocol output. Convert cryosparc file to Relion file
         """
-        print(pwutils.yellowStr("Creating the output..."), flush=True)
-        csOutputFolder = os.path.join(self.projectDir.get(),
-                                      self.run3DFlexDataPrepJob.get())
-        csParticlesName = "%s_passthrough_particles.cs" % self.run3DFlexDataPrepJob.get()
-        fnVolName = "%s_map.mrc" % self.run3DFlexDataPrepJob.get()
-
-        # Copy the CS output volume and half to extra folder
-        copyFiles(csOutputFolder, self._getExtraPath(), files=[csParticlesName,
-                                                               fnVolName])
-
-        csFile = os.path.join(self._getExtraPath(), csParticlesName)
-
-        outputStarFn = self._getFileName('out_particles')
-        argsList = [csFile, outputStarFn]
-        convertCs2Star(argsList)
-
-        fnVol = os.path.join(self._getExtraPath(), fnVolName)
-        imgSet = self._getInputParticles()
-        vol = Volume()
-        fixVolume([fnVol])
-        vol.setFileName(fnVol)
-        vol.setSamplingRate(calculateNewSamplingRate(vol.getDim(),
-                                                     imgSet.getSamplingRate(),
-                                                     imgSet.getDim()))
-        outImgSet = self._createSetOfParticles()
-        outImgSet.copyInfo(imgSet)
-        self._fillDataFromIter(outImgSet)
-
-        self._defineOutputs(outputVolume=vol)
-        self._defineSourceRelation(self.inputParticles.get(), vol)
-        self._defineOutputs(outputParticles=outImgSet)
+        pass
+        # print(pwutils.yellowStr("Creating the output..."), flush=True)
+        # csOutputFolder = os.path.join(self.projectDir.get(),
+        #                               self.run3DFlexDataPrepJob.get())
+        # csParticlesName = "%s_passthrough_particles.cs" % self.run3DFlexDataPrepJob.get()
+        # fnVolName = "%s_map.mrc" % self.run3DFlexDataPrepJob.get()
+        #
+        # # Copy the CS output volume and half to extra folder
+        # copyFiles(csOutputFolder, self._getExtraPath(), files=[csParticlesName,
+        #                                                        fnVolName])
+        #
+        # csFile = os.path.join(self._getExtraPath(), csParticlesName)
+        #
+        # outputStarFn = self._getFileName('out_particles')
+        # argsList = [csFile, outputStarFn]
+        # convertCs2Star(argsList)
+        #
+        # fnVol = os.path.join(self._getExtraPath(), fnVolName)
+        # imgSet = self._getInputParticles()
+        # vol = Volume()
+        # fixVolume([fnVol])
+        # vol.setFileName(fnVol)
+        # vol.setSamplingRate(calculateNewSamplingRate(vol.getDim(),
+        #                                              imgSet.getSamplingRate(),
+        #                                              imgSet.getDim()))
+        # outImgSet = self._createSetOfParticles()
+        # outImgSet.copyInfo(imgSet)
+        # self._fillDataFromIter(outImgSet)
+        #
+        # self._defineOutputs(outputVolume=vol)
+        # self._defineSourceRelation(self.inputParticles.get(), vol)
+        # self._defineOutputs(outputParticles=outImgSet)
 
     # ------------------------- Utils methods ----------------------------------
 
