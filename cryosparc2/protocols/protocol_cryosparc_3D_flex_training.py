@@ -195,8 +195,8 @@ class ProtCryoSparc3DFlexTraining(ProtCryosparcBase):
         protocolPrepare = self.input3DFlexDataPrepareProt.get()
         varDataPrepJobParticles = str(protocolPrepare.run3DFlexDataPrepJob)
         varDataMeshJob = str(protocolPrepare.run3DFlexMeshPrepJob)
-        input_group_connect = {"%s.particles": varDataPrepJobParticles,
-                               "%s.flex_mesh": varDataMeshJob}
+        input_group_connect = {"particles": "%s.paricles" % varDataPrepJobParticles,
+                               "flex_mesh": "%s.flex_mesh" % varDataMeshJob}
         params = {}
 
         for paramName in self._paramsName:
