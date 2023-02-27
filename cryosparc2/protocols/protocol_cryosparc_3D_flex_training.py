@@ -157,7 +157,7 @@ class ProtCryoSparc3DFlexTraining(ProtCryosparcBase):
 
         # --------------[Compute settings]---------------------------
         form.addSection(label="Compute settings")
-        addComputeSectionParams(form, allowMultipleGPUs=False, needGPU=False)
+        addComputeSectionParams(form, allowMultipleGPUs=False, needGPU=True)
 
     def _insertAllSteps(self):
         self._defineFileNames()
@@ -186,6 +186,12 @@ class ProtCryoSparc3DFlexTraining(ProtCryosparcBase):
 
     def doRun3DFlexTraining(self):
         self._className = "flex_train"
+
+        try:
+            gpusToUse = self.getGpuList()
+        except Exception:
+            gpusToUse = False
+
         protocolPrepare = self.input3DFlexDataPrepareProt.get()
         varDataPrepJobParticles = str(protocolPrepare.run3DFlexDataPrepJob)
         varDataMeshJob = str(protocolPrepare.run3DFlexMeshPrepJob)
@@ -202,7 +208,7 @@ class ProtCryoSparc3DFlexTraining(ProtCryosparcBase):
                                    self.workSpaceName.get(),
                                    str(params).replace('\'', '"'),
                                    str(input_group_connect).replace('\'','"'),
-                                   self.lane, False)
+                                   self.lane, gpusToUse)
 
         self.run3DFlexTrainJob = String(run3DTrainJob.get())
         self.currenJob.set(self.run3DFlexTrainJob.get())
