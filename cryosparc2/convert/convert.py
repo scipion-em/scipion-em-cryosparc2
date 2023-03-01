@@ -50,9 +50,10 @@ from .. import Plugin
 def convertCs2Star(argsList):
     input = os.path.abspath(argsList[0])
     output = os.path.abspath(argsList[1])
-    cryosparcScriptPath = os.path.join(Plugin.getPluginDir(),  'convert',
+    cryosparcScriptPath = os.path.join(Plugin.getPluginDir(), 'convert',
                                        CRYOSPARC_CS2STAR_SCRIPT)
-    cmd = Plugin.getCondaActivationCmd() + Plugin.getPyemEnvActivation() + ' && python3 ' + cryosparcScriptPath + ' %s %s' % (input, output)
+    cmd = Plugin.getCondaActivationCmd() + Plugin.getPyemEnvActivation() + ' && python3 ' + cryosparcScriptPath + ' %s %s' % (
+    input, output)
     os.system(cmd)
 
 
@@ -164,7 +165,8 @@ def particleToRow(part, partRow, **kwargs):
     imageToRow(part, partRow, md.RLN_IMAGE_NAME, **kwargs)
 
 
-def imageToRow(img, imgRow, imgLabel=RELIONCOLUMNS.rlnImageName.value, **kwargs):
+def imageToRow(img, imgRow, imgLabel=RELIONCOLUMNS.rlnImageName.value,
+               **kwargs):
     # Provide a hook to be used if something is needed to be
     # done for special cases before converting image to row
     preprocessImageRow = kwargs.get('preprocessImageRow', None)
@@ -379,12 +381,17 @@ def rowToAlignment(alignmentRow, alignType):
         shifts[0] = alignmentRow.get(RELIONCOLUMNS.rlnOriginX.value, default=0.)
         shifts[1] = alignmentRow.get(RELIONCOLUMNS.rlnOriginY.value, default=0.)
         if not is2D:
-            angles[0] = alignmentRow.get(RELIONCOLUMNS.rlnAngleRot.value, default=0.)
-            angles[1] = alignmentRow.get(RELIONCOLUMNS.rlnAngleTilt.value, default=0.)
-            angles[2] = alignmentRow.get(RELIONCOLUMNS.rlnAnglePsi.value, default=0.)
-            shifts[2] = alignmentRow.get(RELIONCOLUMNS.rlnOriginZ.value, default=0.)
+            angles[0] = alignmentRow.get(RELIONCOLUMNS.rlnAngleRot.value,
+                                         default=0.)
+            angles[1] = alignmentRow.get(RELIONCOLUMNS.rlnAngleTilt.value,
+                                         default=0.)
+            angles[2] = alignmentRow.get(RELIONCOLUMNS.rlnAnglePsi.value,
+                                         default=0.)
+            shifts[2] = alignmentRow.get(RELIONCOLUMNS.rlnOriginZ.value,
+                                         default=0.)
         else:
-            angles[2] = - alignmentRow.get(RELIONCOLUMNS.rlnAnglePsi.value, default=0.)
+            angles[2] = - alignmentRow.get(RELIONCOLUMNS.rlnAnglePsi.value,
+                                           default=0.)
         M = matrixFromGeometry(shifts, angles, inverseTransform)
         alignment.setMatrix(M)
     else:
@@ -495,7 +502,8 @@ def convertBinaryFiles(imgSet, outputDir, extension='mrcs'):
     elif ext == 'mrc' and extension == 'mrcs':
         print("convertBinaryFiles: creating soft links (mrcs -> mrc).")
         mapFunc = createBinaryLink
-    elif ext.endswith('hdf') or ext.endswith('stk'):  # assume eman .hdf format or .stk format
+    elif ext.endswith('hdf') or ext.endswith(
+            'stk'):  # assume eman .hdf format or .stk format
         print("convertBinaryFiles: converting stacks. (%s -> %s)"
               % (ext, extension))
         mapFunc = convertStack
@@ -516,14 +524,14 @@ def writeSetOfParticles(imgSet, fileName, extraPath):
             'fillMagnification': True,
             'fillRandomSubset': True}
 
-    if imgSet.hasAlignmentProj() and imgSet.getAttributeValue("_rlnRandomSubset") is None:
+    if imgSet.hasAlignmentProj() and imgSet.getAttributeValue(
+            "_rlnRandomSubset") is None:
         args['postprocessImageRow'] = addRandomSubset
 
     cryosPARCwriteSetOfParticles(imgSet, fileName, **args)
 
 
 def cryosPARCwriteSetOfParticles(imgSet, starFile, outputDir, **kwargs):
-
     if outputDir is not None:
         filesDict = convertBinaryFiles(imgSet, outputDir)
         kwargs['filesDict'] = filesDict
@@ -554,7 +562,8 @@ def rowToCtfModel(ctfRow):
 
         rowToObject(ctfRow, ctfModel, CTF_DICT, extraLabels=CTF_EXTRA_LABELS)
         if ctfRow.hasColumn(RELIONCOLUMNS.rlnPhaseShift.value):
-            ctfModel.setPhaseShift(ctfRow.get(RELIONCOLUMNS.rlnPhaseShift.value, 0))
+            ctfModel.setPhaseShift(
+                ctfRow.get(RELIONCOLUMNS.rlnPhaseShift.value, 0))
         ctfModel.standardize()
         setPsdFiles(ctfModel, ctfRow)
     else:
@@ -614,7 +623,8 @@ def rowToParticle(partRow, particleClass=Particle, **kwargs):
         preprocessImageRow(img, partRow)
 
     # Decompose Relion filename
-    index, filename = cryosparcToLocation(partRow.get(RELIONCOLUMNS.rlnImageName.value))
+    index, filename = cryosparcToLocation(
+        partRow.get(RELIONCOLUMNS.rlnImageName.value))
     img.setLocation(index, filename)
 
     if partRow.hasColumn(RELIONCOLUMNS.rlnClassNumber.value):
@@ -650,7 +660,8 @@ def rowToParticle(partRow, particleClass=Particle, **kwargs):
 
     # copy particleId if available from row to particle
     if partRow.hasColumn(RELIONCOLUMNS.rlnParticleId.value):
-        img._rlnParticleId = Integer(partRow.get(RELIONCOLUMNS.rlnParticleId.value))
+        img._rlnParticleId = Integer(
+            partRow.get(RELIONCOLUMNS.rlnParticleId.value))
 
     # Provide a hook to be used if something is needed to be
     # done for special cases before converting image to row
