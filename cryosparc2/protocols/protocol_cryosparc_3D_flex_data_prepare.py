@@ -36,10 +36,13 @@ from ..constants import *
 
 class ProtCryoSparc3DFlexDataPrepare(ProtCryosparcBase):
     """
-    Prepares particles for use in 3DFlex training and reconstruction
+    Prepares particles for use in 3DFlex training and reconstruction. At the same
+    way,  Takes in a consensus (rigid) refinement density map, plus optionally
+     a segmentation and generates a tetrahedral mesh for 3DFlex.
     """
-    _label = '3D flex data prepare'
+    _label = '3D flex data/mesh prepare'
     _devStatus = BETA
+    _protCompatibility = [V4_1_0, V4_1_1, V4_1_2, V4_2_0]
 
     # --------------------------- DEFINE param functions ----------------------
     def _defineFileNames(self):

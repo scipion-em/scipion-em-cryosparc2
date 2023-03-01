@@ -27,6 +27,13 @@ You will need to use `3.0.0 <https://scipion-em.github.io/docs/release-3.0.0/doc
 
 **Latest plugin version**
 ==========================
+**v4.0.3**
+-----------
+* **new**     :  Compatibility with cryoSPARC v4.2
+* **fixed**   :  Fixed an error importing volumes with halves
+* **fixed**   :  Fixed an error launching the protocols viewers
+
+
 **v4.0.2**
 -----------
 * **new**     :  Compatibility with cryoSPARC v4.1.0, 4.1.1 and 4.1.2

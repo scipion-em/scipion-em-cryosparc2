@@ -218,12 +218,12 @@ class ProtCryosparcBase(pw.EMProtocol):
 
         if vol.hasHalfMaps():
             halfMaps = vol.getHalfMaps().split(",")
-            map_half_A_fn = os.path.abspath(halfMaps[0])
+            map_half_A_fn = os.path.abspath(halfMaps[0].split(':mrc')[0])
             importVolumeHalfAJob = doImportVolumes(self, map_half_A_fn, vol,
                                                    'map_half_A', 'Importing half volume A...')
             self.importVolumeHalfA = pwobj.String(str(importVolumeHalfAJob.get()) + self.outputVolumeHalf_A)
 
-            map_half_B_fn = os.path.abspath(halfMaps[1])
+            map_half_B_fn = os.path.abspath(halfMaps[1].split(':mrc')[0])
             importVolumeHalfBJob = doImportVolumes(self, map_half_B_fn, vol,
                                                    'map_half_B', 'Importing half volume B...')
             self.importVolumeHalfB = pwobj.String(str(importVolumeHalfBJob.get()) + self.outputVolumeHalf_B)

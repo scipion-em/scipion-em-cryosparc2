@@ -62,7 +62,7 @@ class ProtCryoSparcNew3DClassification(ProtCryosparcBase):
     _className = "class_3D"
     _devStatus = BETA
     _protCompatibility = [V3_3_1, V3_3_2, V4_0_0, V4_0_1, V4_0_2, V4_0_3,
-                          V4_1_0, V4_1_1, V4_1_2]
+                          V4_1_0, V4_1_1, V4_1_2, V4_2_0]
 
     def _initialize(self):
         self._defineFileNames()
@@ -603,6 +603,7 @@ class ProtCryoSparcNew3DClassification(ProtCryosparcBase):
             group_connect["mask"] = [self.mask]
         params = {}
 
+        params['class3D_reorder_classes'] = str("False")
 
         for paramName in self._paramsName:
             if (paramName != 'class3D_filter_hp_res' and

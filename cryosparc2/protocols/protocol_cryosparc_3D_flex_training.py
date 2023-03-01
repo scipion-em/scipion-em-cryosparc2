@@ -26,10 +26,9 @@
 # **************************************************************************
 
 from pyworkflow import BETA
-from pyworkflow.object import Pointer
 from pyworkflow.protocol import LEVEL_ADVANCED
 from pyworkflow.protocol.params import (PointerParam, FloatParam, IntParam,
-                                        BooleanParam, FileParam, StringParam)
+                                        BooleanParam)
 from . import ProtCryosparcBase
 from ..convert import *
 from ..utils import *
@@ -38,10 +37,14 @@ from ..constants import *
 
 class ProtCryoSparc3DFlexTraining(ProtCryosparcBase):
     """
-    Prepares particles for use in 3DFlex training and reconstruction
+    Uses a mesh and prepared particles (at a downsampled resolution) to train
+    a 3DFlex model. Parameters control the number of latent dimensions,
+    size of the model, and training hyperparameters. This job outputs
+    checkpoints during training.
     """
     _label = '3D flex training'
     _devStatus = BETA
+    _protCompatibility = [V4_1_0, V4_1_1, V4_1_2, V4_2_0]
 
     # --------------------------- DEFINE param functions ----------------------
     def _defineFileNames(self):
@@ -195,7 +198,7 @@ class ProtCryoSparc3DFlexTraining(ProtCryosparcBase):
         protocolPrepare = self.input3DFlexDataPrepareProt.get()
         varDataPrepJobParticles = str(protocolPrepare.run3DFlexDataPrepJob)
         varDataMeshJob = str(protocolPrepare.run3DFlexMeshPrepJob)
-        input_group_connect = {"particles": "%s.paricles" % varDataPrepJobParticles,
+        input_group_connect = {"particles": "%s.particles" % varDataPrepJobParticles,
                                "flex_mesh": "%s.flex_mesh" % varDataMeshJob}
         params = {}
 
