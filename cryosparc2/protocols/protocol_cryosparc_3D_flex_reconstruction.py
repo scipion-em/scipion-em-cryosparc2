@@ -87,6 +87,10 @@ class ProtCryoSparc3DFlexReconstruction(ProtCryosparcBase):
                            'particles in each split, the job will issue a '
                            'warning but will continue.')
 
+        # --------------[Compute settings]---------------------------
+        form.addSection(label="Compute settings")
+        addComputeSectionParams(form, allowMultipleGPUs=False, needGPU=True)
+
         """
         # job.param_add('flex_highres', "flex_force_restart", base_value=False,  title="Restart training",  param_type="boolean", desc="Force restart of training even if a model with trained checkpoint is connected.", hidden=True)
         
@@ -123,7 +127,7 @@ class ProtCryoSparc3DFlexReconstruction(ProtCryosparcBase):
         except Exception:
             gpusToUse = False
 
-        protocolJobTraining = str(self.input3DFlexTrainingProt.get())
+        protocolJobTraining = str(self.input3DFlexTrainingProt.get().run3DFlexTrainJob)
         input_group_connect = {"particles": "%s.particles" % protocolJobTraining,
                                "flex_model": "%s.flex_model" % protocolJobTraining}
         params = {}
