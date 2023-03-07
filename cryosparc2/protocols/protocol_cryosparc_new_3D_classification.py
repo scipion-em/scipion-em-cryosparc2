@@ -332,8 +332,11 @@ class ProtCryoSparcNew3DClassification(ProtCryosparcBase):
                                                  getOutputPreffix(self.projectName.get()),
                                                  self.run3dClassification.get(),
                                                  itera)
+        csPassParticles = "%s_passthrough_particles_all_classes.cs" % self.run3dClassification.get()
+
         # Copy the CS output particles to extra folder
-        copyFiles(csOutputFolder, self._getExtraPath(), files=[csParticlesName])
+        copyFiles(csOutputFolder, self._getExtraPath(), files=[csParticlesName,
+                                                               csPassParticles])
 
         csFile = os.path.join(self._getExtraPath(), csParticlesName)
 
@@ -637,12 +640,23 @@ class ProtCryoSparcNew3DClassification(ProtCryosparcBase):
             group_connect["mask"] = [self.mask]
         params = {}
 
-        #params['class3D_reorder_classes'] = str("False")
+        csVersion = getCryosparcVersion()
+        isV4_2 = parse_version(csVersion) >= parse_version(V4_1_1)
+        if isV4_2:
+            params['class3D_reorder_classes'] = str("False")
+            params['generate_intermediate_results'] = str("True")
+            params['class3D_force_hard_class'] = str("True")
 
         for paramName in self._paramsName:
-            if (paramName != 'class3D_filter_hp_res' and
+            if (paramName != 'class3D_filter_hp_res' and paramName != 'class3D_num_oem_epochs' and
                     paramName != 'class3D_num_particles' and paramName != 'class3D_init_mode'):
                 params[str(paramName)] = str(self.getAttributeValue(paramName))
+
+            elif paramName == 'class3D_num_oem_epochs':
+                if isV4_2:
+                    params[str(paramName)] = str(self.class3D_num_oem_epochs.get())
+                else:
+                    params['class3D_oem_epochs'] = str(self.class3D_num_oem_epochs.get())
 
             elif paramName == 'class3D_init_mode':
                 params[str(paramName)] = str(CLASS_3D_INIT_MODE[self.class3D_init_mode.get()])
@@ -676,4 +690,4 @@ class ProtCryoSparcNew3DClassification(ProtCryosparcBase):
                          "An error occurred in the 3D Classification process. "
                          "Please, go to cryosPARC software for more "
                          "details.")
-        #clearIntermediateResults(self.projectName.get(), self.run3dClassification.get())
+        clearIntermediateResults(self.projectName.get(), self.run3dClassification.get())

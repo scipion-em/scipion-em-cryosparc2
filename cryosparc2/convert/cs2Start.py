@@ -4,6 +4,7 @@ import re
 import json
 import os
 
+
 def cs2Star(args):
     from glob import glob
     import pandas as pd
@@ -16,9 +17,55 @@ def cs2Star(args):
     hdlr = logging.StreamHandler(sys.stdout)
     log.addHandler(hdlr)
     log.setLevel(logging.getLevelName(args.loglevel.upper()))
+
+    if args.swapxy:
+        log.warning(
+            "Axis swapping is now the default and --swapxy has no effect. "
+            "Use --noswapxy if unswapping is needed (unlikely).")
+
     if args.input[0].endswith(".cs"):
         log.debug("Detected CryoSPARC 2+ .cs file")
         cs = np.load(args.input[0])
+        if args.first10k:
+            cs = cs[:10000]
+
+        if args.movies:
+            if not os.path.isdir(args.output):
+                log.error("%s is not a directory" % args.output)
+                return 1
+            log.info("Writing per-movie star files into %s" % args.output)
+            trajdir = os.path.dirname(os.path.dirname(args.input[0]))
+            if len(args.input) > 1:
+                pts = [a for a in args.input[1:] if a.endswith(".cs")]
+            else:
+                pts = None
+            data_general = metadata.cryosparc_2_cs_movie_parameters(cs,
+                                                                    passthroughs=pts,
+                                                                    trajdir=trajdir,
+                                                                    path=args.micrograph_path)
+            data_general[star.Relion.MICROGRAPHMETADATA] = data_general[
+                star.Relion.MICROGRAPH_NAME].apply(
+                lambda x: os.path.join(args.output, os.path.basename(
+                    x.rstrip(".mrc")) + ".star"))
+            for mic in metadata.cryosparc_2_cs_motion_parameters(cs,
+                                                                 data_general,
+                                                                 trajdir=trajdir):
+                fn = mic[star.Relion.GENERALDATA][
+                    star.Relion.MICROGRAPHMETADATA]
+                log.debug("Writing %s" % fn)
+                star.write_star_tables(fn, mic)
+            fields = [star.Relion.VOLTAGE, star.Relion.CS, star.Relion.AC,
+                      star.Relion.MICROGRAPHORIGINALPIXELSIZE,
+                      star.Relion.MICROGRAPHPIXELSIZE,
+                      star.Relion.MICROGRAPH_NAME,
+                      star.Relion.MICROGRAPHMETADATA,
+                      star.Relion.MICROGRAPHBINNING, star.Relion.OPTICSGROUP]
+            if len(args.input) > 1 and args.input[-1].endswith(".star"):
+                mic_star = args.input[-1]
+                star.write_star(mic_star, data_general[
+                    [f for f in fields if f in data_general]])
+            return 0
+
         try:
             df = metadata.parse_cryosparc_2_cs(cs, passthroughs=args.input[1:],
                                                minphic=args.minphic,
@@ -44,25 +91,22 @@ def cs2Star(args):
     if args.cls is not None:
         df = star.select_classes(df, args.cls)
 
-    def strip_path_uids1(df, inplace=False, count=-1):
-        df = df if inplace else df.copy()
-        pat = re.compile("[0-9]{21}_")
-        if star.UCSF.IMAGE_PATH in df:
-            df[star.UCSF.IMAGE_PATH] = df[star.UCSF.IMAGE_PATH].str.replace(pat, "",
-                                                                  regex=True,
-                                                                  n=count)
-        return df
+    if args.flipy:
+        log.info("Flipping refined shifts in Y")
+        df[star.Relion.ORIGINY] = -df[star.Relion.ORIGINY]
+        log.info("Flipping particle orientation through XZ plane")
+        df = star.transform_star(df,
+                                 np.array([[1, 0, 0], [0, -1, 0], [0, 0, -1]]))
 
     if args.strip_uid is not None:
         df = star.strip_path_uids(df, inplace=True, count=args.strip_uid)
-        df = strip_path_uids1(df, inplace=True, count=args.strip_uid)
 
     if args.copy_micrograph_coordinates is not None:
         df = star.augment_star_ucsf(df, inplace=True)
         coord_star = pd.concat(
             (star.parse_star(inp, keep_index=False, augment=True) for inp in
              glob(args.copy_micrograph_coordinates)), join="inner")
-        key = star.merge_key(df, coord_star)
+        key = star.merge_key(df, coord_star, threshold=0)
         if key is None:
             log.debug("Merge key not found, removing leading UIDs")
             df = star.strip_path_uids(df, inplace=True)
@@ -73,8 +117,12 @@ def cs2Star(args):
         else:
             fields = star.Relion.MICROGRAPH_COORDS + [star.UCSF.IMAGE_INDEX,
                                                       star.UCSF.IMAGE_PATH]
+        n = df.shape[0]
         df = star.smart_merge(df, coord_star, fields=fields, key=key)
         star.simplify_star_ucsf(df)
+        if df.shape[0] != n:
+            log.warning("%d / %d particles remain after coordinate merge" % (
+            df.shape[0], n))
 
     if args.micrograph_path is not None:
         df = star.replace_micrograph_path(df, args.micrograph_path,
@@ -84,11 +132,13 @@ def cs2Star(args):
         r = np.array(json.loads(args.transform))
         df = star.transform_star(df, r, inplace=True)
 
+    #df = star.check_defaults(df, inplace=True)
+
     if args.relion2:
         df = star.remove_new_relion31(df, inplace=True)
         star.write_star(args.output, df, resort_records=True, optics=False)
     else:
-        # df = star.remove_deprecated_relion2(df, inplace=True)
+        df = star.remove_deprecated_relion2(df, inplace=True)
         # Changing NaN values. These values denote erroneous coordinates
         if hasattr(df, 'rlnAnglePsi'):
             nanValues = len(df.rlnAnglePsi.values[np.isnan(df.rlnAnglePsi.values)])

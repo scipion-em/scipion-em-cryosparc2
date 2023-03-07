@@ -25,13 +25,10 @@
 # *
 # **************************************************************************
 
-import re
-
 import emtable
 import numpy as np
 import os
 import argparse
-import json
 import sys
 
 from emtable.metadata import _guessType
@@ -50,7 +47,7 @@ from .. import Plugin
 def convertCs2Star(argsList):
     input = os.path.abspath(argsList[0])
     output = os.path.abspath(argsList[1])
-    cryosparcScriptPath = os.path.join(Plugin.getPluginDir(), 'convert',
+    cryosparcScriptPath = os.path.join(os.path.dirname(__file__),
                                        CRYOSPARC_CS2STAR_SCRIPT)
     cmd = Plugin.getCondaActivationCmd() + Plugin.getPyemEnvActivation() + ' && python3 ' + cryosparcScriptPath + ' %s %s' % (
     input, output)
@@ -63,10 +60,14 @@ def defineArgs():
                         help="Cryosparc metadata .csv (v0.6.5) or .cs (v2+) files",
                         nargs="*")
     parser.add_argument("output", help="Output .star file")
+    parser.add_argument("--movies",
+                        help="Write per-movie star files into output directory",
+                        action="store_true")
     parser.add_argument("--boxsize",
                         help="Cryosparc refinement box size (if different from particles)",
                         type=float)
-    # parser.add_argument("--passthrough", "-p", help="List file required for some Cryosparc 2+ job types")
+    # parser.add_argument("--passthrough", "-p",
+    #                     help="List file required for some Cryosparc 2+ job types")
     parser.add_argument("--class",
                         help="Keep this class in output, may be passed multiple times",
                         action="append", type=int, dest="cls")
@@ -76,16 +77,21 @@ def defineArgs():
     parser.add_argument("--stack-path", help="Path to single particle stack",
                         type=str)
     parser.add_argument("--micrograph-path",
-                        help="Replacement path for micrographs")
+                        help="Replacement path for micrographs or movies")
     parser.add_argument("--copy-micrograph-coordinates",
                         help="Source for micrograph paths and particle coordinates (file or quoted glob)",
                         type=str)
     parser.add_argument("--swapxy",
                         help="Swap X and Y axes when converting particle coordinates from normalized to absolute",
                         action="store_true")
+    parser.add_argument("--noswapxy",
+                        help="Do not swap X and Y axes when converting particle coordinates",
+                        action="store_false")
     parser.add_argument("--invertx", help="Invert particle coordinate X axis",
                         action="store_true")
     parser.add_argument("--inverty", help="Invert particle coordinate Y axis",
+                        action="store_false")
+    parser.add_argument("--flipy", help="Invert refined particle Y shifts",
                         action="store_true")
     parser.add_argument("--cached",
                         help="Keep paths from the Cryosparc 2+ cache when merging coordinates",
@@ -97,7 +103,12 @@ def defineArgs():
                         action="store_true")
     parser.add_argument("--strip-uid",
                         help="Strip all leading UIDs from file names",
-                        nargs="?", default=0, type=int)
+                        nargs="?", default=None, const=-1,
+                        type=int)
+    parser.add_argument("--10k",
+                        help="Only read first 10,000 particles for rapid testing.",
+                        action="store_true",
+                        dest="first10k")
     parser.add_argument("--loglevel", "-l", type=str, default="WARNING",
                         help="Logging level and debug output")
     return parser
