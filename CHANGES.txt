@@ -1,3 +1,7 @@
+March 1, 2023 -  **v4.0.3**
+                 Compatibility with cryoSPARC v4.2
+                 Fixed an error importing volumes with halves
+                 Fixed an error launching the protocols viewers
 Jan 24, 2023 -  **v4.0.2**
                 - Compatibility with v4.1.2 CS version
                 - Creating an environment for pyem package

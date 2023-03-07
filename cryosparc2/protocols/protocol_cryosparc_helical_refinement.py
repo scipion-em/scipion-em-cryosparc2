@@ -55,7 +55,7 @@ class ProtCryoSparcHelicalRefine3D(ProtCryoSparc3DHomogeneousRefine):
     _devStatus = BETA
     _fscColumns = 4
     _protCompatibility = [V3_0_0, V3_1_0, V3_2_0, V3_3_0, V3_3_1, V3_3_2, V4_0_0,
-                          V4_0_1, V4_0_2, V4_0_3, V4_1_0, V4_1_1, V4_1_2]
+                          V4_0_1, V4_0_2, V4_0_3, V4_1_0, V4_1_1, V4_1_2, V4_2_0]
     _className = "helix_refine"
 
     def _defineParams(self, form):

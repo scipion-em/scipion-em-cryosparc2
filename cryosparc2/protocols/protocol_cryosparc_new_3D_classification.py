@@ -62,7 +62,7 @@ class ProtCryoSparcNew3DClassification(ProtCryosparcBase):
     _className = "class_3D"
     _devStatus = BETA
     _protCompatibility = [V3_3_1, V3_3_2, V4_0_0, V4_0_1, V4_0_2, V4_0_3,
-                          V4_1_0, V4_1_1, V4_1_2]
+                          V4_1_0, V4_1_1, V4_1_2, V4_2_0]
 
     def _initialize(self):
         self._defineFileNames()
@@ -332,8 +332,11 @@ class ProtCryoSparcNew3DClassification(ProtCryosparcBase):
                                                  getOutputPreffix(self.projectName.get()),
                                                  self.run3dClassification.get(),
                                                  itera)
+        csPassParticles = "%s_passthrough_particles_all_classes.cs" % self.run3dClassification.get()
+
         # Copy the CS output particles to extra folder
-        copyFiles(csOutputFolder, self._getExtraPath(), files=[csParticlesName])
+        copyFiles(csOutputFolder, self._getExtraPath(), files=[csParticlesName,
+                                                               csPassParticles])
 
         csFile = os.path.join(self._getExtraPath(), csParticlesName)
 
@@ -477,7 +480,7 @@ class ProtCryoSparcNew3DClassification(ProtCryosparcBase):
                     if int(it) > 99:
                         itera = it
                     else:
-                        itera = '0' + it if int(it) > 10 else '00' + it
+                        itera = '0' + it if int(it) >= 10 else '00' + it
 
         return itera
 
@@ -544,9 +547,43 @@ class ProtCryoSparcNew3DClassification(ProtCryosparcBase):
             self.importVolumes.append(self.importVolume.get())
             self.currenJob.set(self.importVolume.get())
 
+            """
+        job.param_add('class_3D', "class3D_oem_epochs",                 base_value=2,         title="Number of O-EM epochs",                    param_type="number",    hidden=False,   advanced =  False,   desc='Number of epochs (traversals through the entire dataset) to perform during online expectation maximization (O-EM).')
+        job.param_add('class_3D', "class3D_oem_batch_size",             base_value=1000,      title="O-EM batch size (per class)",              param_type="number",    hidden=False,   advanced =  False,   desc='Number of particles per class to use during online EM.')
+        job.param_add('class_3D', "class3D_online_em_lr_init",          base_value=0.4,       title="O-EM learning rate init",                  param_type="number",    hidden=False,   advanced =  False,   desc='Learning rate defines the linear update rule at each O-EM class density update. 1 means total replacement with new volumes, 0 means no change from previous iterations. We recommend increasing/decreasing this value in 0.1 increments, with smaller values encouraging a larger set of classes with smaller density variation, and vice-versa.')
+        job.param_add('class_3D', "class3D_fsc_reg",                    base_value=True,      title="Use FSC to filter each class",             param_type="boolean",    hidden=False,   advanced =  True,   desc='Regularize each class based on the intra-class Fourier Shell Correlation (FSC). During O-EM, FSC curves will be computed every 10th iteration, using a sliding window of past mini-batches. During F-EM, per-class FSC curves are computed and applied every iteration using the entire dataset.')
+        job.param_add('class_3D', "class3D_assignment_conv_percent",    base_value=2,         title="Convergence criterion (%)",                param_type="number",    hidden=False,   advanced =  False,   desc='Primary stopping criterion. Stop full-EM when the percentage of particles that have changed classes across iterations falls below this value.')
+        job.param_add('class_3D', "class3D_rms_conv",                   base_value=False,     title="RMS density change convergence check",     param_type="boolean",    hidden=False,   advanced =  False,  desc='In addition to class switches, monitor the root mean square (RMS) of the density change of each class across iterations. This can help stop the optimization when some particles have high probability of belonging to multiple classes.')
+        job.param_add('class_3D', "class3D_rms_conv_thresh",            base_value=0.01,      title="RMS density change threshold",             param_type="number",    hidden=False,   advanced =  True,   desc='Threshold on the RMS of density change across iterations (averaged across voxels and classes, normalized by the RMS of the consensus volume voxels, and weighted by relative class size). Optimization will stop when the mean of this metric across 2 consecutive full-EM iterations falls below the supplied threshold.')
+        job.param_add('class_3D', "class3D_max_final_iters",            base_value=25,        title="Maximum number of F-EM iters",             param_type="number",    hidden=False,   advanced =  True,   desc='Classification will stop after this many F-EM iterations even if convergence criteria are not met.')
+        job.param_add('class_3D', "class3D_use_scales",                 base_value = 'optimal', title = "Per-particle scale",  enum_keys=['none', 'input', 'optimal'], param_type = "enum",  hidden = False, advanced =  True, desc = 'How to treat per-particle scale factors. No scales means all particles will have their per-particle scales reset to 1.0 (useful for very small particles or strange cases). Input scales means input scale factors will be used (which may have come from another refinement). Optimal means optimal per-particle scales will be computed prior to classification.')
+
+        job.param_add('class_3D', "class3D_online_em_lr_hl",            base_value=50,        title="O-EM learning rate halflife (%)",          param_type="number",    hidden=False,   advanced =  True,   desc='Half life (expressed as % of total online EM iterations) for learning rate annealing during online EM. Set to 0 for a fixed learning rate.')
+
+        job.param_add('class_3D', "class3D_force_hard_class",           base_value=False,     title="Force hard classification",                param_type="boolean",    hidden=False,   advanced =  True,   desc='Force hard classification, so that each particle is only assigned to one class at every iteration, rather than having partial assignment to all classes.')
+        job.param_add('class_3D', "class3D_static_noise_model",         base_value=False,     title="Fix noise model to static value",          param_type="boolean",    hidden=False,   advanced =  True,   desc='If false, the noise variance will be estimated via maximum likelihood.')                
+        job.param_add_section('post_processing', title='Post-processing', desc='')
+        job.param_add('post_processing', "class3D_reorder_classes",     base_value=True,     title="Reorder classes by size",   param_type="boolean",    hidden=False,   advanced=False,   desc='Reorder classes by number of particle assignments. Note that this option must be turned off if intermediate result output is turned on.')
+
+        job.param_add_section_random()
+
+        job.param_add_section('compute_settings', title='Compute settings', desc='')
+        job.param_add('compute_settings', "compute_use_ssd",            base_value=True,      title="Cache particle images on SSD",             param_type="boolean",   hidden=False,   advanced=False, desc='Use the SSD to cache particles. Speeds up processing significantly.')
+
+        job.param_add_section('data_management', title='Data management', desc='')
+        job.param_add('data_management', "generate_intermediate_results",         base_value=job.get('generate_intermediate_results', False),     title="Output results after every F-EM iteration",   param_type="boolean",    hidden=False,   advanced =  True,   desc='Turn on to output volumes/particles after every full EM iteration.')
+
+        # backwards compatibility
+        job.param_add('class_3D', "class3D_num_oem_epochs",             base_value=None,      title="",          param_type="number",    hidden=True,   advanced =  True,   desc="")
+        job.param_add('class_3D', "class3D_num_final_full_iters",       base_value=None,      title="",          param_type="number",    hidden=True,   advanced =  True,   desc="")
+        job.param_add('class_3D', "class3D_batch_size_per_class",       base_value=None,      title="",          param_type="number",    hidden=True,   advanced =  True,   desc="")
+        job.param_add('class_3D', "class3D_dist_plots",                 base_value=False,     title="",          param_type="boolean",   hidden=True,   advanced =  True,   desc="")
+
+            """
+
     def _defineParamsName(self):
-        self._paramsName = ['class3D_N_K', 'class3D_target_res',
-                            'class3D_num_oem_epochs',
+        self._paramsName = ['class3D_N_K',
+                            'class3D_target_res',
                             'class3D_num_oem_epochs',
                             'class3D_num_final_full_iters',
                             'class3D_batch_size_per_class', 'class3D_init_res',
@@ -603,11 +640,23 @@ class ProtCryoSparcNew3DClassification(ProtCryosparcBase):
             group_connect["mask"] = [self.mask]
         params = {}
 
+        csVersion = getCryosparcVersion()
+        isV4_2 = parse_version(csVersion) >= parse_version(V4_1_1)
+        if isV4_2:
+            params['class3D_reorder_classes'] = str("False")
+            params['generate_intermediate_results'] = str("True")
+            params['class3D_force_hard_class'] = str("True")
 
         for paramName in self._paramsName:
-            if (paramName != 'class3D_filter_hp_res' and
+            if (paramName != 'class3D_filter_hp_res' and paramName != 'class3D_num_oem_epochs' and
                     paramName != 'class3D_num_particles' and paramName != 'class3D_init_mode'):
                 params[str(paramName)] = str(self.getAttributeValue(paramName))
+
+            elif paramName == 'class3D_num_oem_epochs':
+                if isV4_2:
+                    params[str(paramName)] = str(self.class3D_num_oem_epochs.get())
+                else:
+                    params['class3D_oem_epochs'] = str(self.class3D_num_oem_epochs.get())
 
             elif paramName == 'class3D_init_mode':
                 params[str(paramName)] = str(CLASS_3D_INIT_MODE[self.class3D_init_mode.get()])

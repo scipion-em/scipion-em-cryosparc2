@@ -24,7 +24,10 @@
 # *  e-mail address 'scipion@cnb.csic.es'
 # *
 # **************************************************************************
+import os.path
+import zipfile
 
+from pyworkflow import BETA
 from pyworkflow.protocol.params import (PointerParam, FloatParam,
                                         LEVEL_ADVANCED, EnumParam, IntParam,
                                         Positive, BooleanParam)
@@ -42,6 +45,7 @@ class ProtCryoSparc3DVariabilityAnalisys(ProtCryosparcBase, ProtRefine3D):
     used for display
     """
     _label = '3D variability Display'
+    _devStatus = BETA
 
     def _defineFileNames(self):
         """ Centralize how files are called. """
@@ -64,7 +68,7 @@ class ProtCryoSparc3DVariabilityAnalisys(ProtCryosparcBase, ProtRefine3D):
         form.addSection(label='3D Variability Output')
 
         form.addParam('var_output_mode', EnumParam,
-                      choices=['simple', 'cluster', 'intermediates'],
+                      choices=['cluster', 'simple', 'intermediates'],
                       default=0,
                       label="Output mode",
                       help='simple mode: output a simple linear "movie" of '
@@ -176,36 +180,74 @@ class ProtCryoSparc3DVariabilityAnalisys(ProtCryosparcBase, ProtRefine3D):
     def generateStartFiles(self):
         print(pwutils.yellowStr("Copying files from CS to Scipion folder..."),
               flush=True)
-        csOutputFolder = os.path.join(self.projectPath, self.projectName.get(),
+        csOutputFolder = os.path.join(self.projectDir.get(),
                                       self.run3DVariabilityDisplay.get())
-        # Copy the CS output to extra folder
-        outputFolder = os.path.join(self._getExtraPath(), 'outputs')
-        pwutils.cleanPath(outputFolder)
-        copyFiles(csOutputFolder, outputFolder)
+        import time
+        time.sleep(10)
+        if self.var_output_mode.get() == 0:  # Cluster mode
 
-        # Creating the folder where .star files will be create
-        starFilesPath = os.path.join(outputFolder, 'clustersFiles')
-        os.makedirs(starFilesPath)
+            # Copy the CS output to extra folder
+            outputFolder = os.path.join(self._getExtraPath(), 'outputs')
+            pwutils.cleanPath(outputFolder)
+            copyFiles(csOutputFolder, outputFolder)
 
-        # Creating the .star cluster particles
-        numOfClusters = self.var_num_frames.get()
-        for i in range(numOfClusters):
-            clusterParticlesPattern = 'cryosparc_%s_%s_cluster_%03d_particles.cs' % (self.projectName.get(),
-                                                                                     self.run3DVariabilityDisplay.get(),
-                                                                                     i)
-            passthroughParticlesPattern = '%s_%s_passthrough_particles_cluster_%d.cs' % (self.projectName.get(),
-                                                                                         self.run3DVariabilityDisplay.get(),
-                                                                                          i)
-            patterns = [clusterParticlesPattern, passthroughParticlesPattern]
-            outputs = ['output_cluster_particle%03d.star' % i,
-                       'output_passthrough_particle%03d.star' % i]
+            # Creating the folder where .star files will be create
+            starFilesPath = os.path.join(outputFolder, 'clustersFiles')
+            os.makedirs(starFilesPath)
 
-            # Generating .star files
-            for j in range(len(patterns)):
-                filePath = os.path.join(outputFolder, patterns[j])
-                outputStarFn = os.path.join(starFilesPath, outputs[j])
-                argsList = [filePath, outputStarFn]
-                convertCs2Star(argsList)
+            # Generating the .star file por all clusters
+            allClusterSeries = '%s%s_series_all_clusters.cs' % (getOutputPreffix(self.projectName.get()),
+                                                             self.run3DVariabilityDisplay.get())
+            allClusterSeriesStar = '%s%s_series_all_clusters.star' % (getOutputPreffix(self.projectName.get()),
+                                                             self.run3DVariabilityDisplay.get())
+
+            filePath = os.path.join(outputFolder, allClusterSeries)
+            outputStarFn = os.path.join(starFilesPath, allClusterSeriesStar)
+            argsList = [filePath, outputStarFn]
+            convertCs2Star(argsList)
+
+            # Creating the .star cluster per cluster
+            numOfClusters = self.var_num_frames.get()
+            print(pwutils.yellowStr("Generating .star files for all clusters"), flush=True)
+            for i in range(numOfClusters):
+                print(pwutils.yellowStr("Processing cluster %d ..." % i), flush=True)
+
+                clusterParticlesPattern = '%s%s_cluster_%03d_particles.cs' % (getOutputPreffix(self.projectName.get()),
+                                                                              self.run3DVariabilityDisplay.get(), i)
+
+                passthroughParticlesPattern = '%s%s_passthrough_particles_cluster_%d.cs' % (getOutputPreffix(self.projectName.get()),
+                                                                                            self.run3DVariabilityDisplay.get(), i)
+                patterns = [clusterParticlesPattern, passthroughParticlesPattern]
+                outputs = ['output_cluster_particle%03d.star' % i,
+                           'output_passthrough_particle%03d.star' % i]
+                # Generating .star files
+                for j in range(len(patterns)):
+                    filePath = os.path.join(outputFolder, patterns[j])
+                    outputStarFn = os.path.join(starFilesPath, outputs[j])
+                    argsList = [filePath, outputStarFn]
+                    convertCs2Star(argsList)
+        else:
+            # Copy the CS output to extra folder
+            outputFolder = self._getExtraPath()
+            pwutils.cleanPath(outputFolder)
+            copyFiles(csOutputFolder, outputFolder)
+            # Creating the .star cluster particles
+            numOfComponets = int(self.input3DVariablityAnalisysProt.get().var_K)
+
+            for i in range(numOfComponets):
+                print(pwutils.yellowStr("Extracting component %d ..." % i),
+                      flush=True)
+                # Creating the folder where clusters will be unzip
+                componetFilesPath = self._getExtraPath('component%03d' % i)
+                os.makedirs(componetFilesPath)
+                componentPattern = "%s%s_component_%03d.zip" % (
+                    getOutputPreffix(self.projectName.get()),
+                    self.run3DVariabilityDisplay.get(),
+                    i)
+                cmd = "unzip %s -d %s" % (
+                self._getExtraPath(componentPattern),
+                componetFilesPath)
+                os.system(cmd)
 
     def createOutputStep(self):
         self._initializeUtilsVariables()

@@ -25,13 +25,10 @@
 # *
 # **************************************************************************
 
-import re
-
 import emtable
 import numpy as np
 import os
 import argparse
-import json
 import sys
 
 from emtable.metadata import _guessType
@@ -50,9 +47,10 @@ from .. import Plugin
 def convertCs2Star(argsList):
     input = os.path.abspath(argsList[0])
     output = os.path.abspath(argsList[1])
-    cryosparcScriptPath = os.path.join(Plugin.getPluginDir(),  'convert',
+    cryosparcScriptPath = os.path.join(os.path.dirname(__file__),
                                        CRYOSPARC_CS2STAR_SCRIPT)
-    cmd = Plugin.getCondaActivationCmd() + Plugin.getPyemEnvActivation() + ' && python3 ' + cryosparcScriptPath + ' %s %s' % (input, output)
+    cmd = Plugin.getCondaActivationCmd() + Plugin.getPyemEnvActivation() + ' && python3 ' + cryosparcScriptPath + ' %s %s' % (
+    input, output)
     os.system(cmd)
 
 
@@ -62,10 +60,14 @@ def defineArgs():
                         help="Cryosparc metadata .csv (v0.6.5) or .cs (v2+) files",
                         nargs="*")
     parser.add_argument("output", help="Output .star file")
+    parser.add_argument("--movies",
+                        help="Write per-movie star files into output directory",
+                        action="store_true")
     parser.add_argument("--boxsize",
                         help="Cryosparc refinement box size (if different from particles)",
                         type=float)
-    # parser.add_argument("--passthrough", "-p", help="List file required for some Cryosparc 2+ job types")
+    # parser.add_argument("--passthrough", "-p",
+    #                     help="List file required for some Cryosparc 2+ job types")
     parser.add_argument("--class",
                         help="Keep this class in output, may be passed multiple times",
                         action="append", type=int, dest="cls")
@@ -75,16 +77,21 @@ def defineArgs():
     parser.add_argument("--stack-path", help="Path to single particle stack",
                         type=str)
     parser.add_argument("--micrograph-path",
-                        help="Replacement path for micrographs")
+                        help="Replacement path for micrographs or movies")
     parser.add_argument("--copy-micrograph-coordinates",
                         help="Source for micrograph paths and particle coordinates (file or quoted glob)",
                         type=str)
     parser.add_argument("--swapxy",
                         help="Swap X and Y axes when converting particle coordinates from normalized to absolute",
                         action="store_true")
+    parser.add_argument("--noswapxy",
+                        help="Do not swap X and Y axes when converting particle coordinates",
+                        action="store_false")
     parser.add_argument("--invertx", help="Invert particle coordinate X axis",
                         action="store_true")
     parser.add_argument("--inverty", help="Invert particle coordinate Y axis",
+                        action="store_false")
+    parser.add_argument("--flipy", help="Invert refined particle Y shifts",
                         action="store_true")
     parser.add_argument("--cached",
                         help="Keep paths from the Cryosparc 2+ cache when merging coordinates",
@@ -96,7 +103,12 @@ def defineArgs():
                         action="store_true")
     parser.add_argument("--strip-uid",
                         help="Strip all leading UIDs from file names",
-                        nargs="?", default=0, type=int)
+                        nargs="?", default=None, const=-1,
+                        type=int)
+    parser.add_argument("--10k",
+                        help="Only read first 10,000 particles for rapid testing.",
+                        action="store_true",
+                        dest="first10k")
     parser.add_argument("--loglevel", "-l", type=str, default="WARNING",
                         help="Logging level and debug output")
     return parser
@@ -164,7 +176,8 @@ def particleToRow(part, partRow, **kwargs):
     imageToRow(part, partRow, md.RLN_IMAGE_NAME, **kwargs)
 
 
-def imageToRow(img, imgRow, imgLabel=RELIONCOLUMNS.rlnImageName.value, **kwargs):
+def imageToRow(img, imgRow, imgLabel=RELIONCOLUMNS.rlnImageName.value,
+               **kwargs):
     # Provide a hook to be used if something is needed to be
     # done for special cases before converting image to row
     preprocessImageRow = kwargs.get('preprocessImageRow', None)
@@ -379,12 +392,17 @@ def rowToAlignment(alignmentRow, alignType):
         shifts[0] = alignmentRow.get(RELIONCOLUMNS.rlnOriginX.value, default=0.)
         shifts[1] = alignmentRow.get(RELIONCOLUMNS.rlnOriginY.value, default=0.)
         if not is2D:
-            angles[0] = alignmentRow.get(RELIONCOLUMNS.rlnAngleRot.value, default=0.)
-            angles[1] = alignmentRow.get(RELIONCOLUMNS.rlnAngleTilt.value, default=0.)
-            angles[2] = alignmentRow.get(RELIONCOLUMNS.rlnAnglePsi.value, default=0.)
-            shifts[2] = alignmentRow.get(RELIONCOLUMNS.rlnOriginZ.value, default=0.)
+            angles[0] = alignmentRow.get(RELIONCOLUMNS.rlnAngleRot.value,
+                                         default=0.)
+            angles[1] = alignmentRow.get(RELIONCOLUMNS.rlnAngleTilt.value,
+                                         default=0.)
+            angles[2] = alignmentRow.get(RELIONCOLUMNS.rlnAnglePsi.value,
+                                         default=0.)
+            shifts[2] = alignmentRow.get(RELIONCOLUMNS.rlnOriginZ.value,
+                                         default=0.)
         else:
-            angles[2] = - alignmentRow.get(RELIONCOLUMNS.rlnAnglePsi.value, default=0.)
+            angles[2] = - alignmentRow.get(RELIONCOLUMNS.rlnAnglePsi.value,
+                                           default=0.)
         M = matrixFromGeometry(shifts, angles, inverseTransform)
         alignment.setMatrix(M)
     else:
@@ -495,7 +513,8 @@ def convertBinaryFiles(imgSet, outputDir, extension='mrcs'):
     elif ext == 'mrc' and extension == 'mrcs':
         print("convertBinaryFiles: creating soft links (mrcs -> mrc).")
         mapFunc = createBinaryLink
-    elif ext.endswith('hdf') or ext.endswith('stk'):  # assume eman .hdf format or .stk format
+    elif ext.endswith('hdf') or ext.endswith(
+            'stk'):  # assume eman .hdf format or .stk format
         print("convertBinaryFiles: converting stacks. (%s -> %s)"
               % (ext, extension))
         mapFunc = convertStack
@@ -516,14 +535,14 @@ def writeSetOfParticles(imgSet, fileName, extraPath):
             'fillMagnification': True,
             'fillRandomSubset': True}
 
-    if imgSet.hasAlignmentProj() and imgSet.getAttributeValue("_rlnRandomSubset") is None:
+    if imgSet.hasAlignmentProj() and imgSet.getAttributeValue(
+            "_rlnRandomSubset") is None:
         args['postprocessImageRow'] = addRandomSubset
 
     cryosPARCwriteSetOfParticles(imgSet, fileName, **args)
 
 
 def cryosPARCwriteSetOfParticles(imgSet, starFile, outputDir, **kwargs):
-
     if outputDir is not None:
         filesDict = convertBinaryFiles(imgSet, outputDir)
         kwargs['filesDict'] = filesDict
@@ -554,7 +573,8 @@ def rowToCtfModel(ctfRow):
 
         rowToObject(ctfRow, ctfModel, CTF_DICT, extraLabels=CTF_EXTRA_LABELS)
         if ctfRow.hasColumn(RELIONCOLUMNS.rlnPhaseShift.value):
-            ctfModel.setPhaseShift(ctfRow.get(RELIONCOLUMNS.rlnPhaseShift.value, 0))
+            ctfModel.setPhaseShift(
+                ctfRow.get(RELIONCOLUMNS.rlnPhaseShift.value, 0))
         ctfModel.standardize()
         setPsdFiles(ctfModel, ctfRow)
     else:
@@ -614,7 +634,8 @@ def rowToParticle(partRow, particleClass=Particle, **kwargs):
         preprocessImageRow(img, partRow)
 
     # Decompose Relion filename
-    index, filename = cryosparcToLocation(partRow.get(RELIONCOLUMNS.rlnImageName.value))
+    index, filename = cryosparcToLocation(
+        partRow.get(RELIONCOLUMNS.rlnImageName.value))
     img.setLocation(index, filename)
 
     if partRow.hasColumn(RELIONCOLUMNS.rlnClassNumber.value):
@@ -650,7 +671,8 @@ def rowToParticle(partRow, particleClass=Particle, **kwargs):
 
     # copy particleId if available from row to particle
     if partRow.hasColumn(RELIONCOLUMNS.rlnParticleId.value):
-        img._rlnParticleId = Integer(partRow.get(RELIONCOLUMNS.rlnParticleId.value))
+        img._rlnParticleId = Integer(
+            partRow.get(RELIONCOLUMNS.rlnParticleId.value))
 
     # Provide a hook to be used if something is needed to be
     # done for special cases before converting image to row

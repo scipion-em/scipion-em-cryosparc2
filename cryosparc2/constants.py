@@ -81,6 +81,7 @@ V4_0_3 = 'V4.0.3'
 V4_1_0 = 'V4.1.0'
 V4_1_1 = 'V4.1.1'
 V4_1_2 = 'V4.1.2'
+V4_2_0 = 'V4.2.0'
 
 # Symmetry dict
 CS_SYM_NAME = dict()
@@ -118,8 +119,8 @@ VAR_USE_SCALES = ['none',
                   'input',
                   'optimal']
 
-VAR_OUTPUT_MODE = ['simple',
-                   'cluster',
+VAR_OUTPUT_MODE = ['cluster',
+                   'simple',
                    'intermediates']
 
 # Viewer constants
