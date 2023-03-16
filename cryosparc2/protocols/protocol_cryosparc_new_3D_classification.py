@@ -62,7 +62,7 @@ class ProtCryoSparcNew3DClassification(ProtCryosparcBase):
     _className = "class_3D"
     _devStatus = BETA
     _protCompatibility = [V3_3_1, V3_3_2, V4_0_0, V4_0_1, V4_0_2, V4_0_3,
-                          V4_1_0, V4_1_1, V4_1_2, V4_2_0]
+                          V4_1_0, V4_1_1, V4_1_2, V4_2_0, V4_2_1]
 
     def _initialize(self):
         self._defineFileNames()
@@ -401,10 +401,7 @@ class ProtCryoSparcNew3DClassification(ProtCryosparcBase):
 
     def _fillClassesFromIter(self, clsSet, filename):
         """ Create the SetOfClasses3D """
-        csVersion = getCryosparcVersion()
-        xmpMd = 'particles@' + filename
-        if parse_version(csVersion) <= parse_version(V4_1_1):
-            xmpMd = 'micrographs@' + filename
+        xmpMd = 'micrographs@' + filename
         self._loadClassesInfo(self._getFileName('out_class'))
         clsSet.classifyItems(updateItemCallback=self._updateParticle,
                              updateClassCallback=self._updateClass,
@@ -644,8 +641,8 @@ class ProtCryoSparcNew3DClassification(ProtCryosparcBase):
         isV4_2 = parse_version(csVersion) >= parse_version(V4_1_1)
         if isV4_2:
             params['class3D_reorder_classes'] = str("False")
-            params['generate_intermediate_results'] = str("True")
-            params['class3D_force_hard_class'] = str("True")
+            params['generate_intermediate_results'] = str("False")
+            params['class3D_force_hard_class'] = str("False")
 
         for paramName in self._paramsName:
             if (paramName != 'class3D_filter_hp_res' and paramName != 'class3D_num_oem_epochs' and

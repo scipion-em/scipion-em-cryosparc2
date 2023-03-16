@@ -31,7 +31,7 @@ import pyworkflow.utils as pwutils
 
 from .constants import *
 
-__version__ = '4.0.3'
+__version__ = '4.0.4'
 _references = ['Punjani2017', 'Brubaker2017', 'daniel_asarnow_2019_3576630']
 _logo = 'cryosparc2_logo.png'
 
@@ -40,11 +40,9 @@ class Plugin(em.Plugin):
     _url = "https://github.com/scipion-em/scipion-em-cryosparc2"
     _homeVar = CRYOSPARC_HOME
     _pathVars = [CRYOSPARC_HOME]
-    _supportedVersions = [V2_5_0, V2_8_0, V2_9_0, V2_11_0, V2_12_0, V2_12_2,
-                          V2_12_4, V2_13_0, V2_13_2, V2_14_0, V2_14_2, V2_15_0,
-                          V3_0_0, V3_0_1, V3_1_0, V3_2_0, V3_3_0, V3_3_1,
+    _supportedVersions = [V3_0_0, V3_0_1, V3_1_0, V3_2_0, V3_3_0, V3_3_1,
                           V3_3_2, V4_0_0, V4_0_1, V4_0_2, V4_0_3, V4_1_0,
-                          V4_1_1, V4_1_2, V4_2_0]
+                          V4_1_1, V4_1_2, V4_2_0, V4_2_1]
 
     @classmethod
     def _defineVariables(cls):

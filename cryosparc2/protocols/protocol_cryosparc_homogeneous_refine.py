@@ -58,7 +58,8 @@ class ProtCryoSparc3DHomogeneousRefine(ProtCryosparcBase, pwprot.ProtRefine3D):
     _className = "homo_refine_new"
     ewsParamsName = []
     _protCompatibility = [V3_0_0, V3_1_0, V3_2_0, V3_3_0, V3_3_1, V3_3_2, V4_0_0,
-                          V4_0_1, V4_0_2, V4_0_3, V4_1_0, V4_1_1, V4_1_2, V4_2_0]
+                          V4_0_1, V4_0_2, V4_0_3, V4_1_0, V4_1_1, V4_1_2, V4_2_0,
+                          V4_2_1]
 
     # --------------------------- DEFINE param functions ----------------------
     def _defineFileNames(self):

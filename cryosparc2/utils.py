@@ -463,19 +463,19 @@ def enqueueJob(jobType, projectName, workSpaceName, params, input_group_connect,
     cryosparcVersion = getCryosparcVersion()
     standaloneInstallation = isCryosparcStandalone()
 
-    # Create a compatible job to versions < v2.14.X
-    make_job_cmd = (getCryosparcProgram() +
-                    ' %smake_job("%s","%s","%s", "%s", "None", %s, %s)%s' %
-                    ("'", jobType, projectName, workSpaceName, getCryosparcUser(),
-                     params, input_group_connect, "'"))
+    # Create a compatible job to versions < v2.14.X                DEPRECATED
+    # make_job_cmd = (getCryosparcProgram() +
+    #                 ' %smake_job("%s","%s","%s", "%s", "None", %s, %s)%s' %
+    #                 ("'", jobType, projectName, workSpaceName, getCryosparcUser(),
+    #                  params, input_group_connect, "'"))
 
-    # Create a compatible job to versions >= v2.14.X
-    if parse_version(cryosparcVersion) >= parse_version(V2_14_0):
-        make_job_cmd = (getCryosparcProgram() +
-                        ' %smake_job("%s","%s","%s", "%s", "None", "None", %s, %s)%s' %
-                        ("'", jobType, projectName, workSpaceName,
-                         getCryosparcUser(),
-                         params, input_group_connect, "'"))
+    # Create a compatible job to versions >= v2.14.X               DEPRECATED
+    # if parse_version(cryosparcVersion) >= parse_version(V2_14_0):
+    #     make_job_cmd = (getCryosparcProgram() +
+    #                     ' %smake_job("%s","%s","%s", "%s", "None", "None", %s, %s)%s' %
+    #                     ("'", jobType, projectName, workSpaceName,
+    #                      getCryosparcUser(),
+    #                      params, input_group_connect, "'"))
 
     # Create a compatible job to versions >= v3.0.X
     if parse_version(cryosparcVersion) >= parse_version(V3_0_0):
@@ -507,28 +507,28 @@ def enqueueJob(jobType, projectName, workSpaceName, params, input_group_connect,
 
     print(pwutils.greenStr("Got %s for JobId" % jobId), flush=True)
 
-    # Queue the job
-    if parse_version(cryosparcVersion) < parse_version(V2_13_0):
-        enqueue_job_cmd = (getCryosparcProgram() +
-                           ' %senqueue_job("%s","%s","%s")%s' %
-                           ("'", projectName, jobId,
-                            lane, "'"))
+    # Queue the job  DEPRECATED
+    # if parse_version(cryosparcVersion) < parse_version(V2_13_0):
+    #     enqueue_job_cmd = (getCryosparcProgram() +
+    #                        ' %senqueue_job("%s","%s","%s")%s' %
+    #                        ("'", projectName, jobId,
+    #                         lane, "'"))
+    #
+    # elif parse_version(cryosparcVersion) <= parse_version(V2_15_0):
+    #     if standaloneInstallation:
+    #         hostname = getCryosparcEnvInformation('master_hostname')
+    #         if gpusToUse:
+    #             gpusToUse = str(gpusToUse)
+    #         enqueue_job_cmd = (getCryosparcProgram() +
+    #                            ' %senqueue_job("%s","%s","%s", "%s", %s)%s' %
+    #                            ("'", projectName, jobId,
+    #                             lane, hostname, gpusToUse, "'"))
+    #     else:
+    #         enqueue_job_cmd = (getCryosparcProgram() +
+    #                            ' %senqueue_job("%s","%s","%s")%s' %
+    #                            ("'", projectName, jobId, lane, "'"))
 
-    elif parse_version(cryosparcVersion) <= parse_version(V2_15_0):
-        if standaloneInstallation:
-            hostname = getCryosparcEnvInformation('master_hostname')
-            if gpusToUse:
-                gpusToUse = str(gpusToUse)
-            enqueue_job_cmd = (getCryosparcProgram() +
-                               ' %senqueue_job("%s","%s","%s", "%s", %s)%s' %
-                               ("'", projectName, jobId,
-                                lane, hostname, gpusToUse, "'"))
-        else:
-            enqueue_job_cmd = (getCryosparcProgram() +
-                               ' %senqueue_job("%s","%s","%s")%s' %
-                               ("'", projectName, jobId, lane, "'"))
-
-    elif parse_version(cryosparcVersion) <= parse_version(V3_3_2):
+    if parse_version(cryosparcVersion) <= parse_version(V3_3_2):
         if standaloneInstallation:
             hostname = getCryosparcEnvInformation('master_hostname')
             if gpusToUse:
@@ -757,7 +757,7 @@ def addComputeSectionParams(form, allowMultipleGPUs=True, needGPU=True):
     # This is here because getCryosparcEnvInformation is failing in some machines
     try:
         if isCryosparcStandalone():
-            versionAllowGPUs = parse_version(getCryosparcVersion()) >= parse_version(V2_13_0)
+            versionAllowGPUs = parse_version(getCryosparcVersion()) >= parse_version(V3_0_0)
         else:
             versionAllowGPUs = False
     # Code is failing to get CS info, either stop or some error

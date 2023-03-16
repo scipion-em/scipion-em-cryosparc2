@@ -1,3 +1,6 @@
+March 16, 2023 -  **v4.0.4**
+                 Compatibility with cryoSPARC v4.2.1
+
 March 1, 2023 -  **v4.0.3**
                  Compatibility with cryoSPARC v4.2
                  Fixed an error importing volumes with halves
