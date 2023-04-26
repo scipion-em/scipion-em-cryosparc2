@@ -2,7 +2,7 @@ import getpass
 import unittest
 from unittest.mock import patch
 
-from cryosparc2 import V2_14_2, V_UNKNOWN
+from cryosparc2 import V_UNKNOWN
 from cryosparc2.utils import (cryosparcValidate, cryosparcExists,
                               isCryosparcRunning, calculateNewSamplingRate,
                               getProjectName, getCryosparcVersion)
