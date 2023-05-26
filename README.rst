@@ -28,22 +28,11 @@ You will need to use `3.0.0 <https://scipion-em.github.io/docs/release-3.0.0/doc
 **Latest plugin version**
 ==========================
 
-**v4.0.3**
+**v4.0.6**
 -----------
 * **new**     :  Compatibility with cryoSPARC v4.2.1
-
-**v4.0.3**
------------
-* **new**     :  Compatibility with cryoSPARC v4.2
-* **fixed**   :  Fixed an error importing volumes with halves
-* **fixed**   :  Fixed an error launching the protocols viewers
-
-
-**v4.0.2**
------------
-* **new**     :  Compatibility with cryoSPARC v4.1.0, 4.1.1 and 4.1.2
-* **updated** :  Creating an environment for pyem package
-* **updated** :  3D homogeneous refinement(Legacy), 3D non-uniform refinement(Legacy) and Naive local refinement(Legacy) protocols are deprecated
+* **new**        Plugin operation in a cluster
+* **fixed**      Fixed an installation error
 
 **Installing the plugin**
 =========================
