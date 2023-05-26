@@ -31,7 +31,7 @@ import pyworkflow.utils as pwutils
 
 from .constants import *
 
-__version__ = '4.0.4'
+__version__ = '4.0.5'
 _references = ['Punjani2017', 'Brubaker2017', 'daniel_asarnow_2019_3576630']
 _logo = 'cryosparc2_logo.png'
 
@@ -81,7 +81,7 @@ class Plugin(em.Plugin):
         installCmd = ["pip uninstall -y pyem && ",
                       cls.getCondaActivationCmd(),
                       f'conda create -y -n {ENV_NAME} python=3.8 -c conda-forge -c anaconda && ',
-                      f'conda activate {ENV_NAME} && pip install git+https://github.com/asarnow/pyem.git@47cf8f70488500be5988b4db1b6ef7002916e0e0']
+                      f'conda activate {ENV_NAME} && pip install git+https://github.com/asarnow/pyem.git@47cf8f70488500be5988b4db1b6ef7002916e0e0 && pip install numpy==1.23.5']
 
         # install pyem
         #installCmd.append('pip install git+https://github.com/asarnow/pyem.git@47cf8f70488500be5988b4db1b6ef7002916e0e0')

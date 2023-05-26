@@ -1,3 +1,6 @@
+May 26, 2023   - **v4.0.5**
+                 Plugin operation in a cluster
+                 Fixed an installation error
 March 16, 2023 -  **v4.0.4**
                  Compatibility with cryoSPARC v4.2.1
 
