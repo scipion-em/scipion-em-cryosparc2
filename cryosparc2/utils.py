@@ -40,6 +40,7 @@ from pwem.constants import SCIPION_SYM_NAME
 from pwem.constants import (SYM_CYCLIC, SYM_TETRAHEDRAL,
                             SYM_OCTAHEDRAL, SYM_I222, SYM_I222r)
 from pwem.convert import Ccp4Header
+from pyworkflow.protocol import IntParam
 
 from . import Plugin
 from .constants import *
@@ -788,6 +789,12 @@ def addComputeSectionParams(form, allowMultipleGPUs=True, needGPU=True):
     form.addParam('compute_lane', StringParam, default=defaultLane,
                   label='Lane name:', readOnly=True,
                   help='The scheduler lane name to add the protocol execution')
+
+    from .protocols import ProtCryo2D
+    if not isCryosparcStandalone() and isinstance(form._protocol, ProtCryo2D):
+        form.addParam('compute_num_gpus', IntParam, default=1,
+                      label='Number of GPUs to compute:',
+                      help='Number of GPUs to compute:')
 
 
 def addSymmetryParam(form, help=""):

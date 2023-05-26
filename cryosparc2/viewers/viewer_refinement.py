@@ -33,8 +33,7 @@ from pyworkflow.gui.dialog import showInfo
 from pyworkflow.protocol.constants import *
 from pyworkflow.protocol.params import (LabelParam, FloatParam, EnumParam)
 from pyworkflow.viewer import DESKTOP_TKINTER, WEB_DJANGO
-from pwem.viewers import (ChimeraView, ChimeraClientView,
-                          ObjectView, EmProtocolViewer, FscViewer)
+from pwem.viewers import (ChimeraView, ObjectView, EmProtocolViewer, FscViewer)
 
 from ..protocols import (ProtCryoSparcLocalRefine, ProtCryoSparcHelicalRefine3D,
                          ProtCryoSparc3DHomogeneousRefine,
@@ -205,7 +204,7 @@ class CryosPARCViewer3DRefinement(EmProtocolViewer):
                 f.close()
                 view.append(ChimeraView(cmdFile))
             else:
-                view.append(ChimeraClientView(volumes[0]))
+                view.append(ChimeraView(volumes[0]))
         else:
             showInfo('Info', "Chimera plugin is not installed. Please, "
                              "install it to display the volume",

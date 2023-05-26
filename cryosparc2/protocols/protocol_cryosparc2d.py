@@ -37,10 +37,10 @@ from pyworkflow.protocol.params import (PointerParam, FloatParam, IntParam,
 import pyworkflow.utils as pwutils
 
 from .protocol_base import ProtCryosparcBase
-from ..convert import (rowToAlignment, convertCs2Star,  cryosparcToLocation)
+from ..convert import (rowToAlignment, convertCs2Star, cryosparcToLocation)
 from ..utils import (addComputeSectionParams, cryosparcValidate, gpusValidate,
                      enqueueJob, waitForCryosparc, clearIntermediateResults,
-                     copyFiles, getOutputPreffix)
+                     copyFiles, getOutputPreffix, isCryosparcStandalone)
 from ..constants import *
 
 
@@ -53,22 +53,22 @@ class ProtCryo2D(ProtCryosparcBase, pwprot.ProtClassify2D):
     _label = '2D classification'
     IS_2D = True
     _className = "class_2D"
-    
+
     def __init__(self, **args):
         pwprot.ProtClassify2D.__init__(self, **args)
         if self.numberOfMpi.get() < 2:
             self.numberOfMpi.set(2)
-    
+
     def _defineFileNames(self):
         """ Centralize how files are called within the protocol. """
         myDict = {
-                  'input_particles': self._getTmpPath('input_particles.star'),
-                  'out_particles': self._getExtraPath() + '/output_particle.star',
-                  'out_class': self._getExtraPath() + '/output_class.star',
-                  'out_class_m2': self._getExtraPath() + '/output_class_m2.star'
-                  }
+            'input_particles': self._getTmpPath('input_particles.star'),
+            'out_particles': self._getExtraPath() + '/output_particle.star',
+            'out_class': self._getExtraPath() + '/output_class.star',
+            'out_class_m2': self._getExtraPath() + '/output_class_m2.star'
+        }
         self._updateFilenamesDict(myDict)
-    
+
     # --------------------------- DEFINE param functions -----------------------
     def _defineParams(self, form):
         form.addSection(label='Input')
@@ -120,9 +120,9 @@ class ProtCryo2D(ProtCryosparcBase, pwprot.ProtClassify2D):
         form.addParam('class2D_window_inner_A', FloatParam, default=None,
                       label='Circular mask diameter (A)',
                       help='The inner diameter (in Angstroms) of the window '
-                            'that is applied to 2D classes during '
-                            'classification. If None, the window only masks out '
-                            'the corners of each 2D class.',
+                           'that is applied to 2D classes during '
+                           'classification. If None, the window only masks out '
+                           'the corners of each 2D class.',
                       allowsNull=True,
                       condition='useCircular2D==True')
 
@@ -282,7 +282,8 @@ class ProtCryo2D(ProtCryosparcBase, pwprot.ProtClassify2D):
         argsList = [csPartFile, outputStarFn]
         convertCs2Star(argsList)
 
-        csClassAverageFile = os.path.join(self._getExtraPath(), csClassAveragesName)
+        csClassAverageFile = os.path.join(self._getExtraPath(),
+                                          csClassAveragesName)
         outputClassFn = self._getFileName('out_class')
         argsList = [csClassAverageFile, outputClassFn]
 
@@ -293,7 +294,7 @@ class ProtCryo2D(ProtCryosparcBase, pwprot.ProtClassify2D):
         # Use the pointer with extended (indirect)
         classes2DSet = self._createSetOfClasses2D(self.inputParticles)
         self._fillClassesFromLevel(classes2DSet)
-  
+
         self._defineOutputs(outputClasses=classes2DSet)
         self._defineSourceRelation(self.inputParticles.get(), classes2DSet)
 
@@ -324,7 +325,7 @@ class ProtCryo2D(ProtCryosparcBase, pwprot.ProtClassify2D):
             self._getInputParticles().getSize())
         methods += "into %d classes using CryoSparc " % self.numberOfClasses.get()
         return [methods]
-    
+
     # --------------------------- UTILS functions ------------------------------
     def _loadClassesInfo(self, filename):
         """ Read some information about the produced 2D classes
@@ -336,7 +337,8 @@ class ProtCryo2D(ProtCryosparcBase, pwprot.ProtClassify2D):
         table = emtable.Table(fileName=filename)
 
         for classNumber, row in enumerate(table.iterRows(mdFileName)):
-            index, fn = cryosparcToLocation(row.get(RELIONCOLUMNS.rlnImageName.value))
+            index, fn = cryosparcToLocation(
+                row.get(RELIONCOLUMNS.rlnImageName.value))
 
             # Store info indexed by id, we need to store the row.clone() since
             # the same reference is used for iteration
@@ -352,12 +354,13 @@ class ProtCryo2D(ProtCryosparcBase, pwprot.ProtClassify2D):
 
         clsSet.classifyItems(updateItemCallback=self._updateParticle,
                              updateClassCallback=self._updateClass,
-                             itemDataIterator=emtable.Table.iterRows(xmpMd))  # relion style
+                             itemDataIterator=emtable.Table.iterRows(
+                                 xmpMd))  # relion style
 
     def _updateParticle(self, item, row):
         item.setClassId(row.get(RELIONCOLUMNS.rlnClassNumber.value))
         item.setTransform(rowToAlignment(row, ALIGN_2D))
-        
+
     def _updateClass(self, class2D):
         classId = class2D.getObjId()
         if classId in self._classesInfo:
@@ -375,7 +378,8 @@ class ProtCryo2D(ProtCryosparcBase, pwprot.ProtClassify2D):
                     row = "%s@%s/%s"
                     classNumber = line.split('@')[0]
                     image = line.split('/')[1]
-                    output_file.write(row % (classNumber, self._getExtraPath(), image))
+                    output_file.write(
+                        row % (classNumber, self._getExtraPath(), image))
                 else:
                     output_file.write(line)
 
@@ -396,7 +400,8 @@ class ProtCryo2D(ProtCryosparcBase, pwprot.ProtClassify2D):
     def assignParamValue(self):
         params = {"class2D_K": str(self.numberOfClasses.get()),
                   "class2D_max_res": str(self.maximunResolution.get()),
-                  "class2D_sigma_init_factor": str(self.initialClassification.get()),
+                  "class2D_sigma_init_factor": str(
+                      self.initialClassification.get()),
                   "class2D_window": str(self.useCircular2D.get()),
                   "class2D_recenter": str(self.reCenter2D.get()),
                   "class2D_recenter_thresh": str(self.reCenterMask.get()),
@@ -404,21 +409,27 @@ class ProtCryo2D(ProtCryosparcBase, pwprot.ProtClassify2D):
                   "class2D_force_max": str(self.forceMaxover.get()),
                   "class2D_ctf_phase_flip_only": str(self.ctfFlipPhases.get()),
                   "class2D_num_full_iter": str(self.numberFinalIterator.get()),
-                  "class2D_num_full_iter_batch": str(self.numberOnlineEMIterator.get()),
-                  "class2D_num_full_iter_batchsize_per_class": str(self.batchSizeClass.get()),
+                  "class2D_num_full_iter_batch": str(
+                      self.numberOnlineEMIterator.get()),
+                  "class2D_num_full_iter_batchsize_per_class": str(
+                      self.batchSizeClass.get()),
                   "class2D_init_scale": str(self.initialScale2D.get()),
                   "class2D_zp_factor": str(self.zeropadFactor.get()),
                   "class2D_use_frc_reg": str(self.useFRCRegularized.get()),
                   "class2D_use_frc_reg_full": str(self.useFullFRC.get()),
-                  "class2D_sigma_init_iter": str(self.iterationToStartAnneling.get()),
-                  "class2D_sigma_num_anneal_iters": str(self.iterationToStartAnneal.get()),
+                  "class2D_sigma_init_iter": str(
+                      self.iterationToStartAnneling.get()),
+                  "class2D_sigma_num_anneal_iters": str(
+                      self.iterationToStartAnneal.get()),
                   "class2D_sigma_use_white": str(self.useWhiteNoiseModel.get()),
                   "intermediate_plots": str('False'),
                   "compute_use_ssd": str(self.compute_use_ssd.get())}
         if self.class2D_window_inner_A.get() is not None:
-                params["class2D_window_inner_A"] = str(self.class2D_window_inner_A.get())
+            params["class2D_window_inner_A"] = str(
+                self.class2D_window_inner_A.get())
         if self.class2D_window_outer_A.get() is not None:
-                params["class2D_window_outer_A"] = str(self.class2D_window_outer_A.get())
+            params["class2D_window_outer_A"] = str(
+                self.class2D_window_outer_A.get())
         return params
 
     def doRunClass2D(self):
@@ -439,14 +450,17 @@ class ProtCryo2D(ProtCryosparcBase, pwprot.ProtClassify2D):
         except Exception:
             gpusToUse = False
             numberGPU = 1
-
         params = self.assignParamValue()
+        if not isCryosparcStandalone():  # Cluster case
+            gpusToUse = False
+            numberGPU = self.compute_num_gpus.get()
+
         params["compute_num_gpus"] = str(numberGPU)
         runClass2DJob = enqueueJob(self._className, self.projectName.get(),
-                                     self.workSpaceName.get(),
-                                     str(params).replace('\'', '"'),
-                                     str(input_group_connect).replace('\'', '"'),
-                                     self.lane, gpusToUse)
+                                   self.workSpaceName.get(),
+                                   str(params).replace('\'', '"'),
+                                   str(input_group_connect).replace('\'', '"'),
+                                   self.lane, gpusToUse)
 
         self.runClass2D = String(runClass2DJob.get())
         self.currenJob.set(runClass2DJob.get())
