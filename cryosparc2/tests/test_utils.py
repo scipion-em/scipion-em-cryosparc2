@@ -2,7 +2,7 @@ import getpass
 import unittest
 from unittest.mock import patch
 
-from cryosparc2 import V_UNKNOWN
+from cryosparc2 import V_UNKNOWN, V3_0_0
 from cryosparc2.utils import (cryosparcValidate, cryosparcExists,
                               isCryosparcRunning, calculateNewSamplingRate,
                               getProjectName, getCryosparcVersion)
@@ -72,7 +72,7 @@ class TestUtils(unittest.TestCase):
                     self.assertTrue('not compatible' in result[0], "Validation did not detect CS low version")
 
                     # Supported version
-                    getVersion.return_value = V2_14_2
+                    getVersion.return_value = V3_0_0
                     result = cryosparcValidate()
                     self.assertEqual(0, len(result), "Validation did not detectCS correct version.")
 
