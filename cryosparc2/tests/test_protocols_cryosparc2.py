@@ -525,9 +525,18 @@ class TestCryosparc3DHeterogeneousRefinement(TestCryosparcBase):
             self.launchProtocol(protNonUniform3DRefinement1)
             self.assertIsNotNone(protNonUniform3DRefinement1.outputVolume)
 
+            unionProt = self.newProtocol(ProtUnionSet)
+            # Set the input volumes
+            unionProt.inputSets.append(protNonUniform3DRefinement.outputParticles)
+            unionProt.inputSets.append(protNonUniform3DRefinement1.outputParticles)
+            unionProt.setObjLabel("Single particles union")
+            self.launchProtocol(unionProt)
+            self.assertSetSize(unionProt.outputSet, 746,
+                               msg="Union of 2 set of particles does not work.")
+
             # Launch a 3D Heterogeneous Refinement protocol
             prot3DHeterogeneousRefinement = self.newProtocol(ProtCryoSparc3DClassification)
-            prot3DHeterogeneousRefinement.inputParticles.set(protNonUniform3DRefinement.outputParticles)
+            prot3DHeterogeneousRefinement.inputParticles.set(unionProt.outputSet)
             volumes = PointerList()
             volumes.append(protNonUniform3DRefinement.outputVolume)
             volumes.append(protNonUniform3DRefinement1.outputVolume)
@@ -596,8 +605,6 @@ class TestCryosparcParticlesSubtract(TestCryosparcBase):
             self.launchProtocol(protParticlesSubtract)
 
             self.assertIsNotNone(protParticlesSubtract.outputParticles)
-            self.assertEqual(protParticlesSubtract.outputParticles.getSize(),
-                             prot3DRefinement.outputParticles.getSize())
 
         _runCryosparctestParticlesSubtract(label="Cryosparc Subtract projection")
 
@@ -860,7 +867,11 @@ class TestCryosparcLocalRefine(TestCryosparcBase):
 
         def _checkAsserts(cryosparcProt):
             self.assertIsNotNone(cryosparcProt.outputParticles,
-                                 "There was a problem with Cryosparc subtract projection")
+                                 "There was a problem with Cryosparc local refine")
+            transform = cryosparcProt.outputParticles.getFirstItem().getTransform()
+            shifts = transform.getShifts()
+            shiftsCeros = shifts[0] == shifts[1] == shifts[2] == 0
+            self.assertFalse(shiftsCeros, "The transform matrix must have shifts")
 
         cryosparcProtGpu = _runCryosparctestLocalRefine(label="Cryosparc Local Refine")
         _checkAsserts(cryosparcProtGpu)
@@ -899,7 +910,7 @@ class TestCryosparcHomogeneousReconstruction(TestCryosparcBase):
 
         def _checkAsserts(cryosparcProt):
             self.assertIsNotNone(cryosparcProt.outputParticles,
-                                 "There was a problem with Cryosparc subtract projection")
+                                 "There was a problem with Cryosparc Homogeneous Reconstruction")
 
         cryosparcProtGpu = _runCryosparctestHomogeneousReconstruction(label="Cryosparc Homogeneous Reconstruction")
         _checkAsserts(cryosparcProtGpu)

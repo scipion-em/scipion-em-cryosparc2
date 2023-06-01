@@ -28,11 +28,12 @@ You will need to use `3.0.0 <https://scipion-em.github.io/docs/release-3.0.0/doc
 **Latest plugin version**
 ==========================
 
-**v4.0.6**
+**v4.0.7**
 -----------
 * **new**     :  Compatibility with cryoSPARC v4.2.1
 * **new**        Plugin operation in a cluster
 * **fixed**      Fixed an installation error
+* **fixed**      Fixed an error related with the calculation of the particles shifts
 
 **Installing the plugin**
 =========================

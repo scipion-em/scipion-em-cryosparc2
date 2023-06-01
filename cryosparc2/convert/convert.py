@@ -374,10 +374,11 @@ def convertBinaryVol(vol, outputDir):
 
 def createItemMatrix(item, row, align):
     item.setCTF(rowToCtfModel(row))
-    item.setTransform(rowToAlignment(row, alignType=align))
+    pixelSize = item.getSamplingRate()
+    item.setTransform(rowToAlignment(row, align, pixelSize))
 
 
-def rowToAlignment(alignmentRow, alignType):
+def rowToAlignment(alignmentRow, alignType, pixelSize=1.0):
     """
     is2D == True-> matrix is 2D (2D images alignment)
             otherwise matrix is 3D (3D volume alignment or projection)
@@ -392,20 +393,15 @@ def rowToAlignment(alignmentRow, alignType):
         alignment = Transform()
         angles = np.zeros(3)
         shifts = np.zeros(3)
-        shifts[0] = alignmentRow.get(RELIONCOLUMNS.rlnOriginX.value, default=0.)
-        shifts[1] = alignmentRow.get(RELIONCOLUMNS.rlnOriginY.value, default=0.)
+        shifts[0] = alignmentRow.get(RELIONCOLUMNS.rlnOriginXAngst.value, default=0.)/pixelSize
+        shifts[1] = alignmentRow.get(RELIONCOLUMNS.rlnOriginYAngst.value, default=0.)/pixelSize
         if not is2D:
-            angles[0] = alignmentRow.get(RELIONCOLUMNS.rlnAngleRot.value,
-                                         default=0.)
-            angles[1] = alignmentRow.get(RELIONCOLUMNS.rlnAngleTilt.value,
-                                         default=0.)
-            angles[2] = alignmentRow.get(RELIONCOLUMNS.rlnAnglePsi.value,
-                                         default=0.)
-            shifts[2] = alignmentRow.get(RELIONCOLUMNS.rlnOriginZ.value,
-                                         default=0.)
+            angles[0] = alignmentRow.get(RELIONCOLUMNS.rlnAngleRot.value, default=0.)
+            angles[1] = alignmentRow.get(RELIONCOLUMNS.rlnAngleTilt.value, default=0.)
+            angles[2] = alignmentRow.get(RELIONCOLUMNS.rlnAnglePsi.value, default=0.)
+            shifts[2] = alignmentRow.get(RELIONCOLUMNS.rlnOriginZAngst.value, default=0.)/pixelSize
         else:
-            angles[2] = - alignmentRow.get(RELIONCOLUMNS.rlnAnglePsi.value,
-                                           default=0.)
+            angles[2] = - alignmentRow.get(RELIONCOLUMNS.rlnAnglePsi.value, default=0.)
         M = matrixFromGeometry(shifts, angles, inverseTransform)
         alignment.setMatrix(M)
     else:
@@ -537,10 +533,6 @@ def writeSetOfParticles(imgSet, fileName, extraPath):
     args = {'outputDir': extraPath,
             'fillMagnification': True,
             'fillRandomSubset': True}
-
-    if imgSet.hasAlignmentProj() and imgSet.getAttributeValue(
-            "_rlnRandomSubset") is None:
-        args['postprocessImageRow'] = addRandomSubset
     try:
         logger.info('Trying to generate the star file with Relion convert...')
         from relion import convert
@@ -550,6 +542,8 @@ def writeSetOfParticles(imgSet, fileName, extraPath):
         convert.writeSetOfParticles(imgSet, fileName, **args)
         logger.info('The star file was generate successfully ...')
     except Exception:
+        if imgSet.hasAlignmentProj() and imgSet.getAttributeValue("_rlnRandomSubset") is None:
+            args['postprocessImageRow'] = addRandomSubset
         logger.info('The star file generation with Relion convert failed ...')
         logger.info('Trying to generate the star file with cryoSPARC convert ...')
         cryosPARCwriteSetOfParticles(imgSet, fileName, **args)
@@ -663,7 +657,8 @@ def rowToParticle(partRow, particleClass=Particle, **kwargs):
     alignType = kwargs.get('alignType')
 
     if alignType != ALIGN_NONE:
-        img.setTransform(rowToAlignment(partRow, alignType))
+        samplingRate = kwargs.get('samplingRate')
+        img.setTransform(rowToAlignment(partRow, alignType, samplingRate))
 
     if kwargs.get('readAcquisition', True):
         img.setAcquisition(rowToAcquisition(partRow))
