@@ -189,7 +189,8 @@ class ProtCryoSparcSubtract(ProtCryosparcBase, ProtOperateParticles):
         readSetOfParticles(outImgsFn, imgSet,
                            postprocessImageRow=self._updateItem,
                            alignType=ALIGN_PROJ, readCtf=hasCtf, 
-                           readAcquisition= hasAcquisition)
+                           readAcquisition=hasAcquisition,
+                           samplingRate=imgSet.getSamplingRate())
 
     def _updateItem(self, item, row):
         newFn = row.get(RELIONCOLUMNS.rlnImageName.value)

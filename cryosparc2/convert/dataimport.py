@@ -54,7 +54,8 @@ class cryoSPARCImport:
         outImgsFn = 'particles@' + self.protocol._getFileName('out_particles')
         readSetOfParticles(outImgsFn, imgSet,
                            postprocessImageRow=self._updateItem,
-                           alignType=ALIGN_PROJ)
+                           alignType=ALIGN_PROJ,
+                           samplingRate=imgSet.getSamplingRate())
 
     def _updateItem(self, item, row):
         index, file = item.getLocation()

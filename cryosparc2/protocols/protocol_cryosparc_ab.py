@@ -417,7 +417,8 @@ class ProtCryoSparcInitialModel(ProtCryosparcBase, ProtInitialVolume,
             item.setClassId(row.get(RELIONCOLUMNS.rlnClassNumber.value))
         else:
             item.setClassId(1)
-        item.setTransform(rowToAlignment(row, ALIGN_PROJ))
+        samplingRate = item.getSamplingRate()
+        item.setTransform(rowToAlignment(row, ALIGN_PROJ, samplingRate))
 
     def _updateClass(self, item):
         classId = item.getObjId()

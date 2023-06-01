@@ -29,8 +29,8 @@ from pwem.constants import (
     SYM_CYCLIC, SYM_TETRAHEDRAL, SYM_OCTAHEDRAL, SYM_I222,
     SYM_I222r)
 
-
 from pwem.constants import SYM_DIHEDRAL_Y
+
 # Root folder where cryosparc is installed, we will look here for the client
 CRYOSPARC_HOME = 'CRYOSPARC_HOME'
 CRYOSPARC_DIR = 'CRYOSPARC_DIR'  # Legacy, replaced by CRYOSPARC_HOME
@@ -46,15 +46,17 @@ CRYOSPARC_CONFIG_FILE = 'config.sh'
 CRYOSPARC_LICENSE_ID_VARIABLE = 'CRYOSPARC_LICENSE_ID'
 CRYOSPARC_CS2STAR_SCRIPT = 'cs2Start.py'
 
+
 def getPyemEnvName(version):
     return 'pyem-%s' % version
+
 
 # pyem environment variables
 PYEM_VERSION = '23.01.25'  # This is our made up version
 PYEM_ACTIVATION_CMD = 'conda activate %s' % (getPyemEnvName(PYEM_VERSION))
 
 # Supported versions:
-V_UNKNOWN ='v0.0.0'
+V_UNKNOWN = 'v0.0.0'
 V3_0_0 = 'v3.0.0'
 V3_0_1 = 'v3.0.1'
 V3_1_0 = 'v3.1.0'
@@ -89,8 +91,8 @@ REFINE_MASK_CHOICES = ['dynamic',
                        'null']
 
 REFINE_FILTER_TYPE = ['butterworth',
-                     'rect',
-                     'gaussian']
+                      'rect',
+                      'gaussian']
 
 REFINE_FULCRUM_LOCATION = ['mask_center',
                            'box_center']
@@ -119,7 +121,6 @@ SELECTED_ITERS = 2
 
 ANGDIST_2DPLOT = 0
 ANGDIST_CHIMERA = 1
-
 
 # VOLUME_SLICES = 0
 VOLUME_CHIMERA = 1
@@ -151,56 +152,59 @@ OBJCMD_INITVOL = 'Show initial random volume'
 # METADATA
 
 class RELIONCOLUMNS(enum.Enum):
-    rlnOriginX = 'rlnOriginX'                        # RLN_ORIENT_ORIGIN_X
-    rlnOriginY = 'rlnOriginY'                        # RLN_ORIENT_ORIGIN_Y
-    rlnAngleRot = 'rlnAngleRot'                      # RLN_ORIENT_ROT
-    rlnAnglePsi = 'rlnAnglePsi'                      # RLN_ORIENT_PSI
-    rlnOriginZ = 'rlnOriginZ'                        # RLN_ORIENT_ORIGIN_Z
-    rlnClassNumber = 'rlnClassNumber'                # RLN_PARTICLE_CLASS
-    rlnImageName = 'rlnImageName'                    # RLN_IMAGE_NAME
-    rlnRandomSubset = 'rlnRandomSubset'              # RLN_PARTICLE_RANDOM_SUBSET
-    rlnAngleTilt = 'rlnAngleTilt'                    # RLN_ORIENT_TILT
-    rlnDefocusU = 'rlnDefocusU'                      # RLN_CTF_DEFOCUSU
-    rlnDefocusV = 'rlnDefocusV'                      # RLN_CTF_DEFOCUSV
-    rlnDefocusAngle = 'rlnDefocusAngle'              # RLN_CTF_DEFOCUS_ANGLE
-    rlnPhaseShift = 'rlnPhaseShift'                  # RLN_CTF_PHASESHIFT
-    rlnBfactor = 'rlnBfactor'                        # RLN_CTF_BFACTOR
+    rlnOriginX = 'rlnOriginX'  # RLN_ORIENT_ORIGIN_X
+    rlnOriginY = 'rlnOriginY'  # RLN_ORIENT_ORIGIN_Y
+    rlnAngleRot = 'rlnAngleRot'  # RLN_ORIENT_ROT
+    rlnAnglePsi = 'rlnAnglePsi'  # RLN_ORIENT_PSI
+    rlnOriginZ = 'rlnOriginZ'  # RLN_ORIENT_ORIGIN_Z
+    rlnOriginXAngst = 'rlnOriginXAngst'  # RLN_ORIENT_ORIGIN_X IN ANGSTROM
+    rlnOriginYAngst = 'rlnOriginYAngst'  # RLN_ORIENT_ORIGIN_Y IN ANGSTROM
+    rlnOriginZAngst = 'rlnOriginZAngst'  # RLN_ORIENT_ORIGIN_Z IN ANGSTROM
+
+    rlnClassNumber = 'rlnClassNumber'  # RLN_PARTICLE_CLASS
+    rlnImageName = 'rlnImageName'  # RLN_IMAGE_NAME
+    rlnRandomSubset = 'rlnRandomSubset'  # RLN_PARTICLE_RANDOM_SUBSET
+    rlnAngleTilt = 'rlnAngleTilt'  # RLN_ORIENT_TILT
+    rlnDefocusU = 'rlnDefocusU'  # RLN_CTF_DEFOCUSU
+    rlnDefocusV = 'rlnDefocusV'  # RLN_CTF_DEFOCUSV
+    rlnDefocusAngle = 'rlnDefocusAngle'  # RLN_CTF_DEFOCUS_ANGLE
+    rlnPhaseShift = 'rlnPhaseShift'  # RLN_CTF_PHASESHIFT
+    rlnBfactor = 'rlnBfactor'  # RLN_CTF_BFACTOR
     rlnOpticsGroup = 'rlnOpticsGroup'
-    rlnVoltage = 'rlnVoltage'                        # RLN_CTF_VOLTAGE
+    rlnVoltage = 'rlnVoltage'  # RLN_CTF_VOLTAGE
     rlnSphericalAberration = 'rlnSphericalAberration'  # RLN_CTF_CS
-    rlnAmplitudeContrast = 'rlnAmplitudeContrast'    # RLN_CTF_Q0
-    rlnImageSize = 'rlnImageSize'                    # RLN_IMAGE_SIZE
-    rlnEnabled = 'rlnEnabled'                        # RLN_IMAGE_ENABLED
-    rlnCtfFigureOfMerit = 'rlnCtfFigureOfMerit'     # RLN_CTF_FOM
-    rlnMagnification = 'rlnMagnification'           # RLN_CTF_MAGNIFICATION
-    rlnDetectorPixelSize = 'rlnDetectorPixelSize'    # RLN_CTF_DETECTOR_PIXEL_SIZE
+    rlnAmplitudeContrast = 'rlnAmplitudeContrast'  # RLN_CTF_Q0
+    rlnImageSize = 'rlnImageSize'  # RLN_IMAGE_SIZE
+    rlnEnabled = 'rlnEnabled'  # RLN_IMAGE_ENABLED
+    rlnCtfFigureOfMerit = 'rlnCtfFigureOfMerit'  # RLN_CTF_FOM
+    rlnMagnification = 'rlnMagnification'  # RLN_CTF_MAGNIFICATION
+    rlnDetectorPixelSize = 'rlnDetectorPixelSize'  # RLN_CTF_DETECTOR_PIXEL_SIZE
     rlnCtfImage = 'rlnCtfImage'
-    rlnAreaId = 'rlnAreaId'                        # RLN_AREA_ID
-    rlnAreaName = 'rlnAreaName'                    # RLN_AREA_NAME
-    rlnCtfScalefactor = 'rlnCtfScalefactor'         # RLN_CTF_SCALEFACTOR\
+    rlnAreaId = 'rlnAreaId'  # RLN_AREA_ID
+    rlnAreaName = 'rlnAreaName'  # RLN_AREA_NAME
+    rlnCtfScalefactor = 'rlnCtfScalefactor'  # RLN_CTF_SCALEFACTOR\
     rlnChromaticAberration = 'rlnChromaticAberration'  # RLN_CTF_CA
-    rlnEnergyLoss = 'rlnEnergyLoss'                   # RLN_CTF_ENERGY_LOSS
-    rlnLensStability = 'rlnLensStability'             # RLN_CTF_LENS_STABILITY
-    rlnCtfMaxResolution = 'rlnCtfMaxResolution'       # RLN_CTF_MAXRES
-    rlnConvergenceCone = 'rlnConvergenceCone'         # RLN_CTF_CONVERGENCE_CONE
+    rlnEnergyLoss = 'rlnEnergyLoss'  # RLN_CTF_ENERGY_LOSS
+    rlnLensStability = 'rlnLensStability'  # RLN_CTF_LENS_STABILITY
+    rlnCtfMaxResolution = 'rlnCtfMaxResolution'  # RLN_CTF_MAXRES
+    rlnConvergenceCone = 'rlnConvergenceCone'  # RLN_CTF_CONVERGENCE_CONE
     rlnLongitudinalDisplacement = 'rlnLongitudinalDisplacement'  # RLN_CTF_LONGITUDINAL_DISPLACEMENT
     rlnTransversalDisplacement = 'rlnTransversalDisplacement'  # RLN_CTF_TRANSVERSAL_DISPLACEMENT
-    rlnCtfValidationScore = 'rlnCtfValidationScore'       # RLN_CTF_VALIDATIONSCORE
-    rlnCtfValue = 'rlnCtfValue'                      # RLN_CTF_VALUE
+    rlnCtfValidationScore = 'rlnCtfValidationScore'  # RLN_CTF_VALIDATIONSCORE
+    rlnCtfValue = 'rlnCtfValue'  # RLN_CTF_VALUE
     rlnReconstructImageName = 'rlnReconstructImageName'  # RLN_IMAGE_RECONSTRUCT_NAME
-    rlnImageId = 'rlnImageId'           # RLN_IMAGE_ID
-    rlnDataType = 'rlnDataType'         # RLN_IMAGE_DATATYPE
-    rlnAutopickFigureOfMerit = 'rlnAutopickFigureOfMerit'   # RLN_PARTICLE_AUTOPICK_FOM
-    rlnCoordinateX = 'rlnCoordinateX'     # RLN_IMAGE_COORD_X
-    rlnCoordinateY = 'rlnCoordinateY'     # RLN_IMAGE_COORD_Y
-    rlnCoordinateZ = 'rlnCoordinateZ'     # RLN_IMAGE_COORD_Z
-    rlnMicrographName = 'rlnMicrographName' # RLN_MICROGRAPH_NAME
+    rlnImageId = 'rlnImageId'  # RLN_IMAGE_ID
+    rlnDataType = 'rlnDataType'  # RLN_IMAGE_DATATYPE
+    rlnAutopickFigureOfMerit = 'rlnAutopickFigureOfMerit'  # RLN_PARTICLE_AUTOPICK_FOM
+    rlnCoordinateX = 'rlnCoordinateX'  # RLN_IMAGE_COORD_X
+    rlnCoordinateY = 'rlnCoordinateY'  # RLN_IMAGE_COORD_Y
+    rlnCoordinateZ = 'rlnCoordinateZ'  # RLN_IMAGE_COORD_Z
+    rlnMicrographName = 'rlnMicrographName'  # RLN_MICROGRAPH_NAME
     rlnParticleSelectZScore = 'rlnParticleSelectZScore'  # RLN_SELECT_PARTICLES_ZSCORE
     rlnMovieFrameNumber = 'rlnMovieFrameNumber'  # RLN_IMAGE_FRAME_NR
-    rlnReferenceImage = 'rlnReferenceImage'     # RLN_MLMODEL_REF_IMAGE
-    rlnMicrographId = 'rlnMicrographId'          # RLN_MICROGRAPH_ID
-    rlnParticleId = 'rlnParticleId'      # RLN_PARTICLE_ID
-
+    rlnReferenceImage = 'rlnReferenceImage'  # RLN_MLMODEL_REF_IMAGE
+    rlnMicrographId = 'rlnMicrographId'  # RLN_MICROGRAPH_ID
+    rlnParticleId = 'rlnParticleId'  # RLN_PARTICLE_ID
 
 
 """
@@ -474,7 +478,7 @@ class RELIONCOLUMNS(enum.Enum):
 COOR_EXTRA_LABELS = [RELIONCOLUMNS.rlnAutopickFigureOfMerit.value,
                      RELIONCOLUMNS.rlnClassNumber.value,
                      RELIONCOLUMNS.rlnAnglePsi.value
-]
+                     ]
 
 # COOR_EXTRA_LABELS = [ # Additional autopicking-related metadata
 #     md.RLN_PARTICLE_AUTOPICK_FOM,
@@ -519,6 +523,7 @@ ALIGNMENT_DICT = {
     "_rlnOriginZ": RELIONCOLUMNS.rlnOriginZ.value,
     "_rlnAngleRot": RELIONCOLUMNS.rlnAngleRot.value,
     "_rlnAngleTilt": RELIONCOLUMNS.rlnAngleTilt.value,
-    "_rlnAnglePsi": RELIONCOLUMNS.rlnAnglePsi.value}
-
-
+    "_rlnAnglePsi": RELIONCOLUMNS.rlnAnglePsi.value,
+    "_rlnOriginXAngst": RELIONCOLUMNS.rlnOriginXAngst.value,
+    "_rlnOriginYAngst": RELIONCOLUMNS.rlnOriginYAngst.value,
+    "_rlnOriginZAngst": RELIONCOLUMNS.rlnOriginZAngst.value}

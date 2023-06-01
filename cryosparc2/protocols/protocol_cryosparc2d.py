@@ -359,7 +359,8 @@ class ProtCryo2D(ProtCryosparcBase, pwprot.ProtClassify2D):
 
     def _updateParticle(self, item, row):
         item.setClassId(row.get(RELIONCOLUMNS.rlnClassNumber.value))
-        item.setTransform(rowToAlignment(row, ALIGN_2D))
+        samplingRate = item.getSamplingRate()
+        item.setTransform(rowToAlignment(row, ALIGN_2D, samplingRate))
 
     def _updateClass(self, class2D):
         classId = class2D.getObjId()
