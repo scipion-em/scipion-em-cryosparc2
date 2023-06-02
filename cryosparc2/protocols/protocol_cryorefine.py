@@ -33,6 +33,7 @@ import emtable
 import pwem.objects as pwobj
 import pwem.protocols as pwprot
 import pyworkflow.utils as pwutils
+from pwem.convert import moveParticlesInsideUnitCell
 from pyworkflow.protocol.params import *
 
 from .protocol_base import ProtCryosparcBase
@@ -348,9 +349,13 @@ class ProtCryoSparcRefine3D(ProtCryosparcBase, pwprot.ProtRefine3D):
         outImgSet.copyInfo(imgSet)
         self._fillDataFromIter(outImgSet)
 
+        unitCellSet = self._createSetOfParticles(suffix="unitcell")
+        unitCellSet.copyInfo(imgSet)
+        moveParticlesInsideUnitCell(outImgSet, unitCellSet, self.symmetryGroup.get())
+
         self._defineOutputs(outputVolume=vol)
         self._defineSourceRelation(self.inputParticles.get(), vol)
-        self._defineOutputs(outputParticles=outImgSet)
+        self._defineOutputs(outputParticles=unitCellSet)
         self._defineTransformRelation(self.inputParticles.get(), outImgSet)
         self.createFSC(idd, imgSet, vol)
 
