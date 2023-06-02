@@ -31,6 +31,7 @@ from pkg_resources import parse_version
 import pwem.objects as pwobj
 import pwem.protocols as pwprot
 import pyworkflow.utils as pwutils
+from pwem.convert import moveParticlesInsideUnitCell
 from pyworkflow.protocol.params import *
 
 from .protocol_base import ProtCryosparcBase
@@ -477,10 +478,36 @@ class ProtCryoSparc3DHomogeneousRefine(ProtCryosparcBase, pwprot.ProtRefine3D):
         outImgSet.copyInfo(imgSet)
         self._fillDataFromIter(outImgSet)
 
+        unitCellSet = self._createSetOfParticles(suffix="unitcell")
+        unitCellSet.copyInfo(outImgSet)
+        moveParticlesInsideUnitCell(outImgSet, unitCellSet,
+                                    self.symmetryGroup.get(),
+                                    n=self.symmetryOrder.get())
+
+        # if self.symmetryGroup.get() == SYM_DIHEDRAL_Y:
+        #     from pwem.convert.symmetry import Dihedral
+        #     import numpy as np
+        #     dihedral = Dihedral(sym=SYM_DIHEDRAL_Y)
+        #     matrix = dihedral.coordinateSystemTransform(SYM_DIHEDRAL_Y,
+        #                                                 SYM_DIHEDRAL_X)
+        #     # convert to numpy array
+        #     # and add extra row
+        #     matrix = np.array(matrix)
+        #     matrix = np.append(matrix, [[0, 0, 0, 1]], axis=0)
+        #
+        #     inputSet = unitCellSet
+        #     modifiedSet = inputSet.createCopy(self._getExtraPath(),
+        #                                       copyInfo=True)
+        #     for sourceItem in inputSet.iterItems():
+        #         item = sourceItem.clone()
+        #         transformation = item.getTransform()
+        #         transformation.composeTransform(matrix)
+        #         modifiedSet.append(item)
+
         self._defineOutputs(outputVolume=vol)
         self._defineSourceRelation(self.inputParticles.get(), vol)
-        self._defineOutputs(outputParticles=outImgSet)
-        self._defineTransformRelation(self.inputParticles.get(), outImgSet)
+        self._defineOutputs(outputParticles=unitCellSet)
+        self._defineTransformRelation(self.inputParticles.get(), unitCellSet)
         self.createFSC(idd, imgSet, vol)
 
     def _validate(self):
