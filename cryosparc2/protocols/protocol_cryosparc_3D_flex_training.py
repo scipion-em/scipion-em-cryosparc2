@@ -170,7 +170,7 @@ class ProtCryoSparc3DFlexTraining(ProtCryosparcBase):
         self._insertFunctionStep(self.createOutputStep)
 
     def trainingStep(self):
-        print(pwutils.yellowStr("3D Flex Training started..."))
+        self.info(pwutils.yellowStr("3D Flex Training started..."))
         self.doRun3DFlexTraining()
 
     def createOutputStep(self):

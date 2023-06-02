@@ -122,7 +122,7 @@ class ProtCryoSparcSharppening(ProtCryosparcBase, ProtAnalysis3D):
     # --------------------------- STEPS functions ------------------------------
 
     def processStep(self):
-        print(pwutils.yellowStr("Sharppening started..."), flush=True)
+        self.info(pwutils.yellowStr("Sharpening started..."))
         self.doSharppening()
 
     def createOutputStep(self):

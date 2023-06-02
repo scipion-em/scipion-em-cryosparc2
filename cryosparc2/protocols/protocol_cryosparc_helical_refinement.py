@@ -236,7 +236,7 @@ class ProtCryoSparcHelicalRefine3D(ProtCryoSparc3DHomogeneousRefine):
         ProtCryoSparc3DHomogeneousRefine._insertAllSteps(self)
 
     def processStep(self):
-        print(pwutils.yellowStr("Refinement started..."), flush=True)
+        self.info(pwutils.yellowStr("Refinement started..."))
         self.doRunRefine()
 
     # --------------------------- INFO functions -------------------------------

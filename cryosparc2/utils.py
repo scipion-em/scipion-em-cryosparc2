@@ -29,16 +29,11 @@ import logging
 import os
 import shutil
 import time
-import site
-import glob
-import pickle
 
 from pkg_resources import parse_version
 
 import pyworkflow.utils as pwutils
 from pwem.constants import SCIPION_SYM_NAME
-from pwem.constants import (SYM_CYCLIC, SYM_TETRAHEDRAL,
-                            SYM_OCTAHEDRAL, SYM_I222, SYM_I222r)
 from pwem.convert import Ccp4Header
 from pyworkflow.protocol import IntParam
 
@@ -147,7 +142,7 @@ def cryosparcValidate():
                 'these versions: ' + str(supportedVersions).replace('\'', '')]
 
     elif maxSupportedVersion < cryosparcVersion:
-        print(pwutils.yellowStr("cryoSPARC %s is newer than those we've tested %s. Instead of blocking the "
+        logger.info(pwutils.yellowStr("cryoSPARC %s is newer than those we've tested %s. Instead of blocking the "
                                 "execution, we are allowing this to run assuming compatibility is not broken."
                                 "If it fails, please consider:\n A - upgrade the plugin, there might be an update.\n "
                                 "B - downgrade cryosparc version.\n C - Contact plugin maintainers"
@@ -193,8 +188,8 @@ def getCryosparcVersion():
         except Exception:
             try:
                 _csVersion = getCryosparcEnvInformation(VERSION).split('+')[0]
-            except Exception:
-                print("Couldn't get Cryosparc's version. Please review your config (%s)" % Plugin.getUrl())
+            except Exception as e:
+                logger.error("Couldn't get Cryosparc's version. Please review your config (%s)" % Plugin.getUrl(), exc_info=e)
                 _csVersion = V_UNKNOWN
     return _csVersion.rstrip('\n')
 
@@ -420,7 +415,7 @@ def doImportVolumes(protocol, refVolumePath, refVolume, volType, msg):
     """
     :return:
     """
-    print(pwutils.yellowStr(msg), flush=True)
+    logger.info(pwutils.yellowStr(msg))
     className = "import_volumes"
     params = {"volume_blob_path": str(refVolumePath),
               "volume_out_name": str(volType),
@@ -506,7 +501,7 @@ def enqueueJob(jobType, projectName, workSpaceName, params, input_group_connect,
                                  ("'", projectName, value, (str(jobId) + "." + key), "'"))
             runCmd(job_connect_group, printCmd=True)
 
-    print(pwutils.greenStr("Got %s for JobId" % jobId), flush=True)
+    logger.info(pwutils.greenStr("Got %s for JobId" % jobId))
 
     # Queue the job  DEPRECATED
     # if parse_version(cryosparcVersion) < parse_version(V2_13_0):
@@ -573,7 +568,7 @@ def runCmd(cmd, printCmd=True):
     :parameter printCmd (default True) prints the command"""
     import subprocess
     if printCmd:
-        print(pwutils.greenStr("Running: %s" % cmd), flush=True)
+        logger.info(pwutils.greenStr("Running: %s" % cmd))
     exitCode, cmdOutput = subprocess.getstatusoutput(cmd)
 
     if exitCode != 0:
@@ -666,7 +661,7 @@ def clearIntermediateResults(projectName, job, wait=3):
     :param projectName: the uid of the project that contains the job to clear
     :param job: the uid of the job to clear
     """
-    print(pwutils.yellowStr("Removing intermediate results..."), flush=True)
+    logger.info(pwutils.yellowStr("Removing intermediate results..."))
     clear_int_results_cmd = (getCryosparcProgram() +
                              ' %sclear_intermediate_results("%s", "%s")%s'
                              % ("'", projectName, job, "'"))
@@ -893,5 +888,4 @@ def copyFiles(src, dst, files=None):
                 shutil.copy(os.path.join(src, file),
                             os.path.join(dst, file))
     except Exception as ex:
-        print("Unable to execute the copy: Files or directory does not exist: ",
-              ex)
+        logger.error("Unable to execute the copy: Files or directory does not exist: ", exc_info=ex)

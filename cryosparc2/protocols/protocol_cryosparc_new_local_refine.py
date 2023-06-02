@@ -218,7 +218,7 @@ class ProtCryoSparcLocalRefine(ProtCryosparcBase, ProtOperateParticles):
 
     # --------------------------- STEPS functions ------------------------------
     def processStep(self):
-        print(pwutils.yellowStr("Local Refinement started..."), flush=True)
+        self.info(pwutils.yellowStr("Local Refinement started..."))
         self.doLocalRefine()
 
     def createOutputStep(self):

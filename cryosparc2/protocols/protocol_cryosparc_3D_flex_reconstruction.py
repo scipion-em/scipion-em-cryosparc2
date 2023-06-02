@@ -108,7 +108,7 @@ class ProtCryoSparc3DFlexReconstruction(ProtCryosparcBase):
         self._insertFunctionStep(self.createOutputStep)
 
     def reconstructionStep(self):
-        print(pwutils.yellowStr("3D Flex Reconstruction started..."))
+        self.info(pwutils.yellowStr("3D Flex Reconstruction started..."))
         self.doRun3DFlexReconstruction()
 
     def createOutputStep(self):

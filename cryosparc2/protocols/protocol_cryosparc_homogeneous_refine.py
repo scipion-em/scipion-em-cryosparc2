@@ -29,7 +29,6 @@ import emtable
 from pkg_resources import parse_version
 
 import pwem.objects as pwobj
-import pwem.protocols as pwprot
 import pyworkflow.utils as pwutils
 from pwem.convert import moveParticlesInsideUnitCell
 from pyworkflow.protocol.params import *
@@ -46,7 +45,7 @@ from ..utils import (addSymmetryParam, addComputeSectionParams,
 from ..constants import *
 
 
-class ProtCryoSparc3DHomogeneousRefine(ProtCryosparcBase, pwprot.ProtRefine3D):
+class ProtCryoSparc3DHomogeneousRefine(ProtCryosparcBase):
     """ Protocol to refine a 3D map using cryosparc.
         Rapidly refine a single homogeneous structure to high-resolution and
         validate using the gold-standard FSC. Using new faster GPU code, and
@@ -428,7 +427,7 @@ class ProtCryoSparc3DHomogeneousRefine(ProtCryosparcBase, pwprot.ProtRefine3D):
         return self.referenceVolume.get()
 
     def processStep(self):
-        print(pwutils.yellowStr("Refinement started..."), flush=True)
+        self.info(pwutils.yellowStr("Refinement started..."))
         self.doRunRefine()
 
     def createOutputStep(self):

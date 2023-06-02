@@ -220,7 +220,7 @@ class ProtCryoSparcGlobalCtfRefinement(ProtCryosparcBase, pwprot.ProtParticles):
 
     # --------------------------- STEPS functions ------------------------------
     def processStep(self):
-        print(pwutils.yellowStr("Ctf Refinement started..."), flush=True)
+        self.info(pwutils.yellowStr("Ctf Refinement started..."))
         self.doGlobalCtfRefinement()
 
     def createOutputStep(self):

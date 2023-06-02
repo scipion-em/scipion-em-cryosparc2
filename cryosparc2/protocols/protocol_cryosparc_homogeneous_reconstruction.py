@@ -260,7 +260,7 @@ class ProtCryoSparcHomogeneousReconstruct(ProtCryosparcBase):
         self._insertFunctionStep(self.createOutputStep)
 
     def processStep(self):
-        print(pwutils.yellowStr("Homogeneous Reconstruction started..."), flush=True)
+        self.info(pwutils.yellowStr("Homogeneous Reconstruction started..."))
         self.doHomogeneousReconstruction()
 
     def createOutputStep(self):

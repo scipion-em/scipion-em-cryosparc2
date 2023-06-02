@@ -241,11 +241,11 @@ class ProtCryoSparc3DFlexDataPrepare(ProtCryosparcBase):
 
     # --------------------------- STEPS functions ------------------------------
     def dataPrepareStep(self):
-        print(pwutils.yellowStr("3D Flex Data Preparation started..."))
+        self.info(pwutils.yellowStr("3D Flex Data Preparation started..."))
         self.doRun3DFlexDataPrepare()
 
     def mergePrepareStep(self):
-        print(pwutils.yellowStr("3D Flex Mesh Preparation started..."))
+        self.info(pwutils.yellowStr("3D Flex Mesh Preparation started..."))
         self.doRun3DFlexMeshPrepare()
 
     def createOutputStep(self):
