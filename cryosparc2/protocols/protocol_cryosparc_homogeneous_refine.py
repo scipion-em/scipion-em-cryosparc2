@@ -30,7 +30,9 @@ from pkg_resources import parse_version
 
 import pwem.objects as pwobj
 import pyworkflow.utils as pwutils
-from pwem.convert import moveParticlesInsideUnitCell
+from pwem.convert import moveParticlesInsideUnitCell, getSymmetryMatrices, \
+    getUnitCell
+from pwem.convert.symmetry import moveParticleInsideUnitCell
 from pyworkflow.protocol.params import *
 
 from .protocol_base import ProtCryosparcBase
@@ -57,18 +59,20 @@ class ProtCryoSparc3DHomogeneousRefine(ProtCryosparcBase):
     _fscColumns = 6
     _className = "homo_refine_new"
     ewsParamsName = []
-    _protCompatibility = [V3_0_0, V3_1_0, V3_2_0, V3_3_0, V3_3_1, V3_3_2, V4_0_0,
-                          V4_0_1, V4_0_2, V4_0_3, V4_1_0, V4_1_1, V4_1_2, V4_2_0,
+    _protCompatibility = [V3_0_0, V3_1_0, V3_2_0, V3_3_0, V3_3_1, V3_3_2,
+                          V4_0_0,
+                          V4_0_1, V4_0_2, V4_0_3, V4_1_0, V4_1_1, V4_1_2,
+                          V4_2_0,
                           V4_2_1]
 
     # --------------------------- DEFINE param functions ----------------------
     def _defineFileNames(self):
         """ Centralize how files are called within the protocol. """
         myDict = {
-                  'input_particles': self._getTmpPath('input_particles.star'),
-                  'out_particles': self._getPath() + '/output_particle.star',
-                  'stream_log': self._getPath()+'/stream.log'
-                  }
+            'input_particles': self._getTmpPath('input_particles.star'),
+            'out_particles': self._getPath() + '/output_particle.star',
+            'stream_log': self._getPath() + '/stream.log'
+        }
         self._updateFilenamesDict(myDict)
 
     def _defineParams(self, form):
@@ -475,13 +479,8 @@ class ProtCryoSparc3DHomogeneousRefine(ProtCryosparcBase):
 
         outImgSet = self._createSetOfParticles()
         outImgSet.copyInfo(imgSet)
+        self._getUnitCellMatricesAndPlanes()
         self._fillDataFromIter(outImgSet)
-
-        unitCellSet = self._createSetOfParticles(suffix="unitcell")
-        unitCellSet.copyInfo(outImgSet)
-        moveParticlesInsideUnitCell(outImgSet, unitCellSet,
-                                    self.symmetryGroup.get(),
-                                    n=self.symmetryOrder.get())
 
         # if self.symmetryGroup.get() == SYM_DIHEDRAL_Y:
         #     from pwem.convert.symmetry import Dihedral
@@ -505,8 +504,8 @@ class ProtCryoSparc3DHomogeneousRefine(ProtCryosparcBase):
 
         self._defineOutputs(outputVolume=vol)
         self._defineSourceRelation(self.inputParticles.get(), vol)
-        self._defineOutputs(outputParticles=unitCellSet)
-        self._defineTransformRelation(self.inputParticles.get(), unitCellSet)
+        self._defineOutputs(outputParticles=outImgSet)
+        self._defineTransformRelation(self.inputParticles.get(), outImgSet)
         self.createFSC(idd, imgSet, vol)
 
     def _validate(self):
@@ -559,16 +558,27 @@ class ProtCryoSparc3DHomogeneousRefine(ProtCryosparcBase):
 
     # -------------------------- UTILS functions ------------------------------
 
+    def _getUnitCellMatricesAndPlanes(self):
+        if not hasattr(self, 'matrixSet'):
+            self.matrixSet = getSymmetryMatrices(sym=self.symmetryGroup.get(),
+                                                 n=self.symmetryOrder.get())
+            _, self.unitCellPlanes = getUnitCell(sym=self.symmetryGroup.get(),
+                                                 n=self.symmetryOrder.get(),
+                                                 generalize=False)
+
     def _fillDataFromIter(self, imgSet):
         outImgsFn = 'particles@' + self._getFileName('out_particles')
         imgSet.setAlignmentProj()
         imgSet.copyItems(self._getInputParticles(),
                          updateItemCallback=self._createItemMatrix,
-                         itemDataIterator=emtable.Table.iterRows(fileName=outImgsFn))
+                         itemDataIterator=emtable.Table.iterRows(
+                             fileName=outImgsFn))
 
     def _createItemMatrix(self, particle, row):
         createItemMatrix(particle, row, align=pwobj.ALIGN_PROJ)
-        setCryosparcAttributes(particle, row, RELIONCOLUMNS.rlnRandomSubset.value)
+        moveParticleInsideUnitCell(particle, self.matrixSet, self.unitCellPlanes)
+        setCryosparcAttributes(particle, row,
+                               RELIONCOLUMNS.rlnRandomSubset.value)
 
     def _defineParamsName(self):
         """ Define a list with all protocol parameters names"""
@@ -632,7 +642,8 @@ class ProtCryoSparc3DHomogeneousRefine(ProtCryosparcBase):
                     paramName != 'refine_ews_zsign' and
                     paramName != 'refine_ews_simple'):
                 params[str(paramName)] = str(self.getAttributeValue(paramName))
-            elif (paramName == 'refine_highpass_res' and self.getAttributeValue(paramName) is not None and
+            elif (paramName == 'refine_highpass_res' and self.getAttributeValue(
+                    paramName) is not None and
                   int(self.getAttributeValue(paramName)) > 0):
                 params[str(paramName)] = str(self.getAttributeValue(paramName))
 
@@ -649,14 +660,20 @@ class ProtCryoSparc3DHomogeneousRefine(ProtCryosparcBase):
             elif paramName == 'refine_nu_filtertype':
                 params[str(paramName)] = str(
                     REFINE_FILTER_TYPE[self.refine_nu_filtertype.get()])
-            elif (paramName == 'refine_compute_batch_size' and self.getAttributeValue(paramName) is not None and
-                  int(self.getAttributeValue(paramName)) > 0):
+            elif (
+                    paramName == 'refine_compute_batch_size' and self.getAttributeValue(
+                    paramName) is not None and
+                    int(self.getAttributeValue(paramName)) > 0):
                 params[str(paramName)] = str(self.getAttributeValue(paramName))
-            elif (paramName == 'crl_compute_batch_size' and self.getAttributeValue(paramName) is not None and
-                  int(self.getAttributeValue(paramName)) > 0):
+            elif (
+                    paramName == 'crl_compute_batch_size' and self.getAttributeValue(
+                    paramName) is not None and
+                    int(self.getAttributeValue(paramName)) > 0):
                 params[str(paramName)] = str(self.getAttributeValue(paramName))
-            elif (paramName == 'crg_compute_batch_size' and self.getAttributeValue(paramName) is not None and
-                        int(self.getAttributeValue(paramName)) > 0):
+            elif (
+                    paramName == 'crg_compute_batch_size' and self.getAttributeValue(
+                    paramName) is not None and
+                    int(self.getAttributeValue(paramName)) > 0):
                 params[str(paramName)] = str(self.getAttributeValue(paramName))
             elif paramName == 'refine_ews_zsign':
                 params[str(paramName)] = str(
@@ -664,7 +681,6 @@ class ProtCryoSparc3DHomogeneousRefine(ProtCryosparcBase):
             elif paramName == 'refine_ews_simple':
                 params[str(paramName)] = str(
                     EWS_CORRECTION_METHOD[self.refine_ews_simple.get()])
-
 
         # Determinate the GPUs to use (in dependence of
         # the cryosparc version)
@@ -688,6 +704,3 @@ class ProtCryoSparc3DHomogeneousRefine(ProtCryosparcBase):
                          "Please, go to cryoSPARC software for more "
                          "details.")
         clearIntermediateResults(self.projectName.get(), self.runRefine.get())
-
-
-
