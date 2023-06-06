@@ -336,7 +336,8 @@ class ProtCryoSparc3DClassification(ProtCryosparcBase):
     def _updateParticle(self, item, row):
         if row.get(RELIONCOLUMNS.rlnAnglePsi.value):
             item.setClassId(row.get(RELIONCOLUMNS.rlnClassNumber.value))
-            item.setTransform(rowToAlignment(row, ALIGN_PROJ))
+            samplingRate = item.getSamplingRate()
+            item.setTransform(rowToAlignment(row, ALIGN_PROJ, samplingRate))
         else:
             item._appendItem = False
 

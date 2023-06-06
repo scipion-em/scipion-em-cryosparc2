@@ -1,6 +1,5 @@
 import argparse
 import sys
-import re
 import json
 import os
 
@@ -70,7 +69,7 @@ def cs2Star(args):
             df = metadata.parse_cryosparc_2_cs(cs, passthroughs=args.input[1:],
                                                minphic=args.minphic,
                                                boxsize=args.boxsize,
-                                               swapxy=args.swapxy,
+                                               swapxy=args.noswapxy,
                                                invertx=args.invertx,
                                                inverty=args.inverty)
         except (KeyError, ValueError) as e:
@@ -96,7 +95,8 @@ def cs2Star(args):
         df[star.Relion.ORIGINY] = -df[star.Relion.ORIGINY]
         log.info("Flipping particle orientation through XZ plane")
         df = star.transform_star(df,
-                                 np.array([[1, 0, 0], [0, -1, 0], [0, 0, -1]]))
+                                 np.array([[1, 0, 0], [0, -1, 0], [0, 0, -1]]),
+                                 leftmult=True)
 
     if args.strip_uid is not None:
         df = star.strip_path_uids(df, inplace=True, count=args.strip_uid)
@@ -107,7 +107,7 @@ def cs2Star(args):
             (star.parse_star(inp, keep_index=False, augment=True) for inp in
              glob(args.copy_micrograph_coordinates)), join="inner")
         key = star.merge_key(df, coord_star, threshold=0)
-        if key is None:
+        if key is None and not args.strip_uid:
             log.debug("Merge key not found, removing leading UIDs")
             df = star.strip_path_uids(df, inplace=True)
             key = star.merge_key(df, coord_star)
@@ -132,7 +132,10 @@ def cs2Star(args):
         r = np.array(json.loads(args.transform))
         df = star.transform_star(df, r, inplace=True)
 
-    #df = star.check_defaults(df, inplace=True)
+    try:
+        df = star.check_defaults(df, inplace=True)
+    except Exception as e:
+        print(e)
 
     if args.relion2:
         df = star.remove_new_relion31(df, inplace=True)

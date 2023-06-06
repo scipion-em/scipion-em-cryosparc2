@@ -24,12 +24,15 @@
 # *  e-mail address 'scipion@cnb.csic.es'
 # *
 # **************************************************************************
+from collections import OrderedDict
 
 import emtable
 import numpy as np
 import os
 import argparse
 import sys
+import logging
+logger = logging.getLogger(__name__)
 
 from emtable.metadata import _guessType
 from pwem.emlib.image import ImageHandler
@@ -268,7 +271,7 @@ def alignmentToRow(alignment, alignmentRow, alignType):
 
         flip = bool(np.linalg.det(matrix[0:2, 0:2]) < 0)
         if flip:
-            print("FLIP in 2D not implemented")
+            logger.debug("FLIP in 2D not implemented")
     elif is3D:
         raise Exception("3D alignment conversion for Relion not implemented. "
                         "It seems the particles were generated with an "
@@ -374,10 +377,11 @@ def convertBinaryVol(vol, outputDir):
 
 def createItemMatrix(item, row, align):
     item.setCTF(rowToCtfModel(row))
-    item.setTransform(rowToAlignment(row, alignType=align))
+    pixelSize = item.getSamplingRate()
+    item.setTransform(rowToAlignment(row, align, pixelSize))
 
 
-def rowToAlignment(alignmentRow, alignType):
+def rowToAlignment(alignmentRow, alignType, pixelSize=1.0):
     """
     is2D == True-> matrix is 2D (2D images alignment)
             otherwise matrix is 3D (3D volume alignment or projection)
@@ -392,20 +396,15 @@ def rowToAlignment(alignmentRow, alignType):
         alignment = Transform()
         angles = np.zeros(3)
         shifts = np.zeros(3)
-        shifts[0] = alignmentRow.get(RELIONCOLUMNS.rlnOriginX.value, default=0.)
-        shifts[1] = alignmentRow.get(RELIONCOLUMNS.rlnOriginY.value, default=0.)
+        shifts[0] = alignmentRow.get(RELIONCOLUMNS.rlnOriginXAngst.value, default=0.)/pixelSize
+        shifts[1] = alignmentRow.get(RELIONCOLUMNS.rlnOriginYAngst.value, default=0.)/pixelSize
         if not is2D:
-            angles[0] = alignmentRow.get(RELIONCOLUMNS.rlnAngleRot.value,
-                                         default=0.)
-            angles[1] = alignmentRow.get(RELIONCOLUMNS.rlnAngleTilt.value,
-                                         default=0.)
-            angles[2] = alignmentRow.get(RELIONCOLUMNS.rlnAnglePsi.value,
-                                         default=0.)
-            shifts[2] = alignmentRow.get(RELIONCOLUMNS.rlnOriginZ.value,
-                                         default=0.)
+            angles[0] = alignmentRow.get(RELIONCOLUMNS.rlnAngleRot.value, default=0.)
+            angles[1] = alignmentRow.get(RELIONCOLUMNS.rlnAngleTilt.value, default=0.)
+            angles[2] = alignmentRow.get(RELIONCOLUMNS.rlnAnglePsi.value, default=0.)
+            shifts[2] = alignmentRow.get(RELIONCOLUMNS.rlnOriginZAngst.value, default=0.)/pixelSize
         else:
-            angles[2] = - alignmentRow.get(RELIONCOLUMNS.rlnAnglePsi.value,
-                                           default=0.)
+            angles[2] = - alignmentRow.get(RELIONCOLUMNS.rlnAnglePsi.value, default=0.)
         M = matrixFromGeometry(shifts, angles, inverseTransform)
         alignment.setMatrix(M)
     else:
@@ -448,7 +447,7 @@ def matrixFromGeometry(shifts, angles, inverseTransform):
     return M
 
 
-def convertBinaryFiles(imgSet, outputDir, extension='mrcs'):
+def convertBinaryFiles(imgSet, outputDir, extension='mrcs', **kwargs):
     """ Convert binary images files to a format read by Cryosparc.
     Params:
         imgSet: input image set to be converted.
@@ -490,7 +489,7 @@ def convertBinaryFiles(imgSet, outputDir, extension='mrcs'):
         newFn = getUniqueFileName(fn, extension)
         if not os.path.exists(newFn):
             pwutils.createAbsLink(os.path.abspath(fn), newFn)
-            print("   %s -> %s" % (newFn, fn))
+            logger.debug("   %s -> %s" % (newFn, fn))
         return newFn
 
     def convertStack(fn):
@@ -499,7 +498,7 @@ def convertBinaryFiles(imgSet, outputDir, extension='mrcs'):
         """
         newFn = getUniqueFileName(fn, 'mrc')
         ih.convertStack(fn, newFn)
-        print("   %s -> %s" % (fn, newFn))
+        logger.debug("   %s -> %s" % (fn, newFn))
         return newFn
 
     def replaceRoot(fn):
@@ -509,16 +508,16 @@ def convertBinaryFiles(imgSet, outputDir, extension='mrcs'):
         return fn.replace(rootDir, outputRoot)
 
     if ext == extension:
-        print("convertBinaryFiles: creating soft links.")
-        print("   Root: %s -> %s" % (outputRoot, rootDir))
+        logger.debug("convertBinaryFiles: creating soft links.")
+        logger.debug("   Root: %s -> %s" % (outputRoot, rootDir))
         mapFunc = replaceRoot
         pwutils.createAbsLink(os.path.abspath(rootDir), outputRoot)
     elif ext == 'mrc' and extension == 'mrcs':
-        print("convertBinaryFiles: creating soft links (mrcs -> mrc).")
+        logger.debug("convertBinaryFiles: creating soft links (mrcs -> mrc).")
         mapFunc = createBinaryLink
     elif ext.endswith('hdf') or ext.endswith(
             'stk'):  # assume eman .hdf format or .stk format
-        print("convertBinaryFiles: converting stacks. (%s -> %s)"
+        logger.debug("convertBinaryFiles: converting stacks. (%s -> %s)"
               % (ext, extension))
         mapFunc = convertStack
     else:
@@ -537,12 +536,21 @@ def writeSetOfParticles(imgSet, fileName, extraPath):
     args = {'outputDir': extraPath,
             'fillMagnification': True,
             'fillRandomSubset': True}
-
-    if imgSet.hasAlignmentProj() and imgSet.getAttributeValue(
-            "_rlnRandomSubset") is None:
-        args['postprocessImageRow'] = addRandomSubset
-
-    cryosPARCwriteSetOfParticles(imgSet, fileName, **args)
+    try:
+        logger.info('Trying to generate the star file with Relion convert...')
+        from relion import convert
+        alignType = ALIGN_PROJ if imgSet.hasAlignmentProj() else ALIGN_NONE
+        args['alignType'] = alignType
+        args['incompatibleExtensions'] = ['hdf', 'stk']
+        convert.writeSetOfParticles(imgSet, fileName, **args)
+        logger.info('The star file was generate successfully ...')
+    except Exception:
+        if imgSet.hasAlignmentProj() and imgSet.getAttributeValue("_rlnRandomSubset") is None:
+            args['postprocessImageRow'] = addRandomSubset
+        logger.info('The star file generation with Relion convert failed ...')
+        logger.info('Trying to generate the star file with cryoSPARC convert ...')
+        cryosPARCwriteSetOfParticles(imgSet, fileName, **args)
+        logger.info('The star file was generate successfully ...')
 
 
 def cryosPARCwriteSetOfParticles(imgSet, starFile, outputDir, **kwargs):
@@ -652,7 +660,8 @@ def rowToParticle(partRow, particleClass=Particle, **kwargs):
     alignType = kwargs.get('alignType')
 
     if alignType != ALIGN_NONE:
-        img.setTransform(rowToAlignment(partRow, alignType))
+        samplingRate = kwargs.get('samplingRate')
+        img.setTransform(rowToAlignment(partRow, alignType, samplingRate))
 
     if kwargs.get('readAcquisition', True):
         img.setAcquisition(rowToAcquisition(partRow))
