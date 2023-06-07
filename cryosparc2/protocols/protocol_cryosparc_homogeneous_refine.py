@@ -30,9 +30,7 @@ from pkg_resources import parse_version
 
 import pwem.objects as pwobj
 import pyworkflow.utils as pwutils
-from pwem.convert import moveParticlesInsideUnitCell, getSymmetryMatrices, \
-    getUnitCell
-from pwem.convert.symmetry import moveParticleInsideUnitCell
+from pwem.convert import SymmetryHelper
 from pyworkflow.protocol.params import *
 
 from .protocol_base import ProtCryosparcBase
@@ -479,7 +477,6 @@ class ProtCryoSparc3DHomogeneousRefine(ProtCryosparcBase):
 
         outImgSet = self._createSetOfParticles()
         outImgSet.copyInfo(imgSet)
-        self._getUnitCellMatricesAndPlanes()
         self._fillDataFromIter(outImgSet)
 
         # if self.symmetryGroup.get() == SYM_DIHEDRAL_Y:
@@ -558,14 +555,6 @@ class ProtCryoSparc3DHomogeneousRefine(ProtCryosparcBase):
 
     # -------------------------- UTILS functions ------------------------------
 
-    def _getUnitCellMatricesAndPlanes(self):
-        if not hasattr(self, 'matrixSet'):
-            self.matrixSet = getSymmetryMatrices(sym=self.symmetryGroup.get(),
-                                                 n=self.symmetryOrder.get())
-            _, self.unitCellPlanes = getUnitCell(sym=self.symmetryGroup.get(),
-                                                 n=self.symmetryOrder.get(),
-                                                 generalize=False)
-
     def _fillDataFromIter(self, imgSet):
         outImgsFn = 'particles@' + self._getFileName('out_particles')
         imgSet.setAlignmentProj()
@@ -576,9 +565,9 @@ class ProtCryoSparc3DHomogeneousRefine(ProtCryosparcBase):
 
     def _createItemMatrix(self, particle, row):
         createItemMatrix(particle, row, align=pwobj.ALIGN_PROJ)
-        moveParticleInsideUnitCell(particle, self.matrixSet, self.unitCellPlanes)
         setCryosparcAttributes(particle, row,
                                RELIONCOLUMNS.rlnRandomSubset.value)
+        SymmetryHelper.moveParticleInsideUnitCell(particle, self.symmetryGroup.get(), self.symmetryOrder.get())
 
     def _defineParamsName(self):
         """ Define a list with all protocol parameters names"""
