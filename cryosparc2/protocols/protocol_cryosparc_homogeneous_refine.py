@@ -567,7 +567,14 @@ class ProtCryoSparc3DHomogeneousRefine(ProtCryosparcBase):
         createItemMatrix(particle, row, align=pwobj.ALIGN_PROJ)
         setCryosparcAttributes(particle, row,
                                RELIONCOLUMNS.rlnRandomSubset.value)
-        SymmetryHelper.moveParticleInsideUnitCell(particle, self.symmetryGroup.get(), self.symmetryOrder.get())
+        cs_sym_group = getSymmetry(self.symmetryGroup.get(), 'n')
+        for k, v in CS_SYM_NAME.items():
+            if v == cs_sym_group:
+                scipion_sym_group = k
+                break
+        SymmetryHelper.moveParticleInsideUnitCell(particle, 
+                                                  scipion_sym_group,
+                                                  self.symmetryOrder.get())
 
     def _defineParamsName(self):
         """ Define a list with all protocol parameters names"""
