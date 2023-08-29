@@ -1,3 +1,5 @@
+xxxx           - **v4.0.8**
+                 * Generation of star files using relion cancelled (not robust in all cases).
 June 1, 2023   - **v4.0.7**
                  * Fixed an error related with the shifts(shifts were not being calculated)
                  * Cheking the shifts in a test
