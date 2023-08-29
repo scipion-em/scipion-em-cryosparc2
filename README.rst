@@ -60,7 +60,7 @@ instructions available `here <https://cryosparc.com/docs/reference/install/>`_.
 These cover workstation and cluster installs, file configuration and how to update
 cryoSPARC v2 when new versions become available.
 
-3. Add the following variables bellow the PACKAGES section at ``~/.config/scipion/scipion.conf`` file:
+3. Add the following variables to the scipion config file (run scipion3 config --show to open it)
 
    .. code-block::
 
