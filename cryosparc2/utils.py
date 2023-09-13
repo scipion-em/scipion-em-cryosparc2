@@ -473,10 +473,18 @@ def enqueueJob(jobType, projectName, workSpaceName, params, input_group_connect,
     #                      getCryosparcUser(),
     #                      params, input_group_connect, "'"))
 
-    # Create a compatible job to versions >= v3.0.X
-    if parse_version(cryosparcVersion) >= parse_version(V3_0_0):
+    # Create a compatible job to versions >= v3.0.X < v4_3_1
+    if parse_version(V3_0_0) <= parse_version(cryosparcVersion) < parse_version(V4_3_1):
         make_job_cmd = (getCryosparcProgram() +
                         ' %smake_job("%s","%s","%s", "%s", "None", "None", %s, %s, "False", 0)%s' %
+                        ("'", jobType, projectName, workSpaceName,
+                         getCryosparcUser(),
+                         params, input_group_connect, "'"))
+
+    # Create a compatible job to versions >= v4_3_1
+    elif parse_version(cryosparcVersion) >= parse_version(V4_3_1):
+        make_job_cmd = (getCryosparcProgram() +
+                        ' %smake_job("%s","%s","%s", "%s", "None", "None", "None", %s, %s, "False", 0)%s' %
                         ("'", jobType, projectName, workSpaceName,
                          getCryosparcUser(),
                          params, input_group_connect, "'"))

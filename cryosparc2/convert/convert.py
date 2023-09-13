@@ -533,21 +533,21 @@ def writeSetOfParticles(imgSet, fileName, extraPath):
     args = {'outputDir': extraPath,
             'fillMagnification': True,
             'fillRandomSubset': True}
-    try:
-        logger.info('Trying to generate the star file with Relion convert...')
-        from relion import convert
-        alignType = ALIGN_PROJ if imgSet.hasAlignmentProj() else ALIGN_NONE
-        args['alignType'] = alignType
-        args['incompatibleExtensions'] = ['hdf', 'stk']
-        convert.writeSetOfParticles(imgSet, fileName, **args)
-        logger.info('The star file was generate successfully ...')
-    except Exception:
-        if imgSet.hasAlignmentProj() and imgSet.getAttributeValue("_rlnRandomSubset") is None:
-            args['postprocessImageRow'] = addRandomSubset
-        logger.info('The star file generation with Relion convert failed ...')
-        logger.info('Trying to generate the star file with cryoSPARC convert ...')
-        cryosPARCwriteSetOfParticles(imgSet, fileName, **args)
-        logger.info('The star file was generate successfully ...')
+    # try:
+    #     logger.info('Trying to generate the star file with Relion convert...')
+    #     from relion import convert
+    #     alignType = ALIGN_PROJ if imgSet.hasAlignmentProj() else ALIGN_NONE
+    #     args['alignType'] = alignType
+    #     args['incompatibleExtensions'] = ['hdf', 'stk']
+    #     convert.writeSetOfParticles(imgSet, fileName, **args)
+    #     logger.info('The star file was generate successfully ...')
+    # except Exception:
+    if imgSet.hasAlignmentProj() and imgSet.getAttributeValue("_rlnRandomSubset") is None:
+        args['postprocessImageRow'] = addRandomSubset
+    logger.info('The star file generation with Relion convert failed ...')
+    logger.info('Trying to generate the star file with cryoSPARC convert ...')
+    cryosPARCwriteSetOfParticles(imgSet, fileName, **args)
+    logger.info('The star file was generate successfully ...')
 
 
 def cryosPARCwriteSetOfParticles(imgSet, starFile, outputDir, **kwargs):

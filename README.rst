@@ -28,6 +28,11 @@ You will need to use `3.0.0 <https://scipion-em.github.io/docs/release-3.0.0/doc
 **Latest plugin version**
 ==========================
 
+**v4.0.8**
+-----------
+* **new**        Compatibility with cryoSPARC v4.3.1
+* **removed**    Deprecated protocols removed: Legacy Refine, Legacy no uniform refine, Legacy naive local refine.
+
 **v4.0.7**
 -----------
 * **new**     :  Compatibility with cryoSPARC v4.2.1
@@ -60,7 +65,7 @@ instructions available `here <https://cryosparc.com/docs/reference/install/>`_.
 These cover workstation and cluster installs, file configuration and how to update
 cryoSPARC v2 when new versions become available.
 
-3. Add the following variables bellow the PACKAGES section at ``~/.config/scipion/scipion.conf`` file:
+3. Add the following variables to the scipion config file (run scipion3 config --show to open it)
 
    .. code-block::
 
