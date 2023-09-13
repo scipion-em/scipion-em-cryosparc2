@@ -260,7 +260,7 @@ class ProtCryoSparc3DClassification(ProtCryosparcBase):
 
     def processStep(self):
         self.volumes = [vol + self.outputVolumeSuffix for vol in self.importVolumes]
-        print(pwutils.yellowStr("3D Heterogeneous Refinement started..."), flush=True)
+        self.info(pwutils.yellowStr("3D Heterogeneous Refinement started..."))
         self.do3DClasification()
 
     def createOutputStep(self):
@@ -268,7 +268,7 @@ class ProtCryoSparc3DClassification(ProtCryosparcBase):
         Create the protocol output. Convert cryosparc file to Relion file
         """
         self._initializeUtilsVariables()
-        print(pwutils.yellowStr("Creating the output..."), flush=True)
+        self.info(pwutils.yellowStr("Creating the output..."))
 
         csOutputFolder = os.path.join(self.projectDir.get(),
                               self.run3dClassification.get())

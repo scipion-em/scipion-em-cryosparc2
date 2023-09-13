@@ -29,8 +29,10 @@ import emtable
 from pkg_resources import parse_version
 
 import pwem.objects as pwobj
-import pwem.protocols as pwprot
 import pyworkflow.utils as pwutils
+from pwem.convert import moveParticlesInsideUnitCell, getSymmetryMatrices, \
+    getUnitCell
+from pwem.convert.symmetry import moveParticleInsideUnitCell
 from pyworkflow.protocol.params import *
 
 from .protocol_base import ProtCryosparcBase
@@ -45,7 +47,7 @@ from ..utils import (addSymmetryParam, addComputeSectionParams,
 from ..constants import *
 
 
-class ProtCryoSparc3DHomogeneousRefine(ProtCryosparcBase, pwprot.ProtRefine3D):
+class ProtCryoSparc3DHomogeneousRefine(ProtCryosparcBase):
     """ Protocol to refine a 3D map using cryosparc.
         Rapidly refine a single homogeneous structure to high-resolution and
         validate using the gold-standard FSC. Using new faster GPU code, and
@@ -57,18 +59,17 @@ class ProtCryoSparc3DHomogeneousRefine(ProtCryosparcBase, pwprot.ProtRefine3D):
     _fscColumns = 6
     _className = "homo_refine_new"
     ewsParamsName = []
-    _protCompatibility = [V3_0_0, V3_1_0, V3_2_0, V3_3_0, V3_3_1, V3_3_2, V4_0_0,
-                          V4_0_1, V4_0_2, V4_0_3, V4_1_0, V4_1_1, V4_1_2, V4_2_0,
-                          V4_2_1]
+    _protCompatibility = [V3_3_1, V3_3_2, V4_0_0, V4_0_1, V4_0_2, V4_0_3, V4_1_0,
+                          V4_1_1, V4_1_2, V4_2_0, V4_2_1, V4_3_1]
 
     # --------------------------- DEFINE param functions ----------------------
     def _defineFileNames(self):
         """ Centralize how files are called within the protocol. """
         myDict = {
-                  'input_particles': self._getTmpPath('input_particles.star'),
-                  'out_particles': self._getPath() + '/output_particle.star',
-                  'stream_log': self._getPath()+'/stream.log'
-                  }
+            'input_particles': self._getTmpPath('input_particles.star'),
+            'out_particles': self._getPath() + '/output_particle.star',
+            'stream_log': self._getPath() + '/stream.log'
+        }
         self._updateFilenamesDict(myDict)
 
     def _defineParams(self, form):
@@ -427,7 +428,7 @@ class ProtCryoSparc3DHomogeneousRefine(ProtCryosparcBase, pwprot.ProtRefine3D):
         return self.referenceVolume.get()
 
     def processStep(self):
-        print(pwutils.yellowStr("Refinement started..."), flush=True)
+        self.info(pwutils.yellowStr("Refinement started..."))
         self.doRunRefine()
 
     def createOutputStep(self):
@@ -475,7 +476,28 @@ class ProtCryoSparc3DHomogeneousRefine(ProtCryosparcBase, pwprot.ProtRefine3D):
 
         outImgSet = self._createSetOfParticles()
         outImgSet.copyInfo(imgSet)
+        self._getUnitCellMatricesAndPlanes()
         self._fillDataFromIter(outImgSet)
+
+        # if self.symmetryGroup.get() == SYM_DIHEDRAL_Y:
+        #     from pwem.convert.symmetry import Dihedral
+        #     import numpy as np
+        #     dihedral = Dihedral(sym=SYM_DIHEDRAL_Y)
+        #     matrix = dihedral.coordinateSystemTransform(SYM_DIHEDRAL_Y,
+        #                                                 SYM_DIHEDRAL_X)
+        #     # convert to numpy array
+        #     # and add extra row
+        #     matrix = np.array(matrix)
+        #     matrix = np.append(matrix, [[0, 0, 0, 1]], axis=0)
+        #
+        #     inputSet = unitCellSet
+        #     modifiedSet = inputSet.createCopy(self._getExtraPath(),
+        #                                       copyInfo=True)
+        #     for sourceItem in inputSet.iterItems():
+        #         item = sourceItem.clone()
+        #         transformation = item.getTransform()
+        #         transformation.composeTransform(matrix)
+        #         modifiedSet.append(item)
 
         self._defineOutputs(outputVolume=vol)
         self._defineSourceRelation(self.inputParticles.get(), vol)
@@ -533,16 +555,27 @@ class ProtCryoSparc3DHomogeneousRefine(ProtCryosparcBase, pwprot.ProtRefine3D):
 
     # -------------------------- UTILS functions ------------------------------
 
+    def _getUnitCellMatricesAndPlanes(self):
+        if not hasattr(self, 'matrixSet'):
+            self.matrixSet = getSymmetryMatrices(sym=self.symmetryGroup.get(),
+                                                 n=self.symmetryOrder.get())
+            _, self.unitCellPlanes = getUnitCell(sym=self.symmetryGroup.get(),
+                                                 n=self.symmetryOrder.get(),
+                                                 generalize=False)
+
     def _fillDataFromIter(self, imgSet):
         outImgsFn = 'particles@' + self._getFileName('out_particles')
         imgSet.setAlignmentProj()
         imgSet.copyItems(self._getInputParticles(),
                          updateItemCallback=self._createItemMatrix,
-                         itemDataIterator=emtable.Table.iterRows(fileName=outImgsFn))
+                         itemDataIterator=emtable.Table.iterRows(
+                             fileName=outImgsFn))
 
     def _createItemMatrix(self, particle, row):
         createItemMatrix(particle, row, align=pwobj.ALIGN_PROJ)
-        setCryosparcAttributes(particle, row, RELIONCOLUMNS.rlnRandomSubset.value)
+        moveParticleInsideUnitCell(particle, self.matrixSet, self.unitCellPlanes)
+        setCryosparcAttributes(particle, row,
+                               RELIONCOLUMNS.rlnRandomSubset.value)
 
     def _defineParamsName(self):
         """ Define a list with all protocol parameters names"""
@@ -606,7 +639,8 @@ class ProtCryoSparc3DHomogeneousRefine(ProtCryosparcBase, pwprot.ProtRefine3D):
                     paramName != 'refine_ews_zsign' and
                     paramName != 'refine_ews_simple'):
                 params[str(paramName)] = str(self.getAttributeValue(paramName))
-            elif (paramName == 'refine_highpass_res' and self.getAttributeValue(paramName) is not None and
+            elif (paramName == 'refine_highpass_res' and self.getAttributeValue(
+                    paramName) is not None and
                   int(self.getAttributeValue(paramName)) > 0):
                 params[str(paramName)] = str(self.getAttributeValue(paramName))
 
@@ -623,14 +657,20 @@ class ProtCryoSparc3DHomogeneousRefine(ProtCryosparcBase, pwprot.ProtRefine3D):
             elif paramName == 'refine_nu_filtertype':
                 params[str(paramName)] = str(
                     REFINE_FILTER_TYPE[self.refine_nu_filtertype.get()])
-            elif (paramName == 'refine_compute_batch_size' and self.getAttributeValue(paramName) is not None and
-                  int(self.getAttributeValue(paramName)) > 0):
+            elif (
+                    paramName == 'refine_compute_batch_size' and self.getAttributeValue(
+                    paramName) is not None and
+                    int(self.getAttributeValue(paramName)) > 0):
                 params[str(paramName)] = str(self.getAttributeValue(paramName))
-            elif (paramName == 'crl_compute_batch_size' and self.getAttributeValue(paramName) is not None and
-                  int(self.getAttributeValue(paramName)) > 0):
+            elif (
+                    paramName == 'crl_compute_batch_size' and self.getAttributeValue(
+                    paramName) is not None and
+                    int(self.getAttributeValue(paramName)) > 0):
                 params[str(paramName)] = str(self.getAttributeValue(paramName))
-            elif (paramName == 'crg_compute_batch_size' and self.getAttributeValue(paramName) is not None and
-                        int(self.getAttributeValue(paramName)) > 0):
+            elif (
+                    paramName == 'crg_compute_batch_size' and self.getAttributeValue(
+                    paramName) is not None and
+                    int(self.getAttributeValue(paramName)) > 0):
                 params[str(paramName)] = str(self.getAttributeValue(paramName))
             elif paramName == 'refine_ews_zsign':
                 params[str(paramName)] = str(
@@ -638,7 +678,6 @@ class ProtCryoSparc3DHomogeneousRefine(ProtCryosparcBase, pwprot.ProtRefine3D):
             elif paramName == 'refine_ews_simple':
                 params[str(paramName)] = str(
                     EWS_CORRECTION_METHOD[self.refine_ews_simple.get()])
-
 
         # Determinate the GPUs to use (in dependence of
         # the cryosparc version)
@@ -662,6 +701,3 @@ class ProtCryoSparc3DHomogeneousRefine(ProtCryosparcBase, pwprot.ProtRefine3D):
                          "Please, go to cryoSPARC software for more "
                          "details.")
         clearIntermediateResults(self.projectName.get(), self.runRefine.get())
-
-
-

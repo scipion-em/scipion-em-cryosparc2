@@ -57,9 +57,8 @@ class ProtCryoSparcLocalRefine(ProtCryosparcBase, ProtOperateParticles):
         """
     _label = 'local refinement'
     _devStatus = NEW
-    _protCompatibility = [V3_0_0, V3_1_0, V3_2_0, V3_3_0, V3_3_1, V3_3_2,
-                          V4_0_0,  V4_0_1, V4_0_2, V4_0_3, V4_1_0, V4_1_1,
-                          V4_1_2, V4_2_0, V4_2_1]
+    _protCompatibility = [V3_3_1, V3_3_2, V4_0_0,  V4_0_1, V4_0_2, V4_0_3,
+                          V4_1_0, V4_1_1, V4_1_2, V4_2_0, V4_2_1, V4_3_1]
     _className = "new_local_refine"
     _fscColumns = 6
 
@@ -218,7 +217,7 @@ class ProtCryoSparcLocalRefine(ProtCryosparcBase, ProtOperateParticles):
 
     # --------------------------- STEPS functions ------------------------------
     def processStep(self):
-        print(pwutils.yellowStr("Local Refinement started..."), flush=True)
+        self.info(pwutils.yellowStr("Local Refinement started..."))
         self.doLocalRefine()
 
     def createOutputStep(self):
@@ -265,8 +264,6 @@ class ProtCryoSparcLocalRefine(ProtCryosparcBase, ProtOperateParticles):
         outImgSet = self._createSetOfParticles()
         outImgSet.copyInfo(imgSet)
         self._fillDataFromIter(outImgSet)
-        import time
-        time.sleep(10)
 
         self._defineOutputs(outputVolume=vol)
         self._defineSourceRelation(self.inputParticles.get(), vol)

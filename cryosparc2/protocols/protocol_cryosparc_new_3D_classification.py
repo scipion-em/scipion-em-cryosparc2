@@ -62,7 +62,7 @@ class ProtCryoSparcNew3DClassification(ProtCryosparcBase):
     _className = "class_3D"
     _devStatus = BETA
     _protCompatibility = [V3_3_1, V3_3_2, V4_0_0, V4_0_1, V4_0_2, V4_0_3,
-                          V4_1_0, V4_1_1, V4_1_2, V4_2_0, V4_2_1]
+                          V4_1_0, V4_1_1, V4_1_2, V4_2_0, V4_2_1, V4_3_1]
 
     def _initialize(self):
         self._defineFileNames()
@@ -314,7 +314,7 @@ class ProtCryoSparcNew3DClassification(ProtCryosparcBase):
                             self.importVolumes]
         else:
             self.volumes = None
-        print(pwutils.yellowStr("3D Classification started..."), flush=True)
+        self.info(pwutils.yellowStr("3D Classification started..."))
         self.doNew3DClasification()
 
     def createOutputStep(self):
@@ -322,7 +322,7 @@ class ProtCryoSparcNew3DClassification(ProtCryosparcBase):
         Create the protocol output. Convert cryosparc file to Relion file
         """
         self._initializeUtilsVariables()
-        print(pwutils.yellowStr("Creating the output..."), flush=True)
+        self.info(pwutils.yellowStr("Creating the output..."))
 
         csOutputFolder = os.path.join(self.projectDir.get(),
                                       self.run3dClassification.get())

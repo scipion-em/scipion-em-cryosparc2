@@ -58,7 +58,8 @@ class ProtCryoSparcHomogeneousReconstruct(ProtCryosparcBase):
     _devStatus = NEW
     _fscColumns = 6
     _protCompatibility = [V3_3_0, V3_3_1, V3_3_2, V4_0_0, V4_0_1, V4_0_2,
-                          V4_0_3, V4_1_0, V4_1_1, V4_1_2, V4_2_0, V4_2_1]
+                          V4_0_3, V4_1_0, V4_1_1, V4_1_2, V4_2_0, V4_2_1,
+                          V4_3_1]
     ewsParamsName = []
 
     def _initialize(self):
@@ -260,7 +261,7 @@ class ProtCryoSparcHomogeneousReconstruct(ProtCryosparcBase):
         self._insertFunctionStep(self.createOutputStep)
 
     def processStep(self):
-        print(pwutils.yellowStr("Homogeneous Reconstruction started..."), flush=True)
+        self.info(pwutils.yellowStr("Homogeneous Reconstruction started..."))
         self.doHomogeneousReconstruction()
 
     def createOutputStep(self):
