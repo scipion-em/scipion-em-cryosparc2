@@ -154,7 +154,7 @@ class ProtCryoSparcLocalCtfRefinement(ProtCryosparcBase, ProtParticles):
 
     # --------------------------- STEPS functions ------------------------------
     def processStep(self):
-        print(pwutils.yellowStr("Local Ctf Refinement started..."), flush=True)
+        self.info(pwutils.yellowStr("Local Ctf Refinement started..."))
         self.doLocalCtfRefinement()
 
     def createOutputStep(self):

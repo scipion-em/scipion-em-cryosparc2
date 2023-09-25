@@ -44,7 +44,7 @@ class ProtCryoSparc3DFlexTraining(ProtCryosparcBase):
     """
     _label = '3D flex training'
     _devStatus = BETA
-    _protCompatibility = [V4_1_0, V4_1_1, V4_1_2, V4_2_0, V4_2_1]
+    _protCompatibility = [V4_1_0, V4_1_1, V4_1_2, V4_2_0, V4_2_1, V4_3_1]
 
     # --------------------------- DEFINE param functions ----------------------
     def _defineFileNames(self):
@@ -170,7 +170,7 @@ class ProtCryoSparc3DFlexTraining(ProtCryosparcBase):
         self._insertFunctionStep(self.createOutputStep)
 
     def trainingStep(self):
-        print(pwutils.yellowStr("3D Flex Training started..."))
+        self.info(pwutils.yellowStr("3D Flex Training started..."))
         self.doRun3DFlexTraining()
 
     def createOutputStep(self):

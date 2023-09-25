@@ -42,7 +42,7 @@ class ProtCryoSparc3DFlexDataPrepare(ProtCryosparcBase):
     """
     _label = '3D flex data/mesh prepare'
     _devStatus = BETA
-    _protCompatibility = [V4_1_0, V4_1_1, V4_1_2, V4_2_0, V4_2_1]
+    _protCompatibility = [V4_1_0, V4_1_1, V4_1_2, V4_2_0, V4_2_1, V4_3_1]
 
     # --------------------------- DEFINE param functions ----------------------
     def _defineFileNames(self):
@@ -241,11 +241,11 @@ class ProtCryoSparc3DFlexDataPrepare(ProtCryosparcBase):
 
     # --------------------------- STEPS functions ------------------------------
     def dataPrepareStep(self):
-        print(pwutils.yellowStr("3D Flex Data Preparation started..."))
+        self.info(pwutils.yellowStr("3D Flex Data Preparation started..."))
         self.doRun3DFlexDataPrepare()
 
     def mergePrepareStep(self):
-        print(pwutils.yellowStr("3D Flex Mesh Preparation started..."))
+        self.info(pwutils.yellowStr("3D Flex Mesh Preparation started..."))
         self.doRun3DFlexMeshPrepare()
 
     def createOutputStep(self):

@@ -251,14 +251,14 @@ class ProtCryo2D(ProtCryosparcBase, pwprot.ProtClassify2D):
         """
         Classify particles into multiples 2D classes
         """
-        print(pwutils.yellowStr("2D Classifications Started..."), flush=True)
+        self.info(pwutils.yellowStr("2D Classifications Started..."))
         self.doRunClass2D()
 
     def createOutputStep(self):
         """
         Create the protocol output. Convert cryosparc file to Relion file
         """
-        print(pwutils.yellowStr("Creating the output..."), flush=True)
+        self.info(pwutils.yellowStr("Creating the output..."))
         self._initializeUtilsVariables()
 
         csOutputFolder = os.path.join(self.projectDir.get(),

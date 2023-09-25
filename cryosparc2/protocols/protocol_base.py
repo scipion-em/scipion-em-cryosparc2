@@ -132,12 +132,11 @@ class ProtCryosparcBase(pw.EMProtocol):
             csSize = ImageHandler().getDimensions(csAveragesFile)[0]
 
             if csSize == inputSize:
-                print("No binning detected: linking averages cs file.",
-                      flush=True)
+                self.info("No binning detected: linking averages cs file.")
                 pwutils.createLink(csAveragesFile, scaledFile)
             else:
-                print("Scaling CS averages file to match particle "
-                      "size (%s -> %s)." % (csSize, inputSize), flush=True)
+                self.info("Scaling CS averages file to match particle "
+                      "size (%s -> %s)." % (csSize, inputSize))
                 try:
                     if force:
                         scaleFactor = inputSize/csSize
@@ -150,7 +149,7 @@ class ProtCryosparcBase(pw.EMProtocol):
                         ImageHandler.scale2DStack(csAveragesFile, scaledFile,
                                                   finalDimension=inputSize)
                 except Exception as ex:
-                    print("The CS averages could not be scaled. %s " % ex)
+                    self._log.error("The CS averages could not be scaled. %s ", exc_info=ex)
                     return csAveragesFile
 
         return scaledFile

@@ -174,12 +174,11 @@ class ProtCryoSparc3DVariabilityAnalisys(ProtCryosparcBase, ProtRefine3D):
 
     # --------------------------- STEPS functions ------------------------------
     def processStep(self):
-        print(pwutils.yellowStr("3D Variability started..."), flush=True)
+        self.info(pwutils.yellowStr("3D Variability started..."))
         self.doRun3DVariabilityDisplay()
 
     def generateStartFiles(self):
-        print(pwutils.yellowStr("Copying files from CS to Scipion folder..."),
-              flush=True)
+        self.info(pwutils.yellowStr("Copying files from CS to Scipion folder..."))
         csOutputFolder = os.path.join(self.projectDir.get(),
                                       self.run3DVariabilityDisplay.get())
         import time
@@ -208,9 +207,9 @@ class ProtCryoSparc3DVariabilityAnalisys(ProtCryosparcBase, ProtRefine3D):
 
             # Creating the .star cluster per cluster
             numOfClusters = self.var_num_frames.get()
-            print(pwutils.yellowStr("Generating .star files for all clusters"), flush=True)
+            self.info(pwutils.yellowStr("Generating .star files for all clusters"))
             for i in range(numOfClusters):
-                print(pwutils.yellowStr("Processing cluster %d ..." % i), flush=True)
+                self.info(pwutils.yellowStr("Processing cluster %d ..." % i))
 
                 clusterParticlesPattern = '%s%s_cluster_%03d_particles.cs' % (getOutputPreffix(self.projectName.get()),
                                                                               self.run3DVariabilityDisplay.get(), i)
@@ -235,8 +234,7 @@ class ProtCryoSparc3DVariabilityAnalisys(ProtCryosparcBase, ProtRefine3D):
             numOfComponets = int(self.input3DVariablityAnalisysProt.get().var_K)
 
             for i in range(numOfComponets):
-                print(pwutils.yellowStr("Extracting component %d ..." % i),
-                      flush=True)
+                self.info(pwutils.yellowStr("Extracting component %d ..."))
                 # Creating the folder where clusters will be unzip
                 componetFilesPath = self._getExtraPath('component%03d' % i)
                 os.makedirs(componetFilesPath)
@@ -251,7 +249,7 @@ class ProtCryoSparc3DVariabilityAnalisys(ProtCryosparcBase, ProtRefine3D):
 
     def createOutputStep(self):
         self._initializeUtilsVariables()
-        print(pwutils.yellowStr("Creating the output..."), flush=True)
+        self.info(pwutils.yellowStr("Creating the output..."))
 
         pass
 

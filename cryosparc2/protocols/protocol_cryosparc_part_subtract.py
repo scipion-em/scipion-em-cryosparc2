@@ -151,7 +151,7 @@ class ProtCryoSparcSubtract(ProtCryosparcBase, ProtOperateParticles):
 
     # --------------------------- STEPS functions ------------------------------
     def processStep(self):
-        print(pwutils.yellowStr("Particles Subtraction started..."), flush=True)
+        self.info(pwutils.yellowStr("Particles Subtraction started..."))
         self.doPartStract()
 
     def createOutputStep(self):

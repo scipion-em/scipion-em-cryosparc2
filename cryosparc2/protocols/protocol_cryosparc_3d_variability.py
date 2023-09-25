@@ -159,7 +159,7 @@ class ProtCryoSparc3DVariability(ProtCryosparcBase, ProtRefine3D):
 
     # --------------------------- STEPS functions ------------------------------
     def processStep(self):
-        print(pwutils.yellowStr("3D Variability started..."))
+        self.info(pwutils.yellowStr("3D Variability started..."))
         self.doRun3DVariability()
 
     def createOutputStep(self):

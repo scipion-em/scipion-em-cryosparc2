@@ -107,7 +107,7 @@ class ProtCryoSparcSymmetryExpansion(ProtCryosparcBase):
     # --------------------------- STEPS functions ------------------------------
 
     def processStep(self):
-        print(pwutils.yellowStr("Symmetry Expansion started..."), flush=True)
+        self.info(pwutils.yellowStr("Symmetry Expansion started..."))
         self.doSymmetryExpansion()
 
     def createOutputStep(self):

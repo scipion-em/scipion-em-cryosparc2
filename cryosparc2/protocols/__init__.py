@@ -25,12 +25,9 @@
 # *
 # **************************************************************************
 from .protocol_base import ProtCryosparcBase
-from .protocol_cryorefine import ProtCryoSparcRefine3D # deprecated
 from .protocol_cryosparc2d import ProtCryo2D
 from .protocol_cryosparc_ab import ProtCryoSparcInitialModel
-from .protocol_cryosparc_nonuniform_refine import ProtCryoSparcNonUniformRefine3D # deprecated
 from .protocol_cryosparc_part_subtract import ProtCryoSparcSubtract
-from .protocol_cryosparc_naive_local_refine import ProtCryoSparcNaiveLocalRefine  # deprecated
 from .protocol_cryosparc_new_local_refine import ProtCryoSparcLocalRefine
 from .protocol_cryosparc_global_ctf_refinement import ProtCryoSparcGlobalCtfRefinement
 from .protocol_cryosparc_local_ctf_refinement import ProtCryoSparcLocalCtfRefinement
@@ -42,9 +39,11 @@ from .protocol_cryosparc_new_nonuniform_refine import ProtCryoSparcNewNonUniform
 from .protocol_cryosparc_symmetry_expansion import ProtCryoSparcSymmetryExpansion
 from .protocol_cryosparc_homogeneous_reconstruction import ProtCryoSparcHomogeneousReconstruct
 from .protocol_cryosparc_new_3D_classification import ProtCryoSparcNew3DClassification
-#from .protocol_cryosparc_3d_variability import ProtCryoSparc3DVariability
-#from .protocol_cryosparc_3d_variability_display import ProtCryoSparc3DVariabilityAnalisys
+"""
+from .protocol_cryosparc_3d_variability import ProtCryoSparc3DVariability
+from .protocol_cryosparc_3d_variability_display import ProtCryoSparc3DVariabilityAnalisys
 
-#from .protocol_cryosparc_3D_flex_data_prepare import ProtCryoSparc3DFlexDataPrepare
-#from .protocol_cryosparc_3D_flex_training import ProtCryoSparc3DFlexTraining
-#from .protocol_cryosparc_3D_flex_reconstruction import ProtCryoSparc3DFlexReconstruction
+from .protocol_cryosparc_3D_flex_data_prepare import ProtCryoSparc3DFlexDataPrepare
+from .protocol_cryosparc_3D_flex_training import ProtCryoSparc3DFlexTraining
+from .protocol_cryosparc_3D_flex_reconstruction import ProtCryoSparc3DFlexReconstruction
+"""
