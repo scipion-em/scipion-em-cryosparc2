@@ -11,6 +11,8 @@ def cs2Star(args):
     import logging
     from pyem import metadata
     from pyem import star
+    # see https://numpy.org/doc/stable/reference/generated/numpy.load.html
+    # for an explanation of MAX_HEADER_SIZE
     MAX_HEADER_SIZE = 50000
 
     log = logging.getLogger('root')
