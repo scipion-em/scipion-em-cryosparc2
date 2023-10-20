@@ -11,6 +11,7 @@ def cs2Star(args):
     import logging
     from pyem import metadata
     from pyem import star
+    MAX_HEADER_SIZE = 50000
 
     log = logging.getLogger('root')
     hdlr = logging.StreamHandler(sys.stdout)
@@ -24,7 +25,7 @@ def cs2Star(args):
 
     if args.input[0].endswith(".cs"):
         log.debug("Detected CryoSPARC 2+ .cs file")
-        cs = np.load(args.input[0])
+        cs = np.load(args.input[0], max_header_size=MAX_HEADER_SIZE)
         if args.first10k:
             cs = cs[:10000]
 
