@@ -703,7 +703,7 @@ def userExist(email):
     Return if an user exist into cryoSPARC
     """
     getUser_cmd = (getCryosparcProgram() + ' %sUserExists("%s")%s' % ("'", email, "'"))
-    return runCmd(getUser_cmd, printCmd=False)[1] == 'True'
+    return runCmd(getUser_cmd, printCmd=False)[1][-4:] == 'True'
 
 
 def getUserId(email):
