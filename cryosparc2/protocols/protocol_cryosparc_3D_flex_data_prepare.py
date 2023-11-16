@@ -42,7 +42,8 @@ class ProtCryoSparc3DFlexDataPrepare(ProtCryosparcBase):
     """
     _label = '3D flex data/mesh prepare'
     _devStatus = BETA
-    _protCompatibility = [V4_1_0, V4_1_1, V4_1_2, V4_2_0, V4_2_1, V4_3_1]
+    _protCompatibility = [V4_1_0, V4_1_1, V4_1_2, V4_2_0, V4_2_1, V4_3_1,
+                          V4_4_0]
 
     # --------------------------- DEFINE param functions ----------------------
     def _defineFileNames(self):
