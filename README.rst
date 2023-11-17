@@ -28,6 +28,11 @@ You will need to use `3.0.0 <https://scipion-em.github.io/docs/release-3.0.0/doc
 **Latest plugin version**
 ==========================
 
+**v4.0.9**
+-----------
+* **new**        Compatibility with cryoSPARC v4.4.0
+* **fixed**      Handling aborted protocols/jobs
+
 **v4.0.8**
 -----------
 * **new**        Compatibility with cryoSPARC v4.3.1
