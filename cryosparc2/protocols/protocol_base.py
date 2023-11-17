@@ -27,6 +27,9 @@
 import os
 import ast
 import requests
+import logging
+logger = logging.getLogger(__name__)
+
 from pkg_resources import parse_version
 
 import pwem.protocols as pw
@@ -251,10 +254,15 @@ class ProtCryosparcBase(pw.EMProtocol):
         """ Set the status to aborted and updated the endTime. """
         pw.EMProtocol.setAborted(self)
         if hasattr(self, 'projectName') and hasattr(self, 'currenJob') and self.currenJob.get() is not None:
-            status = getJobStatus(self.projectName.get(), self.currenJob.get())
+            job = str(self.currenJob.get())
+            project = str(self.projectName.get())
+            status = getJobStatus(project, job)
             if status not in STOP_STATUSES:
-                killJob(str(self.projectName.get()), str(self.currenJob.get()))
-                clearJob(str(self.projectName.get()), str(self.currenJob.get()))
+                try:
+                    killJob(project, job)
+                    clearJob(project, job)
+                except Exception as e:
+                    logger.error("Can't kill job %s from project %s" % (job, project), exc_info=e)
 
     def createFSC(self, idd, imgSet, vol):
         # Need to get the cryosparc master address

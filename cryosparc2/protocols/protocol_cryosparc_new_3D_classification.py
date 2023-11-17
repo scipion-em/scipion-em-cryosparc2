@@ -62,7 +62,7 @@ class ProtCryoSparcNew3DClassification(ProtCryosparcBase):
     _className = "class_3D"
     _devStatus = BETA
     _protCompatibility = [V3_3_1, V3_3_2, V4_0_0, V4_0_1, V4_0_2, V4_0_3,
-                          V4_1_0, V4_1_1, V4_1_2, V4_2_0, V4_2_1, V4_3_1]
+                          V4_1_0, V4_1_1, V4_1_2, V4_2_0, V4_2_1, V4_3_1, V4_4_0]
 
     def _initialize(self):
         self._defineFileNames()
@@ -327,11 +327,10 @@ class ProtCryoSparcNew3DClassification(ProtCryosparcBase):
         csOutputFolder = os.path.join(self.projectDir.get(),
                                       self.run3dClassification.get())
         itera = self.findLastIteration(self.run3dClassification.get())
-
-        csParticlesName = "%s%s_00%s_particles.cs" % (
+        csParticlesName = "%s%s_%s_particles.cs" % (
                                                  getOutputPreffix(self.projectName.get()),
                                                  self.run3dClassification.get(),
-                                                 itera)
+                                                 itera.zfill(5))
         csPassParticles = "%s_passthrough_particles_all_classes.cs" % self.run3dClassification.get()
 
         # Copy the CS output particles to extra folder
@@ -439,16 +438,16 @@ class ProtCryoSparcNew3DClassification(ProtCryosparcBase):
             output_file.write('\n')
             numOfClass = self.class3D_N_K.get()
             for i in range(numOfClass):
-                csVolName = ("%s%s_class_%02d_00%s_volume.mrc" %
+                csVolName = ("%s%s_class_%02d_%s_volume.mrc" %
                              (getOutputPreffix(self.projectName.get()),
-                              self.run3dClassification.get(), i, itera))
+                              self.run3dClassification.get(), i, itera.zfill(5)))
 
                 copyFiles(csOutputFolder, self._getExtraPath(),
                           files=[csVolName])
 
-                row = ("%s/%s%s_class_%02d_00%s_volume.mrc\n" %
+                row = ("%s/%s%s_class_%02d_%s_volume.mrc\n" %
                        (self._getExtraPath(), getOutputPreffix(self.projectName.get()),
-                        self.run3dClassification.get(), i, itera))
+                        self.run3dClassification.get(), i, itera.zfill(5)))
                 output_file.write(row)
 
     def findLastIteration(self, jobName):
