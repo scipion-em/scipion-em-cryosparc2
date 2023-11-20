@@ -18,7 +18,7 @@ def cs2Star(args):
     log = logging.getLogger('root')
     hdlr = logging.StreamHandler(sys.stdout)
     log.addHandler(hdlr)
-    log.setLevel(logging.getLevelName(args.loglevel.upper()))
+    log.setLevel(logging.getLevelName(logging.INFO))
 
     if args.swapxy:
         log.warning(
@@ -69,13 +69,14 @@ def cs2Star(args):
             return 0
 
         try:
+            log.info("Parsing .cs file...")
             df = metadata.parse_cryosparc_2_cs(cs, passthroughs=args.input[1:],
                                                minphic=args.minphic,
                                                boxsize=args.boxsize,
                                                swapxy=args.noswapxy,
                                                invertx=args.invertx,
                                                inverty=args.inverty)
-        except (KeyError, ValueError) as e:
+        except Exception as e:
             log.error(e, exc_info=True)
             log.error("Required fields could not be mapped. Are you using the "
                       "right input file(s)?")
@@ -215,6 +216,7 @@ def defineArgs():
     parser.add_argument("--loglevel", "-l", type=str, default="WARNING",
                         help="Logging level and debug output")
     return parser
+
 
 if __name__ == "__main__":
     parser = defineArgs()

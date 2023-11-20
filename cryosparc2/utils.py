@@ -595,11 +595,16 @@ def waitForCryosparc(projectName, jobId, failureMessage):
 
     # While is needed here, cause waitJob has a timeout of 5 secs.
     while True:
-        status = getJobStatus(projectName, jobId)
-        if status not in STOP_STATUSES:
-            waitJob(projectName, jobId)
-        else:
-            break
+        try:
+            status = getJobStatus(projectName, jobId)
+            if status not in STOP_STATUSES:
+                waitJob(projectName, jobId)
+            else:
+                break
+        except Exception as e:
+            logger.error("Can't query cryoSPARC about the job %s. Maybe it needs a restart ? We'll wait 5 minutes" % jobId, exc_info=e)
+            import time
+            time.sleep(300)  # wait 5 minutes
 
     if status != STATUS_COMPLETED:
         raise Exception(failureMessage)

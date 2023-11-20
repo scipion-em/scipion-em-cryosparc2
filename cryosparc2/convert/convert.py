@@ -24,7 +24,7 @@
 # *  e-mail address 'scipion@cnb.csic.es'
 # *
 # **************************************************************************
-from collections import OrderedDict
+import  subprocess
 
 import emtable
 import numpy as np
@@ -52,12 +52,16 @@ def convertCs2Star(argsList):
     output = os.path.abspath(argsList[1])
     cryosparcScriptPath = os.path.join(os.path.dirname(__file__),
                                        CRYOSPARC_CS2STAR_SCRIPT)
-    cmd = Plugin.getCondaActivationCmd() +\
-          Plugin.getPyemEnvActivation() +\
-          ' && python3 ' +\
-          cryosparcScriptPath + ' %s %s' % (input, output)
-    print("convertCs2Star:cmd", cmd)
-    os.system(cmd)
+    cmd = (Plugin.getCondaActivationCmd() + Plugin.getPyemEnvActivation() + ' && python3 ' +
+           cryosparcScriptPath + ' %s %s' % (input, output))
+
+    logger.info("convertCs2Star: %s" % cmd)
+
+    process = subprocess.Popen(cmd, shell=True, cwd=os.getcwd(), stdout=subprocess.PIPE,
+                               stderr=subprocess.PIPE)
+    out, error = process.communicate()
+    logger.info(out.decode())
+    logger.error(error.decode())
 
 
 def defineArgs():
@@ -161,7 +165,7 @@ def particleToRow(part, partRow, **kwargs):
         coordinateToRow(coord, partRow, copyId=False)
     if part.hasMicId():
         partRow.setValue(md.RLN_MICROGRAPH_ID, int(part.getMicId()))
-        # If the row does not contains the micrograph name
+        # If the row does not contain the micrograph name
         # use a fake micrograph name using id to relion
         # could at least group for CTF using that
         if not partRow.hasLabel(md.RLN_MICROGRAPH_NAME):

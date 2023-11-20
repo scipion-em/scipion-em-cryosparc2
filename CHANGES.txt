@@ -1,4 +1,9 @@
-June  , 2023   - **v4.0.8**
+Nov 17, 2023    - **v4.0.9**
+                 Compatibility with cryoSPARC v4.4.0
+                 Handling aborted protocols/jobs
+
+
+June 24, 2023   - **v4.0.8**
                  Compatibility with cryoSPARC v4.3.1
                  Deprecated protocols removed: Legacy Refine, Legacy no uniform refine, Legacy naive local refine.
                  Symmetry moved to unit cell in refinements' output
