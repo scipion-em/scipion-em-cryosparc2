@@ -125,9 +125,9 @@ ANGDIST_2DPLOT = 0
 ANGDIST_CHIMERA = 1
 
 # VOLUME_SLICES = 0
-VOLUME_CHIMERA = 1
+VOLUME_CHIMERA = 0
 VOLUME_CRYOSPARC = 0
-DATA_VIEWER = 0
+DATA_VIEWER = 1
 
 fscValues = dict()
 fscValues['fsc_nomask'] = 'No mask'

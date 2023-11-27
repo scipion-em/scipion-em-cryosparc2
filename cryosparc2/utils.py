@@ -63,6 +63,27 @@ _csVersion = None  # Lazy variable: never use it directly. Use getCryosparcVersi
 logger = logging.getLogger(__name__)
 
 
+class NestedDict:
+    def __init__(self, depth=1):
+        self.data = {}
+        self.depth = depth
+
+    def insert(self, keys, value):
+        current = self.data
+        for key in keys[:self.depth - 1]:
+            current = current.setdefault(key, {})
+        current[keys[self.depth - 1]] = value
+
+    def search(self, keys):
+        current = self.data
+        for key in keys[:self.depth]:
+            if key in current:
+                current = current[key]
+            else:
+                return None
+        return current
+
+
 def getCryosparcDir(*paths):
     """
     Get the root directory where cryoSPARC code and dependencies are installed.
