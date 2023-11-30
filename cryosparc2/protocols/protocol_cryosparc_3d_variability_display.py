@@ -66,7 +66,7 @@ class ProtCryoSparc3DVariabilityDisplay(ProtCryosparcBase, ProtRefine3D):
         form.addSection(label='Input')
         form.addParam('input3DVariablityAnalisysProt', PointerParam,
                       label="3D variability analysis protocol",
-                      pointerClass='ProtCryoSparc3DVariabilityAnalysis',
+                      pointerClass='ProtCryoSparc3DVariability',
                       help='Particle stacks to use.')
         form.addParallelSection(threads=1, mpi=1)
 
