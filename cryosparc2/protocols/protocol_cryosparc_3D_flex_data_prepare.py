@@ -113,7 +113,8 @@ class ProtCryoSparc3DFlexDataPrepare(ProtCryosparcBase):
 
         form.addSection(label='Mesh Prepare')
 
-        solventMaskGroup = form.addGroup('Solvent mask preparation')
+        solventMaskGroup = form.addGroup('Solvent mask preparation',
+                                         condition="refMask is None")
         solventMaskGroup.addParam('mask_in_lowpass_A', IntParam, default=10,
                                   condition="refMask is None",
                                   label="Filter input volume res. (A)",
