@@ -43,8 +43,11 @@ from .protocol_cryosparc_new_3D_classification import ProtCryoSparcNew3DClassifi
 from .protocol_cryosparc_3d_variability import ProtCryoSparc3DVariability
 from .protocol_cryosparc_3d_variability_display import ProtCryoSparc3DVariabilityDisplay
 
-
+"""
 from .protocol_cryosparc_3D_flex_data_prepare import ProtCryoSparc3DFlexDataPrepare
+from .protocol_cryosparc_3D_flex_mesh_prepare import ProtCryoSparc3DFlexMeshPrepare
 from .protocol_cryosparc_3D_flex_training import ProtCryoSparc3DFlexTraining
 from .protocol_cryosparc_3D_flex_reconstruction import ProtCryoSparc3DFlexReconstruction
+"""
+
 
