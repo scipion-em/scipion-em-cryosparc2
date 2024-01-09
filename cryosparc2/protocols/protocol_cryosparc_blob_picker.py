@@ -62,7 +62,7 @@ class ProtCryoSparcBlobPicker(ProtCryosparcBase):
                       help='Maximum particle diameter (px)')
 
         form.addParam('use_circle', BooleanParam, default=True,
-                      label='Use elliptical blob',
+                      label='Use circular blob',
                       help='Use three circular blobs, at minimum, average, and maximum particle diameters based on parameters above.')
 
         form.addParam('use_ellipse', BooleanParam, default=False,
