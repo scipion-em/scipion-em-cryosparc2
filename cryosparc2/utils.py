@@ -459,14 +459,20 @@ def doImportVolumes(protocol, refVolumePath, refVolume, volType, msg):
 def doImportMicrographs(protocol):
     print(pwutils.yellowStr("Importing micrographs..."), flush=True)
     className = "import_micrographs"
-
     micrographs = protocol._getInputMicrographs()
     acquisition = micrographs.getAcquisition()
     micList = list(micrographs.getFiles())
-    micExt = '*%s' % os.path.splitext(micList[0])[1]
-    micPath = os.path.join(os.path.dirname(micList[0]), micExt)
 
-    params = {"blob_paths": str(os.path.join(os.getcwd(), micPath)),
+    micFolder = os.path.join(protocol._getExtraPath('micrographs'))
+    os.makedirs(micFolder, exist_ok=True)
+
+    for micPath in micList:
+        micName = os.path.basename(micPath)
+        micLink = os.path.join(micFolder, micName)
+        os.symlink(os.path.abspath(micPath), micLink)
+    micExt = '*%s' % os.path.splitext(micList[0])[1]
+
+    params = {"blob_paths": str(os.path.join(os.getcwd(), micFolder, micExt)),
               "psize_A": str(micrographs.getSamplingRate()),
               "accel_kv": str(acquisition.getVoltage()),
               "cs_mm": str(acquisition.getSphericalAberration()),
