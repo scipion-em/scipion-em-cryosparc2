@@ -27,7 +27,7 @@
 import os
 import emtable
 
-from pwem.objects import Coordinate
+from pwem.objects import Coordinate, CTFModel
 import pyworkflow.utils as pwutils
 from pyworkflow.protocol.params import (PointerParam, FloatParam,
                                         BooleanParam, IntParam,
@@ -137,6 +137,14 @@ class ProtCryoSparcBlobPicker(ProtCryosparcBase):
         """
         self.info(pwutils.yellowStr("Create output started..."))
         self._initializeUtilsVariables()
+        micSetPtr = self._getInputMicrographs()
+
+        micList = dict()
+        for mic in micSetPtr:
+            micName = os.path.basename(mic.getFileName())
+            if not micName in micList:
+                micList[micName] = mic.clone()
+
         csOutputFolder = os.path.join(self.projectDir.get(),
                                       self.runBlobPicker.get())
         # Copy the CS output coordinates to extra folder
@@ -149,16 +157,33 @@ class ProtCryoSparcBlobPicker(ProtCryosparcBase):
         argsList = [csFile, outputStarFn]
         convertCs2Star(argsList)
 
-        micSetPtr = self._getInputMicrographs()
-        micList = dict()
+        outputCoords = self._fillSetOfCoordinates(micSetPtr, outputStarFn, micList)
 
-        for mic in micSetPtr:
-            micName = os.path.basename(mic.getFileName())
-            if not micName in micList:
-                micList[micName] = mic.clone()
+        # Copy the  CTF output to extra folder
+        if self.estimate_ctf.get():
+            csOutputFolder = os.path.join(self.projectDir.get(),
+                                          self.runPatchCTF.get())
+            outputPath = os.path.join(self._getExtraPath(), self.runPatchCTF.get())
+            copyFiles(csOutputFolder, outputPath)
+
+            ctfEstimatedFileName = 'exposures_ctf_estimated.cs'
+            csFile = os.path.join(outputPath, ctfEstimatedFileName)
+            outputStarFn = self._getExtraPath('ctf.star')
+            argsList = [csFile, outputStarFn]
+            convertCs2Star(argsList)
+
+            outputCtfSet = self._fillSetOfCTF(outputStarFn, micList)
+
+            self._defineOutputs(outputCTF=outputCtfSet)
+            self._defineSourceRelation(micSetPtr, outputCtfSet)
+
+        self._defineOutputs(outputCoordinates=outputCoords)
+        self._defineSourceRelation(micSetPtr, outputCoords)
+
+    def _fillSetOfCoordinates(self, micSetPtr, outputStarFn, micList):
 
         outputCoords = self._createSetOfCoordinates(micSetPtr)
-        boxSixe = (self.diameter.get() + self.diameter_max.get())/2
+        boxSixe = (self.diameter.get() + self.diameter_max.get()) / 2
         outputCoords.setBoxSize(int(boxSixe))
 
         coord = Coordinate()
@@ -182,8 +207,29 @@ class ProtCryoSparcBlobPicker(ProtCryosparcBase):
             # Add it to the set
             outputCoords.append(coord)
 
-        self._defineOutputs(outputCoordinates=outputCoords)
-        self._defineSourceRelation(micSetPtr, outputCoords)
+        return outputCoords
+
+    def _fillSetOfCTF(self, outputCTFFn, micList):
+
+        inputMics = self._getInputMicrographs()
+        outputCtfSet = self._createSetOfCTF()
+        outputCtfSet.setMicrographs(inputMics)
+        mics = list(micList.values())
+
+        ctf = CTFModel()
+        mdFileName = '%s@%s' % ('micrograph', outputCTFFn)
+        table = emtable.Table(fileName=outputCTFFn)
+
+        for mic, row in enumerate(table.iterRows(mdFileName)):
+            ctf.setDefocusU(row.get(RELIONCOLUMNS.rlnDefocusU.value))
+            ctf.setDefocusV(row.get(RELIONCOLUMNS.rlnDefocusV.value))
+            ctf.setPhaseShift(row.get(RELIONCOLUMNS.rlnPhaseShift.value))
+            ctf.setResolution(row.get(RELIONCOLUMNS.rlnCtfMaxResolution.value))
+            ctf.setDefocusAngle(row.get(RELIONCOLUMNS.rlnDefocusAngle.value))
+            ctf.setMicrograph(mics[mic])
+            outputCtfSet.append(ctf)
+
+        return outputCtfSet
 
     def _defineParamsName(self):
         """ Define a list with all protocol parameters names"""
