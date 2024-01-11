@@ -29,6 +29,7 @@ import emtable
 
 from pwem.objects import Coordinate, CTFModel
 import pyworkflow.utils as pwutils
+from pyworkflow import NEW
 from pyworkflow.protocol.params import (PointerParam, FloatParam,
                                         BooleanParam, IntParam,
                                         String)
@@ -46,6 +47,7 @@ class ProtCryoSparcBlobPicker(ProtCryosparcBase):
     """
     _label = 'blob_picker'
     _className = "blob_picker_gpu"
+    _devStatus = NEW
 
     def _defineParams(self, form):
         form.addSection(label='Input')
@@ -139,11 +141,7 @@ class ProtCryoSparcBlobPicker(ProtCryosparcBase):
         self._initializeUtilsVariables()
         micSetPtr = self._getInputMicrographs()
 
-        micList = dict()
-        for mic in micSetPtr:
-            micName = os.path.basename(mic.getFileName())
-            if not micName in micList:
-                micList[micName] = mic.clone()
+        micList = {os.path.basename(mic.getFileName()): mic.clone() for mic in micSetPtr}
 
         csOutputFolder = os.path.join(self.projectDir.get(),
                                       self.runBlobPicker.get())

@@ -27,6 +27,7 @@ You will need to use `3.0.0 <https://scipion-em.github.io/docs/release-3.0.0/doc
 * **3D Variability Analysis**: Protocol to compute the principle modes of variability with a dataset of aligned particles
 * **3D Variability Display**: Protocol to create various versions of a 3D variability result that can be used for display
 * **Blob Picker**: Automatically picks particles by searching for Gaussian signals.
+* **Patch CTF Estimation**:  Patch-based CTF estimation automatically estimates defocus variation for tilted, bent, deformed samples and is accurate for all particle sizes and types including flexible and membrane proteins.
 
 **Latest plugin version**
 ==========================
