@@ -28,6 +28,7 @@
 
 import os
 import emtable
+import numpy
 
 from pwem.objects import CTFModel
 import pyworkflow.utils as pwutils
@@ -74,7 +75,7 @@ class ProtCryoSparcPatchCTFEstimate(ProtCryosparcBase):
                       label='Maximum resolution (A)',
                       help='Defocus range for gridsearch.')
 
-        form.addParam('df_search_max', IntParam, default=4000,
+        form.addParam('df_search_max', IntParam, default=40000,
                       label='Maximum resolution (A)',
                       help='Defocus range for gridsearch.')
 
@@ -82,7 +83,7 @@ class ProtCryoSparcPatchCTFEstimate(ProtCryosparcBase):
                       label='Min. search phase-shift (rad)',
                       help='Phase-shift range for gridsearch.')
 
-        form.addParam('phase_shift_max', IntParam, default=0,
+        form.addParam('phase_shift_max', FloatParam, default=numpy.pi,
                       label='Min. search phase-shift (rad)',
                       help='Phase-shift range for gridsearch.')
 
