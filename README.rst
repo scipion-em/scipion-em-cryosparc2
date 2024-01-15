@@ -24,26 +24,30 @@ You will need to use `3.0.0 <https://scipion-em.github.io/docs/release-3.0.0/doc
 * **Symmetry Expansion**: Duplicate particles around a point-group symmetry.
 * **Homogeneous Reconstruction**: Reconstruct half-maps from input particles with alignments
 * **3D Classification**: Classify particles into multiple 3D classes and optimize 3D class densities (currently, without re-aligning particle pose or shift).
+* **3D Variability Analysis**: Protocol to compute the principle modes of variability with a dataset of aligned particles
+* **3D Variability Display**: Protocol to create various versions of a 3D variability result that can be used for display
+* **Blob Picker**: Automatically picks particles by searching for Gaussian signals.
+* **Patch CTF Estimation**:  Patch-based CTF estimation automatically estimates defocus variation for tilted, bent, deformed samples and is accurate for all particle sizes and types including flexible and membrane proteins.
 
 **Latest plugin version**
 ==========================
+
+**v4.0.10**
+-----------
+* **new**        Add new protocols:
+
+                 * **3D Variability Analysis**: Protocol to compute the principle modes of variability with a dataset of aligned particles
+                 * **3D Variability Display**: Protocol to create various versions of a 3D variability result that can be used for display
+                 * **Blob Picker**: Automatically picks particles by searching for Gaussian signals.
+
+
+
 
 **v4.0.9**
 -----------
 * **new**        Compatibility with cryoSPARC v4.4.0
 * **fixed**      Handling aborted protocols/jobs
 
-**v4.0.8**
------------
-* **new**        Compatibility with cryoSPARC v4.3.1
-* **removed**    Deprecated protocols removed: Legacy Refine, Legacy no uniform refine, Legacy naive local refine.
-
-**v4.0.7**
------------
-* **new**     :  Compatibility with cryoSPARC v4.2.1
-* **new**        Plugin operation in a cluster
-* **fixed**      Fixed an installation error
-* **fixed**      Fixed an error related with the calculation of the particles shifts
 
 **Installing the plugin**
 =========================
