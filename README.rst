@@ -34,6 +34,7 @@ You will need to use `3.0.0 <https://scipion-em.github.io/docs/release-3.0.0/doc
 
 **v4.0.10**
 -----------
+* **new**        Compatibility with cryoSPARC v4.4.1
 * **new**        Add new protocols:
 
                  * **3D Variability Analysis**: Protocol to compute the principle modes of variability with a dataset of aligned particles

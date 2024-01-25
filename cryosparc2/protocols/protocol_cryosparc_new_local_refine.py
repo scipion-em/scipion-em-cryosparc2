@@ -57,7 +57,7 @@ class ProtCryoSparcLocalRefine(ProtCryosparcBase, ProtOperateParticles):
         """
     _label = 'local refinement'
     _protCompatibility = [V3_3_1, V3_3_2, V4_0_0,  V4_0_1, V4_0_2, V4_0_3,
-                          V4_1_0, V4_1_1, V4_1_2, V4_2_0, V4_2_1, V4_3_1, V4_4_0]
+                          V4_1_0, V4_1_1, V4_1_2, V4_2_0, V4_2_1, V4_3_1, V4_4_0, V4_4_1]
     _className = "new_local_refine"
     _fscColumns = 6
 
@@ -279,7 +279,7 @@ class ProtCryoSparcLocalRefine(ProtCryosparcBase, ProtOperateParticles):
         if not validateMsgs:
             csVersion = getCryosparcVersion()
             if [version for version in self._protCompatibility
-                if parse_version(version) >= parse_version(csVersion)]:
+                if parse_version(version) <= parse_version(csVersion)]:
                 validateMsgs = gpusValidate(self.getGpuList(),
                                             checkSingleGPU=True)
                 if not validateMsgs:

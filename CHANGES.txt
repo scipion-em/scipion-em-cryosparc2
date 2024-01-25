@@ -1,4 +1,6 @@
 Dec 22, 2023    - **v4.0.10**
+                Compatibility with cryoSPARC v4.4.1
+
                 Add new protocols:
                  * **3D Variability Analysis**: Protocol to compute the principle modes of variability with a dataset of aligned particles
                  * **3D Variability Display**: Protocol to create various versions of a 3D variability result that can be used for display

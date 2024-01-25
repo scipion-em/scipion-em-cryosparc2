@@ -25,12 +25,11 @@
 # *
 # **************************************************************************
 import os.path
-import zipfile
 
 from pwem.objects import Volume, SetOfVolumes
 from pyworkflow import BETA
 from pyworkflow.protocol.params import (PointerParam, FloatParam,
-                                        LEVEL_ADVANCED, EnumParam, IntParam,
+                                        LEVEL_ADVANCED, EnumParam,
                                         Positive, BooleanParam, StringParam)
 from pwem.protocols import ProtRefine3D
 

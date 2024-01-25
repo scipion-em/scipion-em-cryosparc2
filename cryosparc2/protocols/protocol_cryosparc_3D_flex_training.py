@@ -44,7 +44,7 @@ class ProtCryoSparc3DFlexTraining(ProtCryosparcBase):
     """
     _label = '3D flex training'
     _devStatus = BETA
-    _protCompatibility = [V4_1_0, V4_1_1, V4_1_2, V4_2_0, V4_2_1, V4_3_1, V4_4_0]
+    _protCompatibility = [V4_1_0, V4_1_1, V4_1_2, V4_2_0, V4_2_1, V4_3_1, V4_4_0, V4_4_1]
 
     # --------------------------- DEFINE param functions ----------------------
     def _defineFileNames(self):
