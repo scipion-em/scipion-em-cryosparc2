@@ -52,10 +52,9 @@ class ProtCryoSparcHelicalRefine3D(ProtCryoSparc3DHomogeneousRefine):
     other cryoSPARC refinement jobs.
     """
     _label = '3D helical refinement'
-    _devStatus = BETA
     _fscColumns = 4
     _protCompatibility = [V3_3_1, V3_3_2, V4_0_0, V4_0_1, V4_0_2, V4_0_3,
-                          V4_1_0, V4_1_1, V4_1_2, V4_2_0, V4_2_1, V4_3_1, V4_4_0]
+                          V4_1_0, V4_1_1, V4_1_2, V4_2_0, V4_2_1, V4_3_1, V4_4_0, V4_4_1]
     _className = "helix_refine"
 
     def _defineParams(self, form):
@@ -242,26 +241,20 @@ class ProtCryoSparcHelicalRefine3D(ProtCryoSparc3DHomogeneousRefine):
     def _validate(self):
         validateMsgs = cryosparcValidate()
         if not validateMsgs:
-            csVersion = getCryosparcVersion()
-            if [version for version in self._protCompatibility
-                if parse_version(version) >= parse_version(csVersion)]:
-                validateMsgs = gpusValidate(self.getGpuList(), checkSingleGPU=True)
-                if not validateMsgs:
-                    if self.referenceVolume.get() is None and not self.use_cylindrical_model.get():
-                        validateMsgs.append("Cannot generate initial model "
-                                            "without in-plane rotation "
-                                            "information. Please input an "
-                                            "initial model from a previous ab-initio or "
-                                            "refinement protocol, or activate the "
-                                            "'Generate a cylindrical initial "
-                                            "model?' parameter")
+            validateMsgs = gpusValidate(self.getGpuList(), checkSingleGPU=True)
+            if not validateMsgs:
+                if self.referenceVolume.get() is None and not self.use_cylindrical_model.get():
+                    validateMsgs.append("Cannot generate initial model "
+                                        "without in-plane rotation "
+                                        "information. Please input an "
+                                        "initial model from a previous ab-initio or "
+                                        "refinement protocol, or activate the "
+                                        "'Generate a cylindrical initial "
+                                        "model?' parameter")
 
-                    if self.use_cylindrical_model.get() and self.filament_outer_diameter.get() is None:
-                        validateMsgs.append("Must set the filament outer diameter to use a cylindrical model")
+                if self.use_cylindrical_model.get() and self.filament_outer_diameter.get() is None:
+                    validateMsgs.append("Must set the filament outer diameter to use a cylindrical model")
 
-            else:
-                validateMsgs.append("The protocol is not compatible with the "
-                                    "cryoSPARC version %s" % csVersion)
         return validateMsgs
 
     def _defineParamsName(self):

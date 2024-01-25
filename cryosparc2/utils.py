@@ -63,6 +63,27 @@ _csVersion = None  # Lazy variable: never use it directly. Use getCryosparcVersi
 logger = logging.getLogger(__name__)
 
 
+class NestedDict:
+    def __init__(self, depth=1):
+        self.data = {}
+        self.depth = depth
+
+    def insert(self, keys, value):
+        current = self.data
+        for key in keys[:self.depth - 1]:
+            current = current.setdefault(key, {})
+        current[keys[self.depth - 1]] = value
+
+    def search(self, keys):
+        current = self.data
+        for key in keys[:self.depth]:
+            if key in current:
+                current = current[key]
+            else:
+                return None
+        return current
+
+
 def getCryosparcDir(*paths):
     """
     Get the root directory where cryoSPARC code and dependencies are installed.
@@ -314,7 +335,7 @@ def getProjectInformation(project_uid, info='project_dir'):
     """
     Get information about a single project
     :param project_uid: the id of the project
-    :return: the information related to the project thats stored in the database
+    :return: the information related to the project that's stored in the database
     """
     import ast
     getProject_cmd = (getCryosparcProgram() +
@@ -433,6 +454,41 @@ def doImportVolumes(protocol, refVolumePath, refVolume, volType, msg):
                      )
 
     return importedVolume
+
+
+def doImportMicrographs(protocol):
+    print(pwutils.yellowStr("Importing micrographs..."), flush=True)
+    className = "import_micrographs"
+    micrographs = protocol._getInputMicrographs()
+    acquisition = micrographs.getAcquisition()
+    micList = list(micrographs.getFiles())
+
+    micFolder = os.path.join(protocol._getExtraPath('micrographs'))
+    os.makedirs(micFolder, exist_ok=True)
+
+    for micPath in micList:
+        micName = os.path.basename(micPath)
+        micLink = os.path.join(micFolder, micName)
+        os.symlink(os.path.abspath(micPath), micLink)
+    micExt = '*%s' % os.path.splitext(micList[0])[1]
+
+    params = {"blob_paths": str(os.path.join(os.getcwd(), micFolder, micExt)),
+              "psize_A": str(micrographs.getSamplingRate()),
+              "accel_kv": str(acquisition.getVoltage()),
+              "cs_mm": str(acquisition.getSphericalAberration()),
+              "total_dose_e_per_A2": str(0.1),
+              "output_constant_ctf": "True"
+              }
+
+    import_particles = enqueueJob(className, protocol.projectName, protocol.workSpaceName,
+                                  str(params).replace('\'', '"'), '{}', protocol.lane)
+
+    waitForCryosparc(protocol.projectName.get(), import_particles.get(),
+                     "An error occurred importing particles. "
+                     "Please, go to cryoSPARC software for more "
+                     "details.")
+
+    return import_particles
 
 
 def doJob(jobType, projectName, workSpaceName, params, input_group_connect):

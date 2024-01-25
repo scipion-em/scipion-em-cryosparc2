@@ -75,6 +75,7 @@ V4_2_0 = 'V4.2.0'
 V4_2_1 = 'V4.2.1'
 V4_3_1 = 'V4.3.1'
 V4_4_0 = 'V4.4.0'
+V4_4_1 = 'V4.4.1'
 
 # Symmetry dict
 CS_SYM_NAME = dict()
@@ -125,9 +126,9 @@ ANGDIST_2DPLOT = 0
 ANGDIST_CHIMERA = 1
 
 # VOLUME_SLICES = 0
-VOLUME_CHIMERA = 1
+VOLUME_CHIMERA = 0
 VOLUME_CRYOSPARC = 0
-DATA_VIEWER = 0
+DATA_VIEWER = 1
 
 fscValues = dict()
 fscValues['fsc_nomask'] = 'No mask'

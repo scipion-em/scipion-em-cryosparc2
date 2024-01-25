@@ -45,7 +45,7 @@ from ..utils import (getProjectPath, createEmptyProject,
                      doImportParticlesStar, doImportVolumes, killJob, clearJob,
                      get_job_streamlog, getSystemInfo, getJobStatus,
                      STOP_STATUSES, getCryosparcVersion, getProjectInformation,
-                     getCryosparcProjectId, _getLicenceFromFile)
+                     getCryosparcProjectId, _getLicenceFromFile, doImportMicrographs)
 
 
 class ProtCryosparcBase(pw.EMProtocol):
@@ -118,6 +118,11 @@ class ProtCryosparcBase(pw.EMProtocol):
             self._importMask()
         else:
             self.mask = pwobj.String()
+
+        micrographs = self._getInputMicrographs()
+        if micrographs is not None:
+            self._importMicrographs()
+
         self._store(self)
 
     def _getScaledAveragesFile(self, csAveragesFile, force=False):
@@ -187,9 +192,14 @@ class ProtCryosparcBase(pw.EMProtocol):
             return self.refMask.get()
         return None
 
+    def _getInputMicrographs(self):
+        if self.hasAttribute('inputMicrographs'):
+            return self.inputMicrographs.get()
+        return None
+
     def _initializeVolumeSuffix(self):
         """
-        Create a output volume suffix depend of the CS version
+        Create an output volume suffix depend on the CS version
         """
         cryosparcVersion = parse_version(getCryosparcVersion())
         self.outputVolumeSuffix = '.imported_volume.map'
@@ -243,12 +253,18 @@ class ProtCryosparcBase(pw.EMProtocol):
         self.mask = pwobj.String(str(importMaskJob.get()) + self.outputMaskSuffix)
 
     def _importParticles(self):
-
         # import_particles_star
         importedParticlesJob = doImportParticlesStar(self)
         self.currenJob = pwobj.String(str(importedParticlesJob.get()))
         self.particles = pwobj.String(str(importedParticlesJob.get()) +
                                       '.imported_particles')
+
+    def _importMicrographs(self):
+        importedMicrographsJob = doImportMicrographs(self)
+        self.currenJob = pwobj.String(str(importedMicrographsJob.get()))
+        self.micrographs = pwobj.String(str(importedMicrographsJob.get()) +
+                                      '.imported_micrographs')
+
 
     def setAborted(self):
         """ Set the status to aborted and updated the endTime. """

@@ -38,7 +38,8 @@ from pwem.viewers import (ChimeraView, ObjectView, EmProtocolViewer, FscViewer)
 from ..protocols import (ProtCryoSparcLocalRefine, ProtCryoSparcHelicalRefine3D,
                          ProtCryoSparc3DHomogeneousRefine,
                          ProtCryoSparcNewNonUniformRefine3D,
-                         ProtCryoSparcHomogeneousReconstruct)
+                         ProtCryoSparcHomogeneousReconstruct, ProtCryoSparc3DVariability,
+                         ProtCryoSparc3DVariabilityDisplay)
 from ..constants import *
 from ..utils import *
 
@@ -48,7 +49,8 @@ class CryosPARCViewer3DRefinement(EmProtocolViewer):
 
     _targets = [ProtCryoSparcLocalRefine, ProtCryoSparcHelicalRefine3D,
                 ProtCryoSparc3DHomogeneousRefine, ProtCryoSparcNewNonUniformRefine3D,
-                ProtCryoSparcHomogeneousReconstruct]
+                ProtCryoSparcHomogeneousReconstruct, ProtCryoSparc3DVariability,
+                ProtCryoSparc3DVariabilityDisplay]
     _environments = [DESKTOP_TKINTER, WEB_DJANGO]
     _label = 'viewer Refinement'
     cryosparcVersion = getCryosparcVersion()
@@ -63,25 +65,52 @@ class CryosPARCViewer3DRefinement(EmProtocolViewer):
                        label='Display the processing with cryoSPARC')
 
         if self.protocol.isFinished():
-            group = form.addGroup('Particles')
 
-            group.addParam('showImagesAngularAssignment', LabelParam,
-                           label='Particles angular assignment')
+            if not isinstance(self.protocol, ProtCryoSparc3DVariabilityDisplay):
+                group = form.addGroup('Particles')
 
-            group = form.addGroup('Volume')
+                group.addParam('showImagesAngularAssignment', LabelParam,
+                               label='Particles angular assignment')
 
-            displayChoices = ['data viewer', 'chimera']
-            label = 'Display volume with'
+            is3dVariavilityProt = isinstance(self.protocol, ProtCryoSparc3DVariabilityDisplay)
+            groupName = 'Volume' if not is3dVariavilityProt else 'Components'
+            if is3dVariavilityProt and self.protocol.var_output_mode.get() == 0:
+                groupName = 'Volume'
+
+            group = form.addGroup(groupName)
+            if not isinstance(self.protocol, ProtCryoSparc3DVariabilityDisplay):
+                displayChoices = ['chimera', 'data viewer']
+            else:
+                if self.protocol.var_output_mode.get() != 0:
+                    self.componetChoices = self.getComponetChoices()
+                    group.addParam('component', EnumParam,
+                                   choices=list(self.componetChoices),
+                                   default=0, display=EnumParam.DISPLAY_COMBO,
+                                   label='Select a component',
+                                   help='Select a component to display the conformation')
+
+                    group.addParam('maxFrameRate', IntParam,
+                                   default=4,
+                                   label='Playback rate',
+                                   help='Specify a maximum playback rate in steps per second. By default, playback is as fast as possible, which can be fairly slow for large data. This option is used to slow playback when it is too fast.'
+                                   )
+
+                displayChoices = ['chimera']
+            label = 'Display volume with' if not isinstance(self.protocol, ProtCryoSparc3DVariabilityDisplay) else 'Display componet with'
+            if is3dVariavilityProt and self.protocol.var_output_mode.get() == 0:
+                label = 'Display volume with'
+                displayChoices = ['data viewer']
+
             help = '*data viewer: display volumes as surface with Scipion data viewer. \n ' \
                    '*chimera*: display volumes as surface with Chimera.'
 
             group.addParam('displayVol', EnumParam, choices=displayChoices,
-                           default=DATA_VIEWER, display=EnumParam.DISPLAY_LIST,
+                           default=VOLUME_CHIMERA, display=EnumParam.DISPLAY_LIST,
                            label=label,
                            help=help)
             # '*slices*: display volumes as 2D slices along z axis.\n'
 
-            if self.protocol.isFinished() and parse_version(self.cryosparcVersion) != parse_version(V4_0_0):
+            if self.protocol.isFinished() and parse_version(self.cryosparcVersion) != parse_version(V4_0_0) and not isinstance(self.protocol, ProtCryoSparc3DVariabilityDisplay) and not isinstance(self.protocol, ProtCryoSparc3DVariability):
                 group = form.addGroup('Resolution')
 
                 self.choices = self.getChoices()
@@ -97,7 +126,6 @@ class CryosPARCViewer3DRefinement(EmProtocolViewer):
                                expertLevel=LEVEL_ADVANCED,
                                label='Threshold ',
                                help='Threshold in resolution plots')
-
 
     def _getVisualizeDict(self):
         return {'showImagesAngularAssignment': self._showOutputParticles,
@@ -129,7 +157,7 @@ class CryosPARCViewer3DRefinement(EmProtocolViewer):
     def _showOutputVolume(self, paramName=None):
         views = []
 
-        if getattr(self.protocol, 'outputVolume', None) is not None:
+        if getattr(self.protocol, paramName, None) is not None:
             volume = self.protocol.outputVolume
             fn = volume.getFileName()
             v = self.createScipionPartView(fn, volume)
@@ -151,7 +179,7 @@ class CryosPARCViewer3DRefinement(EmProtocolViewer):
         if self.displayVol == VOLUME_CHIMERA:
             return self._showVolumesChimera()
         elif self.displayVol == DATA_VIEWER:
-            return self._showOutputVolume()
+            return self._showOutputVolume(paramName='outputVolume')
 
     def _showCryoSPARVolume(self, paramName=None):
         views = []
@@ -189,22 +217,37 @@ class CryosPARCViewer3DRefinement(EmProtocolViewer):
         view = []
         chimera = Domain.importFromPlugin('chimera')
         if chimera is not None:
-            volumes = [self.protocol.outputVolume.getFileName()]
-            if len(volumes) > 1:
+            if not isinstance(self.protocol, ProtCryoSparc3DVariabilityDisplay):
+                volumes = [self.protocol.outputVolume.getFileName()]
+                if len(volumes) > 1:
+                    cmdFile = self.protocol._getExtraPath('chimera_volumes.cxc')
+                    f = open(cmdFile, 'w+')
+                    for vol in volumes:
+                        # We assume that the chimera script will be generated
+                        # at the same folder as eman volumes
+                        if os.path.exists(vol):
+                            localVol = os.path.relpath(vol,
+                                                       self.protocol._getExtraPath())
+                            f.write("open %s\n" % localVol)
+                    f.write('tile\n')
+                    f.close()
+                    view.append(ChimeraView(cmdFile))
+                else:
+                    view.append(ChimeraView(volumes[0]))
+            elif self.protocol.var_output_mode.get() != 0:
+                component = self.componetChoices[self.component.get()]
+                componentsPath = os.path.abspath(self.protocol._getExtraPath(component))
                 cmdFile = self.protocol._getExtraPath('chimera_volumes.cxc')
                 f = open(cmdFile, 'w+')
-                for vol in volumes:
-                    # We assume that the chimera script will be generated
-                    # at the same folder than eman volumes
-                    if os.path.exists(vol):
-                        localVol = os.path.relpath(vol,
-                                                   self.protocol._getExtraPath())
-                        f.write("open %s\n" % localVol)
-                f.write('tile\n')
+                f.write("open %s/*.mrc vseries true\n" % componentsPath)
+                f.write("vseries play #1 loop true maxFrameRate %d\n" % self.maxFrameRate.get())
                 f.close()
                 view.append(ChimeraView(cmdFile))
             else:
-                view.append(ChimeraView(volumes[0]))
+                volume = self.protocol.outputVolumes
+                fn = volume.getFileName()
+                v = self.createScipionPartView(fn, volume)
+                view.append(v)
         else:
             showInfo('Info', "Chimera plugin is not installed. Please, "
                              "install it to display the volume",
@@ -232,6 +275,13 @@ class CryosPARCViewer3DRefinement(EmProtocolViewer):
         choices.append('All')
 
         return choices
+
+    def getComponetChoices(self):
+        if self.protocol.var_output_mode.get() == 2 and self.protocol.var_intermediate_output_frame_particles.get():
+            return self.protocol._outputs[0:-1]
+        else:
+            return self.protocol._outputs
+
 
     # =========================================================================
     # plotFSC

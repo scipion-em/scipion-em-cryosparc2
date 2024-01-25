@@ -24,7 +24,7 @@
 # *  e-mail address 'scipion@cnb.csic.es'
 # *
 # **************************************************************************
-
+from pwem.objects import Volume
 from pyworkflow import BETA
 from pyworkflow.protocol.params import (PointerParam, FloatParam, IntParam,
                                         BooleanParam, FileParam, StringParam)
@@ -40,10 +40,10 @@ class ProtCryoSparc3DFlexDataPrepare(ProtCryosparcBase):
     way,  Takes in a consensus (rigid) refinement density map, plus optionally
      a segmentation and generates a tetrahedral mesh for 3DFlex.
     """
-    _label = '3D flex data/mesh prepare'
+    _label = '3D flex data prepare'
     _devStatus = BETA
     _protCompatibility = [V4_1_0, V4_1_1, V4_1_2, V4_2_0, V4_2_1, V4_3_1,
-                          V4_4_0]
+                          V4_4_0, V4_4_1]
 
     # --------------------------- DEFINE param functions ----------------------
     def _defineFileNames(self):
@@ -66,11 +66,6 @@ class ProtCryoSparc3DFlexDataPrepare(ProtCryosparcBase):
                       label='Initial volume',
                       important=True,
                       help='Initial volume raw data')
-        form.addParam('refMask', PointerParam, pointerClass='VolumeMask',
-                      default=None,
-                      label='Input Mask',
-                      allowsNull=True,
-                      help='Mask raw data')
 
         form.addSection(label='Data Prepare')
         form.addParam('box_size_pix', IntParam, default=None,
@@ -111,121 +106,6 @@ class ProtCryoSparc3DFlexDataPrepare(ProtCryosparcBase):
                            "If this is None (default) then the number of input "
                            "particles will be rounded down to the nearest 1000.")
 
-        form.addSection(label='Mesh Prepare')
-
-        solventMaskGroup = form.addGroup('Solvent mask preparation')
-        solventMaskGroup.addParam('mask_in_lowpass_A', IntParam, default=10,
-                                  condition="refMask is None",
-                                  label="Filter input volume res. (A)",
-                                  help="Filter the input consensus reconstruction "
-                                       "volume to this resolution (A) before thresholding "
-                                       "to create the outer solvent mask. Solvent mask is"
-                                       " only generated if it is not already input.")
-
-        solventMaskGroup.addParam('mask_in_threshold_level', FloatParam, default=0.5,
-                                  condition="refMask is None",
-                                  label="Mask threshold",
-                                  help="Threshold the input consensus reconstruction "
-                                       "volume (after filtering) at this absolute "
-                                       "density level to make the solvent mask. "
-                                       "Solvent mask is only generated if it is "
-                                       "not already input.")
-
-        solventMaskGroup.addParam('mask_dilate_A', IntParam,
-                                  default=2,
-                                  condition="refMask is None",
-                                  label="Mask dilation (A)",
-                                  help="After thresholding, dilate by this much"
-                                       " (A) to create solvent mask")
-
-        solventMaskGroup.addParam('mask_pad_A', IntParam,
-                                  default=5,
-                                  condition="refMask is None",
-                                  label="Mask soft padding (A)",
-                                  help="After thresholding and dilation, soft "
-                                       "pad by this much (A) to create solvent mask")
-
-
-
-        meshPreparationGroup = form.addGroup('Mesh preparation')
-        meshPreparationGroup.addParam('tetra_num_cells', IntParam,
-                                  default=20,
-                                  label="Base num. tetra cells",
-                                  help="Number of tetrahedral cells that fit "
-                                       "across the extent of the box. Use this "
-                                       "to set the size of mesh elements. If "
-                                       "set to e.g. 20, the base tetramesh will"
-                                       " have elements that are the right size "
-                                       "to create a spacing of 20 tetra elements "
-                                       "across the box extent in each x,y,z "
-                                       "direction. A higher number makes a finer mesh.")
-
-        meshPreparationGroup.addParam('tetra_segments_path', FileParam,
-                                      allowsNull=True,
-                                      default=None,
-                                      label="Segmentation file path",
-                                      help="Absolute path to a segmentation file "
-                                           "in either .seg format from UCSF "
-                                           "Chimera Segger tool or else .mrc format "
-                                           "(see CryoSPARC guide for details), "
-                                           "defining subdomain regions that "
-                                           "should each have a submesh. "
-                                           "Submeshes are fused to make final "
-                                           "mesh using the segment connections list.")
-
-        meshPreparationGroup.addParam('tetra_segments_fuse_list', StringParam,
-                                      allowsNull=True,
-                                      default=None,
-                                      label="Segment connections",
-                                      help="A comma and '>' separated list of "
-                                           "connections between segments to use when "
-                                           "fusing sub-meshes to make the final mesh. "
-                                           "See CryoSPARC guide for full explanation. "
-                                           "For example, '0>3, 0>4, 3>2, 2>1' is a valid connection"
-                                           " string. Each pair X>Y denotes that segment Y is "
-                                           "joined to segment X. The connections must form "
-                                           "a 'tree' structure and cannot have cycles. "
-                                           "The first pair X>Y must start with the "
-                                           "root of the tree as X. The connections "
-                                           "must be in breadth-first order of the tree. "
-                                           "When using Chimera Segger segmentation input, "
-                                           "the X>Y numbers should be region_ids from Segger (e.g., 948>947)")
-
-        meshPreparationGroup.addParam('tetra_rigid_list', StringParam,
-                                      allowsNull=True,
-                                      default=None,
-                                      label="Rigid segments",
-                                      help="A comma separated list of segments to make "
-                                           "rigid. This is done by setting the rigidity "
-                                           "weight of tetra elements for this region to 20. ")
-
-
-        rigidityWeighting = form.addGroup('Rigidity weighting')
-        rigidityWeighting.addParam('rigidity_penalty_min', FloatParam,
-                                      default=0.5,
-                                      label="Min. rigidity weight",
-                                      help="Rigidity weights of tetra elements"
-                                           " are 1.0 in the most dense regions "
-                                           "of the input consensus map, and fall "
-                                           "off to this value (default 0.5) in the"
-                                           " least dense/empty regions. This helps "
-                                           "encourage the deformation model to expand/contract"
-                                           " empty space without distorting the protein density.")
-
-        rigidityWeighting.addParam('rigidity_penalty_stiffen_low_density', BooleanParam,
-                                   default=False,
-                                   label="Stiffen low density regions",
-                                   help="Turning this on will cause the rigidity"
-                                        " weights of tetra elements at the periphery "
-                                        "of the input consensus density to be increased to 3.0 . "
-                                        "Empty regions will still have low rigidity, but non-empty "
-                                        "regions at the periphery of the structure will be rigidified."
-                                        " This helps to combat overfitting in smaller particles or"
-                                        " poor SNR data where otherwise low density peripheral "
-                                        "features start to 'fly around'. However, it can also cause "
-                                        "the deformations to be overly smooth and blur motion 'boundaries between domains. ")
-
-
         # --------------[Compute settings]---------------------------
         form.addSection(label="Compute settings")
         addComputeSectionParams(form, allowMultipleGPUs=False, needGPU=False)
@@ -233,21 +113,15 @@ class ProtCryoSparc3DFlexDataPrepare(ProtCryosparcBase):
     def _insertAllSteps(self):
         self._defineFileNames()
         self._defineParamsPrepareName()
-        self._defineParamsMeshName()
         self._initializeCryosparcProject()
         self._insertFunctionStep(self.convertInputStep)
         self._insertFunctionStep(self.dataPrepareStep)
-        self._insertFunctionStep(self.mergePrepareStep)
         self._insertFunctionStep(self.createOutputStep)
 
     # --------------------------- STEPS functions ------------------------------
     def dataPrepareStep(self):
         self.info(pwutils.yellowStr("3D Flex Data Preparation started..."))
         self.doRun3DFlexDataPrepare()
-
-    def mergePrepareStep(self):
-        self.info(pwutils.yellowStr("3D Flex Mesh Preparation started..."))
-        self.doRun3DFlexMeshPrepare()
 
     def createOutputStep(self):
         """
@@ -318,17 +192,7 @@ class ProtCryoSparc3DFlexDataPrepare(ProtCryosparcBase):
     def _defineParamsPrepareName(self):
         """ Define a list with 3D Flex Prepare Data parameters names"""
         self._paramsPrepareName = ['box_size_pix', 'bin_size_pix', 'alpha_min',
-                            'keep_num_particles']
-        self.lane = str(self.getAttributeValue('compute_lane'))
-
-    def _defineParamsMeshName(self):
-        """ Define a list with 3D Flex Mesh Prepare parameters names"""
-        self._maskMeshPrepareName = ['mask_in_lowpass_A', 'mask_in_threshold_level',
-                                     'mask_dilate_A', 'mask_pad_A']
-        self._paramsMeshName = ['tetra_num_cells', 'tetra_segments_path',
-                                'tetra_segments_fuse_list', 'tetra_rigid_list',
-                                'rigidity_penalty_min',
-                                'rigidity_penalty_stiffen_low_density']
+                                   'keep_num_particles']
         self.lane = str(self.getAttributeValue('compute_lane'))
 
     def doRun3DFlexDataPrepare(self):
@@ -356,45 +220,6 @@ class ProtCryoSparc3DFlexDataPrepare(ProtCryosparcBase):
                          "Please, go to cryoSPARC software for more "
                          "details.")
         clearIntermediateResults(self.projectName.get(), self.run3DFlexDataPrepJob.get())
-
-    def doRun3DFlexMeshPrepare(self):
-        self._className = 'flex_meshprep'
-        params = {}
-        varDataPrepJob = str(self.run3DFlexDataPrepJob.get())
-        input_group_connect = {"volume": str('%s.volume' % varDataPrepJob)}
-
-        if self.refMask.get() is not None:
-            input_group_connect["mask"] = str(self.mask)
-        else:
-            for paramName in self._maskMeshPrepareName:
-                if self.getAttributeValue(paramName) is not None:
-                    params[str(paramName)] = str(self.getAttributeValue(paramName))
-
-        for paramName in self._paramsMeshName:
-            if self.getAttributeValue(paramName) is not None:
-                params[str(paramName)] = str(self.getAttributeValue(paramName))
-
-        run3DFlexMeshPrepJob = enqueueJob(self._className,
-                                          self.projectName.get(),
-                                          self.workSpaceName.get(),
-                                          str(params).replace('\'', '"'),
-                                          str(input_group_connect).replace('\'',
-                                                                           '"'),
-                                          self.lane, False)
-
-        self.run3DFlexMeshPrepJob = String(run3DFlexMeshPrepJob.get())
-        self.currenJob.set(self.run3DFlexMeshPrepJob.get())
-        self._store(self)
-
-        waitForCryosparc(self.projectName.get(),
-                         self.run3DFlexMeshPrepJob.get(),
-                         "An error occurred in the 3D Flex Mesh Preparation process. "
-                         "Please, go to cryoSPARC software for more "
-                         "details.")
-        clearIntermediateResults(self.projectName.get(),
-                                 self.run3DFlexMeshPrepJob.get())
-
-
 
 
 
