@@ -119,6 +119,12 @@ class ProtCryosparcBase(pw.EMProtocol):
         else:
             self.mask = pwobj.String()
 
+        focusMask = self._getInputFocusMask()
+        if focusMask is not None:
+            self._importFocusMask()
+        else:
+            self.focusMask = pwobj.String()
+
         micrographs = self._getInputMicrographs()
         if micrographs is not None:
             self._importMicrographs()
@@ -192,6 +198,11 @@ class ProtCryosparcBase(pw.EMProtocol):
             return self.refMask.get()
         return None
 
+    def _getInputFocusMask(self):
+        if self.hasAttribute('refFocusMask'):
+            return self.refFocusMask.get()
+        return None
+
     def _getInputMicrographs(self):
         if self.hasAttribute('inputMicrographs'):
             return self.inputMicrographs.get()
@@ -212,14 +223,14 @@ class ProtCryosparcBase(pw.EMProtocol):
             self.outputVolumeHalf_A = '.imported_volume_1.map_half_A'
             self.outputVolumeHalf_B = '.imported_volume_1.map_half_B'
 
-    def _initializeMaskSuffix(self):
+    def _initializeMaskSuffix(self, sufix='.imported_mask_1.map'):
         """
         Create a output mask suffix depend of the CS version
         """
         cryosparcVersion = parse_version(getCryosparcVersion())
         self.outputMaskSuffix = '.imported_mask.map'
         if cryosparcVersion >= parse_version(V3_3_1):
-            self.outputMaskSuffix = '.imported_mask_1.map'
+            self.outputMaskSuffix = sufix
 
     def _importVolume(self):
         vol = self._getInputVolume()
@@ -251,6 +262,16 @@ class ProtCryosparcBase(pw.EMProtocol):
                                         'mask', 'Importing mask... ')
         self.currenJob.set(importMaskJob.get())
         self.mask = pwobj.String(str(importMaskJob.get()) + self.outputMaskSuffix)
+
+    def _importFocusMask(self):
+        self._initializeMaskSuffix()
+        maskFn = os.path.join(os.getcwd(), convertBinaryVol(self._getInputFocusMask(),
+                                                            self._getTmpPath()))
+
+        importFocusMaskJob = doImportVolumes(self, maskFn, self._getInputMask(),
+                                             'mask', 'Importing focus mask... ')
+        self.currenJob.set(importFocusMaskJob.get())
+        self.focusMask = pwobj.String(str(importFocusMaskJob.get()) + self.outputMaskSuffix)
 
     def _importParticles(self):
         # import_particles_star
