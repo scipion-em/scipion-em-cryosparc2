@@ -117,9 +117,9 @@ class ProtCryoSparc3DFlexReconstruction(ProtCryosparcBase):
          Create the protocol output.  """
         self._initializeUtilsVariables()
         csOutputFolder = os.path.join(self.projectDir.get(),
-                                      self.runRefine.get())
+                                      self.run3DFlexReconstructionJob.get())
         csOutputPattern = "%s%s" % (getOutputPreffix(self.projectName.get()),
-                                    self.runRefine.get())
+                                    self.run3DFlexReconstructionJob.get())
 
         # Flex volume
         fnFlexVolName = csOutputPattern + "_flex_map.mrc"
@@ -157,7 +157,7 @@ class ProtCryoSparc3DFlexReconstruction(ProtCryosparcBase):
         self._defineOutputs(noFlexVolume=noFlexVol)
 
 
-def _defineParamsName(self):
+    def _defineParamsName(self):
         """ Define a list with 3D Flex Reconstruction parameters names"""
         self._paramsName = ['flex_do_noflex_recon', 'flex_bfgs_num_iters',
                             'refine_gs_resplit']
