@@ -142,6 +142,8 @@ class ProtCryoSparc3DFlexReconstruction(ProtCryosparcBase):
         flexVol = Volume()
         fixVolume([fnVol, half1, half2])
         flexVol.setFileName(fnVol)
+        ccp4header = Ccp4Header(fnVol, readHeader=True)
+        flexVol.setSamplingRate(ccp4header.getSampling()[0])
         flexVol.setHalfMaps([half1, half2])
 
         fnVol = os.path.join(self._getExtraPath(), fnNoFlexVolName)
@@ -151,6 +153,8 @@ class ProtCryoSparc3DFlexReconstruction(ProtCryosparcBase):
         noFlexVol = Volume()
         fixVolume([fnVol, half1, half2])
         noFlexVol.setFileName(fnVol)
+        ccp4header = Ccp4Header(fnVol, readHeader=True)
+        noFlexVol.setSamplingRate(ccp4header.getSampling()[0])
         noFlexVol.setHalfMaps([half1, half2])
 
         self._defineOutputs(flexVolume=flexVol)
