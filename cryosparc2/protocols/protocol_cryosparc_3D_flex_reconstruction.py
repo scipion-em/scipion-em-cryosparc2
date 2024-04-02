@@ -24,6 +24,7 @@
 # *  e-mail address 'scipion@cnb.csic.es'
 # *
 # **************************************************************************
+from pwem.objects import Volume
 from pyworkflow import BETA
 from pyworkflow.protocol.params import (PointerParam,  IntParam,  BooleanParam)
 from . import ProtCryosparcBase
@@ -112,7 +113,53 @@ class ProtCryoSparc3DFlexReconstruction(ProtCryosparcBase):
         self.doRun3DFlexReconstruction()
 
     def createOutputStep(self):
-        pass
+        """
+         Create the protocol output.  """
+        self._initializeUtilsVariables()
+        csOutputFolder = os.path.join(self.projectDir.get(),
+                                      self.run3DFlexReconstructionJob.get())
+        csOutputPattern = "%s%s" % (getOutputPreffix(self.projectName.get()),
+                                    self.run3DFlexReconstructionJob.get())
+
+        # Flex volume
+        fnFlexVolName = csOutputPattern + "_flex_map.mrc"
+        flexHalf1Name = csOutputPattern + "_flex_map_half_A.mrc"
+        flexHalf2Name = csOutputPattern + "_flex_map_half_B.mrc"
+
+        # No Flex volume
+        fnNoFlexVolName = csOutputPattern + "_noflex_map.mrc"
+        flexNoHalf1Name = csOutputPattern + "_noflex_map_half_A.mrc"
+        flexNoHalf2Name = csOutputPattern + "_noflex_map_half_B.mrc"
+
+        # Copy the CS output volume and half to extra folder
+        copyFiles(csOutputFolder, self._getExtraPath(), files=[fnFlexVolName, flexHalf1Name, flexHalf2Name,
+                                                               fnNoFlexVolName, flexNoHalf1Name, flexNoHalf2Name])
+
+        fnVol = os.path.join(self._getExtraPath(), fnFlexVolName)
+        half1 = os.path.join(self._getExtraPath(), flexHalf1Name)
+        half2 = os.path.join(self._getExtraPath(), flexHalf2Name)
+
+        flexVol = Volume()
+        fixVolume([fnVol, half1, half2])
+        flexVol.setFileName(fnVol)
+        ccp4header = Ccp4Header(fnVol, readHeader=True)
+        flexVol.setSamplingRate(ccp4header.getSampling()[0])
+        flexVol.setHalfMaps([half1, half2])
+
+        fnVol = os.path.join(self._getExtraPath(), fnNoFlexVolName)
+        half1 = os.path.join(self._getExtraPath(), flexNoHalf1Name)
+        half2 = os.path.join(self._getExtraPath(), flexNoHalf2Name)
+
+        noFlexVol = Volume()
+        fixVolume([fnVol, half1, half2])
+        noFlexVol.setFileName(fnVol)
+        ccp4header = Ccp4Header(fnVol, readHeader=True)
+        noFlexVol.setSamplingRate(ccp4header.getSampling()[0])
+        noFlexVol.setHalfMaps([half1, half2])
+
+        self._defineOutputs(flexVolume=flexVol)
+        self._defineOutputs(noFlexVolume=noFlexVol)
+
 
     def _defineParamsName(self):
         """ Define a list with 3D Flex Reconstruction parameters names"""

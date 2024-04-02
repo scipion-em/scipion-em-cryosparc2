@@ -64,6 +64,12 @@ class ProtCryoSparc3DFlexTraining(ProtCryosparcBase):
                       important=True,
                       help='Particle stacks to use.')
 
+        form.addParam('input3DMeshFlexPrepareProt', PointerParam,
+                      pointerClass='ProtCryoSparc3DFlexMeshPrepare',
+                      label="3D flex mesh prepare protocol",
+                      important=True,
+                      help='3d Flex mesh.')
+
         form.addParam('flex_K', IntParam, default=2,
                       label="Number of latent dims",
                       help="Number of latent dimensions in the flex refine "
@@ -196,8 +202,9 @@ class ProtCryoSparc3DFlexTraining(ProtCryosparcBase):
             gpusToUse = False
 
         protocolPrepare = self.input3DFlexDataPrepareProt.get()
+        protocolMesh = self.input3DMeshFlexPrepareProt.get()
         varDataPrepJobParticles = str(protocolPrepare.run3DFlexDataPrepJob)
-        varDataMeshJob = str(protocolPrepare.run3DFlexMeshPrepJob)
+        varDataMeshJob = str(protocolMesh.run3DFlexMeshPrepJob)
         input_group_connect = {"particles": "%s.particles" % varDataPrepJobParticles,
                                "flex_mesh": "%s.flex_mesh" % varDataMeshJob}
         params = {}

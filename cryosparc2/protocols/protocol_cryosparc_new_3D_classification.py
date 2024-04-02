@@ -95,6 +95,11 @@ class ProtCryoSparcNew3DClassification(ProtCryosparcBase):
                            " a mask will be created from initial structures "
                            "(bootstrapped or input).")
 
+        form.addParam('refFocusMask', PointerParam, pointerClass='VolumeMask',
+                      label='Focus mask',
+                      allowsNull=True,
+                      help="Optional mask for focussed classification. If not supplied, only the solvent mask will be "
+                           "used.")
         # --------------[3D Classification]---------------------------
         form.addSection(label='3D Classification (without alignment)')
 
@@ -166,7 +171,7 @@ class ProtCryoSparcNew3DClassification(ProtCryosparcBase):
                       help='Number of reconstructions which will be used in '
                            'PCA.')
 
-        form.addParam('class3D_PCA_num_components', IntParam, default=5,
+        form.addParam('class3D_PCA_num_components', IntParam, default=2,
                       label="PCA: number of components",
                       condition="class3D_init_mode==1",
                       validators=[Positive],
@@ -215,6 +220,19 @@ class ProtCryoSparcNew3DClassification(ProtCryosparcBase):
                            'regions if they are more negative than the '
                            'threshold')
 
+        form.addParam('class3D_force_resplit', BooleanParam, default=False,
+                      label="Force re-do FSC split",
+                      expertLevel=LEVEL_ADVANCED,
+                      help='Force re-splitting the particles into two random halves. If this is disabled, split is '
+                           'preserved from input alignments. For filaments from helical refinements, it is recommended'
+                           ' to disable this parameter to avoid mis-estimated FSC resolutions.')
+
+        form.addParam('class3D_force_hard_class', BooleanParam, default=False,
+                      label="Force hard classification",
+                      expertLevel=LEVEL_ADVANCED,
+                      help='Force hard classification, so that each particle is only assigned to one class at every '
+                           'iteration, rather than having partial assignment to all classes.')
+
         form.addParam('class3D_class_anneal_beta', FloatParam, default=0.5,
                       label="Class similarity",
                       expertLevel=LEVEL_ADVANCED,
@@ -224,7 +242,7 @@ class ProtCryoSparcNew3DClassification(ProtCryosparcBase):
                            'are independent, 1 means classes are very similar')
 
         form.addParam('class3D_class_anneal_beta_tune', BooleanParam,
-                      default=True,
+                      default=False,
                       label="Auto-tune initial class similarity",
                       expertLevel=LEVEL_ADVANCED,
                       help='Tune initial class similarity based on a target '
@@ -250,7 +268,7 @@ class ProtCryoSparcNew3DClassification(ProtCryosparcBase):
                            'class similarity should equal 0.')
 
         form.addParam('class3D_use_anisomag', BooleanParam,
-                      default=False,
+                      default=True,
                       label="Correct Anisotropic Magnification",
                       expertLevel=LEVEL_ADVANCED,
                       help='Whether or not to correct for anisotropic '
@@ -367,19 +385,32 @@ class ProtCryoSparcNew3DClassification(ProtCryosparcBase):
         self._defineOutputs(outputVolumes=volumes)
         self._defineSourceRelation(self.inputParticles.get(), volumes)
 
-        # Create a 3D mask
+        # Create a 3D solvent mask
         volMask = VolumeMask()
         maskFileName = ("%s%s__mask_solvent.mrc" %
                         (getOutputPreffix(self.projectName.get()),
                          self.run3dClassification.get()))
-        # Copy the CS output particles to extra folder
+        # Copy the CS output solvent mask to extra folder
         copyFiles(csOutputFolder, self._getExtraPath(), files=[maskFileName])
         maskFilePath = os.path.join(self._getExtraPath(), maskFileName)
         volMask.setFileName(maskFilePath)
         sr = self._getInputParticles().getSamplingRate()
         volMask.setSamplingRate(sr)
-        self._defineOutputs(outputMask=volMask)
-        self._defineSourceRelation(self.inputParticles.get(), self.outputMask)
+        self._defineOutputs(solventMask=volMask)
+        self._defineSourceRelation(self.inputParticles.get(), volMask)
+
+        # # Create a 3D mask focus
+        # volMaskFocus = VolumeMask()
+        # maskFocusFileName = ("%s%s__mask_focus.mrc" %
+        #                     (getOutputPreffix(self.projectName.get()),
+        #                      self.run3dClassification.get()))
+        # # Copy the CS output focus mask to extra folder
+        # copyFiles(csOutputFolder, self._getExtraPath(), files=[maskFocusFileName])
+        # maskFocusFilePath = os.path.join(self._getExtraPath(), maskFocusFileName)
+        # volMaskFocus.setFileName(maskFocusFilePath)
+        # volMaskFocus.setSamplingRate(sr)
+        # self._defineOutputs(focusMask=volMaskFocus)
+        # self._defineSourceRelation(self.inputParticles.get(), volMaskFocus)
 
     # --------------------------- UTILS functions ---------------------------
     def _loadClassesInfo(self, filename):
@@ -485,36 +516,29 @@ class ProtCryoSparcNew3DClassification(ProtCryosparcBase):
     def _validate(self):
         validateMsgs = cryosparcValidate()
         if not validateMsgs:
-            csVersion = getCryosparcVersion()
-            if [version for version in self._protCompatibility if parse_version(version) <= parse_version(csVersion)]:
-                validateMsgs = gpusValidate(self.getGpuList(),
-                                            checkSingleGPU=True)
+            validateMsgs = gpusValidate(self.getGpuList(),
+                                        checkSingleGPU=True)
+            if not validateMsgs:
+                particles = self._getInputParticles()
+                if not particles.hasCTF():
+                    validateMsgs.append("The Particles has not associated a "
+                                        "CTF model")
+                if not validateMsgs and not particles.hasAlignmentProj():
+                    validateMsgs.append("The Particles has not "
+                                        "alignment")
+
+                inputVolumes = self._getInputVolume()
                 if not validateMsgs:
-                    particles = self._getInputParticles()
-                    if not particles.hasCTF():
-                        validateMsgs.append("The Particles has not associated a "
-                                            "CTF model")
-                    if not validateMsgs and not particles.hasAlignmentProj():
-                        validateMsgs.append("The Particles has not "
-                                            "alignment")
-
-                    inputVolumes = self._getInputVolume()
+                    if inputVolumes is not None and inputVolumes:
+                        if self.class3D_init_mode.get() != 2:
+                            validateMsgs.append('Input volumes detected, please set initialization mode to `input` or clear volume inputs.')
+                        if len(inputVolumes) != self.class3D_N_K.get():
+                            validateMsgs.append('No. of input volumes must equal no. of classes')
+                    elif len(particles) < 1000:
+                            validateMsgs.append('Not Enough Images! The set of particles must contain at least 1000 images')
                     if not validateMsgs:
-                        if inputVolumes is not None and inputVolumes:
-                            if self.class3D_init_mode.get() != 2:
-                                validateMsgs.append('Input volumes detected, please set initialization mode to `input` or clear volume inputs.')
-                            if len(inputVolumes) != self.class3D_N_K.get():
-                                validateMsgs.append('No. of input volumes must equal no. of classes')
-                        elif len(particles) < 1000:
-                                validateMsgs.append('Not Enough Images! The set of particles must contain at least 1000 images')
-                        if not validateMsgs:
-                            if self.class3D_N_K.get() < 2:
-                                validateMsgs.append('The number of classes must be grater than 2')
-
-            else:
-                validateMsgs.append("The protocol is not compatible with the "
-                                    "cryoSPARC version %s" % csVersion)
-
+                        if self.class3D_N_K.get() < 2:
+                            validateMsgs.append('The number of classes must be grater than 2')
         return validateMsgs
 
     # --------------------------- UTILS functions ------------------------------
@@ -590,6 +614,8 @@ class ProtCryoSparcNew3DClassification(ProtCryosparcBase):
                             'class3D_mask_near_ang',
                             'class3D_mask_far_ang',
                             'class3D_mask_use_abs',
+                            'class3D_force_hard_class',
+                            'class3D_force_resplit',
                             'class3D_class_anneal_beta',
                             'class3D_class_anneal_beta_tune',
                             'class3D_class_anneal_beta_tune_essf',
@@ -633,6 +659,10 @@ class ProtCryoSparcNew3DClassification(ProtCryosparcBase):
 
         if self.mask.get() is not None:
             group_connect["mask"] = [self.mask]
+
+        if self.focusMask.get() is not None:
+            group_connect["mask_focus"] = [self.focusMask]
+
         params = {}
 
         csVersion = getCryosparcVersion()
