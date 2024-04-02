@@ -516,36 +516,29 @@ class ProtCryoSparcNew3DClassification(ProtCryosparcBase):
     def _validate(self):
         validateMsgs = cryosparcValidate()
         if not validateMsgs:
-            csVersion = getCryosparcVersion()
-            if [version for version in self._protCompatibility if parse_version(version) <= parse_version(csVersion)]:
-                validateMsgs = gpusValidate(self.getGpuList(),
-                                            checkSingleGPU=True)
+            validateMsgs = gpusValidate(self.getGpuList(),
+                                        checkSingleGPU=True)
+            if not validateMsgs:
+                particles = self._getInputParticles()
+                if not particles.hasCTF():
+                    validateMsgs.append("The Particles has not associated a "
+                                        "CTF model")
+                if not validateMsgs and not particles.hasAlignmentProj():
+                    validateMsgs.append("The Particles has not "
+                                        "alignment")
+
+                inputVolumes = self._getInputVolume()
                 if not validateMsgs:
-                    particles = self._getInputParticles()
-                    if not particles.hasCTF():
-                        validateMsgs.append("The Particles has not associated a "
-                                            "CTF model")
-                    if not validateMsgs and not particles.hasAlignmentProj():
-                        validateMsgs.append("The Particles has not "
-                                            "alignment")
-
-                    inputVolumes = self._getInputVolume()
+                    if inputVolumes is not None and inputVolumes:
+                        if self.class3D_init_mode.get() != 2:
+                            validateMsgs.append('Input volumes detected, please set initialization mode to `input` or clear volume inputs.')
+                        if len(inputVolumes) != self.class3D_N_K.get():
+                            validateMsgs.append('No. of input volumes must equal no. of classes')
+                    elif len(particles) < 1000:
+                            validateMsgs.append('Not Enough Images! The set of particles must contain at least 1000 images')
                     if not validateMsgs:
-                        if inputVolumes is not None and inputVolumes:
-                            if self.class3D_init_mode.get() != 2:
-                                validateMsgs.append('Input volumes detected, please set initialization mode to `input` or clear volume inputs.')
-                            if len(inputVolumes) != self.class3D_N_K.get():
-                                validateMsgs.append('No. of input volumes must equal no. of classes')
-                        elif len(particles) < 1000:
-                                validateMsgs.append('Not Enough Images! The set of particles must contain at least 1000 images')
-                        if not validateMsgs:
-                            if self.class3D_N_K.get() < 2:
-                                validateMsgs.append('The number of classes must be grater than 2')
-
-            else:
-                validateMsgs.append("The protocol is not compatible with the "
-                                    "cryoSPARC version %s" % csVersion)
-
+                        if self.class3D_N_K.get() < 2:
+                            validateMsgs.append('The number of classes must be grater than 2')
         return validateMsgs
 
     # --------------------------- UTILS functions ------------------------------

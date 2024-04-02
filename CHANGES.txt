@@ -1,3 +1,6 @@
+April 2, 2024  - - **v4.0.11**
+                Compatibility with cryoSPARC v4.4.1 + Patch
+
 Dec 22, 2023    - **v4.0.10**
                 Compatibility with cryoSPARC v4.4.1
 

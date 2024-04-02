@@ -354,20 +354,15 @@ class ProtCryoSparcHomogeneousReconstruct(ProtCryosparcBase):
                """
         validateMsgs = cryosparcValidate()
         if not validateMsgs:
-            csVersion = getCryosparcVersion()
-            if [version for version in self._protCompatibility if parse_version(version) <= parse_version(csVersion)]:
-                validateMsgs = gpusValidate(self.getGpuList(), checkSingleGPU=True)
-                if not validateMsgs:
-                    particles = self._getInputParticles()
-                    if not particles.hasCTF():
-                        validateMsgs.append("The Particles has not associated a "
-                                            "CTF model")
-                        if not validateMsgs and not particles.hasAlignment3D():
-                            validateMsgs.append("The Particles has not a 3D "
-                                                "alignment")
-            else:
-                validateMsgs.append("The protocol is not compatible with the "
-                                    "cryoSPARC version %s" % csVersion)
+            validateMsgs = gpusValidate(self.getGpuList(), checkSingleGPU=True)
+            if not validateMsgs:
+                particles = self._getInputParticles()
+                if not particles.hasCTF():
+                    validateMsgs.append("The Particles has not associated a "
+                                        "CTF model")
+                    if not validateMsgs and not particles.hasAlignment3D():
+                        validateMsgs.append("The Particles has not a 3D "
+                                            "alignment")
 
         return validateMsgs
 
