@@ -28,9 +28,26 @@ You will need to use `3.0.0 <https://scipion-em.github.io/docs/release-3.0.0/doc
 * **3D Variability Display**: Protocol to create various versions of a 3D variability result that can be used for display
 * **Blob Picker**: Automatically picks particles by searching for Gaussian signals.
 * **Patch CTF Estimation**:  Patch-based CTF estimation automatically estimates defocus variation for tilted, bent, deformed samples and is accurate for all particle sizes and types including flexible and membrane proteins.
+* **3D Flex Data Prep**: Prepares particles for use in 3DFlex training and reconstruction. At the same  way,  Takes in a consensus (rigid) refinement density map, plus optionally a segmentation and generates a tetrahedral mesh for 3DFlex.
+* **3D Flex Mesh Prep**: Takes in a consensus (rigid) refinement density map, plus optionally a segmentation and generates a tetrahedral mesh for 3DFlex. See Mesh Generation below.
+* **3D Flex Training**: Uses a mesh and prepared particles (at a downsampled resolution) to train a 3DFlex model. Parameters control the number of latent dimensions, size of the model, and training hyperparameters. This job outputs checkpoints during training.
+* **3D Flex Reconstruction**: Takes in a checkpoint from training as well as prepared high-resolution particles and performs high-resolution refinement using L-BFGS under the 3DFlex model. This is the stage at which improvements to density in high-res regions are computed. Outputs two half-maps that can be used for FSC validation, sharpening, and other downstream tasks.
+
 
 **Latest plugin version**
 ==========================
+
+
+**v4.0.12**
+-----------
+* **fixed**       Tolerating deletion of projects within CS as well as their folders in the file system
+
+* **new**         Add new protocols:
+                    * **3D Flex Data Prep**: Prepares particles for use in 3DFlex training and reconstruction. At the same  way,  Takes in a consensus (rigid) refinement density map, plus optionally a segmentation and generates a tetrahedral mesh for 3DFlex.
+                    * **3D Flex Mesh Prep**: Takes in a consensus (rigid) refinement density map, plus optionally a segmentation and generates a tetrahedral mesh for 3DFlex. See Mesh Generation below.
+                    * **3D Flex Training**: Uses a mesh and prepared particles (at a downsampled resolution) to train a 3DFlex model. Parameters control the number of latent dimensions, size of the model, and training hyperparameters. This job outputs checkpoints during training.
+                    * **3D Flex Reconstruction**: Takes in a checkpoint from training as well as prepared high-resolution particles and performs high-resolution refinement using L-BFGS under the 3DFlex model. This is the stage at which improvements to density in high-res regions are computed. Outputs two half-maps that can be used for FSC validation, sharpening, and other downstream tasks.
+
 
 **v4.0.11**
 -----------

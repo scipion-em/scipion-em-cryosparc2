@@ -31,7 +31,7 @@ import pyworkflow.utils as pwutils
 
 from .constants import *
 
-__version__ = '4.0.11'
+__version__ = '4.0.12'
 _references = ['Punjani2017', 'Brubaker2017', 'daniel_asarnow_2019_3576630']
 _logo = 'cryosparc2_logo.png'
 

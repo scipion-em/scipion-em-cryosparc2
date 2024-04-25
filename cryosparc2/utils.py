@@ -24,6 +24,7 @@
 # *  e-mail address 'scipion@cnb.csic.es'
 # *
 # **************************************************************************
+import ast
 import getpass
 import logging
 import os
@@ -245,6 +246,32 @@ def getCryosparcUser(userId=True):
     return user
 
 
+def getCryosparcProjectsList():
+    """
+    Get list of all projects available
+    :return: all projects available in the database
+    """
+    projects_list_cmd = (getCryosparcProgram() + ' %slist_projects()%s ' % ("'", "'"))
+    cmd = runCmd(projects_list_cmd, printCmd=False)[1]
+    projectList = ast.literal_eval(cmd)
+    return projectList
+
+
+def getCryosparcWorkSpaces(projectId):
+    """ List all workspaces inside a given project (or all projects if not
+    specified)
+
+    :param projectId: target project UID, e.g. "P1", defaults to None
+    :type projectId: str, optional
+    :return: list of workpaces in a project or all projects if not specified
+    :rtype: list
+    """
+    workspace_list_cmd = (getCryosparcProgram() + ' %slist_workspaces("%s")%s ' % ("'", str(projectId), "'"))
+    cmd = runCmd(workspace_list_cmd, printCmd=False)[1]
+    workspacesList = ast.literal_eval(cmd)
+    return workspacesList
+
+
 def isCryosparcStandalone():
     """
     Get the cryoSPARC installation mode. If True, we have a standalone installation
@@ -375,7 +402,7 @@ def getOutputPreffix(projectName):
     return preffix
 
 
-def createProjectDir(project_container_dir):
+def createProjectContainerDir(project_container_dir):
     """
     Given a "root" directory, create a project (PXXX) dir if it doesn't already
      exist

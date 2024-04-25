@@ -41,11 +41,12 @@ from ..constants import V3_3_1, excludedFSCValues, fscValues, V4_0_0, V4_1_0
 from ..convert import convertBinaryVol, writeSetOfParticles, ImageHandler
 from ..utils import (getProjectPath, createEmptyProject,
                      createEmptyWorkSpace, getProjectName,
-                     getCryosparcProjectsDir, createProjectDir,
+                     getCryosparcProjectsDir, createProjectContainerDir,
                      doImportParticlesStar, doImportVolumes, killJob, clearJob,
                      get_job_streamlog, getSystemInfo, getJobStatus,
                      STOP_STATUSES, getCryosparcVersion, getProjectInformation,
-                     getCryosparcProjectId, _getLicenceFromFile, doImportMicrographs)
+                     getCryosparcProjectId, _getLicenceFromFile, doImportMicrographs, getCryosparcProjectsList,
+                     getCryosparcWorkSpaces)
 
 
 class ProtCryosparcBase(pw.EMProtocol):
@@ -61,30 +62,33 @@ class ProtCryosparcBase(pw.EMProtocol):
         Initialize the cryoSPARC project and workspace
         """
         self._initializeUtilsVariables()
-        # create empty project or load an exists one
-        folderPaths = getProjectPath(self.projectPath)
-        if not folderPaths:
+        projectsList = getCryosparcProjectsList()
+        matchProjects = [project for project in projectsList if project.get('title') == self.projectDirName]
+        folderPaths = getProjectPath(self.projectContainerDir)
+        # create an empty project or load an exists one
+        if not matchProjects or not folderPaths:
+            # create an empty project
             self.emptyProject = createEmptyProject(self.projectPath, self.projectDirName)
             self.projectName = pwobj.String(self.emptyProject[-1].split()[-1])
             self.projectDir = pwobj.String(getProjectInformation(self.projectName,
                                            info='project_dir'))
+            # create an empty workspace
+            self.emptyWorkSpace = createEmptyWorkSpace(self.projectName, self.getRunName(),
+                                                       self.getObjComment())
+            self.workSpaceName = pwobj.String(self.emptyWorkSpace[-1].split()[-1])
+            self._store(self)
         else:
-            self.projectDir = pwobj.String(os.path.join(self.projectContainerDir,
-                                                        str(folderPaths[0])))
+            self.projectDir = pwobj.String(matchProjects[-1]['project_dir'])
             cryosparcVersion = getCryosparcVersion()
             if parse_version(cryosparcVersion) < parse_version(V4_0_0):
-                self.projectName = pwobj.String(folderPaths[0])
+                self.projectName = pwobj.String(matchProjects[-1]['title'])
             else:
-                self.projectName = pwobj.String(getCryosparcProjectId(self.projectDir))
+                self.projectName = pwobj.String(matchProjects[-1]['uid'])
+
+            workspacesList = getCryosparcWorkSpaces(str(self.projectName))
+            self.workSpaceName = pwobj.String(workspacesList[-1]['uid'])
 
         self._store(self)
-
-        # create empty workspace
-        self.emptyWorkSpace = createEmptyWorkSpace(self.projectName, self.getRunName(),
-                                      self.getObjComment())
-        self.workSpaceName = pwobj.String(self.emptyWorkSpace[-1].split()[-1])
-        self._store(self)
-
         self.currenJob = pwobj.String()
         self._store(self)
 
@@ -96,7 +100,7 @@ class ProtCryosparcBase(pw.EMProtocol):
         self.projectDirName = getProjectName(self.getProject().getShortName())
         self.projectPath = pw.pwutils.join(getCryosparcProjectsDir(),
                                         self.projectDirName)
-        self.projectContainerDir = createProjectDir(self.projectPath)[1]
+        self.projectContainerDir = createProjectContainerDir(self.projectPath)[1]
 
     def convertInputStep(self):
         """ Create the input file in STAR format as expected by Relion.
