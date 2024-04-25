@@ -1,4 +1,5 @@
 import os
+import logging
 import emtable
 
 from cryosparc2 import RELIONCOLUMNS
@@ -7,6 +8,7 @@ from cryosparc2.convert import (convertCs2Star, readSetOfParticles,
 from pwem import ALIGN_PROJ
 from pwem.objects import Coordinate, SetOfCoordinates
 
+logger = logging.getLogger(__name__)
 
 class cryoSPARCImport:
     """ Class used to import particles from cryoSPARC projects into Scipion.
@@ -71,7 +73,7 @@ class cryoSPARCImport:
                     self._fillSetOfCoordinates(outputCoords, outputStarFn, micList)
 
                 except Exception as e:
-                    print("The .cs file has not been imported: %s" % e)
+                    logger.error("The .cs file has not been imported: %s" % fileName, exc_info=e)
 
         return outputCoords
 
