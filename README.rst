@@ -38,7 +38,7 @@ You will need to use `3.0.0 <https://scipion-em.github.io/docs/release-3.0.0/doc
 ==========================
 
 
-**v4.0.12**
+**v4.1.0**
 -----------
 * **fixed**       Tolerating deletion of projects within CS as well as their folders in the file system
 
@@ -47,6 +47,8 @@ You will need to use `3.0.0 <https://scipion-em.github.io/docs/release-3.0.0/doc
                     * **3D Flex Mesh Prep**: Takes in a consensus (rigid) refinement density map, plus optionally a segmentation and generates a tetrahedral mesh for 3DFlex. See Mesh Generation below.
                     * **3D Flex Training**: Uses a mesh and prepared particles (at a downsampled resolution) to train a 3DFlex model. Parameters control the number of latent dimensions, size of the model, and training hyperparameters. This job outputs checkpoints during training.
                     * **3D Flex Reconstruction**: Takes in a checkpoint from training as well as prepared high-resolution particles and performs high-resolution refinement using L-BFGS under the 3DFlex model. This is the stage at which improvements to density in high-res regions are computed. Outputs two half-maps that can be used for FSC validation, sharpening, and other downstream tasks.
+
+* **new**         Allowing Scipion to import coordinates
 
 
 **v4.0.11**
