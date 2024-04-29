@@ -1,10 +1,14 @@
 import os
+import logging
 import emtable
 
-from cryosparc2.convert import (defineArgs, convertCs2Star, readSetOfParticles,
+from cryosparc2 import RELIONCOLUMNS
+from cryosparc2.convert import (convertCs2Star, readSetOfParticles,
                                 cryosparcToLocation)
 from pwem import ALIGN_PROJ
+from pwem.objects import Coordinate, SetOfCoordinates
 
+logger = logging.getLogger(__name__)
 
 class cryoSPARCImport:
     """ Class used to import particles from cryoSPARC projects into Scipion.
@@ -17,7 +21,7 @@ class cryoSPARCImport:
     def _createFilenameTemplates(self):
         """ Centralize how files are called. """
         myDict = {
-            'out_particles': self.protocol._getExtraPath('output_particle.star')
+            'output': self.protocol._getExtraPath('output.star')
         }
         self.protocol._updateFilenamesDict(myDict)
 
@@ -27,7 +31,7 @@ class cryoSPARCImport:
         """
         try:
             csPartFile = os.path.abspath(self._csFile)
-            self.outputStarFn = self.protocol._getFileName('out_particles')
+            self.outputStarFn = self.protocol._getFileName('output')
             argsList = [csPartFile, self.outputStarFn]
             convertCs2Star(argsList)
             # Validate the start file generated
@@ -49,9 +53,55 @@ class cryoSPARCImport:
         except Exception as e:
             raise Exception("The .cs file has not been imported: %s" % e)
 
+    def importCoordinates(self):
+        """
+        Import coordinates from a cs 'particles.cs'
+        """
+        micSetPtr = self.protocol.inputMicrographs
+        outputCoords = SetOfCoordinates.create(self.protocol.getPath())
+        outputCoords.setMicrographs(micSetPtr)
+
+        micList = {os.path.basename(mic.getFileName()): mic.clone() for mic in micSetPtr.get()}
+
+        for fileName, _ in self.protocol.iterFiles():
+            if fileName.endswith('.cs'):
+                try:
+                    csPartFile = os.path.abspath(fileName)
+                    outputStarFn = self.protocol._getFileName('output')
+                    argsList = [csPartFile, outputStarFn]
+                    convertCs2Star(argsList)
+                    self._fillSetOfCoordinates(outputCoords, outputStarFn, micList)
+
+                except Exception as e:
+                    logger.error("The .cs file has not been imported: %s" % fileName, exc_info=e)
+
+        return outputCoords
+
+    def _fillSetOfCoordinates(self, outputCoords, outputStarFn, micList):
+
+        coord = Coordinate()
+        mdFileName = '%s@%s' % ('particles', outputStarFn)
+        table = emtable.Table(fileName=outputStarFn)
+
+        for row in table.iterRows(mdFileName):
+            coord.setObjId(None)
+            micName = os.path.basename(row.get(RELIONCOLUMNS.rlnMicrographName.value))
+            splitMicName = micName.split('_')
+            if len(splitMicName) > 1:
+                micName = '_'.join(splitMicName[1:])
+            else:
+                micName = splitMicName[-1]
+            coord.setMicrograph(micList[micName])
+            x = row.get(RELIONCOLUMNS.rlnCoordinateX.value)
+            y = row.get(RELIONCOLUMNS.rlnCoordinateY.value)
+            dim = micList[micName].getDimensions()
+            flipY = dim[1] - y
+            coord.setPosition(x, flipY)
+            # Add it to the set
+            outputCoords.append(coord)
 
     def _fillDataFromIter(self, imgSet):
-        outImgsFn = 'particles@' + self.protocol._getFileName('out_particles')
+        outImgsFn = 'particles@' + self.protocol._getFileName('output')
         readSetOfParticles(outImgsFn, imgSet,
                            postprocessImageRow=self._updateItem,
                            alignType=ALIGN_PROJ,
@@ -106,7 +156,7 @@ class cryoSPARCImport:
         folderContent = []
 
         # Case in which the binaries associated to the .cs file are in the same
-        # folder of .cs file
+        # folder of the .cs file
         filesPath = dirParticlesPath
         if os.path.exists(filesPath):
             folderContent += os.listdir(filesPath)
@@ -117,7 +167,6 @@ class cryoSPARCImport:
         if os.path.exists(filesPath2):
             folderContent += os.listdir(filesPath2)
             realdataPath = filesPath2
-
 
         matchFile = [f for f in folderContent if f.endswith(imageName)]
         if matchFile:
