@@ -161,7 +161,7 @@ class ProtCryoSparc3DFlexTraining(ProtCryosparcBase, ProtFlexBase):
                       label="Latent centering pow",
                       expertLevel=LEVEL_ADVANCED)
 
-        form.addParam('flex_latent_ext_init', BooleanParam, default=False,
+        form.addParam('flex_latent_ext_init', BooleanParam, default=True,
                       label="Initialize latents from input",
                       expertLevel=LEVEL_ADVANCED)
 
@@ -218,8 +218,8 @@ class ProtCryoSparc3DFlexTraining(ProtCryosparcBase, ProtFlexBase):
         outImgSet.copyInfo(inputSet)
         outImgSet.setHasCTF(inputSet.hasCTF())
         outImgSet.getFlexInfo().setProgName(CRYOSPARCFLEX)
-        outImgSet.getFlexInfo().setAttr('projetId', str(self.projectName.get()))
-        outImgSet.getFlexInfo().setAttr('workspaceId', str(self.workSpaceName.get()))
+        outImgSet.getFlexInfo().setAttr('projectId', str(self.projectName.get()))
+        outImgSet.getFlexInfo().setAttr('workSpaceId', str(self.workSpaceName.get()))
         outImgSet.getFlexInfo().setAttr('trainJobId', str(self.run3DFlexTrainJob.get()))
         outImgSet.getFlexInfo().setAttr('projectPath', self.projectDir.get())
 
@@ -235,6 +235,7 @@ class ProtCryoSparc3DFlexTraining(ProtCryosparcBase, ProtFlexBase):
         self._defineOutputs(**{outputs.Particles.name: outImgSet})
         self._defineSourceRelation(inputSet, outImgSet)
 
+        # This is an example to create a latent trajectory in order to launch the flex generator job
         # arr = np.stack([zValues[20], zValues[21]], axis=0)
         # latentTrajectoryJob = customLatentTrajectory(arr,
         #                                              str(self.projectName.get()),

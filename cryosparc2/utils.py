@@ -36,7 +36,6 @@ from pkg_resources import parse_version
 import pyworkflow.utils as pwutils
 from pwem.constants import SCIPION_SYM_NAME
 from pwem.convert import Ccp4Header
-from pyworkflow.object import String
 from pyworkflow.protocol import IntParam
 
 from . import Plugin
@@ -172,10 +171,13 @@ def cryosparcValidate():
                                 " at https://github.com/scipion-em/scipion-em-cryosparc2"
                                 % (cryosparcVersion, str(supportedVersions).replace('\'', ''))))
 
-    if cryosparcVersion >= parse_version(V4_1_0) and not userExist(os.environ.get(CRYOSPARC_USER)):
-        return ["You need to define the cryoSPARC user variable "
-                "(CRYOSPARC_USER) in the Scipion config file. Note that the "
-                "cryoSPARC username is the email address."]
+    if cryosparcVersion >= parse_version(V4_1_0):
+        if not os.environ.get(CRYOSPARC_USER):
+            return ["You need to define the cryoSPARC user variable "
+                    "(CRYOSPARC_USER) in the Scipion config file. Note that the "
+                    "cryoSPARC username is the email address."]
+        elif not userExist(os.environ.get(CRYOSPARC_USER)):
+            return ["The user defined in the Scipion config file does not exist within CS."]
 
     return []
 
@@ -662,6 +664,11 @@ def customLatentTrajectory(latentsPoints, projectId, workspaceId, trainingJobId)
     from cryosparc.tools import CryoSPARC
 
     credentials = _getCredentials()
+    if not credentials[0]:
+        logger.error("Error obtaining cryoSPARC's credentials: %s" % credentials[1])
+        raise Exception("Error obtaining cryoSPARC's credentials: %s" % credentials[1])
+
+    credentials = credentials[1]
     cs = CryoSPARC(license=credentials['license'],
                    host=credentials['host'],
                    base_port=int(credentials['base_port']),
@@ -882,11 +889,30 @@ def getUserPassword():
 
 
 def _getCredentials():
-    return {'license': _getLicenceFromFile(),
-            'host': getCryosparcEnvInformation('master_hostname'),
-            'base_port': getCryosparcEnvInformation('port_app'),
-            'email': os.environ.get(CRYOSPARC_USER, "admin"),
-            'password': os.environ.get(CRYOSPARC_PASSWORD, '12345')}
+    licence = _getLicenceFromFile()
+    if licence is None:
+        return False, 'Error obtaining cryoSPARC license'
+
+    csIsRunning = isCryosparcRunning()
+    if csIsRunning:
+        hostName = getCryosparcEnvInformation('master_hostname')
+        basePort = getCryosparcEnvInformation('port_app')
+
+        email = os.environ.get(CRYOSPARC_USER, None)
+        if email is None:
+            return False, 'Error obtaining the cryoSPARC user'
+
+        password = os.environ.get(CRYOSPARC_PASSWORD, None)
+        if password is None:
+            return False, 'Error obtaining the %s password ' % email
+
+        return True, {'license': licence,
+                    'host': hostName,
+                    'base_port': basePort,
+                    'email': email,
+                    'password': password}
+
+    return True, 'Cryosparc is not running'
 
 
 def getSchedulerLanes():
