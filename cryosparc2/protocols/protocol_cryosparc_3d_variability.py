@@ -26,7 +26,7 @@
 # **************************************************************************
 from pyworkflow import BETA
 from pyworkflow.protocol.params import (PointerParam, FloatParam, Positive,
-                                        IntParam, BooleanParam, EnumParam)
+                                        BooleanParam, EnumParam)
 from pwem.objects import Volume
 from pwem.protocols import ProtRefine3D
 

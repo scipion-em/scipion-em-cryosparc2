@@ -37,6 +37,7 @@ CRYOSPARC_DIR = 'CRYOSPARC_DIR'  # Legacy, replaced by CRYOSPARC_HOME
 # Optional: Folder where cryosparc projects will be created
 CRYO_PROJECTS_DIR = 'CRYO_PROJECTS_DIR'
 CRYOSPARC_USER = 'CRYOSPARC_USER'
+CRYOSPARC_PASSWORD = 'CRYOSPARC_PASSWORD'
 CRYOSPARC_USE_SSD = 'CRYOSPARC_USE_SSD'
 CRYOSPARC_MASTER = 'cryosparc_master'
 CRYOSPARC_STANDALONE_INSTALLATION = 'CRYOSPARC_STANDALONE_INSTALLATION'
@@ -52,7 +53,7 @@ def getPyemEnvName(version):
 
 
 # pyem environment variables
-PYEM_VERSION = '23.01.25'  # This is our made up version
+PYEM_VERSION = '17.05.24'  # This is our made up version
 PYEM_ACTIVATION_CMD = 'conda activate %s' % (getPyemEnvName(PYEM_VERSION))
 
 # Supported versions:
@@ -76,6 +77,12 @@ V4_2_1 = 'V4.2.1'
 V4_3_1 = 'V4.3.1'
 V4_4_0 = 'V4.4.0'
 V4_4_1 = 'V4.4.1'
+V4_5_1 = 'V4.5.1'
+
+SUPORTED_VERSIONS = [V3_0_0, V3_0_1, V3_1_0, V3_2_0, V3_3_0, V3_3_1,
+                     V3_3_2, V4_0_0, V4_0_1, V4_0_2, V4_0_3, V4_1_0,
+                     V4_1_1, V4_1_2, V4_2_0, V4_2_1, V4_3_1, V4_4_0,
+                     V4_4_1, V4_5_1]
 
 # Symmetry dict
 CS_SYM_NAME = dict()
@@ -150,6 +157,10 @@ ALL_MAPS = 3
 OBJCMD_CLASSAVG_PROJS = 'Show class-averages/projections'
 OBJCMD_PROJS = 'Show only projections'
 OBJCMD_INITVOL = 'Show initial random volume'
+
+
+# FlexHub program
+CRYOSPARCFLEX = "cryoSPARC"
 
 
 # METADATA

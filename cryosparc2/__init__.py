@@ -31,7 +31,7 @@ import pyworkflow.utils as pwutils
 
 from .constants import *
 
-__version__ = '4.1.0'
+__version__ = '4.1.1'
 _references = ['Punjani2017', 'Brubaker2017', 'daniel_asarnow_2019_3576630']
 _logo = 'cryosparc2_logo.png'
 
@@ -40,9 +40,7 @@ class Plugin(em.Plugin):
     _url = "https://github.com/scipion-em/scipion-em-cryosparc2"
     _homeVar = CRYOSPARC_HOME
     _pathVars = [CRYOSPARC_HOME]
-    _supportedVersions = [V3_0_0, V3_0_1, V3_1_0, V3_2_0, V3_3_0, V3_3_1,
-                          V3_3_2, V4_0_0, V4_0_1, V4_0_2, V4_0_3, V4_1_0,
-                          V4_1_1, V4_1_2, V4_2_0, V4_2_1, V4_3_1, V4_4_0, V4_4_1]
+    _supportedVersions = SUPORTED_VERSIONS
 
     @classmethod
     def _defineVariables(cls):
@@ -80,6 +78,7 @@ class Plugin(em.Plugin):
 
         installCmd = ["pip uninstall -y pyem && ",
                       cls.getCondaActivationCmd(),
+                      f'conda env remove -n pyem-23.01.25 && ',
                       f'conda create -y -n {ENV_NAME} python=3.8 -c conda-forge -c anaconda && ',
                       f'conda activate {ENV_NAME} && pip install git+https://github.com/asarnow/pyem.git@47cf8f70488500be5988b4db1b6ef7002916e0e0 && pip install numpy==1.23.5']
 

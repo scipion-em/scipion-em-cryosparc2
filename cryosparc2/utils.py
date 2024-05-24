@@ -36,6 +36,7 @@ from pkg_resources import parse_version
 import pyworkflow.utils as pwutils
 from pwem.constants import SCIPION_SYM_NAME
 from pwem.convert import Ccp4Header
+from pyworkflow.object import String
 from pyworkflow.protocol import IntParam
 
 from . import Plugin
@@ -365,6 +366,7 @@ def getProjectInformation(project_uid, info='project_dir'):
     :return: the information related to the project that's stored in the database
     """
     import ast
+    from cryosparc.tools import CryoSPARC
     getProject_cmd = (getCryosparcProgram() +
                                 ' %sget_project("%s")%s '
                                 % ("'", str(project_uid), "'"))
@@ -444,7 +446,7 @@ def doImportParticlesStar(protocol):
     params = {"particle_meta_path": str(os.path.join(os.getcwd(),
                                                      protocol._getFileName('input_particles'))),
               "particle_blob_path": str(os.path.join(os.getcwd(),
-                                                     protocol._getTmpPath())),
+                                                     protocol._getPath())),
               "psize_A": str(protocol._getInputParticles().getSamplingRate())
               }
 
@@ -653,6 +655,75 @@ def enqueueJob(jobType, projectName, workSpaceName, params, input_group_connect,
     return jobId
 
 
+def customLatentTrajectory(latentsPoints, projectId, workspaceId, trainingJobId):
+    """Output the trajectory as a new output in CryoSPARC.
+       The resulting trajectory may be used as input to the 3D Flex Generator job
+       to generate a volume series along the trajectory."""
+    from cryosparc.tools import CryoSPARC
+
+    credentials = _getCredentials()
+    cs = CryoSPARC(license=credentials['license'],
+                   host=credentials['host'],
+                   base_port=int(credentials['base_port']),
+                   email=credentials['email'],
+                   password=credentials['password'])
+
+    project = cs.find_project(projectId)
+    particles = project.find_job(trainingJobId).load_output("particles")
+    numComponents = int(len([x for x in particles.fields() if "components_mode" in x]) / 2)
+    slot_spec = [{"dtype": "components", "prefix": f"components_mode_{k}", "required": True} for k in
+                 range(numComponents)]
+    job = project.create_external_job(workspaceId, "Custom Latents")
+    job.connect("particles", trainingJobId, "particles", slots=slot_spec)
+
+    if len(latentsPoints.shape) == 1:
+        latentsPoints = latentsPoints[None, ...]
+
+    latentsDSet = job.add_output(
+        type="particle",
+        name="latents",
+        slots=slot_spec,
+        title="Latents",
+        alloc=len(latentsPoints),
+    )
+
+    for k in range(numComponents):
+        latentsDSet[f"components_mode_{k}/component"] = k
+        latentsDSet[f"components_mode_{k}/value"] = latentsPoints[:, k]
+
+    # Save the output
+    with job.run():
+        job.save_output("latents", latentsDSet)
+
+    return job.uid
+
+
+def runFlexGeneratorJob(trainingJobId, customLatentsJobId, projectId, workspaceId, lane='default'):
+    """Generate a volume series along the trajectory using a flex model."""
+    className = "flex_generate"
+    gpusToUse = [0]
+    input_group_connect = {"flex_model": "%s.flex_model" % trainingJobId,
+                           "latents": "%s.latents" % customLatentsJobId}
+    params = {}
+
+    run3DFlexGeneratorJob = enqueueJob(className,
+                                       projectId,
+                                       workspaceId,
+                                       str(params).replace('\'', '"'),
+                                       str(input_group_connect).replace('\'', '"'),
+                                       lane, gpusToUse)
+
+    waitForCryosparc(projectId,
+                     run3DFlexGeneratorJob,
+                     "An error occurred in the 3D Flex Training process. "
+                     "Please, go to cryoSPARC software for more "
+                     "details.")
+    clearIntermediateResults(projectId,
+                             run3DFlexGeneratorJob)
+
+    return run3DFlexGeneratorJob
+
+
 def runCmd(cmd, printCmd=True):
     """ Runs a command and check its exit code. If different than 0 it raises an exception
     :parameter cmd command to run
@@ -660,6 +731,9 @@ def runCmd(cmd, printCmd=True):
     import subprocess
     if printCmd:
         logger.info(pwutils.greenStr("Running: %s" % cmd))
+    else:
+        logger.debug(pwutils.greenStr("Running: %s" % cmd))
+
     exitCode, cmdOutput = subprocess.getstatusoutput(cmd)
 
     if exitCode != 0:
@@ -800,6 +874,19 @@ def getUserId(email):
     getUser_cmd = (getCryosparcProgram() + ' %sGetUser("%s")%s' % ("'", email, "'"))
     user = runCmd(getUser_cmd, printCmd=False)
     return ast.literal_eval(user[1])['_id']
+
+
+def getUserPassword():
+    """Get the user password taking into account the environment variable"""
+    return os.getenv('CRYOSPARC_USER_PASSWORD')
+
+
+def _getCredentials():
+    return {'license': _getLicenceFromFile(),
+            'host': getCryosparcEnvInformation('master_hostname'),
+            'base_port': getCryosparcEnvInformation('port_app'),
+            'email': os.environ.get(CRYOSPARC_USER, "admin"),
+            'password': os.environ.get(CRYOSPARC_PASSWORD, '12345')}
 
 
 def getSchedulerLanes():

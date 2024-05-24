@@ -37,6 +37,11 @@ You will need to use `3.0.0 <https://scipion-em.github.io/docs/release-3.0.0/doc
 **Latest plugin version**
 ==========================
 
+**v4.1.1**
+-----------
+
+ * **new**        Compatibility with cryoSPARC v4.5.1
+ * **new**        Registering flex particles
 
 **v4.1.0**
 -----------
