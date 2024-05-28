@@ -731,8 +731,28 @@ def runFlexGeneratorJob(trainingJobId, customLatentsJobId, projectId, workspaceI
     return run3DFlexGeneratorJob
 
 
+def generateFlexVolumes(latentsPoints, projectId, workspaceId, trainingJobId):
+    """Load particle latent coordinates from a 3D Flex Training job and use the 3D Flex Generator job to
+        generate a volume series along the trajectory.
+        This method allows(FlexUtils plugin) visualizing specific regions or pathways through the latent conformational distribution
+        of the particle."""
+    try:
+        latentTrajectoryJob = customLatentTrajectory(latentsPoints,
+                                                     projectId,
+                                                     workspaceId,
+                                                     trainingJobId)
+        flexGeneratorJob = runFlexGeneratorJob(trainingJobId,
+                                               latentTrajectoryJob,
+                                               projectId,
+                                               workspaceId)
+
+        return flexGeneratorJob
+    except Exception as ex:
+        raise Exception("Error generating the flex volume : %s" % ex)
+
+
 def runCmd(cmd, printCmd=True):
-    """ Runs a command and check its exit code. If different than 0 it raises an exception
+    """ Runs a command and check its exit code. If different from 0 it raises an exception
     :parameter cmd command to run
     :parameter printCmd (default True) prints the command"""
     import subprocess
@@ -746,7 +766,7 @@ def runCmd(cmd, printCmd=True):
     if exitCode != 0:
         raise Exception("%s failed --> Exit code %s, message %s" % (cmd, exitCode, cmdOutput))
 
-    return exitCode, cmdOutput
+    return exitCode, cmdOutput.split('\n')[-1]
 
 
 def waitForCryosparc(projectName, jobId, failureMessage):
@@ -883,11 +903,6 @@ def getUserId(email):
     return ast.literal_eval(user[1])['_id']
 
 
-def getUserPassword():
-    """Get the user password taking into account the environment variable"""
-    return os.getenv('CRYOSPARC_USER_PASSWORD')
-
-
 def _getCredentials():
     licence = _getLicenceFromFile()
     if licence is None:
@@ -898,11 +913,11 @@ def _getCredentials():
         hostName = getCryosparcEnvInformation('master_hostname')
         basePort = getCryosparcEnvInformation('port_app')
 
-        email = os.environ.get(CRYOSPARC_USER, None)
+        email = Plugin.getUser()
         if email is None:
             return False, 'Error obtaining the cryoSPARC user'
 
-        password = os.environ.get(CRYOSPARC_PASSWORD, None)
+        password = Plugin.getUserPassword()
         if password is None:
             return False, 'Error obtaining the %s password ' % email
 
@@ -912,7 +927,7 @@ def _getCredentials():
                     'email': email,
                     'password': password}
 
-    return True, 'Cryosparc is not running'
+    return False, 'Cryosparc is not running'
 
 
 def getSchedulerLanes():

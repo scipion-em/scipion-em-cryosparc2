@@ -46,6 +46,10 @@ class Plugin(em.Plugin):
     def _defineVariables(cls):
         cls._defineVar(CRYOSPARC_HOME, os.environ.get(CRYOSPARC_DIR, ""))
         cls._defineVar(CRYO_PROJECTS_DIR, "scipion_projects")
+        cls._defineVar(CRYOSPARC_PASSWORD, None, description='The password with which cryoSPARC was installed. '
+                                                             'This is only required for the use of the Flexutils '
+                                                             'plugin and its connection to the 3D flex training protocol.')
+        cls._defineVar(CRYOSPARC_USER, None, description='This is the email with which cryoSPARC was installed.')
 
     @classmethod
     def getPyemEnvActivation(cls):
@@ -70,6 +74,16 @@ class Plugin(em.Plugin):
             neededProgs.append('conda')
 
         return neededProgs
+
+    @classmethod
+    def getUserPassword(cls):
+        """Get the user password taking into account the environment variable"""
+        return cls.getVar(CRYOSPARC_PASSWORD)
+
+    @classmethod
+    def getUser(cls):
+        """Get the user email taking into account the environment variable"""
+        return cls.getVar(CRYOSPARC_USER)
 
     @classmethod
     def addPyemPackage(cls, env):
