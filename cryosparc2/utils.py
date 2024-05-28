@@ -705,10 +705,10 @@ def customLatentTrajectory(latentsPoints, projectId, workspaceId, trainingJobId)
     return job.uid
 
 
-def runFlexGeneratorJob(trainingJobId, customLatentsJobId, projectId, workspaceId, lane='default'):
+def runFlexGeneratorJob(trainingJobId, customLatentsJobId, projectId, workspaceId, gpu=0, lane='default'):
     """Generate a volume series along the trajectory using a flex model."""
     className = "flex_generate"
-    gpusToUse = [0]
+    gpusToUse = [gpu]
     input_group_connect = {"flex_model": "%s.flex_model" % trainingJobId,
                            "latents": "%s.latents" % customLatentsJobId}
     params = {}
@@ -731,7 +731,7 @@ def runFlexGeneratorJob(trainingJobId, customLatentsJobId, projectId, workspaceI
     return run3DFlexGeneratorJob
 
 
-def generateFlexVolumes(latentsPoints, projectId, workspaceId, trainingJobId):
+def generateFlexVolumes(latentsPoints, projectId, workspaceId, trainingJobId, gpu=0):
     """Load particle latent coordinates from a 3D Flex Training job and use the 3D Flex Generator job to
         generate a volume series along the trajectory.
         This method allows(FlexUtils plugin) visualizing specific regions or pathways through the latent conformational distribution
@@ -744,7 +744,8 @@ def generateFlexVolumes(latentsPoints, projectId, workspaceId, trainingJobId):
         flexGeneratorJob = runFlexGeneratorJob(trainingJobId,
                                                latentTrajectoryJob,
                                                projectId,
-                                               workspaceId)
+                                               workspaceId,
+                                               gpu)
 
         return flexGeneratorJob
     except Exception as ex:
