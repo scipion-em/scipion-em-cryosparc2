@@ -26,8 +26,7 @@
 # **************************************************************************
 
 from pyworkflow import BETA
-from pyworkflow.protocol.params import (PointerParam, FloatParam, IntParam,
-                                        BooleanParam, FileParam, StringParam)
+from pyworkflow.protocol.params import (PointerParam, FloatParam, BooleanParam, FileParam, StringParam)
 from . import ProtCryosparcBase
 from ..convert import *
 from ..utils import *
@@ -43,7 +42,7 @@ class ProtCryoSparc3DFlexMeshPrepare(ProtCryosparcBase):
     _label = '3D flex mesh prepare'
     _devStatus = BETA
     _protCompatibility = [V4_1_0, V4_1_1, V4_1_2, V4_2_0, V4_2_1, V4_3_1,
-                          V4_4_0, V4_4_1]
+                          V4_4_0, V4_4_1, V4_5_1]
 
     # --------------------------- DEFINE param functions ----------------------
     def _defineFileNames(self):

@@ -24,10 +24,14 @@
 # *  e-mail address 'scipion@cnb.csic.es'
 # *
 # **************************************************************************
+from enum import Enum
 
+from pwem import getMatchingFiles
+from pwem.objects import ParticleFlex, SetOfParticles, SetOfParticlesFlex
+from pwem.protocols import ProtFlexBase
 from pyworkflow import BETA
 from pyworkflow.protocol import LEVEL_ADVANCED
-from pyworkflow.protocol.params import (PointerParam, FloatParam, IntParam,
+from pyworkflow.protocol.params import (PointerParam, FloatParam,
                                         BooleanParam)
 from . import ProtCryosparcBase
 from ..convert import *
@@ -35,7 +39,10 @@ from ..utils import *
 from ..constants import *
 
 
-class ProtCryoSparc3DFlexTraining(ProtCryosparcBase):
+class outputs(Enum):
+    Particles = SetOfParticles
+
+class ProtCryoSparc3DFlexTraining(ProtCryosparcBase, ProtFlexBase):
     """
     Uses a mesh and prepared particles (at a downsampled resolution) to train
     a 3DFlex model. Parameters control the number of latent dimensions,
@@ -44,7 +51,8 @@ class ProtCryoSparc3DFlexTraining(ProtCryosparcBase):
     """
     _label = '3D flex training'
     _devStatus = BETA
-    _protCompatibility = [V4_1_0, V4_1_1, V4_1_2, V4_2_0, V4_2_1, V4_3_1, V4_4_0, V4_4_1]
+    _protCompatibility = [V4_1_0, V4_1_1, V4_1_2, V4_2_0, V4_2_1, V4_3_1, V4_4_0, V4_4_1, V4_5_1]
+    _possibleOutputs = outputs
 
     # --------------------------- DEFINE param functions ----------------------
     def _defineFileNames(self):
@@ -153,7 +161,7 @@ class ProtCryoSparc3DFlexTraining(ProtCryosparcBase):
                       label="Latent centering pow",
                       expertLevel=LEVEL_ADVANCED)
 
-        form.addParam('flex_latent_ext_init', BooleanParam, default=False,
+        form.addParam('flex_latent_ext_init', BooleanParam, default=True,
                       label="Initialize latents from input",
                       expertLevel=LEVEL_ADVANCED)
 
@@ -180,7 +188,66 @@ class ProtCryoSparc3DFlexTraining(ProtCryosparcBase):
         self.doRun3DFlexTraining()
 
     def createOutputStep(self):
-        pass
+        self._initializeUtilsVariables()
+        self.info(pwutils.yellowStr("Creating the output..."))
+
+        csOutputFolder = os.path.join(self.projectDir.get(),
+                                      self.run3DFlexTrainJob.get())
+
+        pattern = csOutputFolder + '/*latents*'
+        csParticlesName = os.path.basename(getMatchingFiles(pattern, True)[-1])
+
+        pattern = csOutputFolder + '/*train_checkpoint*.tar'
+        trainModelRar = os.path.basename(getMatchingFiles(pattern, True)[-1])
+
+        pattern = csOutputFolder + '/*train_checkpoint*.cs'
+        trainModelCs = os.path.basename(getMatchingFiles(pattern, True)[-1])
+
+
+        # Copy the CS output particles to extra folder
+        copyFiles(csOutputFolder, self._getExtraPath(), files=[csParticlesName, trainModelRar, trainModelCs])
+        csPartFile = os.path.join(self._getExtraPath(), csParticlesName)
+
+        # Taking the zvalues from the .cs file using numpy
+        arr = np.load(csPartFile)
+        zValues = [[arr[i][j] for j in range(2, len(arr[i]), 2)] for i in range(len(arr))]
+
+        inputSet = self.input3DFlexDataPrepareProt.get()._getInputParticles()
+        outImgSet = SetOfParticlesFlex.create(self._getPath(), suffix='', progName=CRYOSPARCFLEX)
+
+        outImgSet.copyInfo(inputSet)
+        outImgSet.setHasCTF(inputSet.hasCTF())
+        outImgSet.getFlexInfo().setProgName(CRYOSPARCFLEX)
+        outImgSet.getFlexInfo().setAttr('projectId', str(self.projectName.get()))
+        outImgSet.getFlexInfo().setAttr('workSpaceId', str(self.workSpaceName.get()))
+        outImgSet.getFlexInfo().setAttr('trainJobId', str(self.run3DFlexTrainJob.get()))
+        outImgSet.getFlexInfo().setAttr('projectPath', self.projectDir.get())
+
+        for particle, zValue in zip(inputSet, zValues):
+            outParticle = ParticleFlex(progName=CRYOSPARCFLEX)
+            outParticle.copyInfo(particle)
+            outParticle.getFlexInfo().setProgName(CRYOSPARCFLEX)
+
+            outParticle.setZFlex(list(zValue))
+
+            outImgSet.append(outParticle)
+
+        self._defineOutputs(**{outputs.Particles.name: outImgSet})
+        self._defineSourceRelation(inputSet, outImgSet)
+
+        # This is an example to create a latent trajectory in order to launch the flex generator job
+        # arr = np.stack([zValues[20], zValues[21]], axis=0)
+        # latentTrajectoryJob = customLatentTrajectory(arr,
+        #                                              str(self.projectName.get()),
+        #                                              str(self.workSpaceName.get()),
+        #                                              str(self.run3DFlexTrainJob.get()))
+        #
+        # flexGeneratorJob = runFlexGeneratorJob(str(self.run3DFlexTrainJob.get()),
+        #                                        latentTrajectoryJob,
+        #                                        str(self.projectName.get()),
+        #                                        str(self.workSpaceName.get()))
+
+
 
     def _defineParamsName(self):
         """ Define a list with 3D Flex Training parameters names"""

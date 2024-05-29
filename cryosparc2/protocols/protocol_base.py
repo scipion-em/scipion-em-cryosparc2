@@ -110,7 +110,7 @@ class ProtCryosparcBase(pw.EMProtocol):
         if imgSet is not None:
             # Create links to binary files and write the relion .star file
             writeSetOfParticles(imgSet, self._getFileName('input_particles'),
-                                self._getTmpPath())
+                                self._getPath())
             self._importParticles()
 
         volume = self._getInputVolume()

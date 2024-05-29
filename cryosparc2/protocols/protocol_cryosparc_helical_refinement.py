@@ -25,12 +25,9 @@
 # *
 # **************************************************************************
 
-from pkg_resources import parse_version
-
 from pwem import SCIPION_SYM_NAME
 
 import pyworkflow.utils as pwutils
-from pyworkflow import BETA
 from pyworkflow.object import String
 from pyworkflow.protocol.params import (FloatParam, Positive, IntParam,
                                         BooleanParam, EnumParam, PointerParam)
@@ -38,7 +35,7 @@ from pyworkflow.protocol.params import (FloatParam, Positive, IntParam,
 from .protocol_cryosparc_homogeneous_refine import ProtCryoSparc3DHomogeneousRefine
 from ..utils import (getSymmetry, enqueueJob, waitForCryosparc,
                      clearIntermediateResults, addComputeSectionParams,
-                     cryosparcValidate, gpusValidate, getCryosparcVersion)
+                     cryosparcValidate, gpusValidate)
 from ..constants import *
 
 
@@ -54,7 +51,7 @@ class ProtCryoSparcHelicalRefine3D(ProtCryoSparc3DHomogeneousRefine):
     _label = '3D helical refinement'
     _fscColumns = 4
     _protCompatibility = [V3_3_1, V3_3_2, V4_0_0, V4_0_1, V4_0_2, V4_0_3,
-                          V4_1_0, V4_1_1, V4_1_2, V4_2_0, V4_2_1, V4_3_1, V4_4_0, V4_4_1]
+                          V4_1_0, V4_1_1, V4_1_2, V4_2_0, V4_2_1, V4_3_1, V4_4_0, V4_4_1, V4_5_1]
     _className = "helix_refine"
 
     def _defineParams(self, form):

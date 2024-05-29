@@ -26,7 +26,7 @@
 # **************************************************************************
 from pwem.objects import Volume
 from pyworkflow import BETA
-from pyworkflow.protocol.params import (PointerParam,  IntParam,  BooleanParam)
+from pyworkflow.protocol.params import (PointerParam,  BooleanParam)
 from . import ProtCryosparcBase
 from ..convert import *
 from ..utils import *
@@ -43,7 +43,7 @@ class ProtCryoSparc3DFlexReconstruction(ProtCryosparcBase):
     """
     _label = '3D flex reconstruction'
     _devStatus = BETA
-    _protCompatibility = [V4_1_0, V4_1_1, V4_1_2, V4_2_0, V4_2_1, V4_3_1, V4_4_0, V4_4_1]
+    _protCompatibility = [V4_1_0, V4_1_1, V4_1_2, V4_2_0, V4_2_1, V4_3_1, V4_4_0, V4_4_1, V4_5_1]
 
     # --------------------------- DEFINE param functions ----------------------
     def _defineFileNames(self):

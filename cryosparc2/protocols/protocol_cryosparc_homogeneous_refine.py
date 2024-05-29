@@ -30,8 +30,7 @@ from pkg_resources import parse_version
 
 import pwem.objects as pwobj
 import pyworkflow.utils as pwutils
-from pwem.convert import moveParticlesInsideUnitCell, getSymmetryMatrices, \
-    getUnitCell
+from pwem.convert import getSymmetryMatrices, getUnitCell
 from pwem.convert.symmetry import moveParticleInsideUnitCell
 from pyworkflow.protocol.params import *
 
@@ -60,7 +59,7 @@ class ProtCryoSparc3DHomogeneousRefine(ProtCryosparcBase):
     _className = "homo_refine_new"
     ewsParamsName = []
     _protCompatibility = [V3_3_1, V3_3_2, V4_0_0, V4_0_1, V4_0_2, V4_0_3, V4_1_0,
-                          V4_1_1, V4_1_2, V4_2_0, V4_2_1, V4_3_1, V4_4_0, V4_4_1]
+                          V4_1_1, V4_1_2, V4_2_0, V4_2_1, V4_3_1, V4_4_0, V4_4_1, V4_5_1]
 
     # --------------------------- DEFINE param functions ----------------------
     def _defineFileNames(self):

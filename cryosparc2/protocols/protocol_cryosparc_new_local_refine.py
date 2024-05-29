@@ -28,13 +28,11 @@
 import os
 
 import emtable
-from pkg_resources import parse_version
 
 from pwem import ALIGN_PROJ
 from pwem.protocols import ProtOperateParticles
 
 import pyworkflow.utils as pwutils
-from pyworkflow import NEW
 from pyworkflow.object import String
 from pyworkflow.protocol.params import (PointerParam, FloatParam, IntParam,
                                         Positive, BooleanParam, EnumParam)
@@ -46,7 +44,7 @@ from ..convert import (convertCs2Star, createItemMatrix,
 from ..utils import (addComputeSectionParams, calculateNewSamplingRate,
                      cryosparcValidate, gpusValidate, enqueueJob,
                      waitForCryosparc, clearIntermediateResults,
-                     addSymmetryParam, getCryosparcVersion, getSymmetry,
+                     addSymmetryParam, getSymmetry,
                      fixVolume, copyFiles, getOutputPreffix)
 from ..constants import *
 
@@ -57,7 +55,7 @@ class ProtCryoSparcLocalRefine(ProtCryosparcBase, ProtOperateParticles):
         """
     _label = 'local refinement'
     _protCompatibility = [V3_3_1, V3_3_2, V4_0_0,  V4_0_1, V4_0_2, V4_0_3,
-                          V4_1_0, V4_1_1, V4_1_2, V4_2_0, V4_2_1, V4_3_1, V4_4_0, V4_4_1]
+                          V4_1_0, V4_1_1, V4_1_2, V4_2_0, V4_2_1, V4_3_1, V4_4_0, V4_4_1, V4_5_1]
     _className = "new_local_refine"
     _fscColumns = 6
 

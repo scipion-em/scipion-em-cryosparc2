@@ -37,6 +37,12 @@ You will need to use `3.0.0 <https://scipion-em.github.io/docs/release-3.0.0/doc
 **Latest plugin version**
 ==========================
 
+**v4.1.1**
+-----------
+
+* **new**        Compatibility with cryoSPARC v4.5.1
+* **new**        Registering flex particles
+* **new**        Integration with FlexUtils plugin
 
 **v4.1.0**
 -----------
@@ -111,6 +117,12 @@ cryoSPARC v2 when new versions become available.
        CRYOSPARC_USER = <user_name>
 
        # Optional variables
+       ---------------------
+
+       # The password with which cryoSPARC was installed.
+       # This is only required for the use of the Flexutils plugin and its
+       # connection to the 3D flex training protocol.
+       CRYOSPARC_PASSWORD = <password>
 
        #Folder (available to all workers) where scipion will create cryosparc projects
        CRYO_PROJECTS_DIR = <path> (default to <CRYOSPARC_HOME>/scipion_projects)
