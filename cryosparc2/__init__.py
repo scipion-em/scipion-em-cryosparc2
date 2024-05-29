@@ -94,7 +94,7 @@ class Plugin(em.Plugin):
                       cls.getCondaActivationCmd(),
                       f'conda env remove -n pyem-23.01.25 && ',
                       f'conda create -y -n {ENV_NAME} python=3.8 -c conda-forge -c anaconda && ',
-                      f'conda activate {ENV_NAME} && pip install git+https://github.com/asarnow/pyem.git@47cf8f70488500be5988b4db1b6ef7002916e0e0 && pip install numpy==1.23.5']
+                      f'conda activate {ENV_NAME} && pip install git+https://github.com/asarnow/pyem.git@0394d5bf6096377ca7cc7b6dd74484f1f40f37a8 && pip install numpy==1.23.5']
 
         # install pyem
         #installCmd.append('pip install git+https://github.com/asarnow/pyem.git@47cf8f70488500be5988b4db1b6ef7002916e0e0')
