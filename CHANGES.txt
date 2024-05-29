@@ -1,3 +1,8 @@
+May 17, 2024  - **v4.1.2**
+
+                fixed: Installation Hot fix
+
+
 May 17, 2024  - **v4.1.1**
                 Compatibility with cryoSPARC v4.5.1
                 Registering flex particles
