@@ -37,6 +37,11 @@ You will need to use `3.0.0 <https://scipion-em.github.io/docs/release-3.0.0/doc
 **Latest plugin version**
 ==========================
 
+**v4.1.2**
+-----------
+
+* **fixed**      Installation Hot fix
+
 **v4.1.1**
 -----------
 
