@@ -181,11 +181,10 @@ class ProtCryoSparc3DVariabilityDisplay(ProtCryosparcBase, ProtRefine3D):
                            'a zero-based integer in the range [0, K-1], where K is the number of components that '
                            'exist after the (optional) filtering.')
 
-        # form.addParam('var_intermediate_width', IntParam, default=0,
-        #               visible=False,
-        #               expertLevel=LEVEL_ADVANCED,
-        #               label="Intermediates: window (frames)",
-        #               help='Intermediates: window (frames)')
+        form.addParam('var_intermediate_width', IntParam, default=0,
+                      expertLevel=LEVEL_ADVANCED,
+                      label="Intermediates: window (frames)",
+                      help='Intermediates: window (frames)')
 
         form.addSection(label="Compute settings")
         addComputeSectionParams(form, allowMultipleGPUs=False)
@@ -473,7 +472,8 @@ class ProtCryoSparc3DVariabilityDisplay(ProtCryosparcBase, ProtRefine3D):
                             'var_intermediate_width',
                             'var_component_filter',
                             'var_intermediate_output_frame_particles',
-                            'var_intermediate_output_component']
+                            'var_intermediate_output_component',
+                            'compute_use_ssd']
         self.lane = str(self.getAttributeValue('compute_lane'))
 
     def _validate(self):
@@ -509,7 +509,11 @@ class ProtCryoSparc3DVariabilityDisplay(ProtCryosparcBase, ProtRefine3D):
             elif paramName == 'var_highpass_res' and self.var_highpass_res.get() is not None:
                 params[str(paramName)] = str(self.var_highpass_res.get())
             elif paramName == 'var_intermediate_width':
-                params[str(paramName)] = '0'
+                if self.var_intermediate_width.get() is not None or self.var_intermediate_width.get() > 0:
+                    params[str(paramName)] = str(self.var_intermediate_width.get())
+                else:
+                    params[str(paramName)] = '0'
+
             # elif paramName == 'var_component_filter':
             #     params[str(paramName)] = str(self.var_component_filter.get())
 

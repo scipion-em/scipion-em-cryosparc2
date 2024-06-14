@@ -160,11 +160,10 @@ class ProtCryoSparc3DFlexReconstruction(ProtCryosparcBase):
         self._defineOutputs(flexVolume=flexVol)
         self._defineOutputs(noFlexVolume=noFlexVol)
 
-
     def _defineParamsName(self):
         """ Define a list with 3D Flex Reconstruction parameters names"""
         self._paramsName = ['flex_do_noflex_recon', 'flex_bfgs_num_iters',
-                            'refine_gs_resplit']
+                            'refine_gs_resplit', 'compute_use_ssd']
         self.lane = str(self.getAttributeValue('compute_lane'))
 
     def doRun3DFlexReconstruction(self):
