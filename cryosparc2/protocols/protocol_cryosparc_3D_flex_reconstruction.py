@@ -84,7 +84,7 @@ class ProtCryoSparc3DFlexReconstruction(ProtCryosparcBase):
                       help='Force re-splitting the particles into two random '
                            'gold-standard halves. If this is not set, split '
                            'is preserved from input alignments (if connected).'
-                           ' If the input alignments don not have equal '
+                           ' If the input alignments do not have equal '
                            'particles in each split, the job will issue a '
                            'warning but will continue.')
 
