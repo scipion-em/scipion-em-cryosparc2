@@ -192,6 +192,11 @@ class ProtCryosparcBase(pw.EMProtocol):
             return self.inputParticles.get()
         return None
 
+    def _getInputParticlesPointer(self):
+        if self.hasAttribute('inputParticles'):
+            return self.inputParticles
+        return None
+
     def _getInputVolume(self):
         if self.hasAttribute('refVolume'):
             return self.refVolume.get()

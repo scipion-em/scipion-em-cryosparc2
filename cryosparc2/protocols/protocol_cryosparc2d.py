@@ -124,6 +124,7 @@ class ProtCryo2D(ProtCryosparcBase, pwprot.ProtClassify2D):
                            'classification. If None, the window only masks out '
                            'the corners of each 2D class.',
                       allowsNull=True,
+                      allowsPointers=True,
                       condition='useCircular2D==True')
 
         form.addParam('class2D_window_outer_A', FloatParam, default=None,
@@ -133,6 +134,7 @@ class ProtCryo2D(ProtCryosparcBase, pwprot.ProtClassify2D):
                            'inner diameter. The window mask transitions '
                            'smoothly between inner and outer diameters.',
                       allowsNull=True,
+                      allowsPointers=True,
                       condition='useCircular2D==True')
 
         form.addParam('reCenter2D', BooleanParam, default=True,
@@ -296,7 +298,7 @@ class ProtCryo2D(ProtCryosparcBase, pwprot.ProtClassify2D):
         self._fillClassesFromLevel(classes2DSet)
 
         self._defineOutputs(outputClasses=classes2DSet)
-        self._defineSourceRelation(self.inputParticles.get(), classes2DSet)
+        self._defineSourceRelation(self.inputParticles, classes2DSet)
 
     # --------------------------- INFO functions -------------------------------
     def _validate(self):
