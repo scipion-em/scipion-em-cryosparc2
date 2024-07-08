@@ -289,7 +289,7 @@ class ProtCryoSparc3DClassification(ProtCryosparcBase):
 
         self._createModelFile(csOutputFolder, itera)
 
-        imgSet = self._getInputParticles()
+        imgSet = self._getInputParticlesPointer()
         classes3D = self._createSetOfClasses3D(imgSet)
         self._fillClassesFromIter(classes3D, self._getFileName('out_particles'))
 
@@ -308,7 +308,7 @@ class ProtCryoSparc3DClassification(ProtCryosparcBase):
         volumes.setSamplingRate(vol.getSamplingRate())
 
         self._defineOutputs(outputVolumes=volumes)
-        self._defineSourceRelation(self.inputParticles.get(), volumes)
+        self._defineSourceRelation(imgSet, volumes)
 
     # --------------------------- UTILS functions ---------------------------
     def _loadClassesInfo(self, filename):

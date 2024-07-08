@@ -309,9 +309,9 @@ class ProtCryoSparcHomogeneousReconstruct(ProtCryosparcBase):
         self._fillDataFromIter(outImgSet)
 
         self._defineOutputs(outputVolume=vol)
-        self._defineSourceRelation(self.inputParticles.get(), vol)
+        self._defineSourceRelation(self.inputParticles, vol)
         self._defineOutputs(outputParticles=outImgSet)
-        self._defineTransformRelation(self.inputParticles.get(), outImgSet)
+        self._defineTransformRelation(self.inputParticles, outImgSet)
         self.createFSC(idd, imgSet, vol)
 
     def _fillDataFromIter(self, imgSet):

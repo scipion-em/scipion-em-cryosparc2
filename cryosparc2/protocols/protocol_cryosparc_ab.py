@@ -332,12 +332,12 @@ class ProtCryoSparcInitialModel(ProtCryosparcBase, ProtInitialVolume,
         # Create model files for 3D classification
         self._createModelFile()
 
-        imgSet = self._getInputParticles()
+        imgSet = self._getInputParticlesPointer()
         classes3D = self._createSetOfClasses3D(imgSet)
         self._fillClassesFromIter(classes3D, self._getFileName('out_particles'))
 
         self._defineOutputs(outputClasses=classes3D)
-        self._defineSourceRelation(self.inputParticles.get(), classes3D)
+        self._defineSourceRelation(imgSet, classes3D)
 
         # create a SetOfVolumes and define its relations
         volumes = self._createSetOfVolumes()
@@ -351,7 +351,7 @@ class ProtCryoSparcInitialModel(ProtCryosparcBase, ProtInitialVolume,
         volumes.setSamplingRate(vol.getSamplingRate())
 
         self._defineOutputs(outputVolumes=volumes)
-        self._defineSourceRelation(self.inputParticles.get(), volumes)
+        self._defineSourceRelation(imgSet, volumes)
 
     # --------------------------- INFO functions -------------------------------
     def _validate(self):
