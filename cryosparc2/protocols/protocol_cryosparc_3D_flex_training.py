@@ -51,7 +51,8 @@ class ProtCryoSparc3DFlexTraining(ProtCryosparcBase, ProtFlexBase):
     """
     _label = '3D flex training'
     _devStatus = BETA
-    _protCompatibility = [V4_1_0, V4_1_1, V4_1_2, V4_2_0, V4_2_1, V4_3_1, V4_4_0, V4_4_1, V4_5_1]
+    _protCompatibility = [V4_1_0, V4_1_1, V4_1_2, V4_2_0, V4_2_1, V4_3_1, V4_4_0, V4_4_1, V4_5_1,
+                          V4_5_3]
     _possibleOutputs = outputs
 
     # --------------------------- DEFINE param functions ----------------------

@@ -42,6 +42,7 @@ from ..constants import *
 class ImportVolumeOutputs(enum.Enum):
     component = SetOfVolumes
 
+
 class ProtCryoSparc3DVariabilityDisplay(ProtCryosparcBase, ProtRefine3D):
     """
     Protocol to create various versions of a 3D variability result that can be
@@ -156,6 +157,7 @@ class ProtCryoSparc3DVariabilityDisplay(ProtCryosparcBase, ProtRefine3D):
 
         form.addParam('var_skip_reconstruction', BooleanParam, default=False,
                       expertLevel=LEVEL_ADVANCED,
+                      condition='var_output_mode == 0 or var_output_mode == 2',
                       label="Skip reconstruction",
                       help='Skip reconstructions in cluster and '
                            'intermediate mode - helpful to quickly inspect '
@@ -164,6 +166,7 @@ class ProtCryoSparc3DVariabilityDisplay(ProtCryosparcBase, ProtRefine3D):
 
         form.addParam('var_cluster_3D_plots', BooleanParam, default=True,
                       expertLevel=LEVEL_ADVANCED,
+                      condition='var_output_mode == 0',
                       label="Cluster mode: 3D plots",
                       help='Make 3D instead of 2D plots to show clusters.')
 
@@ -181,10 +184,14 @@ class ProtCryoSparc3DVariabilityDisplay(ProtCryosparcBase, ProtRefine3D):
                            'a zero-based integer in the range [0, K-1], where K is the number of components that '
                            'exist after the (optional) filtering.')
 
-        form.addParam('var_intermediate_width', IntParam, default=0,
+        form.addParam('var_intermediate_width', IntParam, default=2,
                       expertLevel=LEVEL_ADVANCED,
+                      condition='var_output_mode==2',
                       label="Intermediates: window (frames)",
-                      help='Intermediates: window (frames)')
+                      help=('Size of rolling window in each bin (in number of frames). Set to a '
+                            'positive integer to define a triangular weighting function for each volume. '
+                            'Set to 0 for a tophat weighting function. Set to -1 to create bins with equal '
+                            'number of particles. '))
 
         form.addSection(label="Compute settings")
         addComputeSectionParams(form, allowMultipleGPUs=False)
@@ -392,6 +399,7 @@ class ProtCryoSparc3DVariabilityDisplay(ProtCryosparcBase, ProtRefine3D):
             vol.setSamplingRate(calculateNewSamplingRate(vol.getDim(),
                                                          imgSet.getSamplingRate(),
                                                          imgSet.getDim()))
+
     def _create3DModelFile(self, volumesPath):
         # Create model files for 3D classification
         with open(self._getFileName('out_class'), 'w') as output_file:
@@ -425,7 +433,6 @@ class ProtCryoSparc3DVariabilityDisplay(ProtCryosparcBase, ProtRefine3D):
 
                 row = ("%05d@%s/%s\n" % (i+1, filePath, csVolName))
                 output_file.write(row)
-
 
     def _partClassDict(self, fileName, classNumber):
         with open(os.path.abspath(fileName), 'r') as _file:

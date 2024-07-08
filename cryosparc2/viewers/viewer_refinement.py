@@ -39,7 +39,8 @@ from ..protocols import (ProtCryoSparcLocalRefine, ProtCryoSparcHelicalRefine3D,
                          ProtCryoSparc3DHomogeneousRefine,
                          ProtCryoSparcNewNonUniformRefine3D,
                          ProtCryoSparcHomogeneousReconstruct, ProtCryoSparc3DVariability,
-                         ProtCryoSparc3DVariabilityDisplay)
+                         ProtCryoSparc3DVariabilityDisplay, ProtCryoSparc3DFlexDataPrepare,
+                         ProtCryoSparc3DFlexMeshPrepare, ProtCryoSparc3DFlexTraining, ProtCryoSparc3DFlexReconstruction)
 from ..constants import *
 from ..utils import *
 
@@ -50,9 +51,11 @@ class CryosPARCViewer3DRefinement(EmProtocolViewer):
     _targets = [ProtCryoSparcLocalRefine, ProtCryoSparcHelicalRefine3D,
                 ProtCryoSparc3DHomogeneousRefine, ProtCryoSparcNewNonUniformRefine3D,
                 ProtCryoSparcHomogeneousReconstruct, ProtCryoSparc3DVariability,
-                ProtCryoSparc3DVariabilityDisplay]
+                ProtCryoSparc3DVariabilityDisplay, ProtCryoSparc3DFlexDataPrepare,
+                ProtCryoSparc3DFlexMeshPrepare, ProtCryoSparc3DFlexTraining,
+                ProtCryoSparc3DFlexReconstruction]
     _environments = [DESKTOP_TKINTER, WEB_DJANGO]
-    _label = 'viewer Refinement'
+    _label = 'viewer Refinement/Flex'
 
     def _defineParams(self, form):
         self._env = os.environ.copy()
@@ -63,9 +66,14 @@ class CryosPARCViewer3DRefinement(EmProtocolViewer):
         group.addParam('displayCS', LabelParam,
                        label='Display the processing with cryoSPARC')
 
-        if self.protocol.isFinished():
+        isFlexProtocol = (isinstance(self.protocol, ProtCryoSparc3DFlexDataPrepare) or
+                          isinstance(self.protocol, ProtCryoSparc3DFlexMeshPrepare) or
+                          isinstance(self.protocol, ProtCryoSparc3DFlexTraining))
 
-            if not isinstance(self.protocol, ProtCryoSparc3DVariabilityDisplay):
+        if self.protocol.isFinished() and not isFlexProtocol:
+
+            if (not isinstance(self.protocol, ProtCryoSparc3DVariabilityDisplay) or
+                    not isinstance(self.protocol, ProtCryoSparc3DFlexReconstruction)):
                 group = form.addGroup('Particles')
 
                 group.addParam('showImagesAngularAssignment', LabelParam,
@@ -109,7 +117,9 @@ class CryosPARCViewer3DRefinement(EmProtocolViewer):
                            help=help)
             # '*slices*: display volumes as 2D slices along z axis.\n'
 
-            if self.protocol.isFinished() and parse_version(getCryosparcVersion()) != parse_version(V4_0_0) and not isinstance(self.protocol, ProtCryoSparc3DVariabilityDisplay) and not isinstance(self.protocol, ProtCryoSparc3DVariability):
+            if (self.protocol.isFinished() and parse_version(getCryosparcVersion()) != parse_version(V4_0_0) and
+                    not isinstance(self.protocol, ProtCryoSparc3DVariabilityDisplay) and
+                    not isinstance(self.protocol, ProtCryoSparc3DVariability)):
                 group = form.addGroup('Resolution')
 
                 self.choices = self.getChoices()

@@ -37,19 +37,20 @@ You will need to use `3.0.0 <https://scipion-em.github.io/docs/release-3.0.0/doc
 **Latest plugin version**
 ==========================
 
-**v4.1.2**
+**v4.1.4**
 -----------
 
-* **fixed**      Installation Hot fix
+* **new**        Compatibility with cryoSPARC v4.5.3
+* **new**        Flexibility protocols can launch CS viewer
 
-**v4.1.1**
+**v4.1.3**
 -----------
 
 * **new**        Compatibility with cryoSPARC v4.5.1
 * **new**        Registering flex particles
 * **new**        Integration with FlexUtils plugin
 
-**v4.1.0**
+**v4.1.2**
 -----------
 * **fixed**       Tolerating deletion of projects within CS as well as their folders in the file system
 
@@ -60,30 +61,6 @@ You will need to use `3.0.0 <https://scipion-em.github.io/docs/release-3.0.0/doc
                     * **3D Flex Reconstruction**: Takes in a checkpoint from training as well as prepared high-resolution particles and performs high-resolution refinement using L-BFGS under the 3DFlex model. This is the stage at which improvements to density in high-res regions are computed. Outputs two half-maps that can be used for FSC validation, sharpening, and other downstream tasks.
 
 * **new**         Allowing Scipion to import coordinates
-
-
-**v4.0.11**
------------
-* **fixed**      Compatibility with cryoSPARC v4.4.1+patch
-
-
-
-**v4.0.10**
------------
-* **new**        Compatibility with cryoSPARC v4.4.1
-* **new**        Add new protocols:
-
-                 * **3D Variability Analysis**: Protocol to compute the principle modes of variability with a dataset of aligned particles
-                 * **3D Variability Display**: Protocol to create various versions of a 3D variability result that can be used for display
-                 * **Blob Picker**: Automatically picks particles by searching for Gaussian signals.
-
-
-
-
-**v4.0.9**
------------
-* **new**        Compatibility with cryoSPARC v4.4.0
-* **fixed**      Handling aborted protocols/jobs
 
 
 **Installing the plugin**
