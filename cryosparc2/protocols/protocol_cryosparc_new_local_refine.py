@@ -55,7 +55,8 @@ class ProtCryoSparcLocalRefine(ProtCryosparcBase, ProtOperateParticles):
         """
     _label = 'local refinement'
     _protCompatibility = [V3_3_1, V3_3_2, V4_0_0,  V4_0_1, V4_0_2, V4_0_3,
-                          V4_1_0, V4_1_1, V4_1_2, V4_2_0, V4_2_1, V4_3_1, V4_4_0, V4_4_1, V4_5_1]
+                          V4_1_0, V4_1_1, V4_1_2, V4_2_0, V4_2_1, V4_3_1, V4_4_0, V4_4_1, V4_5_1,
+                          V4_5_3]
     _className = "new_local_refine"
     _fscColumns = 6
 
@@ -138,6 +139,14 @@ class ProtCryoSparcLocalRefine(ProtCryosparcBase, ProtOperateParticles):
                            "to the center of mass of the mask, or the "
                            "box center.")
 
+        form.addParam('reinitialize_rs', BooleanParam, default=False,
+                      label='Re-center rotations each iteration?',
+                      help='If true, strongly recommended to use prior.')
+
+        form.addParam('reinitialize_ss', BooleanParam, default=False,
+                      label='Re-center shifts each iteration?',
+                      help='If true, strongly recommended to use prior.')
+
         # -----------[Homogeneous Refinement]------------------------
         form.addSection(label="Homogeneous Refinement")
 
@@ -196,8 +205,17 @@ class ProtCryoSparcLocalRefine(ProtCryosparcBase, ProtOperateParticles):
         form.addParam('refine_dynamic_mask_far_ang', FloatParam, default=12.0,
                       validators=[Positive],
                       label="Dynamic mask far  (A)",
-                      help='Controls extent to which mask is expanded. At the '
-                           'far distance the mask value becomes 0.0 (in A)')
+                      help='Controls extent to which mask is expanded. At the ')
+
+        form.addParam('refine_dynamic_mask_start_res', FloatParam, default=12.0,
+                      validators=[Positive],
+                      label="Dynamic mask start resolution (A)",
+                      help='Map resolution at which to start dynamic masking (in A)')
+
+        form.addParam('refine_dynamic_mask_use_abs', BooleanParam, default=False,
+                      label='Dynamic mask use absolute value',
+                      help='Include negative regions if they are more negative than the threshold')
+
 
         # --------------[Compute settings]---------------------------
         form.addSection(label="Compute settings")
@@ -350,7 +368,11 @@ class ProtCryoSparcLocalRefine(ProtCryosparcBase, ProtOperateParticles):
                             'sigma_prior_r',
                             'sigma_prior_s',
                             'compute_use_ssd',
-                            'refine_symmetry']
+                            'refine_symmetry',
+                            'reinitialize_ss',
+                            'reinitialize_rs',
+                            'refine_dynamic_mask_start_res',
+                            'refine_dynamic_mask_use_abs']
         self.lane = str(self.getAttributeValue('compute_lane'))
 
     def doLocalRefine(self):
@@ -395,7 +417,6 @@ class ProtCryoSparcLocalRefine(ProtCryosparcBase, ProtOperateParticles):
                 symetryValue = getSymmetry(self.symmetryGroup.get(),
                                            self.symmetryOrder.get())
                 params[str(paramName)] = symetryValue
-            params['refine_dynamic_mask_start_res'] = str(1000)
 
         # Determinate the GPUs to use (in dependence of
         # the cryosparc version)

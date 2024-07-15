@@ -51,7 +51,8 @@ class ProtCryoSparc3DFlexTraining(ProtCryosparcBase, ProtFlexBase):
     """
     _label = '3D flex training'
     _devStatus = BETA
-    _protCompatibility = [V4_1_0, V4_1_1, V4_1_2, V4_2_0, V4_2_1, V4_3_1, V4_4_0, V4_4_1, V4_5_1]
+    _protCompatibility = [V4_1_0, V4_1_1, V4_1_2, V4_2_0, V4_2_1, V4_3_1, V4_4_0, V4_4_1, V4_5_1,
+                          V4_5_3]
     _possibleOutputs = outputs
 
     # --------------------------- DEFINE param functions ----------------------
@@ -152,7 +153,7 @@ class ProtCryoSparc3DFlexTraining(ProtCryosparcBase, ProtFlexBase):
                            "latent space. This typically needs to be tuned "
                            "for every dataset, but has relatively little "
                            "effect on results. If you notice many latent coordinates "
-                           "reaching the end of the (-1.5, 1.5) estimation"
+                           "reaching the end of the (-1.5, 1.5) estimation "
                            "range, this value should be increased. If latent "
                            "coordinates are very concentrated around (0,0) "
                            "then this value should be decreased.")

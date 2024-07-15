@@ -59,7 +59,8 @@ class ProtCryoSparc3DHomogeneousRefine(ProtCryosparcBase):
     _className = "homo_refine_new"
     ewsParamsName = []
     _protCompatibility = [V3_3_1, V3_3_2, V4_0_0, V4_0_1, V4_0_2, V4_0_3, V4_1_0,
-                          V4_1_1, V4_1_2, V4_2_0, V4_2_1, V4_3_1, V4_4_0, V4_4_1, V4_5_1]
+                          V4_1_1, V4_1_2, V4_2_0, V4_2_1, V4_3_1, V4_4_0, V4_4_1, V4_5_1,
+                          V4_5_3]
 
     # --------------------------- DEFINE param functions ----------------------
     def _defineFileNames(self):
@@ -499,9 +500,9 @@ class ProtCryoSparc3DHomogeneousRefine(ProtCryosparcBase):
         #         modifiedSet.append(item)
 
         self._defineOutputs(outputVolume=vol)
-        self._defineSourceRelation(self.inputParticles.get(), vol)
+        self._defineSourceRelation(self.inputParticles, vol)
         self._defineOutputs(outputParticles=outImgSet)
-        self._defineTransformRelation(self.inputParticles.get(), outImgSet)
+        self._defineTransformRelation(self.inputParticles, outImgSet)
         self.createFSC(idd, imgSet, vol)
 
     def _validate(self):

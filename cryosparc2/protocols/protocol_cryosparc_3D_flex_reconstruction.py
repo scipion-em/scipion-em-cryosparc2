@@ -43,7 +43,8 @@ class ProtCryoSparc3DFlexReconstruction(ProtCryosparcBase):
     """
     _label = '3D flex reconstruction'
     _devStatus = BETA
-    _protCompatibility = [V4_1_0, V4_1_1, V4_1_2, V4_2_0, V4_2_1, V4_3_1, V4_4_0, V4_4_1, V4_5_1]
+    _protCompatibility = [V4_1_0, V4_1_1, V4_1_2, V4_2_0, V4_2_1, V4_3_1, V4_4_0, V4_4_1, V4_5_1,
+                          V4_5_3]
 
     # --------------------------- DEFINE param functions ----------------------
     def _defineFileNames(self):
@@ -84,7 +85,7 @@ class ProtCryoSparc3DFlexReconstruction(ProtCryosparcBase):
                       help='Force re-splitting the particles into two random '
                            'gold-standard halves. If this is not set, split '
                            'is preserved from input alignments (if connected).'
-                           ' If the input alignments don not have equal '
+                           ' If the input alignments do not have equal '
                            'particles in each split, the job will issue a '
                            'warning but will continue.')
 

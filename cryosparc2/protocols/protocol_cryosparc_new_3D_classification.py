@@ -60,7 +60,8 @@ class ProtCryoSparcNew3DClassification(ProtCryosparcBase):
     _label = '3D Classification'
     _className = "class_3D"
     _protCompatibility = [V3_3_1, V3_3_2, V4_0_0, V4_0_1, V4_0_2, V4_0_3,
-                          V4_1_0, V4_1_1, V4_1_2, V4_2_0, V4_2_1, V4_3_1, V4_4_0, V4_4_1, V4_5_1]
+                          V4_1_0, V4_1_1, V4_1_2, V4_2_0, V4_2_1, V4_3_1, V4_4_0, V4_4_1, V4_5_1,
+                          V4_5_3]
 
     def _initialize(self):
         self._defineFileNames()
@@ -363,7 +364,7 @@ class ProtCryoSparcNew3DClassification(ProtCryosparcBase):
         self._createModelFile(csOutputFolder, itera)
 
         # Create 3D classes
-        imgSet = self._getInputParticles()
+        imgSet = self._getInputParticlesPointer()
         classes3D = self._createSetOfClasses3D(imgSet)
         self._fillClassesFromIter(classes3D, self._getFileName('out_particles'))
 
@@ -382,7 +383,7 @@ class ProtCryoSparcNew3DClassification(ProtCryosparcBase):
         volumes.setSamplingRate(vol.getSamplingRate())
 
         self._defineOutputs(outputVolumes=volumes)
-        self._defineSourceRelation(self.inputParticles.get(), volumes)
+        self._defineSourceRelation(imgSet, volumes)
 
         # Create a 3D solvent mask
         volMask = VolumeMask()
@@ -396,7 +397,7 @@ class ProtCryoSparcNew3DClassification(ProtCryosparcBase):
         sr = self._getInputParticles().getSamplingRate()
         volMask.setSamplingRate(sr)
         self._defineOutputs(solventMask=volMask)
-        self._defineSourceRelation(self.inputParticles.get(), volMask)
+        self._defineSourceRelation(imgSet, volMask)
 
         # # Create a 3D mask focus
         # volMaskFocus = VolumeMask()
