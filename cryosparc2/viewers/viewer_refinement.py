@@ -103,7 +103,7 @@ class CryosPARCViewer3DRefinement(EmProtocolViewer):
                                    )
 
                 displayChoices = ['chimera']
-            label = 'Display volume with' if not isinstance(self.protocol, ProtCryoSparc3DVariabilityDisplay) else 'Display componet with'
+            label = 'Display volume with' if not isinstance(self.protocol, ProtCryoSparc3DVariabilityDisplay) else 'Display component with'
             if is3dVariavilityProt and self.protocol.var_output_mode.get() == 0:
                 label = 'Display volume with'
                 displayChoices = ['data viewer']

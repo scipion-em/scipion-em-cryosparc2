@@ -153,7 +153,7 @@ class ProtCryoSparc3DFlexTraining(ProtCryosparcBase, ProtFlexBase):
                            "latent space. This typically needs to be tuned "
                            "for every dataset, but has relatively little "
                            "effect on results. If you notice many latent coordinates "
-                           "reaching the end of the (-1.5, 1.5) estimation"
+                           "reaching the end of the (-1.5, 1.5) estimation "
                            "range, this value should be increased. If latent "
                            "coordinates are very concentrated around (0,0) "
                            "then this value should be decreased.")
