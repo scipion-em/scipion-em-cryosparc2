@@ -41,11 +41,12 @@ from ..constants import V3_3_1, excludedFSCValues, fscValues, V4_0_0, V4_1_0
 from ..convert import convertBinaryVol, writeSetOfParticles, ImageHandler
 from ..utils import (getProjectPath, createEmptyProject,
                      createEmptyWorkSpace, getProjectName,
-                     getCryosparcProjectsDir, createProjectDir,
+                     getCryosparcProjectsDir, createProjectContainerDir,
                      doImportParticlesStar, doImportVolumes, killJob, clearJob,
                      get_job_streamlog, getSystemInfo, getJobStatus,
                      STOP_STATUSES, getCryosparcVersion, getProjectInformation,
-                     getCryosparcProjectId, _getLicenceFromFile)
+                     getCryosparcProjectId, _getLicenceFromFile, doImportMicrographs, getCryosparcProjectsList,
+                     getCryosparcWorkSpaces)
 
 
 class ProtCryosparcBase(pw.EMProtocol):
@@ -61,30 +62,33 @@ class ProtCryosparcBase(pw.EMProtocol):
         Initialize the cryoSPARC project and workspace
         """
         self._initializeUtilsVariables()
-        # create empty project or load an exists one
-        folderPaths = getProjectPath(self.projectPath)
-        if not folderPaths:
+        projectsList = getCryosparcProjectsList()
+        matchProjects = [project for project in projectsList if project.get('title') == self.projectDirName]
+        folderPaths = getProjectPath(self.projectContainerDir)
+        # create an empty project or load an exists one
+        if not matchProjects or not folderPaths:
+            # create an empty project
             self.emptyProject = createEmptyProject(self.projectPath, self.projectDirName)
             self.projectName = pwobj.String(self.emptyProject[-1].split()[-1])
             self.projectDir = pwobj.String(getProjectInformation(self.projectName,
                                            info='project_dir'))
+            # create an empty workspace
+            self.emptyWorkSpace = createEmptyWorkSpace(self.projectName, self.getRunName(),
+                                                       self.getObjComment())
+            self.workSpaceName = pwobj.String(self.emptyWorkSpace[-1].split()[-1])
+            self._store(self)
         else:
-            self.projectDir = pwobj.String(os.path.join(self.projectContainerDir,
-                                                        str(folderPaths[0])))
+            self.projectDir = pwobj.String(matchProjects[-1]['project_dir'])
             cryosparcVersion = getCryosparcVersion()
             if parse_version(cryosparcVersion) < parse_version(V4_0_0):
-                self.projectName = pwobj.String(folderPaths[0])
+                self.projectName = pwobj.String(matchProjects[-1]['title'])
             else:
-                self.projectName = pwobj.String(getCryosparcProjectId(self.projectDir))
+                self.projectName = pwobj.String(matchProjects[-1]['uid'])
+
+            workspacesList = getCryosparcWorkSpaces(str(self.projectName))
+            self.workSpaceName = pwobj.String(workspacesList[-1]['uid'])
 
         self._store(self)
-
-        # create empty workspace
-        self.emptyWorkSpace = createEmptyWorkSpace(self.projectName, self.getRunName(),
-                                      self.getObjComment())
-        self.workSpaceName = pwobj.String(self.emptyWorkSpace[-1].split()[-1])
-        self._store(self)
-
         self.currenJob = pwobj.String()
         self._store(self)
 
@@ -96,7 +100,7 @@ class ProtCryosparcBase(pw.EMProtocol):
         self.projectDirName = getProjectName(self.getProject().getShortName())
         self.projectPath = pw.pwutils.join(getCryosparcProjectsDir(),
                                         self.projectDirName)
-        self.projectContainerDir = createProjectDir(self.projectPath)[1]
+        self.projectContainerDir = createProjectContainerDir(self.projectPath)[1]
 
     def convertInputStep(self):
         """ Create the input file in STAR format as expected by Relion.
@@ -106,7 +110,7 @@ class ProtCryosparcBase(pw.EMProtocol):
         if imgSet is not None:
             # Create links to binary files and write the relion .star file
             writeSetOfParticles(imgSet, self._getFileName('input_particles'),
-                                self._getTmpPath())
+                                self._getPath())
             self._importParticles()
 
         volume = self._getInputVolume()
@@ -118,6 +122,17 @@ class ProtCryosparcBase(pw.EMProtocol):
             self._importMask()
         else:
             self.mask = pwobj.String()
+
+        focusMask = self._getInputFocusMask()
+        if focusMask is not None:
+            self._importFocusMask()
+        else:
+            self.focusMask = pwobj.String()
+
+        micrographs = self._getInputMicrographs()
+        if micrographs is not None:
+            self._importMicrographs()
+
         self._store(self)
 
     def _getScaledAveragesFile(self, csAveragesFile, force=False):
@@ -177,6 +192,11 @@ class ProtCryosparcBase(pw.EMProtocol):
             return self.inputParticles.get()
         return None
 
+    def _getInputParticlesPointer(self):
+        if self.hasAttribute('inputParticles'):
+            return self.inputParticles
+        return None
+
     def _getInputVolume(self):
         if self.hasAttribute('refVolume'):
             return self.refVolume.get()
@@ -187,9 +207,19 @@ class ProtCryosparcBase(pw.EMProtocol):
             return self.refMask.get()
         return None
 
+    def _getInputFocusMask(self):
+        if self.hasAttribute('refFocusMask'):
+            return self.refFocusMask.get()
+        return None
+
+    def _getInputMicrographs(self):
+        if self.hasAttribute('inputMicrographs'):
+            return self.inputMicrographs.get()
+        return None
+
     def _initializeVolumeSuffix(self):
         """
-        Create a output volume suffix depend of the CS version
+        Create an output volume suffix depend on the CS version
         """
         cryosparcVersion = parse_version(getCryosparcVersion())
         self.outputVolumeSuffix = '.imported_volume.map'
@@ -202,14 +232,14 @@ class ProtCryosparcBase(pw.EMProtocol):
             self.outputVolumeHalf_A = '.imported_volume_1.map_half_A'
             self.outputVolumeHalf_B = '.imported_volume_1.map_half_B'
 
-    def _initializeMaskSuffix(self):
+    def _initializeMaskSuffix(self, sufix='.imported_mask_1.map'):
         """
         Create a output mask suffix depend of the CS version
         """
         cryosparcVersion = parse_version(getCryosparcVersion())
         self.outputMaskSuffix = '.imported_mask.map'
         if cryosparcVersion >= parse_version(V3_3_1):
-            self.outputMaskSuffix = '.imported_mask_1.map'
+            self.outputMaskSuffix = sufix
 
     def _importVolume(self):
         vol = self._getInputVolume()
@@ -242,13 +272,29 @@ class ProtCryosparcBase(pw.EMProtocol):
         self.currenJob.set(importMaskJob.get())
         self.mask = pwobj.String(str(importMaskJob.get()) + self.outputMaskSuffix)
 
-    def _importParticles(self):
+    def _importFocusMask(self):
+        self._initializeMaskSuffix()
+        maskFn = os.path.join(os.getcwd(), convertBinaryVol(self._getInputFocusMask(),
+                                                            self._getTmpPath()))
 
+        importFocusMaskJob = doImportVolumes(self, maskFn, self._getInputMask(),
+                                             'mask', 'Importing focus mask... ')
+        self.currenJob.set(importFocusMaskJob.get())
+        self.focusMask = pwobj.String(str(importFocusMaskJob.get()) + self.outputMaskSuffix)
+
+    def _importParticles(self):
         # import_particles_star
         importedParticlesJob = doImportParticlesStar(self)
         self.currenJob = pwobj.String(str(importedParticlesJob.get()))
         self.particles = pwobj.String(str(importedParticlesJob.get()) +
                                       '.imported_particles')
+
+    def _importMicrographs(self):
+        importedMicrographsJob = doImportMicrographs(self)
+        self.currenJob = pwobj.String(str(importedMicrographsJob.get()))
+        self.micrographs = pwobj.String(str(importedMicrographsJob.get()) +
+                                      '.imported_micrographs')
+
 
     def setAborted(self):
         """ Set the status to aborted and updated the endTime. """

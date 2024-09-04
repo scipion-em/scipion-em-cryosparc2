@@ -24,8 +24,9 @@
 # *  e-mail address 'scipion@cnb.csic.es'
 # *
 # **************************************************************************
+from pwem.objects import Volume
 from pyworkflow import BETA
-from pyworkflow.protocol.params import (PointerParam,  IntParam,  BooleanParam)
+from pyworkflow.protocol.params import (PointerParam,  BooleanParam)
 from . import ProtCryosparcBase
 from ..convert import *
 from ..utils import *
@@ -42,7 +43,8 @@ class ProtCryoSparc3DFlexReconstruction(ProtCryosparcBase):
     """
     _label = '3D flex reconstruction'
     _devStatus = BETA
-    _protCompatibility = [V4_1_0, V4_1_1, V4_1_2, V4_2_0, V4_2_1, V4_3_1, V4_4_0]
+    _protCompatibility = [V4_1_0, V4_1_1, V4_1_2, V4_2_0, V4_2_1, V4_3_1, V4_4_0, V4_4_1, V4_5_1,
+                          V4_5_3]
 
     # --------------------------- DEFINE param functions ----------------------
     def _defineFileNames(self):
@@ -83,7 +85,7 @@ class ProtCryoSparc3DFlexReconstruction(ProtCryosparcBase):
                       help='Force re-splitting the particles into two random '
                            'gold-standard halves. If this is not set, split '
                            'is preserved from input alignments (if connected).'
-                           ' If the input alignments don not have equal '
+                           ' If the input alignments do not have equal '
                            'particles in each split, the job will issue a '
                            'warning but will continue.')
 
@@ -112,12 +114,57 @@ class ProtCryoSparc3DFlexReconstruction(ProtCryosparcBase):
         self.doRun3DFlexReconstruction()
 
     def createOutputStep(self):
-        pass
+        """
+         Create the protocol output.  """
+        self._initializeUtilsVariables()
+        csOutputFolder = os.path.join(self.projectDir.get(),
+                                      self.run3DFlexReconstructionJob.get())
+        csOutputPattern = "%s%s" % (getOutputPreffix(self.projectName.get()),
+                                    self.run3DFlexReconstructionJob.get())
+
+        # Flex volume
+        fnFlexVolName = csOutputPattern + "_flex_map.mrc"
+        flexHalf1Name = csOutputPattern + "_flex_map_half_A.mrc"
+        flexHalf2Name = csOutputPattern + "_flex_map_half_B.mrc"
+
+        # No Flex volume
+        fnNoFlexVolName = csOutputPattern + "_noflex_map.mrc"
+        flexNoHalf1Name = csOutputPattern + "_noflex_map_half_A.mrc"
+        flexNoHalf2Name = csOutputPattern + "_noflex_map_half_B.mrc"
+
+        # Copy the CS output volume and half to extra folder
+        copyFiles(csOutputFolder, self._getExtraPath(), files=[fnFlexVolName, flexHalf1Name, flexHalf2Name,
+                                                               fnNoFlexVolName, flexNoHalf1Name, flexNoHalf2Name])
+
+        fnVol = os.path.join(self._getExtraPath(), fnFlexVolName)
+        half1 = os.path.join(self._getExtraPath(), flexHalf1Name)
+        half2 = os.path.join(self._getExtraPath(), flexHalf2Name)
+
+        flexVol = Volume()
+        fixVolume([fnVol, half1, half2])
+        flexVol.setFileName(fnVol)
+        ccp4header = Ccp4Header(fnVol, readHeader=True)
+        flexVol.setSamplingRate(ccp4header.getSampling()[0])
+        flexVol.setHalfMaps([half1, half2])
+
+        fnVol = os.path.join(self._getExtraPath(), fnNoFlexVolName)
+        half1 = os.path.join(self._getExtraPath(), flexNoHalf1Name)
+        half2 = os.path.join(self._getExtraPath(), flexNoHalf2Name)
+
+        noFlexVol = Volume()
+        fixVolume([fnVol, half1, half2])
+        noFlexVol.setFileName(fnVol)
+        ccp4header = Ccp4Header(fnVol, readHeader=True)
+        noFlexVol.setSamplingRate(ccp4header.getSampling()[0])
+        noFlexVol.setHalfMaps([half1, half2])
+
+        self._defineOutputs(flexVolume=flexVol)
+        self._defineOutputs(noFlexVolume=noFlexVol)
 
     def _defineParamsName(self):
         """ Define a list with 3D Flex Reconstruction parameters names"""
         self._paramsName = ['flex_do_noflex_recon', 'flex_bfgs_num_iters',
-                            'refine_gs_resplit']
+                            'refine_gs_resplit', 'compute_use_ssd']
         self.lane = str(self.getAttributeValue('compute_lane'))
 
     def doRun3DFlexReconstruction(self):

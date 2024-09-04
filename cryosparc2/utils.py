@@ -24,6 +24,7 @@
 # *  e-mail address 'scipion@cnb.csic.es'
 # *
 # **************************************************************************
+import ast
 import getpass
 import logging
 import os
@@ -61,6 +62,27 @@ _csVersion = None  # Lazy variable: never use it directly. Use getCryosparcVersi
 
 # logging variable
 logger = logging.getLogger(__name__)
+
+
+class NestedDict:
+    def __init__(self, depth=1):
+        self.data = {}
+        self.depth = depth
+
+    def insert(self, keys, value):
+        current = self.data
+        for key in keys[:self.depth - 1]:
+            current = current.setdefault(key, {})
+        current[keys[self.depth - 1]] = value
+
+    def search(self, keys):
+        current = self.data
+        for key in keys[:self.depth]:
+            if key in current:
+                current = current[key]
+            else:
+                return None
+        return current
 
 
 def getCryosparcDir(*paths):
@@ -149,10 +171,13 @@ def cryosparcValidate():
                                 " at https://github.com/scipion-em/scipion-em-cryosparc2"
                                 % (cryosparcVersion, str(supportedVersions).replace('\'', ''))))
 
-    if cryosparcVersion >= parse_version(V4_1_0) and not userExist(os.environ.get(CRYOSPARC_USER)):
-        return ["You need to define the cryoSPARC user variable "
-                "(CRYOSPARC_USER) in the Scipion config file. Note that the "
-                "cryoSPARC username is the email address."]
+    if cryosparcVersion >= parse_version(V4_1_0):
+        if not os.environ.get(CRYOSPARC_USER):
+            return ["You need to define the cryoSPARC user variable "
+                    "(CRYOSPARC_USER) in the Scipion config file. Note that the "
+                    "cryoSPARC username is the email address."]
+        elif not userExist(os.environ.get(CRYOSPARC_USER)):
+            return ["The user defined in the Scipion config file does not exist within CS."]
 
     return []
 
@@ -222,6 +247,32 @@ def getCryosparcUser(userId=True):
             user = getUserId(user)
 
     return user
+
+
+def getCryosparcProjectsList():
+    """
+    Get list of all projects available
+    :return: all projects available in the database
+    """
+    projects_list_cmd = (getCryosparcProgram() + ' %slist_projects()%s ' % ("'", "'"))
+    cmd = runCmd(projects_list_cmd, printCmd=False)[1]
+    projectList = ast.literal_eval(cmd)
+    return projectList
+
+
+def getCryosparcWorkSpaces(projectId):
+    """ List all workspaces inside a given project (or all projects if not
+    specified)
+
+    :param projectId: target project UID, e.g. "P1", defaults to None
+    :type projectId: str, optional
+    :return: list of workpaces in a project or all projects if not specified
+    :rtype: list
+    """
+    workspace_list_cmd = (getCryosparcProgram() + ' %slist_workspaces("%s")%s ' % ("'", str(projectId), "'"))
+    cmd = runCmd(workspace_list_cmd, printCmd=False)[1]
+    workspacesList = ast.literal_eval(cmd)
+    return workspacesList
 
 
 def isCryosparcStandalone():
@@ -314,9 +365,10 @@ def getProjectInformation(project_uid, info='project_dir'):
     """
     Get information about a single project
     :param project_uid: the id of the project
-    :return: the information related to the project thats stored in the database
+    :return: the information related to the project that's stored in the database
     """
     import ast
+    from cryosparc.tools import CryoSPARC
     getProject_cmd = (getCryosparcProgram() +
                                 ' %sget_project("%s")%s '
                                 % ("'", str(project_uid), "'"))
@@ -354,7 +406,7 @@ def getOutputPreffix(projectName):
     return preffix
 
 
-def createProjectDir(project_container_dir):
+def createProjectContainerDir(project_container_dir):
     """
     Given a "root" directory, create a project (PXXX) dir if it doesn't already
      exist
@@ -396,7 +448,7 @@ def doImportParticlesStar(protocol):
     params = {"particle_meta_path": str(os.path.join(os.getcwd(),
                                                      protocol._getFileName('input_particles'))),
               "particle_blob_path": str(os.path.join(os.getcwd(),
-                                                     protocol._getTmpPath())),
+                                                     protocol._getPath())),
               "psize_A": str(protocol._getInputParticles().getSamplingRate())
               }
 
@@ -433,6 +485,41 @@ def doImportVolumes(protocol, refVolumePath, refVolume, volType, msg):
                      )
 
     return importedVolume
+
+
+def doImportMicrographs(protocol):
+    print(pwutils.yellowStr("Importing micrographs..."), flush=True)
+    className = "import_micrographs"
+    micrographs = protocol._getInputMicrographs()
+    acquisition = micrographs.getAcquisition()
+    micList = list(micrographs.getFiles())
+
+    micFolder = os.path.join(protocol._getExtraPath('micrographs'))
+    os.makedirs(micFolder, exist_ok=True)
+
+    for micPath in micList:
+        micName = os.path.basename(micPath)
+        micLink = os.path.join(micFolder, micName)
+        os.symlink(os.path.abspath(micPath), micLink)
+    micExt = '*%s' % os.path.splitext(micList[0])[1]
+
+    params = {"blob_paths": str(os.path.join(os.getcwd(), micFolder, micExt)),
+              "psize_A": str(micrographs.getSamplingRate()),
+              "accel_kv": str(acquisition.getVoltage()),
+              "cs_mm": str(acquisition.getSphericalAberration()),
+              "total_dose_e_per_A2": str(0.1),
+              "output_constant_ctf": "True"
+              }
+
+    import_particles = enqueueJob(className, protocol.projectName, protocol.workSpaceName,
+                                  str(params).replace('\'', '"'), '{}', protocol.lane)
+
+    waitForCryosparc(protocol.projectName.get(), import_particles.get(),
+                     "An error occurred importing particles. "
+                     "Please, go to cryoSPARC software for more "
+                     "details.")
+
+    return import_particles
 
 
 def doJob(jobType, projectName, workSpaceName, params, input_group_connect):
@@ -570,19 +657,117 @@ def enqueueJob(jobType, projectName, workSpaceName, params, input_group_connect,
     return jobId
 
 
+def customLatentTrajectory(latentsPoints, projectId, workspaceId, trainingJobId):
+    """Output the trajectory as a new output in CryoSPARC.
+       The resulting trajectory may be used as input to the 3D Flex Generator job
+       to generate a volume series along the trajectory."""
+    from cryosparc.tools import CryoSPARC
+
+    credentials = _getCredentials()
+    if not credentials[0]:
+        logger.error("Error obtaining cryoSPARC's credentials: %s" % credentials[1])
+        raise Exception("Error obtaining cryoSPARC's credentials: %s" % credentials[1])
+
+    credentials = credentials[1]
+    cs = CryoSPARC(license=credentials['license'],
+                   host=credentials['host'],
+                   base_port=int(credentials['base_port']),
+                   email=credentials['email'],
+                   password=credentials['password'])
+
+    project = cs.find_project(projectId)
+    particles = project.find_job(trainingJobId).load_output("particles")
+    numComponents = int(len([x for x in particles.fields() if "components_mode" in x]) / 2)
+    slot_spec = [{"dtype": "components", "prefix": f"components_mode_{k}", "required": True} for k in
+                 range(numComponents)]
+    job = project.create_external_job(workspaceId, "Custom Latents")
+    job.connect("particles", trainingJobId, "particles", slots=slot_spec)
+
+    if len(latentsPoints.shape) == 1:
+        latentsPoints = latentsPoints[None, ...]
+
+    latentsDSet = job.add_output(
+        type="particle",
+        name="latents",
+        slots=slot_spec,
+        title="Latents",
+        alloc=len(latentsPoints),
+    )
+
+    for k in range(numComponents):
+        latentsDSet[f"components_mode_{k}/component"] = k
+        latentsDSet[f"components_mode_{k}/value"] = latentsPoints[:, k]
+
+    # Save the output
+    with job.run():
+        job.save_output("latents", latentsDSet)
+
+    return job.uid
+
+
+def runFlexGeneratorJob(trainingJobId, customLatentsJobId, projectId, workspaceId, gpu=0, lane='default'):
+    """Generate a volume series along the trajectory using a flex model."""
+    className = "flex_generate"
+    gpusToUse = [gpu]
+    input_group_connect = {"flex_model": "%s.flex_model" % trainingJobId,
+                           "latents": "%s.latents" % customLatentsJobId}
+    params = {}
+
+    run3DFlexGeneratorJob = enqueueJob(className,
+                                       projectId,
+                                       workspaceId,
+                                       str(params).replace('\'', '"'),
+                                       str(input_group_connect).replace('\'', '"'),
+                                       lane, gpusToUse)
+
+    waitForCryosparc(projectId,
+                     run3DFlexGeneratorJob,
+                     "An error occurred in the 3D Flex Training process. "
+                     "Please, go to cryoSPARC software for more "
+                     "details.")
+    clearIntermediateResults(projectId,
+                             run3DFlexGeneratorJob)
+
+    return run3DFlexGeneratorJob
+
+
+def generateFlexVolumes(latentsPoints, projectId, workspaceId, trainingJobId, gpu=0):
+    """Load particle latent coordinates from a 3D Flex Training job and use the 3D Flex Generator job to
+        generate a volume series along the trajectory.
+        This method allows(FlexUtils plugin) visualizing specific regions or pathways through the latent conformational distribution
+        of the particle."""
+    try:
+        latentTrajectoryJob = customLatentTrajectory(latentsPoints,
+                                                     projectId,
+                                                     workspaceId,
+                                                     trainingJobId)
+        flexGeneratorJob = runFlexGeneratorJob(trainingJobId,
+                                               latentTrajectoryJob,
+                                               projectId,
+                                               workspaceId,
+                                               gpu)
+
+        return flexGeneratorJob
+    except Exception as ex:
+        raise Exception("Error generating the flex volume : %s" % ex)
+
+
 def runCmd(cmd, printCmd=True):
-    """ Runs a command and check its exit code. If different than 0 it raises an exception
+    """ Runs a command and check its exit code. If different from 0 it raises an exception
     :parameter cmd command to run
     :parameter printCmd (default True) prints the command"""
     import subprocess
     if printCmd:
         logger.info(pwutils.greenStr("Running: %s" % cmd))
+    else:
+        logger.debug(pwutils.greenStr("Running: %s" % cmd))
+
     exitCode, cmdOutput = subprocess.getstatusoutput(cmd)
 
     if exitCode != 0:
         raise Exception("%s failed --> Exit code %s, message %s" % (cmd, exitCode, cmdOutput))
 
-    return exitCode, cmdOutput
+    return exitCode, cmdOutput.split('\n')[-1]
 
 
 def waitForCryosparc(projectName, jobId, failureMessage):
@@ -717,6 +902,33 @@ def getUserId(email):
     getUser_cmd = (getCryosparcProgram() + ' %sGetUser("%s")%s' % ("'", email, "'"))
     user = runCmd(getUser_cmd, printCmd=False)
     return ast.literal_eval(user[1])['_id']
+
+
+def _getCredentials():
+    licence = _getLicenceFromFile()
+    if licence is None:
+        return False, 'Error obtaining cryoSPARC license'
+
+    csIsRunning = isCryosparcRunning()
+    if csIsRunning:
+        hostName = getCryosparcEnvInformation('master_hostname')
+        basePort = getCryosparcEnvInformation('port_app')
+
+        email = Plugin.getUser()
+        if email is None:
+            return False, 'Error obtaining the cryoSPARC user'
+
+        password = Plugin.getUserPassword()
+        if password is None:
+            return False, 'Error obtaining the %s password ' % email
+
+        return True, {'license': licence,
+                    'host': hostName,
+                    'base_port': basePort,
+                    'email': email,
+                    'password': password}
+
+    return False, 'Cryosparc is not running'
 
 
 def getSchedulerLanes():

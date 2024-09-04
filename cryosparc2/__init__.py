@@ -31,7 +31,7 @@ import pyworkflow.utils as pwutils
 
 from .constants import *
 
-__version__ = '4.0.9'
+__version__ = '4.1.4'
 _references = ['Punjani2017', 'Brubaker2017', 'daniel_asarnow_2019_3576630']
 _logo = 'cryosparc2_logo.png'
 
@@ -40,14 +40,16 @@ class Plugin(em.Plugin):
     _url = "https://github.com/scipion-em/scipion-em-cryosparc2"
     _homeVar = CRYOSPARC_HOME
     _pathVars = [CRYOSPARC_HOME]
-    _supportedVersions = [V3_0_0, V3_0_1, V3_1_0, V3_2_0, V3_3_0, V3_3_1,
-                          V3_3_2, V4_0_0, V4_0_1, V4_0_2, V4_0_3, V4_1_0,
-                          V4_1_1, V4_1_2, V4_2_0, V4_2_1, V4_3_1, V4_4_0]
+    _supportedVersions = SUPORTED_VERSIONS
 
     @classmethod
     def _defineVariables(cls):
         cls._defineVar(CRYOSPARC_HOME, os.environ.get(CRYOSPARC_DIR, ""))
         cls._defineVar(CRYO_PROJECTS_DIR, "scipion_projects")
+        cls._defineVar(CRYOSPARC_PASSWORD, None, description='The password with which cryoSPARC was installed. '
+                                                             'This is only required for the use of the Flexutils '
+                                                             'plugin and its connection to the 3D flex training protocol.')
+        cls._defineVar(CRYOSPARC_USER, None, description='This is the email with which cryoSPARC was installed.')
 
     @classmethod
     def getPyemEnvActivation(cls):
@@ -74,14 +76,25 @@ class Plugin(em.Plugin):
         return neededProgs
 
     @classmethod
+    def getUserPassword(cls):
+        """Get the user password taking into account the environment variable"""
+        return cls.getVar(CRYOSPARC_PASSWORD)
+
+    @classmethod
+    def getUser(cls):
+        """Get the user email taking into account the environment variable"""
+        return cls.getVar(CRYOSPARC_USER)
+
+    @classmethod
     def addPyemPackage(cls, env):
         PYEM_INSTALLED = f"pyem_{PYEM_VERSION}_installed"
         ENV_NAME = getPyemEnvName(PYEM_VERSION)
 
         installCmd = ["pip uninstall -y pyem && ",
                       cls.getCondaActivationCmd(),
+                      f'conda env remove -y -n pyem-23.01.25 && ',
                       f'conda create -y -n {ENV_NAME} python=3.8 -c conda-forge -c anaconda && ',
-                      f'conda activate {ENV_NAME} && pip install git+https://github.com/asarnow/pyem.git@47cf8f70488500be5988b4db1b6ef7002916e0e0 && pip install numpy==1.23.5']
+                      f'conda activate {ENV_NAME} && pip install git+https://github.com/asarnow/pyem.git@0394d5bf6096377ca7cc7b6dd74484f1f40f37a8 && pip install numpy==1.23.5']
 
         # install pyem
         #installCmd.append('pip install git+https://github.com/asarnow/pyem.git@47cf8f70488500be5988b4db1b6ef7002916e0e0')

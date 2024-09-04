@@ -24,26 +24,44 @@ You will need to use `3.0.0 <https://scipion-em.github.io/docs/release-3.0.0/doc
 * **Symmetry Expansion**: Duplicate particles around a point-group symmetry.
 * **Homogeneous Reconstruction**: Reconstruct half-maps from input particles with alignments
 * **3D Classification**: Classify particles into multiple 3D classes and optimize 3D class densities (currently, without re-aligning particle pose or shift).
+* **3D Variability Analysis**: Protocol to compute the principle modes of variability with a dataset of aligned particles
+* **3D Variability Display**: Protocol to create various versions of a 3D variability result that can be used for display
+* **Blob Picker**: Automatically picks particles by searching for Gaussian signals.
+* **Patch CTF Estimation**:  Patch-based CTF estimation automatically estimates defocus variation for tilted, bent, deformed samples and is accurate for all particle sizes and types including flexible and membrane proteins.
+* **3D Flex Data Prep**: Prepares particles for use in 3DFlex training and reconstruction. At the same  way,  Takes in a consensus (rigid) refinement density map, plus optionally a segmentation and generates a tetrahedral mesh for 3DFlex.
+* **3D Flex Mesh Prep**: Takes in a consensus (rigid) refinement density map, plus optionally a segmentation and generates a tetrahedral mesh for 3DFlex. See Mesh Generation below.
+* **3D Flex Training**: Uses a mesh and prepared particles (at a downsampled resolution) to train a 3DFlex model. Parameters control the number of latent dimensions, size of the model, and training hyperparameters. This job outputs checkpoints during training.
+* **3D Flex Reconstruction**: Takes in a checkpoint from training as well as prepared high-resolution particles and performs high-resolution refinement using L-BFGS under the 3DFlex model. This is the stage at which improvements to density in high-res regions are computed. Outputs two half-maps that can be used for FSC validation, sharpening, and other downstream tasks.
+
 
 **Latest plugin version**
 ==========================
 
-**v4.0.9**
+**v4.1.4**
 -----------
-* **new**        Compatibility with cryoSPARC v4.4.0
-* **fixed**      Handling aborted protocols/jobs
 
-**v4.0.8**
------------
-* **new**        Compatibility with cryoSPARC v4.3.1
-* **removed**    Deprecated protocols removed: Legacy Refine, Legacy no uniform refine, Legacy naive local refine.
+* **new**        Compatibility with cryoSPARC v4.5.3
+* **new**        Flexibility protocols can launch CS viewer
 
-**v4.0.7**
+**v4.1.3**
 -----------
-* **new**     :  Compatibility with cryoSPARC v4.2.1
-* **new**        Plugin operation in a cluster
-* **fixed**      Fixed an installation error
-* **fixed**      Fixed an error related with the calculation of the particles shifts
+
+* **new**        Compatibility with cryoSPARC v4.5.1
+* **new**        Registering flex particles
+* **new**        Integration with FlexUtils plugin
+
+**v4.1.2**
+-----------
+* **fixed**       Tolerating deletion of projects within CS as well as their folders in the file system
+
+* **new**         Add new protocols:
+                    * **3D Flex Data Prep**: Prepares particles for use in 3DFlex training and reconstruction. At the same  way,  Takes in a consensus (rigid) refinement density map, plus optionally a segmentation and generates a tetrahedral mesh for 3DFlex.
+                    * **3D Flex Mesh Prep**: Takes in a consensus (rigid) refinement density map, plus optionally a segmentation and generates a tetrahedral mesh for 3DFlex. See Mesh Generation below.
+                    * **3D Flex Training**: Uses a mesh and prepared particles (at a downsampled resolution) to train a 3DFlex model. Parameters control the number of latent dimensions, size of the model, and training hyperparameters. This job outputs checkpoints during training.
+                    * **3D Flex Reconstruction**: Takes in a checkpoint from training as well as prepared high-resolution particles and performs high-resolution refinement using L-BFGS under the 3DFlex model. This is the stage at which improvements to density in high-res regions are computed. Outputs two half-maps that can be used for FSC validation, sharpening, and other downstream tasks.
+
+* **new**         Allowing Scipion to import coordinates
+
 
 **Installing the plugin**
 =========================
@@ -81,6 +99,12 @@ cryoSPARC v2 when new versions become available.
        CRYOSPARC_USER = <user_name>
 
        # Optional variables
+       ---------------------
+
+       # The password with which cryoSPARC was installed.
+       # This is only required for the use of the Flexutils plugin and its
+       # connection to the 3D flex training protocol.
+       CRYOSPARC_PASSWORD = <password>
 
        #Folder (available to all workers) where scipion will create cryosparc projects
        CRYO_PROJECTS_DIR = <path> (default to <CRYOSPARC_HOME>/scipion_projects)
