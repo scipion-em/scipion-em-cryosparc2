@@ -28,6 +28,7 @@
 import os
 import pwem as em
 import pyworkflow.utils as pwutils
+from pyworkflow import VarTypes
 
 from .constants import *
 
@@ -44,11 +45,18 @@ class Plugin(em.Plugin):
 
     @classmethod
     def _defineVariables(cls):
-        cls._defineVar(CRYOSPARC_HOME, os.environ.get(CRYOSPARC_DIR, ""))
-        cls._defineVar(CRYO_PROJECTS_DIR, "scipion_projects")
-        cls._defineVar(CRYOSPARC_PASSWORD, None, description='The password with which cryoSPARC was installed. '
-                                                             'This is only required for the use of the Flexutils '
-                                                             'plugin and its connection to the 3D flex training protocol.')
+        cls._defineVar(CRYOSPARC_HOME, os.environ.get(CRYOSPARC_DIR, ""),
+                       description="The root directory where cryoSPARC is installed. Inside it you may have cryosparc_master folder.",
+                       var_type=VarTypes.FOLDER)
+
+        cls._defineVar(CRYO_PROJECTS_DIR, "scipion_projects",
+                       description="Folder (available to all workers) where scipion will create cryosparc projects. "
+                                   "(default to <CRYOSPARC_HOME>/scipion_projects)",
+                       var_type=VarTypes.FOLDER)
+
+        cls._defineVar(CRYOSPARC_PASSWORD, None,
+                       description='The password with which cryoSPARC was installed. This is only required for the use '
+                                   'of the Flexutils plugin and its connection to the 3D flex training protocol.')
         cls._defineVar(CRYOSPARC_USER, None, description='This is the email with which cryoSPARC was installed.')
 
     @classmethod
