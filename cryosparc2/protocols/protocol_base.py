@@ -277,7 +277,7 @@ class ProtCryosparcBase(pw.EMProtocol):
         maskFn = os.path.join(os.getcwd(), convertBinaryVol(self._getInputFocusMask(),
                                                             self._getTmpPath()))
 
-        importFocusMaskJob = doImportVolumes(self, maskFn, self._getInputMask(),
+        importFocusMaskJob = doImportVolumes(self, maskFn, self._getInputFocusMask(),
                                              'mask', 'Importing focus mask... ')
         self.currenJob.set(importFocusMaskJob.get())
         self.focusMask = pwobj.String(str(importFocusMaskJob.get()) + self.outputMaskSuffix)

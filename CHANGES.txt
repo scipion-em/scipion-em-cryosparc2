@@ -1,8 +1,11 @@
 
-May 17, 2024  - **v4.1.4**
+Oct 10, 2024  - **v4.1.5**
+                Compatibility with cryoSPARC v4.6
+
+Aug 28, 2024  - **v4.1.4**
                 Compatibility with cryoSPARC v4.5.3
 
-May 17, 2024  - **v4.1.2**
+May 19, 2024  - **v4.1.2**
 
                 fixed: Installation Hot fix
 
