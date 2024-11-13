@@ -36,6 +36,10 @@ You will need to use `3.0.0 <https://scipion-em.github.io/docs/release-3.0.0/doc
 
 **Latest plugin version**
 ==========================
+**v4.1.6**
+-----------
+
+* **fixed**      Fix parameter mask help as described in https://github.com/scipion-em/scipion-em-cryosparc2/issues/170
 
 **v4.1.5**
 -----------
