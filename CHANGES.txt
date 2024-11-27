@@ -1,3 +1,5 @@
+Nov 13, 2024  - **v4.1.6**
+                Fix parameter mask help as described in https://github.com/scipion-em/scipion-em-cryosparc2/issues/170
 
 Oct 10, 2024  - **v4.1.5**
                 Compatibility with cryoSPARC v4.6
