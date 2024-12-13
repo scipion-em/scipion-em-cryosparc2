@@ -81,14 +81,10 @@ class ProtCryoSparcHomogeneousReconstruct(ProtCryosparcBase):
                       label="Input particles", important=True,
                       help='Select the experimental particles.')
         form.addParam('refMask', PointerParam, pointerClass='VolumeMask',
-                      label='Mask to be applied to this map',
+                      label='Mask used for computing FSC',
                       allowsNull=True,
-                      help="Provide a soft mask where the protein density "
-                           "you wish to subtract from the experimental "
-                           "particles is white (1) and the rest of the "
-                           "protein and the solvent is black (0). "
-                           "That is: *the mask should INCLUDE the part of the "
-                           "volume that you wish to SUBTRACT.*")
+                      help="The mask is used for computing"
+                           "the FSC between the reconstructed half-maps")
 
         form.addSection(label='Homogeneous Reconstruction')
 
