@@ -212,13 +212,14 @@ class TestFlex(BaseTest):
             args += " -o %s" % vol.replace(".vol", ".mrcs")
             args += f" --sampling_rate {angular_sampling_rate}"
             args += " --sym c1"
-            args += " --method real_space&"
+            args += " --method real_space"
+            # args += " --method real_space&"
             progname = "xmipp_angular_project_library"
             self.xmipp3.Plugin.runXmippProgram(progname, args)
             projStackNames.append(vol.replace(".vol", ".doc"))
         # For production remove '&' and sleep
-        import time
-        time.sleep(25)
+        # import time
+        # time.sleep(25)
         return projStackNames
 
     def createCTFdata(self):
