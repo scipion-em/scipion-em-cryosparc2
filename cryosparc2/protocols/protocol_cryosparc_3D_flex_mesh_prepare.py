@@ -203,39 +203,16 @@ class ProtCryoSparc3DFlexMeshPrepare(ProtCryosparcBase):
         """
         Create the protocol output. Convert cryosparc file to Relion file
         """
-        pass
-        # print(pwutils.yellowStr("Creating the output..."), flush=True)
-        # csOutputFolder = os.path.join(self.projectDir.get(),
-        #                               self.run3DFlexDataPrepJob.get())
-        # csParticlesName = "%s_passthrough_particles.cs" % self.run3DFlexDataPrepJob.get()
-        # fnVolName = "%s_map.mrc" % self.run3DFlexDataPrepJob.get()
-        #
-        # # Copy the CS output volume and half to extra folder
-        # copyFiles(csOutputFolder, self._getExtraPath(), files=[csParticlesName,
-        #                                                        fnVolName])
-        #
-        # csFile = os.path.join(self._getExtraPath(), csParticlesName)
-        #
-        # outputStarFn = self._getFileName('out_particles')
-        # argsList = [csFile, outputStarFn]
-        # convertCs2Star(argsList)
-        #
-        # fnVol = os.path.join(self._getExtraPath(), fnVolName)
-        # imgSet = self._getInputParticles()
-        # vol = Volume()
-        # fixVolume([fnVol])
-        # vol.setFileName(fnVol)
-        # vol.setSamplingRate(calculateNewSamplingRate(vol.getDim(),
-        #                                              imgSet.getSamplingRate(),
-        #                                              imgSet.getDim()))
-        # outImgSet = self._createSetOfParticles()
-        # outImgSet.copyInfo(imgSet)
-        # self._fillDataFromIter(outImgSet)
-        #
-        # self._defineOutputs(outputVolume=vol)
-        # self._defineSourceRelation(self.inputParticles.get(), vol)
-        # self._defineOutputs(outputParticles=outImgSet)
-
+        # save pdb file with mesh
+        # this will not be scipion output
+        # I just want to display it in the viewer
+        jobId = self.run3DFlexMeshPrep
+        csOutputFolder = os.path.join(self.projectDir.get(),
+                                       self.run3DFlexMeshPrep.get())
+        pdbMeshName = "%s_mesh_pdb.pdb" % jobId
+        csOutputFolder = os.path.join(self.projectDir.get(),
+                                      self.run3DFlexMeshPrep.get())
+        copyFiles(csOutputFolder, self._getExtraPath(), files=[pdbMeshName])
     # ------------------------- Utils methods ----------------------------------
 
     def _fillDataFromIter(self, imgSet):
@@ -294,17 +271,17 @@ class ProtCryoSparc3DFlexMeshPrepare(ProtCryosparcBase):
                                                                            '"'),
                                           self.lane, False)
 
-        self.run3DFlexMeshPrepJob = String(run3DFlexMeshPrepJob.get())
-        self.currenJob.set(self.run3DFlexMeshPrepJob.get())
+        self.run3DFlexMeshPrep = String(run3DFlexMeshPrepJob.get())
+        self.currenJob.set(run3DFlexMeshPrepJob.get())
         self._store(self)
 
         waitForCryosparc(self.projectName.get(),
-                         self.run3DFlexMeshPrepJob.get(),
+                         self.run3DFlexMeshPrep.get(),
                          "An error occurred in the 3D Flex Mesh Preparation process. "
                          "Please, go to cryoSPARC software for more "
                          "details.")
         clearIntermediateResults(self.projectName.get(),
-                                 self.run3DFlexMeshPrepJob.get())
+                                 self.run3DFlexMeshPrep.get())
 
 
 
