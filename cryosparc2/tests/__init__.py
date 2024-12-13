@@ -26,3 +26,4 @@
 # **************************************************************************
 
 from .test_protocols_cryosparc2 import *
+from .test_flex import *  # TestFlexWorkflow
