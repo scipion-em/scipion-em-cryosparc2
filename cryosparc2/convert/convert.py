@@ -644,6 +644,10 @@ def rowToParticle(partRow, particleClass=Particle, **kwargs):
 
     # Provide a hook to be used if something is needed to be
     # done for special cases before converting image to row
+    samplingRate = kwargs.get('samplingRate', None)
+    if samplingRate:
+        img.setSamplingRate(samplingRate)
+
     preprocessImageRow = kwargs.get('preprocessImageRow', None)
     if preprocessImageRow:
         preprocessImageRow(img, partRow)

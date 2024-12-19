@@ -42,6 +42,7 @@ from ..constants import *
 class outputs(Enum):
     Particles = SetOfParticles
 
+
 class ProtCryoSparc3DFlexTraining(ProtCryosparcBase, ProtFlexBase):
     """
     Uses a mesh and prepared particles (at a downsampled resolution) to train
@@ -52,7 +53,7 @@ class ProtCryoSparc3DFlexTraining(ProtCryosparcBase, ProtFlexBase):
     _label = '3D flex training'
     _devStatus = BETA
     _protCompatibility = [V4_1_0, V4_1_1, V4_1_2, V4_2_0, V4_2_1, V4_3_1, V4_4_0, V4_4_1, V4_5_1,
-                          V4_5_3, V4_6_0]
+                          V4_5_3, V4_6_0, V4_6_1, V4_6_2]
     _possibleOutputs = outputs
 
     # --------------------------- DEFINE param functions ----------------------

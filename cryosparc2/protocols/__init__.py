@@ -51,6 +51,7 @@ from .protocol_cryosparc_3D_flex_data_prepare import ProtCryoSparc3DFlexDataPrep
 from .protocol_cryosparc_3D_flex_mesh_prepare import ProtCryoSparc3DFlexMeshPrepare
 from .protocol_cryosparc_3D_flex_training import ProtCryoSparc3DFlexTraining
 from .protocol_cryosparc_3D_flex_reconstruction import ProtCryoSparc3DFlexReconstruction
+from .protocol_cryosparc_3D_flex_generator import ProtCryoSparc3DFlexGenerator
 
 
 

@@ -185,7 +185,7 @@ class ProtCryoSparcSubtract(ProtCryosparcBase, ProtOperateParticles):
 
         outImgsFn = 'particles@' + self._getFileName('out_particles')
         hasCtf = imgSet.hasCTF()
-        hasAcquisition = True  # I think this is alway present ROB
+        hasAcquisition = True  # I think this is always present ROB
         readSetOfParticles(outImgsFn, imgSet,
                            postprocessImageRow=self._updateItem,
                            alignType=ALIGN_PROJ, readCtf=hasCtf, 

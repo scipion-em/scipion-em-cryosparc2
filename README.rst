@@ -32,10 +32,21 @@ You will need to use `3.0.0 <https://scipion-em.github.io/docs/release-3.0.0/doc
 * **3D Flex Mesh Prep**: Takes in a consensus (rigid) refinement density map, plus optionally a segmentation and generates a tetrahedral mesh for 3DFlex. See Mesh Generation below.
 * **3D Flex Training**: Uses a mesh and prepared particles (at a downsampled resolution) to train a 3DFlex model. Parameters control the number of latent dimensions, size of the model, and training hyperparameters. This job outputs checkpoints during training.
 * **3D Flex Reconstruction**: Takes in a checkpoint from training as well as prepared high-resolution particles and performs high-resolution refinement using L-BFGS under the 3DFlex model. This is the stage at which improvements to density in high-res regions are computed. Outputs two half-maps that can be used for FSC validation, sharpening, and other downstream tasks.
+* **3D Flex Generator**: Takes in a checkpoint from training and generates volume series from it, to show what the model is learning about the motion of the particle. This job can be run while training is ongoing to see progress along the way. This job can also optionally take in a high-resolution density map (e.g., from 3D Flex Reconstruction) and  will upscale the deformation model and apply deformations to the high resolution map.
 
 
 **Latest plugin version**
 ==========================
+
+**v4.2.0**
+-----------
+
+* **new**        Compatibility with cryoSPARC v4.6.2
+* **new**        Adding 3D Flex Generator Protocol
+* **updated**    Generating the particles and the consensus volume in the 3D Flex Data Prepare protocol
+* **updated**    Validating the mask in the 3d Flex Mesh protocol
+
+
 **v4.1.6**
 -----------
 

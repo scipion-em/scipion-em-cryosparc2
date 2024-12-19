@@ -36,13 +36,13 @@ from ..constants import *
 class ProtCryoSparc3DFlexMeshPrepare(ProtCryosparcBase):
     """
     Prepares particles for use in 3DFlex training and reconstruction. At the same
-    way,  Takes in a consensus (rigid) refinement density map, plus optionally
-     a segmentation and generates a tetrahedral mesh for 3DFlex.
+    way, Takes in a consensus (rigid) refinement density map, plus optionally
+    a segmentation and generates a tetrahedral mesh for 3DFlex.
     """
     _label = '3D flex mesh prepare'
     _devStatus = BETA
     _protCompatibility = [V4_1_0, V4_1_1, V4_1_2, V4_2_0, V4_2_1, V4_3_1,
-                          V4_4_0, V4_4_1, V4_5_1, V4_5_3, V4_6_0]
+                          V4_4_0, V4_4_1, V4_5_1, V4_5_3, V4_6_0, V4_6_1, V4_6_2]
 
     # --------------------------- DEFINE param functions ----------------------
     def _defineFileNames(self):
@@ -228,6 +228,19 @@ class ProtCryoSparc3DFlexMeshPrepare(ProtCryosparcBase):
 
     def _validate(self):
         validateMsgs = cryosparcValidate()
+        if not validateMsgs:
+            mask = self.refMask.get()
+
+            if mask:
+                maskDim = mask.getDim()
+                dataPrepareProt = self.dataPrepare.get()
+                if dataPrepareProt:
+                    outputVolumeDim = dataPrepareProt.outputVolume.getDim()
+                    if maskDim != outputVolumeDim:
+                        validateMsgs.append('The dimension of the mask must be %s according to the 3D Flex data prepare protocol(Training box size parameter)' % str(outputVolumeDim) )
+                else:
+                    validateMsgs.append('You need to specify the 3D Flex Data Prepare protocol')
+
         return validateMsgs
 
     def _defineParamsPrepareName(self):
