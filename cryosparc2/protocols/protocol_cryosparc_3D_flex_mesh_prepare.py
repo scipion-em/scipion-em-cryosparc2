@@ -230,14 +230,14 @@ class ProtCryoSparc3DFlexMeshPrepare(ProtCryosparcBase):
         validateMsgs = cryosparcValidate()
         if not validateMsgs:
             mask = self.refMask.get()
-
             if mask:
                 maskDim = mask.getDim()
                 dataPrepareProt = self.dataPrepare.get()
                 if dataPrepareProt:
-                    outputVolumeDim = dataPrepareProt.outputVolume.getDim()
-                    if maskDim != outputVolumeDim:
-                        validateMsgs.append('The dimension of the mask must be %s according to the 3D Flex data prepare protocol(Training box size parameter)' % str(outputVolumeDim) )
+                    if hasattr(dataPrepareProt, 'outputVolume'):
+                        outputVolumeDim = dataPrepareProt.outputVolume.getDim()
+                        if maskDim != outputVolumeDim:
+                            validateMsgs.append('The dimension of the mask must be %s according to the 3D Flex data prepare protocol(Training box size parameter)' % str(outputVolumeDim) )
                 else:
                     validateMsgs.append('You need to specify the 3D Flex Data Prepare protocol')
 
