@@ -24,9 +24,6 @@
 # *  e-mail address 'scipion@cnb.csic.es'
 # *
 # **************************************************************************
-import re
-import time
-
 from pwem.objects import Volume
 from pyworkflow import BETA
 from pyworkflow.protocol.params import PointerParam
@@ -39,8 +36,8 @@ from ..constants import *
 class ProtCryoSparc3DFlexDataPrepare(ProtCryosparcBase):
     """
     Prepares particles for use in 3DFlex training and reconstruction. At the same
-    way,  Takes in a consensus (rigid) refinement density map, plus optionally
-     a segmentation and generates a tetrahedral mesh for 3DFlex.
+    way, takes in a consensus (rigid) refinement density map, plus optionally
+    a segmentation and generates a tetrahedral mesh for 3DFlex.
     """
     _label = '3D flex data prepare'
     _devStatus = BETA

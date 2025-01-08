@@ -36,8 +36,6 @@ from ..convert import *
 from ..utils import *
 from ..constants import *
 
-
-
 class ProtCryoSparc3DFlexGenerator(ProtCryosparcBase, ProtFlexBase):
     """
     Takes in a checkpoint from training and generates volume series from it, to show what the model is learning
@@ -83,9 +81,6 @@ class ProtCryoSparc3DFlexGenerator(ProtCryosparcBase, ProtFlexBase):
         self._initializeUtilsVariables()
         self.info(pwutils.yellowStr("Creating the output..."))
 
-        self._initializeUtilsVariables()
-        self.info(pwutils.yellowStr("Creating the output..."))
-
         csOutputFolder = os.path.join(self.projectDir.get(),
                                       self.run3DGeneratorJob.get())
 
@@ -101,6 +96,20 @@ class ProtCryoSparc3DFlexGenerator(ProtCryosparcBase, ProtFlexBase):
                 os.mkdir(extractFolder)
                 fileZip.extractall(extractFolder)
             os.remove(filePath)
+
+    def _validate(self):
+        validateMsgs = cryosparcValidate()
+        if not validateMsgs:
+            flexTrainingProt = self.flexTraining.get()
+            flexTrainingJob = getJob(flexTrainingProt.projectName.get(), flexTrainingProt.run3DFlexTrainJob.get())
+            checkPoints = eval(flexTrainingJob[1])['output_result_groups']
+            for output in checkPoints:
+                if output['name'] == 'flex_model':
+                    numItems = output['num_items']
+                    if not numItems:
+                        validateMsgs.append("There is no data to show yet")
+                    break
+        return validateMsgs
 
     def _defineParamsName(self):
         """ Define a list with 3D Flex Training parameters names"""

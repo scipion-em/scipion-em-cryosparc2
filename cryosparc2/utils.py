@@ -809,6 +809,18 @@ def getJobStatus(projectName, job):
     return status[-1]
 
 
+def getJob(projectName, job):
+    """
+       Return the job
+       """
+    get_job_status_cmd = (getCryosparcProgram() +
+                          ' %sget_job("%s", "%s")%s'
+                          % ("'", projectName, job, "'"))
+
+    job = runCmd(get_job_status_cmd, printCmd=False)
+    return job
+
+
 def waitJob(projectName, job):
     """
     Wait while the job not finished
