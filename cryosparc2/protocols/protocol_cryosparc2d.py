@@ -472,6 +472,6 @@ class ProtCryo2D(ProtCryosparcBase, pwprot.ProtClassify2D):
         waitForCryosparc(self.projectName.get(), self.runClass2D.get(),
                          "An error occurred in the 2D classification process. "
                          "Please, go to cryoSPARC software for more "
-                         "details.")
+                         "details.", self)
         clearIntermediateResults(self.projectName.get(), self.runClass2D.get())
 

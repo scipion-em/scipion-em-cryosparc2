@@ -56,6 +56,7 @@ class ProtCryosparcBase(pw.EMProtocol):
     _protCompatibility = []
     _className = ""
     _fscColumns = 6
+    _logLastLine = 0
 
     def _initializeCryosparcProject(self):
         """
@@ -295,7 +296,6 @@ class ProtCryosparcBase(pw.EMProtocol):
         self.micrographs = pwobj.String(str(importedMicrographsJob.get()) +
                                       '.imported_micrographs')
 
-
     def setAborted(self):
         """ Set the status to aborted and updated the endTime. """
         pw.EMProtocol.setAborted(self)
@@ -427,3 +427,9 @@ class ProtCryosparcBase(pw.EMProtocol):
 
     def _createModelFile(self):
         pass
+
+    def getLogLine(self):
+        return self._logLastLine
+
+    def setLogLine(self, lastLine: int):
+        self._logLastLine = lastLine

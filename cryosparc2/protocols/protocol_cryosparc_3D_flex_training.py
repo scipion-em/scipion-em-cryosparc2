@@ -42,6 +42,7 @@ from ..constants import *
 class outputs(Enum):
     Particles = SetOfParticles
 
+
 class ProtCryoSparc3DFlexTraining(ProtCryosparcBase, ProtFlexBase):
     """
     Uses a mesh and prepared particles (at a downsampled resolution) to train
@@ -52,7 +53,7 @@ class ProtCryoSparc3DFlexTraining(ProtCryosparcBase, ProtFlexBase):
     _label = '3D flex training'
     _devStatus = BETA
     _protCompatibility = [V4_1_0, V4_1_1, V4_1_2, V4_2_0, V4_2_1, V4_3_1, V4_4_0, V4_4_1, V4_5_1,
-                          V4_5_3, V4_6_0]
+                          V4_5_3, V4_6_0, V4_6_1, V4_6_2]
     _possibleOutputs = outputs
 
     # --------------------------- DEFINE param functions ----------------------
@@ -272,7 +273,8 @@ class ProtCryoSparc3DFlexTraining(ProtCryosparcBase, ProtFlexBase):
         protocolPrepare = self.input3DFlexDataPrepareProt.get()
         protocolMesh = self.input3DMeshFlexPrepareProt.get()
         varDataPrepJobParticles = str(protocolPrepare.run3DFlexDataPrepJob)
-        varDataMeshJob = str(protocolMesh.run3DFlexMeshPrepJob)
+        ## varDataMeshJob = str(protocolMesh.run3DFlexMeshPrepJob)
+        varDataMeshJob = str(protocolMesh.run3DFlexMeshPrep)
         input_group_connect = {"particles": "%s.particles" % varDataPrepJobParticles,
                                "flex_mesh": "%s.flex_mesh" % varDataMeshJob}
         params = {}
@@ -296,6 +298,6 @@ class ProtCryoSparc3DFlexTraining(ProtCryosparcBase, ProtFlexBase):
                          self.run3DFlexTrainJob.get(),
                          "An error occurred in the 3D Flex Training process. "
                          "Please, go to cryoSPARC software for more "
-                         "details.")
+                         "details.", self)
         clearIntermediateResults(self.projectName.get(),
                                  self.run3DFlexTrainJob.get())

@@ -1,3 +1,10 @@
+Dec 19, 2024  - **v4.2.0**
+                Compatibility with cryoSPARC v4.6.2
+                Adding 3D Flex Generator Protocol
+                Generating the particles and the consensus volume in the 3D Flex Data Prepare protocol
+                Validating the mask in the 3d Flex Mesh protocol
+                Showing CS logs
+
 Nov 13, 2024  - **v4.1.6**
                 Fix parameter mask help as described in https://github.com/scipion-em/scipion-em-cryosparc2/issues/170
 

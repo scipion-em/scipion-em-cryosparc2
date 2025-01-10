@@ -44,7 +44,7 @@ class ProtCryoSparc3DFlexReconstruction(ProtCryosparcBase):
     _label = '3D flex reconstruction'
     _devStatus = BETA
     _protCompatibility = [V4_1_0, V4_1_1, V4_1_2, V4_2_0, V4_2_1, V4_3_1, V4_4_0, V4_4_1, V4_5_1,
-                          V4_5_3, V4_6_0]
+                          V4_5_3, V4_6_0, V4_6_1, V4_6_2]
 
     # --------------------------- DEFINE param functions ----------------------
     def _defineFileNames(self):
@@ -198,6 +198,6 @@ class ProtCryoSparc3DFlexReconstruction(ProtCryosparcBase):
                          self.run3DFlexReconstructionJob.get(),
                          "An error occurred in the 3D Flex Reconstruction process. "
                          "Please, go to cryoSPARC software for more "
-                         "details.")
+                         "details.", self)
         clearIntermediateResults(self.projectName.get(),
                                  self.run3DFlexReconstructionJob.get())

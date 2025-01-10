@@ -61,7 +61,7 @@ class ProtCryoSparcNew3DClassification(ProtCryosparcBase):
     _className = "class_3D"
     _protCompatibility = [V3_3_1, V3_3_2, V4_0_0, V4_0_1, V4_0_2, V4_0_3,
                           V4_1_0, V4_1_1, V4_1_2, V4_2_0, V4_2_1, V4_3_1, V4_4_0, V4_4_1, V4_5_1,
-                          V4_5_3, V4_6_0]
+                          V4_5_3, V4_6_0, V4_6_1, V4_6_2]
 
     def _initialize(self):
         self._defineFileNames()
@@ -714,5 +714,5 @@ class ProtCryoSparcNew3DClassification(ProtCryosparcBase):
         waitForCryosparc(self.projectName.get(), self.run3dClassification.get(),
                          "An error occurred in the 3D Classification process. "
                          "Please, go to cryosPARC software for more "
-                         "details.")
+                         "details.", self)
         clearIntermediateResults(self.projectName.get(), self.run3dClassification.get())

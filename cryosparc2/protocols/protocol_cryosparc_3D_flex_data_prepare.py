@@ -24,6 +24,7 @@
 # *  e-mail address 'scipion@cnb.csic.es'
 # *
 # **************************************************************************
+from pwem.objects import Volume
 from pyworkflow import BETA
 from pyworkflow.protocol.params import PointerParam
 from . import ProtCryosparcBase
@@ -35,13 +36,13 @@ from ..constants import *
 class ProtCryoSparc3DFlexDataPrepare(ProtCryosparcBase):
     """
     Prepares particles for use in 3DFlex training and reconstruction. At the same
-    way,  Takes in a consensus (rigid) refinement density map, plus optionally
-     a segmentation and generates a tetrahedral mesh for 3DFlex.
+    way, takes in a consensus (rigid) refinement density map, plus optionally
+    a segmentation and generates a tetrahedral mesh for 3DFlex.
     """
     _label = '3D flex data prepare'
     _devStatus = BETA
     _protCompatibility = [V4_1_0, V4_1_1, V4_1_2, V4_2_0, V4_2_1, V4_3_1,
-                          V4_4_0, V4_4_1, V4_5_1, V4_5_3, V4_6_0]
+                          V4_4_0, V4_4_1, V4_5_1, V4_5_3, V4_6_0, V4_6_1, V4_6_2]
 
     # --------------------------- DEFINE param functions ----------------------
     def _defineFileNames(self):
@@ -125,47 +126,59 @@ class ProtCryoSparc3DFlexDataPrepare(ProtCryosparcBase):
         """
         Create the protocol output. Convert cryosparc file to Relion file
         """
-        pass
-        # print(pwutils.yellowStr("Creating the output..."), flush=True)
-        # csOutputFolder = os.path.join(self.projectDir.get(),
-        #                               self.run3DFlexDataPrepJob.get())
-        # csParticlesName = "%s_passthrough_particles.cs" % self.run3DFlexDataPrepJob.get()
-        # fnVolName = "%s_map.mrc" % self.run3DFlexDataPrepJob.get()
-        #
-        # # Copy the CS output volume and half to extra folder
-        # copyFiles(csOutputFolder, self._getExtraPath(), files=[csParticlesName,
-        #                                                        fnVolName])
-        #
-        # csFile = os.path.join(self._getExtraPath(), csParticlesName)
-        #
-        # outputStarFn = self._getFileName('out_particles')
-        # argsList = [csFile, outputStarFn]
-        # convertCs2Star(argsList)
-        #
-        # fnVol = os.path.join(self._getExtraPath(), fnVolName)
-        # imgSet = self._getInputParticles()
-        # vol = Volume()
-        # fixVolume([fnVol])
-        # vol.setFileName(fnVol)
-        # vol.setSamplingRate(calculateNewSamplingRate(vol.getDim(),
-        #                                              imgSet.getSamplingRate(),
-        #                                              imgSet.getDim()))
-        # outImgSet = self._createSetOfParticles()
-        # outImgSet.copyInfo(imgSet)
-        # self._fillDataFromIter(outImgSet)
-        #
-        # self._defineOutputs(outputVolume=vol)
-        # self._defineSourceRelation(self.inputParticles.get(), vol)
-        # self._defineOutputs(outputParticles=outImgSet)
+        self.info(pwutils.yellowStr("Creating the output..."))
+        self._initializeUtilsVariables()
+        outputStarFn = self._getFileName('out_particles')
+        self.info(pwutils.yellowStr("outputStarFn: %s " % outputStarFn))
+        csOutputFolder = os.path.join(self.projectDir.get(), self.run3DFlexDataPrepJob.get())
+        self.info("csOutputFolder: %s " % csOutputFolder)
+        # csFileName = "subtracted_particles.cs"
+        csFileName = "%s_passthrough_particles.cs" % self.run3DFlexDataPrepJob.get()
+        self.info("csFileName: %s " % csOutputFolder)
+        # Create the output folder
+        copyFiles(csOutputFolder,  os.path.join(self._getExtraPath(), self.run3DFlexDataPrepJob.get()))
+        self.info("copyFolder: src-> dst %s %s" % (csOutputFolder, os.path.join(self._getExtraPath(), self.run3DFlexDataPrepJob.get())))
+        csFile = os.path.join(self._getExtraPath(), self.run3DFlexDataPrepJob.get(), csFileName)
+        self.info("csFile (metadata): %s " % csFile)
+        argsList = [csFile, outputStarFn]
+        self.info("starFile: %s " % outputStarFn)
+        convertCs2Star(argsList)
+        self.info("Convert to star done.")
+        self.info("Creating the particles output")
+        imgSet = self._getInputParticles()
+        outImgSet = self._createSetOfParticles()
+        outImgSet.copyInfo(imgSet)
+        outImgSet.setSamplingRate(imgSet.getSamplingRate())
+        imgSetDict = {}
+        for img in imgSet.iterItems():
+            imgSetDict[str(img.getIndex()) + '@' + os.path.basename(img.getFileName())] = img.clone()
+        self._fillDataFromIter(outImgSet, imgSetDict)
+        self.info("Creating the consensus volume  output")
+
+        csMapName = "%s_map.mrc" % self.run3DFlexDataPrepJob.get()
+        fnVol = os.path.join(self._getExtraPath(), self.run3DFlexDataPrepJob.get(), csMapName)
+        vol = Volume()
+        fixVolume(fnVol)
+        vol.setFileName(fnVol)
+        vol.setSamplingRate(calculateNewSamplingRate(vol.getDim(),
+                                                     imgSet.getSamplingRate(),
+                                                     imgSet.getDim()))
+
+        self._defineOutputs(outputParticles=outImgSet)
+        self._defineTransformRelation(imgSet, outImgSet)
+        self._defineOutputs(outputVolume=vol)
 
     # ------------------------- Utils methods ----------------------------------
 
-    def _fillDataFromIter(self, imgSet):
-        outImgsFn = 'particles@' + self._getFileName('out_particles')
-        imgSet.setAlignmentProj()
-        imgSet.copyItems(self._getInputParticles(),
-                         updateItemCallback=self._createItemMatrix,
-                         itemDataIterator=emtable.Table.iterRows(fileName=outImgsFn))
+    def _fillDataFromIter(self, outImgSet, imgSetDict):
+        filename = 'particles@' + self._getFileName('out_particles')
+        for imgRow in emtable.Table.iterRows(filename):
+            fileName = imgRow.get(RELIONCOLUMNS.rlnImageName.value)
+            splitFileName = fileName.split('@')
+            key = str(int(splitFileName[0])) + '@' + '_'.join(splitFileName[1].split('_')[1:])
+            if key in imgSetDict:
+                img = imgSetDict[key].clone()
+                outImgSet.append(img)
 
     def _createItemMatrix(self, particle, row):
         createItemMatrix(particle, row, align=ALIGN_PROJ)
@@ -216,7 +229,7 @@ class ProtCryoSparc3DFlexDataPrepare(ProtCryosparcBase):
         waitForCryosparc(self.projectName.get(), self.run3DFlexDataPrepJob.get(),
                          "An error occurred in the 3D Flex Data Preparation process. "
                          "Please, go to cryoSPARC software for more "
-                         "details.")
+                         "details.", self)
         clearIntermediateResults(self.projectName.get(), self.run3DFlexDataPrepJob.get())
 
 

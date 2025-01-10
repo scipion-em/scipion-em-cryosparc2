@@ -40,7 +40,7 @@ from ..protocols import (ProtCryoSparcLocalRefine, ProtCryoSparcHelicalRefine3D,
                          ProtCryoSparcNewNonUniformRefine3D,
                          ProtCryoSparcHomogeneousReconstruct, ProtCryoSparc3DVariability,
                          ProtCryoSparc3DVariabilityDisplay, ProtCryoSparc3DFlexDataPrepare,
-                         ProtCryoSparc3DFlexMeshPrepare, ProtCryoSparc3DFlexTraining, ProtCryoSparc3DFlexReconstruction)
+                         ProtCryoSparc3DFlexTraining, ProtCryoSparc3DFlexReconstruction)
 from ..constants import *
 from ..utils import *
 
@@ -52,8 +52,7 @@ class CryosPARCViewer3DRefinement(EmProtocolViewer):
                 ProtCryoSparc3DHomogeneousRefine, ProtCryoSparcNewNonUniformRefine3D,
                 ProtCryoSparcHomogeneousReconstruct, ProtCryoSparc3DVariability,
                 ProtCryoSparc3DVariabilityDisplay, ProtCryoSparc3DFlexDataPrepare,
-                ProtCryoSparc3DFlexMeshPrepare, ProtCryoSparc3DFlexTraining,
-                ProtCryoSparc3DFlexReconstruction]
+                ProtCryoSparc3DFlexTraining, ProtCryoSparc3DFlexReconstruction]
     _environments = [DESKTOP_TKINTER, WEB_DJANGO]
     _label = 'viewer Refinement/Flex'
 
