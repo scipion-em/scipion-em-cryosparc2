@@ -198,6 +198,6 @@ class ProtCryoSparc3DFlexReconstruction(ProtCryosparcBase):
                          self.run3DFlexReconstructionJob.get(),
                          "An error occurred in the 3D Flex Reconstruction process. "
                          "Please, go to cryoSPARC software for more "
-                         "details.")
+                         "details.", self)
         clearIntermediateResults(self.projectName.get(),
                                  self.run3DFlexReconstructionJob.get())

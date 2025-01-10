@@ -298,6 +298,6 @@ class ProtCryoSparc3DFlexTraining(ProtCryosparcBase, ProtFlexBase):
                          self.run3DFlexTrainJob.get(),
                          "An error occurred in the 3D Flex Training process. "
                          "Please, go to cryoSPARC software for more "
-                         "details.")
+                         "details.", self)
         clearIntermediateResults(self.projectName.get(),
                                  self.run3DFlexTrainJob.get())

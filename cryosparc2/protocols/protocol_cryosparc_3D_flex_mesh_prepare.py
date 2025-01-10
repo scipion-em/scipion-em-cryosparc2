@@ -292,7 +292,7 @@ class ProtCryoSparc3DFlexMeshPrepare(ProtCryosparcBase):
                          self.run3DFlexMeshPrep.get(),
                          "An error occurred in the 3D Flex Mesh Preparation process. "
                          "Please, go to cryoSPARC software for more "
-                         "details.")
+                         "details.", self)
         clearIntermediateResults(self.projectName.get(),
                                  self.run3DFlexMeshPrep.get())
 

@@ -147,6 +147,6 @@ class ProtCryoSparc3DFlexGenerator(ProtCryosparcBase, ProtFlexBase):
                          self.run3DGeneratorJob.get(),
                          "An error occurred in the 3D Flex Generator process. "
                          "Please, go to cryoSPARC software for more "
-                         "details.")
+                         "details.", self)
         clearIntermediateResults(self.projectName.get(),
                                  self.run3DGeneratorJob.get())

@@ -218,5 +218,5 @@ class ProtCryoSparcPatchCTFEstimate(ProtCryosparcBase):
                          self.runPatchCTF.get(),
                          "An error occurred in the ctf estimation process. "
                          "Please, go to cryoSPARC software for more "
-                         "details.")
+                         "details.", self)
 

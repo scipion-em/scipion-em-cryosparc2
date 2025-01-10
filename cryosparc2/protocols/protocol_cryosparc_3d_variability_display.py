@@ -547,4 +547,4 @@ class ProtCryoSparc3DVariabilityDisplay(ProtCryosparcBase, ProtRefine3D):
                          self.run3DVariabilityDisplay.get(),
                          "An error occurred in the 3D Variability process. "
                          "Please, go to cryosPARC software for more "
-                         "details.")
+                         "details.", self)

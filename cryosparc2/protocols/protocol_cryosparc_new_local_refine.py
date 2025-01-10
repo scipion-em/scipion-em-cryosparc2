@@ -439,5 +439,5 @@ class ProtCryoSparcLocalRefine(ProtCryosparcBase, ProtOperateParticles):
         waitForCryosparc(self.projectName.get(), self.runLocalRefinement.get(),
                          "An error occurred in the local refinement process. "
                          "Please, go to cryoSPARC software for more "
-                         "details.")
+                         "details.", self)
         clearIntermediateResults(self.projectName.get(), self.runLocalRefinement.get())

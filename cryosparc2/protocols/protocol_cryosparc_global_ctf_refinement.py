@@ -334,4 +334,4 @@ class ProtCryoSparcGlobalCtfRefinement(ProtCryosparcBase, pwprot.ProtParticles):
         waitForCryosparc(self.projectName.get(), self.runGlobalCtfRefinement.get(),
                          "An error occurred in the particles subtraction process. "
                          "Please, go to cryoSPARC software for more "
-                         "details.")
+                         "details.", self)
