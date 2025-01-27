@@ -770,7 +770,7 @@ def runCmd(cmd, printCmd=True):
     return exitCode, cmdOutput.split('\n')[-1]
 
 
-def waitForCryosparc(projectName, jobId, failureMessage):
+def waitForCryosparc(projectName, jobId, failureMessage, protocol=None):
     """ Waits for cryosparc to finish or fail a job
     :parameter projectName: Cryosparc project name
     :parameter jobId: cryosparc job id
@@ -784,6 +784,25 @@ def waitForCryosparc(projectName, jobId, failureMessage):
             status = getJobStatus(projectName, jobId)
             if status not in STOP_STATUSES:
                 waitJob(projectName, jobId)
+                if protocol is not None:
+                    jobStreamLog = getJobStreamlog(projectName, jobId)
+                    jobStreamLogList = eval(jobStreamLog[1])
+                    jobLogLastLine = protocol.getLogLine()
+                    lenLog = len(jobStreamLogList)
+                    if lenLog > jobLogLastLine:
+                        protocol.setLogLine(lenLog)
+                        for line in range(jobLogLastLine, lenLog):
+                            logDict = jobStreamLogList[line]
+                            if logDict['type'] == 'text' and 'text' in logDict and logDict['text']:
+                                logger.info(logDict['text'])
+                    else:
+                        jobLogLastLine = len(jobStreamLogList) - 1
+                        while jobLogLastLine:
+                            logDict = jobStreamLogList[jobLogLastLine]
+                            if logDict['type'] == 'text' and 'text' in logDict and logDict['text']:
+                                logger.info(logDict['text'])
+                                break
+                            jobLogLastLine -= 1
             else:
                 break
         except Exception as e:
@@ -807,6 +826,42 @@ def getJobStatus(projectName, job):
 
     status = runCmd(get_job_status_cmd, printCmd=False)
     return status[-1]
+
+
+def getJob(projectName, job):
+    """
+       Return the job
+       """
+    get_job_status_cmd = (getCryosparcProgram() +
+                          ' %sget_job("%s", "%s")%s'
+                          % ("'", projectName, job, "'"))
+
+    job = runCmd(get_job_status_cmd, printCmd=False)
+    return job
+
+
+def getJobLog(projectName, job):
+    """
+       Get the full contents of the given job's standard output log
+       """
+    get_job_log_cmd = (getCryosparcProgram() +
+                          ' %sget_job_log("%s", "%s")%s'
+                          % ("'", projectName, job, "'"))
+
+    logStr = runCmd(get_job_log_cmd, printCmd=False)
+    return logStr
+
+
+def getJobStreamlog(projectName, job):
+    """
+       Get a list of dictionaries representing the given job's event log
+       """
+    get_job_stream_log_cmd = (getCryosparcProgram() +
+                          ' %sget_job_streamlog("%s", "%s")%s'
+                          % ("'", projectName, job, "'"))
+
+    logList = runCmd(get_job_stream_log_cmd, printCmd=False)
+    return logList
 
 
 def waitJob(projectName, job):

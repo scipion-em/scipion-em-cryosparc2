@@ -59,7 +59,7 @@ class ProtCryoSparcHomogeneousReconstruct(ProtCryosparcBase):
     _fscColumns = 6
     _protCompatibility = [V3_3_0, V3_3_1, V3_3_2, V4_0_0, V4_0_1, V4_0_2,
                           V4_0_3, V4_1_0, V4_1_1, V4_1_2, V4_2_0, V4_2_1,
-                          V4_3_1, V4_4_0, V4_4_1, V4_5_1, V4_5_3, V4_6_0]
+                          V4_3_1, V4_4_0, V4_4_1, V4_5_1, V4_5_3, V4_6_0, V4_6_1, V4_6_2]
     ewsParamsName = []
 
     def _initialize(self):
@@ -81,14 +81,10 @@ class ProtCryoSparcHomogeneousReconstruct(ProtCryosparcBase):
                       label="Input particles", important=True,
                       help='Select the experimental particles.')
         form.addParam('refMask', PointerParam, pointerClass='VolumeMask',
-                      label='Mask to be applied to this map',
+                      label='Mask used for computing FSC',
                       allowsNull=True,
-                      help="Provide a soft mask where the protein density "
-                           "you wish to subtract from the experimental "
-                           "particles is white (1) and the rest of the "
-                           "protein and the solvent is black (0). "
-                           "That is: *the mask should INCLUDE the part of the "
-                           "volume that you wish to SUBTRACT.*")
+                      help="The mask is used for computing"
+                           "the FSC between the reconstructed half-maps")
 
         form.addSection(label='Homogeneous Reconstruction')
 
@@ -470,7 +466,7 @@ class ProtCryoSparcHomogeneousReconstruct(ProtCryosparcBase):
         waitForCryosparc(self.projectName.get(), self.runHomogeneousReconstruction.get(),
                          "An error occurred in the homogeneous reconstruction process. "
                          "Please, go to cryoSPARC software for more "
-                         "details.")
+                         "details.", self)
         clearIntermediateResults(self.projectName.get(), self.runHomogeneousReconstruction.get())
 
 

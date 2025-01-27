@@ -320,5 +320,5 @@ class ProtCryoSparcBlobPicker(ProtCryosparcBase):
                          self.runBlobPicker.get(),
                          "An error occurred in the particles picking process. "
                          "Please, go to cryoSPARC software for more "
-                         "details.")
+                         "details.", self)
         clearIntermediateResults(self.projectName.get(), self.runBlobPicker.get())

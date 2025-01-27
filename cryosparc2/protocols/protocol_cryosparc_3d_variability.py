@@ -319,7 +319,7 @@ class ProtCryoSparc3DVariability(ProtCryosparcBase, ProtRefine3D):
         waitForCryosparc(self.projectName.get(), self.run3DVariability.get(),
                          "An error occurred in the 3D Variability process. "
                          "Please, go to cryosPARC software for more "
-                         "details.")
+                         "details.", self)
 
 
 
