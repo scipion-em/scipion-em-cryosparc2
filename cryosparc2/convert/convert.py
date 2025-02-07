@@ -50,10 +50,14 @@ from .. import Plugin
 def convertCs2Star(argsList):
     input = os.path.abspath(argsList[0])
     output = os.path.abspath(argsList[1])
+    args = ' %s %s' % (input, output)
+    if len(argsList) > 2:
+        passthrough = os.path.abspath(argsList[2])
+        args += ' %s' % passthrough
     cryosparcScriptPath = os.path.join(os.path.dirname(__file__),
                                        CRYOSPARC_CS2STAR_SCRIPT)
     cmd = (Plugin.getCondaActivationCmd() + Plugin.getPyemEnvActivation() + ' && python3 ' +
-           cryosparcScriptPath + ' %s %s' % (input, output))
+           cryosparcScriptPath + args)
 
     logger.info("convertCs2Star: %s" % cmd)
 

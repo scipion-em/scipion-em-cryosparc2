@@ -2,6 +2,7 @@ import argparse
 import sys
 import json
 import os
+import time
 
 
 def cs2Star(args):
@@ -220,6 +221,9 @@ def defineArgs():
 
 if __name__ == "__main__":
     parser = defineArgs()
-    argsList = [sys.argv[1], sys.argv[2]]
+    argsList = [sys.argv[1]]
+    if len(sys.argv) > 3:
+        argsList.append(sys.argv[3])
+    argsList.append(sys.argv[2])
     args = parser.parse_args(argsList)
     sys.exit(cs2Star(args))

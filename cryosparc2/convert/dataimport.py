@@ -1,5 +1,7 @@
 import os
 import logging
+import time
+
 import emtable
 
 from cryosparc2 import RELIONCOLUMNS
@@ -33,6 +35,12 @@ class cryoSPARCImport:
             csPartFile = os.path.abspath(self._csFile)
             self.outputStarFn = self.protocol._getFileName('output')
             argsList = [csPartFile, self.outputStarFn]
+            csFileName = os.path.basename(self._csFile)
+            csFileDir = os.path.dirname(self._csFile)
+            passthroughtFileName = csFileName.split('_')[0] + '_passthrough_' + csFileName.split('_')[1]
+            passthroughtFilePath = os.path.join(csFileDir, passthroughtFileName)
+            if os.path.exists(passthroughtFilePath):
+                argsList.append(passthroughtFilePath)
             convertCs2Star(argsList)
             # Validate the start file generated
             self._validateConvert()
