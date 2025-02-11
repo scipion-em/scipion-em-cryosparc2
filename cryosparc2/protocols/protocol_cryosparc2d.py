@@ -160,7 +160,12 @@ class ProtCryo2D(ProtCryosparcBase, pwprot.ProtClassify2D):
                            'weighting every pixel that was above the threshold. '
                            'If False, weight every pixel by its greyscale '
                            'density value.')
-
+        form.addParam('class2D_estimate_in_plane_pose', BooleanParam, default=False,
+                      label='Align filament classes vertically',
+                      help='Set to True only if the particle images are of filamentous/helical assemblies - this will'
+                           ' align all class averages vertically in the second last iteration, enabling estimation '
+                           'of in-plane rotation. Note that this will not attempt to estimate the relative polarity '
+                           'of class averages.')
         form.addParam('forceMaxover', BooleanParam, default=True,
                       label='Force Max over poses/shifts',
                       help='If True, maximize over poses and shifts when '
@@ -409,6 +414,7 @@ class ProtCryo2D(ProtCryosparcBase, pwprot.ProtClassify2D):
                   "class2D_recenter": str(self.reCenter2D.get()),
                   "class2D_recenter_thresh": str(self.reCenterMask.get()),
                   "class2D_recenter_binary": str(self.reCenterMaskBinary.get()),
+                  "class2D_estimate_in_plane_pose": str(self.class2D_estimate_in_plane_pose.get()),
                   "class2D_force_max": str(self.forceMaxover.get()),
                   "class2D_ctf_phase_flip_only": str(self.ctfFlipPhases.get()),
                   "class2D_num_full_iter": str(self.numberFinalIterator.get()),
