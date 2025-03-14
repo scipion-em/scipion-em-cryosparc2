@@ -25,8 +25,6 @@
 # *
 # **************************************************************************
 import os
-import time
-
 import emtable
 
 from pwem import ALIGN_PROJ

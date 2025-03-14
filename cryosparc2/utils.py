@@ -28,6 +28,7 @@ import ast
 import getpass
 import logging
 import os
+import re
 import shutil
 import time
 
@@ -1169,3 +1170,26 @@ def copyFiles(src, dst, files=None):
                             os.path.join(dst, file))
     except Exception as ex:
         logger.error("Unable to execute the copy: Files or directory does not exist: ", exc_info=ex)
+
+
+def matchItemRow(item, row):
+    """
+    Matches an item with a row from a dataset by comparing its index and filename.
+
+    :param item: The item object containing metadata such as index and filename.
+    :param row: A dictionary-like object representing a row of metadata,
+                expected to contain RELIONCOLUMNS.rlnImageName.
+    :return: True if the item's index and filename match the extracted row data, False otherwise.
+    """
+    imageName = row.get(RELIONCOLUMNS.rlnImageName.value)
+    if not imageName:
+        return True  # If no image name is found in row, assume a match
+
+    try:
+        index, filePath = imageName.split('@')
+        rowFileName = os.path.splitext(os.path.basename(filePath).split('_', 1)[-1])[0]  # Remove leading digits and underscore and extension
+        itemFileName = os.path.splitext(os.path.basename(item.getFileName()))[0]  # Remove extension
+        return int(index) == item.getIndex() and itemFileName == rowFileName
+    except (ValueError, AttributeError):
+        return False  # In case of unexpected format, assume no match
+

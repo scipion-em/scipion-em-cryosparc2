@@ -26,7 +26,6 @@
 # *
 # **************************************************************************
 import os
-
 import emtable
 
 import pyworkflow.utils as pwutils
@@ -46,7 +45,7 @@ from ..utils import (addSymmetryParam, addComputeSectionParams,
                      cryosparcValidate, gpusValidate, getSymmetry, enqueueJob,
                      calculateNewSamplingRate, waitForCryosparc,
                      clearIntermediateResults, fixVolume, copyFiles,
-                     getOutputPreffix)
+                     getOutputPreffix, matchItemRow)
 from ..constants import *
 
 
@@ -410,15 +409,20 @@ class ProtCryoSparcInitialModel(ProtCryosparcBase, ProtInitialVolume,
         self._loadClassesInfo(self._getFileName('out_class'))
         clsSet.classifyItems(updateItemCallback=self._updateParticle,
                              updateClassCallback=self._updateClass,
-                             itemDataIterator=emtable.Table.iterRows(outImgsFn))
+                             itemDataIterator=emtable.Table.iterRows(outImgsFn),
+                             raiseOnNextFailure=False,
+                             cancelNextWhenAppendIsFalse=True)
 
     def _updateParticle(self, item, row):
-        if row.hasColumn(RELIONCOLUMNS.rlnClassNumber.value):
-            item.setClassId(row.get(RELIONCOLUMNS.rlnClassNumber.value))
+        if matchItemRow(item, row):
+            if row.hasColumn(RELIONCOLUMNS.rlnClassNumber.value):
+                item.setClassId(row.get(RELIONCOLUMNS.rlnClassNumber.value))
+            else:
+                item.setClassId(1)
+            samplingRate = item.getSamplingRate()
+            item.setTransform(rowToAlignment(row, ALIGN_PROJ, samplingRate))
         else:
-            item.setClassId(1)
-        samplingRate = item.getSamplingRate()
-        item.setTransform(rowToAlignment(row, ALIGN_PROJ, samplingRate))
+            item._appendItem = False
 
     def _updateClass(self, item):
         classId = item.getObjId()
