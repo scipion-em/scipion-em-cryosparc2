@@ -26,6 +26,7 @@
 # *
 # **************************************************************************
 import os
+import time
 
 import emtable
 
@@ -362,7 +363,9 @@ class ProtCryo2D(ProtCryosparcBase, pwprot.ProtClassify2D):
         clsSet.classifyItems(updateItemCallback=self._updateParticle,
                              updateClassCallback=self._updateClass,
                              itemDataIterator=emtable.Table.iterRows(
-                                 xmpMd))  # relion style
+                                 xmpMd),
+                             raiseOnNextFailure=False,
+                             cancelNextWhenAppendIsFalse=True)  # relion style
 
     def _updateParticle(self, item, row):
         item.setClassId(row.get(RELIONCOLUMNS.rlnClassNumber.value))
