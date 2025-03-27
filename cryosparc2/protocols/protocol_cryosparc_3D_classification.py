@@ -42,7 +42,7 @@ from ..utils import (addSymmetryParam, addComputeSectionParams, doImportVolumes,
                      get_job_streamlog, calculateNewSamplingRate,
                      cryosparcValidate, gpusValidate, getSymmetry, enqueueJob,
                      waitForCryosparc, clearIntermediateResults, fixVolume,
-                     copyFiles, getOutputPreffix)
+                     copyFiles, getOutputPreffix, matchItemRow)
 from ..constants import *
 
 
@@ -331,10 +331,12 @@ class ProtCryoSparc3DClassification(ProtCryosparcBase):
         self._loadClassesInfo(self._getFileName('out_class'))
         clsSet.classifyItems(updateItemCallback=self._updateParticle,
                              updateClassCallback=self._updateClass,
-                             itemDataIterator=emtable.Table.iterRows(xmpMd))
+                             itemDataIterator=emtable.Table.iterRows(xmpMd),
+                             raiseOnNextFailure=False,
+                             cancelNextWhenAppendIsFalse=True)
 
     def _updateParticle(self, item, row):
-        if row.get(RELIONCOLUMNS.rlnAnglePsi.value):
+        if matchItemRow(item, row):
             item.setClassId(row.get(RELIONCOLUMNS.rlnClassNumber.value))
             samplingRate = item.getSamplingRate()
             item.setTransform(rowToAlignment(row, ALIGN_PROJ, samplingRate))

@@ -25,6 +25,7 @@
 # *
 # **************************************************************************
 import os
+import emtable
 
 from pwem import ALIGN_PROJ
 from pwem.protocols import ProtOperateParticles
@@ -36,7 +37,7 @@ from pyworkflow.protocol.params import (PointerParam, FloatParam,
 
 from .protocol_base import ProtCryosparcBase
 from ..convert import (convertCs2Star, readSetOfParticles,
-                       cryosparcToLocation)
+                       cryosparcToLocation, rowToCtfModel, rowToAlignment)
 from ..utils import (addComputeSectionParams, calculateNewSamplingRate,
                      cryosparcValidate, gpusValidate, enqueueJob,
                      waitForCryosparc, clearIntermediateResults, copyFiles)
@@ -184,18 +185,17 @@ class ProtCryoSparcSubtract(ProtCryosparcBase, ProtOperateParticles):
     def _fillDataFromIter(self, imgSet):
 
         outImgsFn = 'particles@' + self._getFileName('out_particles')
-        hasCtf = imgSet.hasCTF()
-        hasAcquisition = True  # I think this is always present ROB
-        readSetOfParticles(outImgsFn, imgSet,
-                           postprocessImageRow=self._updateItem,
-                           alignType=ALIGN_PROJ, readCtf=hasCtf, 
-                           readAcquisition=hasAcquisition,
-                           samplingRate=imgSet.getSamplingRate())
+        imgSet.copyItems(self._getInputParticles(),
+                         updateItemCallback=self._updateItem,
+                         itemDataIterator=emtable.Table.iterRows(outImgsFn))
 
     def _updateItem(self, item, row):
         newFn = row.get(RELIONCOLUMNS.rlnImageName.value)
         index, file = cryosparcToLocation(newFn)
         item.setLocation((index, self._getExtraPath(file)))
+        item.setCTF(rowToCtfModel(row))
+        pixelSize = item.getSamplingRate()
+        item.setTransform(rowToAlignment(row, ALIGN_PROJ, pixelSize))
         item.setSamplingRate(calculateNewSamplingRate(item.getDim(),
                                                       self._getInputParticles().getSamplingRate(),
                                                       self._getInputParticles().getDim()))

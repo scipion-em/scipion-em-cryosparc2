@@ -38,6 +38,11 @@ You will need to use `3.0.0 <https://scipion-em.github.io/docs/release-3.0.0/doc
 **Latest plugin version**
 ==========================
 
+**v4.2.1**
+-----------
+
+* **fixed**      Fixing errors related the classification protocols
+
 **v4.2.0**
 -----------
 

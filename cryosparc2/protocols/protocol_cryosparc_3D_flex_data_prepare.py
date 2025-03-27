@@ -177,7 +177,7 @@ class ProtCryoSparc3DFlexDataPrepare(ProtCryosparcBase):
             splitFileName = fileName.split('@')
             key = str(int(splitFileName[0])) + '@' + '_'.join(splitFileName[1].split('_')[1:])
             if key in imgSetDict:
-                img = imgSetDict[key].clone()
+                img = imgSetDict[key]
                 outImgSet.append(img)
 
     def _createItemMatrix(self, particle, row):

@@ -24,8 +24,11 @@
 # *  e-mail address 'scipion@cnb.csic.es'
 # *
 # **************************************************************************
+import itertools
 import os
 import ast
+import time
+
 import requests
 import logging
 logger = logging.getLogger(__name__)
@@ -37,7 +40,7 @@ import pyworkflow.object as pwobj
 import pyworkflow.utils as pwutils
 from pwem.objects import FSC
 
-from ..constants import V3_3_1, excludedFSCValues, fscValues, V4_0_0, V4_1_0
+from ..constants import V3_3_1, excludedFSCValues, fscValues, V4_0_0, V4_1_0, RELIONCOLUMNS
 from ..convert import convertBinaryVol, writeSetOfParticles, ImageHandler
 from ..utils import (getProjectPath, createEmptyProject,
                      createEmptyWorkSpace, getProjectName,
