@@ -42,6 +42,7 @@ from ..convert import (convertCs2Star, createItemMatrix,
 from ..utils import (addComputeSectionParams, cryosparcValidate, gpusValidate,
                      enqueueJob, waitForCryosparc, copyFiles)
 
+
 class ProtCryoSparcLocalCtfRefinement(ProtCryosparcBase, ProtParticles):
     """
     Wrapper protocol for the Cryosparc's per-particle Local CTF refinement.

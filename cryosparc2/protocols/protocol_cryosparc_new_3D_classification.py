@@ -89,7 +89,7 @@ class ProtCryoSparcNew3DClassification(ProtCryosparcBase):
                       label="Initial volumes",
                       help='Multiple initial volume raw data')
         form.addParam('refMask', PointerParam, pointerClass='VolumeMask',
-                      label='Static mask',
+                      label='Solvent mask',
                       allowsNull=True,
                       help="Mask for focussed classification. If none supplied,"
                            " a mask will be created from initial structures "

@@ -46,7 +46,7 @@ class ProtCryoSparc3DFlexGenerator(ProtCryosparcBase, ProtFlexBase):
     _label = '3D flex generator'
     _devStatus = BETA
     _protCompatibility = [V4_1_0, V4_1_1, V4_1_2, V4_2_0, V4_2_1, V4_3_1, V4_4_0, V4_4_1, V4_5_1,
-                          V4_5_3, V4_6_0, V4_6_1, V4_6_2]
+                          V4_5_3, V4_6_0, V4_6_1, V4_6_2, V4_7_0]
 
     # --------------------------- DEFINE param functions ----------------------
     def _defineParams(self, form):
