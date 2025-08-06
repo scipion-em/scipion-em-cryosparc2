@@ -170,7 +170,10 @@ class ProtCryoSparc3DFlexReconstruction(ProtCryosparcBase):
     def doRun3DFlexReconstruction(self):
         self._className = "flex_highres"
         try:
-            gpusToUse = self.getGpuList()
+            if not self.useQueueForSteps() and not self.useQueue():  # not using queue system
+                gpusToUse = self.getGpuList()
+            else:  # using queue system
+                gpusToUse = False
         except Exception:
             gpusToUse = False
 

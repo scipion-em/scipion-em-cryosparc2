@@ -260,7 +260,10 @@ class ProtCryoSparcBlobPicker(ProtCryosparcBase):
         params = {'classic_mode': 'False'}
         className = 'patch_ctf_estimation_multi'
         try:
-            gpusToUse = self.getGpuList()
+            if not self.useQueueForSteps() and not self.useQueue():  # not using queue system
+                gpusToUse = self.getGpuList()
+            else:  # using queue system
+                gpusToUse = False
         except Exception:
             gpusToUse = False
 
