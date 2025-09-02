@@ -120,7 +120,10 @@ class ProtCryoSparc3DFlexGenerator(ProtCryosparcBase, ProtFlexBase):
         self._className = "flex_generate"
 
         try:
-            gpusToUse = self.getGpuList()
+            if not self.useQueueForSteps() and not self.useQueue():  # not using queue system
+                gpusToUse = self.getGpuList()
+            else:  # using queue system
+                gpusToUse = False
         except Exception:
             gpusToUse = False
 

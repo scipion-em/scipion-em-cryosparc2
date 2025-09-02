@@ -676,7 +676,10 @@ class ProtCryoSparc3DHomogeneousRefine(ProtCryosparcBase):
         # Determinate the GPUs to use (in dependence of
         # the cryosparc version)
         try:
-            gpusToUse = self.getGpuList()
+            if not self.useQueueForSteps() and not self.useQueue():  # not using queue system
+                gpusToUse = self.getGpuList()
+            else:  # using queue system
+                gpusToUse = False
         except Exception:
             gpusToUse = False
 

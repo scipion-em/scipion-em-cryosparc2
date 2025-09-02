@@ -196,7 +196,10 @@ class ProtCryoSparcPatchCTFEstimate(ProtCryosparcBase):
         input_group_connect = {"exposures": self.micrographs.get()}
         params = {'classic_mode': 'False'}
         try:
-            gpusToUse = self.getGpuList()
+            if not self.useQueueForSteps() and not self.useQueue():  # not using queue system
+                gpusToUse = self.getGpuList()
+            else:  # using queue system
+                gpusToUse = False
         except Exception:
             gpusToUse = False
 
