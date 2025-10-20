@@ -42,6 +42,7 @@ from ..convert import (convertCs2Star, createItemMatrix,
 from ..utils import (addComputeSectionParams, cryosparcValidate, gpusValidate,
                      enqueueJob, waitForCryosparc, copyFiles)
 
+
 class ProtCryoSparcLocalCtfRefinement(ProtCryosparcBase, ProtParticles):
     """
     Wrapper protocol for the Cryosparc's per-particle Local CTF refinement.
@@ -252,7 +253,10 @@ class ProtCryoSparcLocalCtfRefinement(ProtCryosparcBase, ProtParticles):
         # Determinate the GPUs to use (in dependence of
         # the cryosparc version)
         try:
-            gpusToUse = self.getGpuList()
+            if not self.useQueueForSteps() and not self.useQueue():  # not using queue system
+                gpusToUse = self.getGpuList()
+            else:  # using queue system
+                gpusToUse = False
         except Exception:
             gpusToUse = False
 

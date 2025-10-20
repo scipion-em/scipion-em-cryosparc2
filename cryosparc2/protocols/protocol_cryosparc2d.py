@@ -457,8 +457,12 @@ class ProtCryo2D(ProtCryosparcBase, pwprot.ProtClassify2D):
         # Determinate the GPUs or the number of GPUs to use (in dependence of
         # the cryosparc version)
         try:
-            gpusToUse = self.getGpuList()
-            numberGPU = len(gpusToUse)
+            if not self.useQueueForSteps() and not self.useQueue(): # not using queue system
+                gpusToUse = self.getGpuList()
+                numberGPU = len(gpusToUse)
+            else: # using queue system
+                gpusToUse = False
+                numberGPU = 1
         except Exception:
             gpusToUse = False
             numberGPU = 1

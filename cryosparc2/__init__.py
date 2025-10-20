@@ -32,7 +32,7 @@ from pyworkflow import VarTypes
 
 from .constants import *
 
-__version__ = '4.2.1'
+__version__ = '4.2.2'
 _references = ['Punjani2017', 'Brubaker2017', 'daniel_asarnow_2019_3576630']
 _logo = 'cryosparc2_logo.png'
 
@@ -58,10 +58,11 @@ class Plugin(em.Plugin):
                        description='The password with which cryoSPARC was installed. This is only required for the use '
                                    'of the Flexutils plugin and its connection to the 3D flex training protocol.')
         cls._defineVar(CRYOSPARC_USER, None, description='This is the email with which cryoSPARC was installed.')
+        cls._defineVar(PYEM_ENV_ACTIVATION,PYEM_ACTIVATION_CMD, description='This is the PYEM conda environment activation command in the scipion.conf. Default to the one defined in contants.py')
 
     @classmethod
     def getPyemEnvActivation(cls):
-        return PYEM_ACTIVATION_CMD
+        return cls.getVar(PYEM_ENV_ACTIVATION)
 
     @classmethod
     def getEnviron(cls):

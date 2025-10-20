@@ -44,7 +44,7 @@ class ProtCryoSparc3DFlexReconstruction(ProtCryosparcBase):
     _label = '3D flex reconstruction'
     _devStatus = BETA
     _protCompatibility = [V4_1_0, V4_1_1, V4_1_2, V4_2_0, V4_2_1, V4_3_1, V4_4_0, V4_4_1, V4_5_1,
-                          V4_5_3, V4_6_0, V4_6_1, V4_6_2]
+                          V4_5_3, V4_6_0, V4_6_1, V4_6_2, V4_7_0]
 
     # --------------------------- DEFINE param functions ----------------------
     def _defineFileNames(self):
@@ -170,7 +170,10 @@ class ProtCryoSparc3DFlexReconstruction(ProtCryosparcBase):
     def doRun3DFlexReconstruction(self):
         self._className = "flex_highres"
         try:
-            gpusToUse = self.getGpuList()
+            if not self.useQueueForSteps() and not self.useQueue():  # not using queue system
+                gpusToUse = self.getGpuList()
+            else:  # using queue system
+                gpusToUse = False
         except Exception:
             gpusToUse = False
 

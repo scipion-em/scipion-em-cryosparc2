@@ -36,8 +36,7 @@ from pyworkflow.protocol.params import (PointerParam, FloatParam,
                                         LEVEL_ADVANCED, Positive, BooleanParam)
 
 from .protocol_base import ProtCryosparcBase
-from ..convert import (convertCs2Star, readSetOfParticles,
-                       cryosparcToLocation, rowToCtfModel, rowToAlignment)
+from ..convert import (convertCs2Star, cryosparcToLocation, rowToCtfModel, rowToAlignment)
 from ..utils import (addComputeSectionParams, calculateNewSamplingRate,
                      cryosparcValidate, gpusValidate, enqueueJob,
                      waitForCryosparc, clearIntermediateResults, copyFiles)
@@ -280,7 +279,10 @@ class ProtCryoSparcSubtract(ProtCryosparcBase, ProtOperateParticles):
         # Determinate the GPUs to use (in dependence of
         # the cryosparc version)
         try:
-            gpusToUse = self.getGpuList()
+            if not self.useQueueForSteps() and not self.useQueue():  # not using queue system
+                gpusToUse = self.getGpuList()
+            else:  # using queue system
+                gpusToUse = False
         except Exception:
             gpusToUse = False
 

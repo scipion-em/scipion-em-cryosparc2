@@ -89,7 +89,7 @@ class ProtCryoSparcNew3DClassification(ProtCryosparcBase):
                       label="Initial volumes",
                       help='Multiple initial volume raw data')
         form.addParam('refMask', PointerParam, pointerClass='VolumeMask',
-                      label='Static mask',
+                      label='Solvent mask',
                       allowsNull=True,
                       help="Mask for focussed classification. If none supplied,"
                            " a mask will be created from initial structures "
@@ -528,19 +528,21 @@ class ProtCryoSparcNew3DClassification(ProtCryosparcBase):
                 if not validateMsgs and not particles.hasAlignmentProj():
                     validateMsgs.append("The Particles has not "
                                         "alignment")
+                if len(particles) < 1000:
+                    validateMsgs.append('Not Enough Images! The set of particles must contain at least 1000 images')
 
                 inputVolumes = self._getInputVolume()
+                if inputVolumes is not None and inputVolumes:
+                    if self.class3D_init_mode.get() != 2:
+                        validateMsgs.append('Input volumes detected, please set initialization mode to `input` or clear volume inputs.')
+                    if len(inputVolumes) != self.class3D_N_K.get():
+                        validateMsgs.append('No. of input volumes must equal no. of classes')
+                if not inputVolumes and self.class3D_init_mode.get() == 2:
+                    validateMsgs.append('Input volumes no detected, '
+                                        'please set initialization mode to `simple` or add volume inputs.')
                 if not validateMsgs:
-                    if inputVolumes is not None and inputVolumes:
-                        if self.class3D_init_mode.get() != 2:
-                            validateMsgs.append('Input volumes detected, please set initialization mode to `input` or clear volume inputs.')
-                        if len(inputVolumes) != self.class3D_N_K.get():
-                            validateMsgs.append('No. of input volumes must equal no. of classes')
-                    elif len(particles) < 1000:
-                            validateMsgs.append('Not Enough Images! The set of particles must contain at least 1000 images')
-                    if not validateMsgs:
-                        if self.class3D_N_K.get() < 2:
-                            validateMsgs.append('The number of classes must be grater than 2')
+                    if self.class3D_N_K.get() < 2:
+                        validateMsgs.append('The number of classes must be grater than 2')
         return validateMsgs
 
     # --------------------------- UTILS functions ------------------------------
@@ -697,7 +699,10 @@ class ProtCryoSparcNew3DClassification(ProtCryosparcBase):
         # Determinate the GPUs to use (in dependence of
         # the cryosparc version)
         try:
-            gpusToUse = self.getGpuList()
+            if not self.useQueueForSteps() and not self.useQueue():  # not using queue system
+                gpusToUse = self.getGpuList()
+            else:  # using queue system
+                gpusToUse = False
         except Exception:
             gpusToUse = False
 

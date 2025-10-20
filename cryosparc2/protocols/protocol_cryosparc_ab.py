@@ -414,7 +414,7 @@ class ProtCryoSparcInitialModel(ProtCryosparcBase, ProtInitialVolume,
                              cancelNextWhenAppendIsFalse=True)
 
     def _updateParticle(self, item, row):
-        if matchItemRow(item, row):
+        if row is not None and matchItemRow(item, row):
             if row.hasColumn(RELIONCOLUMNS.rlnClassNumber.value):
                 item.setClassId(row.get(RELIONCOLUMNS.rlnClassNumber.value))
             else:
@@ -499,7 +499,10 @@ class ProtCryoSparcInitialModel(ProtCryosparcBase, ProtInitialVolume,
         # Determinate the GPUs to use (in dependence of
         # the cryosparc version)
         try:
-            gpusToUse = self.getGpuList()
+            if not self.useQueueForSteps() and not self.useQueue():  # not using queue system
+                gpusToUse = self.getGpuList()
+            else:  # using queue system
+                gpusToUse = False
         except Exception:
             gpusToUse = False
 
