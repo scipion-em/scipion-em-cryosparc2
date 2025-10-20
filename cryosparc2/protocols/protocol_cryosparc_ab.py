@@ -414,7 +414,7 @@ class ProtCryoSparcInitialModel(ProtCryosparcBase, ProtInitialVolume,
                              cancelNextWhenAppendIsFalse=True)
 
     def _updateParticle(self, item, row):
-        if matchItemRow(item, row):
+        if row is not None and matchItemRow(item, row):
             if row.hasColumn(RELIONCOLUMNS.rlnClassNumber.value):
                 item.setClassId(row.get(RELIONCOLUMNS.rlnClassNumber.value))
             else:

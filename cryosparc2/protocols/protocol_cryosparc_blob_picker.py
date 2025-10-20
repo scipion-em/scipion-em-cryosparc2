@@ -30,9 +30,9 @@ import emtable
 from pwem.objects import Coordinate, CTFModel
 import pyworkflow.utils as pwutils
 from pyworkflow import NEW
+from pyworkflow.object import String
 from pyworkflow.protocol.params import (PointerParam, FloatParam,
-                                        BooleanParam, IntParam,
-                                        String)
+                                        BooleanParam, IntParam)
 
 from .protocol_base import ProtCryosparcBase
 from .. import RELIONCOLUMNS
