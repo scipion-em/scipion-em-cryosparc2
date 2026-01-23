@@ -525,8 +525,7 @@ class ProtCryoSparc3DHomogeneousRefine(ProtCryosparcBase):
                 particles = self._getInputParticles()
                 if not particles.hasCTF():
                     validateMsgs.append(
-                        "The Particles has not associated a "
-                        "CTF model")
+                        "Particles must have an associated CTF ")
         return validateMsgs
 
     def _summary(self):
