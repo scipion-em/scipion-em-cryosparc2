@@ -107,6 +107,18 @@ class ProtCryoSparc3DHomogeneousRefine(ProtCryosparcBase):
         form.addParam('refine_symmetry_do_align', BooleanParam, default=True,
                       label="Do symmetry alignment",
                       help='Align the input structure to the symmetry axes')
+        
+        form.addParam('refine_relax_symmetry', EnumParam,
+                      choices=["none", "maximalization", "marginalization"],
+                      label="Symmetry relaxation",
+                      help=
+                      "Method used for symmetry relaxation. Leave as 'none' to disable symmetry relaxation. " \
+                      "Set to 'maximization' to enable symmetry relaxation without pose marginalization. " \
+                      "Set to 'marginalization' to enable symmetry relaxation with pose marginalization within a symmetry mode. " \
+                      "With a point group of order N, particles will only contribute to one of the N modes. " \
+                      "If this is set to maximization or marginalization, this overrides the value of the 'Adaptive Marginalization' parameter.",
+                      default=0,
+                      )
 
         form.addParam('refine_do_init_scale_est', BooleanParam, default=True,
                       label="Re-estimate greyscale level of input reference")
@@ -575,6 +587,7 @@ class ProtCryoSparc3DHomogeneousRefine(ProtCryosparcBase):
         """ Define a list with all protocol parameters names"""
         self._paramsName = ['refine_symmetry',
                             'refine_symmetry_do_align',
+                            'refine_relax_symmetry',
                             'refine_do_init_scale_est',
                             'refine_highpass_res',
                             'refine_num_final_iterations',
@@ -623,6 +636,7 @@ class ProtCryoSparc3DHomogeneousRefine(ProtCryosparcBase):
 
         for paramName in self._paramsName:
             if (paramName != 'refine_symmetry' and
+                    paramName != 'refine_relax_symmetry' and
                     paramName != 'refine_noise_model' and
                     paramName != 'refine_mask' and
                     paramName != 'refine_highpass_res' and
@@ -642,6 +656,9 @@ class ProtCryoSparc3DHomogeneousRefine(ProtCryosparcBase):
                 symetryValue = getSymmetry(self.symmetryGroup.get(),
                                            self.symmetryOrder.get())
                 params[str(paramName)] = symetryValue
+            elif paramName == 'refine_relax_symmetry':
+                params[str(paramName)] = str(
+                    SYMMETRY_RELAXATION_CHOICES[self.refine_relax_symmetry.get()])
             elif paramName == 'refine_noise_model':
                 params[str(paramName)] = str(
                     NOISE_MODEL_CHOICES[self.refine_noise_model.get()])

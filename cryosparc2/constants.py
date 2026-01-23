@@ -103,9 +103,14 @@ CS_SYM_NAME[SYM_I222r] = 'I2'
 NOISE_MODEL_CHOICES = ['symmetric',
                        'white',
                        'coloured']
+
 REFINE_MASK_CHOICES = ['dynamic',
                        'static',
                        'null']
+
+SYMMETRY_RELAXATION_CHOICES = ['none',
+                               'maximization',
+                               'marginalization']
 
 REFINE_FILTER_TYPE = ['butterworth',
                       'rect',
