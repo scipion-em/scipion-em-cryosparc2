@@ -526,7 +526,19 @@ class ProtCryoSparc3DHomogeneousRefine(ProtCryosparcBase):
                 if not particles.hasCTF():
                     validateMsgs.append(
                         "Particles must have an associated CTF ")
+                if not validateMsgs:
+                    validateMsgs = self._validateSymmetryRelaxation()
         return validateMsgs
+    
+    def _validateSymmetryRelaxation(self):
+        # C1 can only be used with 'none'
+        group = self.symmetryGroup.get()
+        order = self.symmetryOrder.get()
+        if group == SYM_CYCLIC and order == 1:
+            if self.refine_relax_symmetry.get() != 0:
+                msg = "Symmetry relaxation can not be used with C1 symmetry. " \
+                "Please set to 'none'."
+                return [msg]
 
     def _summary(self):
         summary = []
