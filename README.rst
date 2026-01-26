@@ -48,7 +48,7 @@ You will need to use `3.0.0 <https://scipion-em.github.io/docs/release-3.0.0/doc
 **v4.2.2**
 -----------
 
-* **new**        Compatibility with cryoSPARC v4.6.2
+* **new**        Compatibility with cryoSPARC v4.7.0
 
 **v4.2.0**
 -----------
