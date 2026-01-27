@@ -101,7 +101,7 @@ class CryosPARCViewerInitialModel(ProtocolViewer):
             projectId = self.protocol.projectName.get()
             workspaceId = self.protocol.workSpaceName.get()
             jobId = self.protocol.currenJob.get()
-            if parse_version(version) >= parse_version(V4_1_0):
+            if parse_version(getCryosparcVersion()) >= parse_version(V4_1_0):
                 url = "http://%s:%s/browse/%s-%s-J*#job(%s-%s)" % (
                 master_hostname, port_app,
                 projectId, workspaceId, projectId, jobId)
