@@ -37,11 +37,18 @@ You will need to use `3.0.0 <https://scipion-em.github.io/docs/release-3.0.0/doc
 
 **Latest plugin version**
 ==========================
-
-**v4.2.1**
+**v4.2.3**
 -----------
 
-* **fixed**      Fixing errors related the classification protocols
+* **new**        Compatibility with cryoSPARC v4.7.1
+* **fixed**      Now compatible with atypical version names (v4.7.1-cuda12)
+* **updated**    Non-uniform and homogeneous refinement protocols now allow for symmetry relaxation     
+
+
+**v4.2.2**
+-----------
+
+* **new**        Compatibility with cryoSPARC v4.7.0
 
 **v4.2.0**
 -----------
