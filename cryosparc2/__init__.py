@@ -28,11 +28,11 @@
 import os
 import pwem as em
 import pyworkflow.utils as pwutils
-from pyworkflow import VarTypes
+from pyworkflow import VarTypes, SPA
 
 from .constants import *
 
-__version__ = '4.2.2'
+__version__ = '4.2.3'
 _references = ['Punjani2017', 'Brubaker2017', 'daniel_asarnow_2019_3576630']
 _logo = 'cryosparc2_logo.png'
 
@@ -42,6 +42,7 @@ class Plugin(em.Plugin):
     _homeVar = CRYOSPARC_HOME
     _pathVars = [CRYOSPARC_HOME]
     _supportedVersions = SUPORTED_VERSIONS
+    _processingField = SPA
 
     @classmethod
     def _defineVariables(cls):

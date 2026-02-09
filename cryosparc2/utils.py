@@ -210,10 +210,10 @@ def getCryosparcVersion():
     global _csVersion
     if _csVersion is None:
         try:
-            _csVersion = _getCryosparcVersionFromFile().split('+')[0]
+            _csVersion = _getCryosparcVersionFromFile().split('+')[0].split('-')[0]
         except Exception:
             try:
-                _csVersion = getCryosparcEnvInformation(VERSION).split('+')[0]
+                _csVersion = getCryosparcEnvInformation(VERSION).split('+')[0].split('-')[0]
             except Exception as e:
                 logger.error("Couldn't get Cryosparc's version. Please review your config (%s)" % Plugin.getUrl(), exc_info=e)
                 _csVersion = V_UNKNOWN
@@ -1181,15 +1181,16 @@ def matchItemRow(item, row):
                 expected to contain RELIONCOLUMNS.rlnImageName.
     :return: True if the item's index and filename match the extracted row data, False otherwise.
     """
-    imageName = row.get(RELIONCOLUMNS.rlnImageName.value)
-    if not imageName:
-        return True  # If no image name is found in row, assume a match
-
     try:
+
+        imageName = row.get(RELIONCOLUMNS.rlnImageName.value)
+        if not imageName:
+            return True  # If no image name is found in row, assume a match
+
         index, filePath = imageName.split('@')
         rowFileName = os.path.splitext(os.path.basename(filePath).split('_', 1)[-1])[0]  # Remove leading digits and underscore and extension
         itemFileName = os.path.splitext(os.path.basename(item.getFileName()))[0]  # Remove extension
         return int(index) == item.getIndex() and itemFileName == rowFileName
-    except (ValueError, AttributeError):
+    except Exception:
         return False  # In case of unexpected format, assume no match
 
