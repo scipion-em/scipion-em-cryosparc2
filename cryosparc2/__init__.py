@@ -28,7 +28,7 @@
 import os
 import pwem as em
 import pyworkflow.utils as pwutils
-from pyworkflow import VarTypes
+from pyworkflow import VarTypes, SPA
 
 from .constants import *
 
@@ -42,6 +42,7 @@ class Plugin(em.Plugin):
     _homeVar = CRYOSPARC_HOME
     _pathVars = [CRYOSPARC_HOME]
     _supportedVersions = SUPORTED_VERSIONS
+    _processingField = SPA
 
     @classmethod
     def _defineVariables(cls):
