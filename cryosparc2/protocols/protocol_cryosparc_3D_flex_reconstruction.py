@@ -60,7 +60,7 @@ class ProtCryoSparc3DFlexReconstruction(ProtCryosparcBase):
         form.addSection(label='Input')
         form.addParam('input3DFlexTrainingProt', PointerParam,
                       pointerClass='ProtCryoSparc3DFlexTraining',
-                      label="3D flex data prepare protocol",
+                      label="3D flex training protocol",
                       important=True,
                       help='Particle stacks to use.')
 

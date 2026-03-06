@@ -80,7 +80,7 @@ class ProtCryoSparc3DFlexTraining(ProtCryosparcBase, ProtFlexBase):
                       important=True,
                       help='3d Flex mesh.')
 
-        form.addParam('flex_K', IntParam, default=2,
+        form.addParam('flex_K', IntParam, default=3,
                       label="Number of latent dims",
                       help="Number of latent dimensions in the flex refine "
                            "model. See guide for more details. Typically, "
@@ -304,3 +304,14 @@ class ProtCryoSparc3DFlexTraining(ProtCryosparcBase, ProtFlexBase):
                          "details.", self)
         clearIntermediateResults(self.projectName.get(),
                                  self.run3DFlexTrainJob.get())
+
+
+    def _validate(self):
+        """ Try to find errors on define params. """
+        errors = []
+
+        if self.flex_K.get() < 3:
+            errors.append("For subsequent analysis steps, it is required to set the latent dimensions to be a value larger than or "
+                          "equal to 3.")
+
+        return errors
