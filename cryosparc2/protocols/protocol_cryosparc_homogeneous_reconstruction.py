@@ -28,7 +28,6 @@ import ast
 import os
 
 import emtable
-from pkg_resources import parse_version
 
 from pwem import ALIGN_PROJ
 
@@ -46,7 +45,7 @@ from ..utils import (addComputeSectionParams, calculateNewSamplingRate,
                      cryosparcValidate, gpusValidate, enqueueJob,
                      waitForCryosparc, clearIntermediateResults, fixVolume,
                      copyFiles, addSymmetryParam, getSymmetry,
-                     getCryosparcVersion, get_job_streamlog, getOutputPreffix)
+                     getCryosparcVersion, get_job_streamlog, getOutputPreffix, parse_version)
 from ..constants import *
 
 

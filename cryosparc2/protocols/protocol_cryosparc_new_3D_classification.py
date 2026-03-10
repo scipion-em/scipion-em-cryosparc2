@@ -28,7 +28,7 @@
 import os
 
 import emtable
-from pkg_resources import parse_version
+
 
 import pyworkflow.utils as pwutils
 from pwem.objects import VolumeMask
@@ -45,7 +45,7 @@ from ..utils import (addComputeSectionParams, doImportVolumes,
                      get_job_streamlog, calculateNewSamplingRate,
                      cryosparcValidate, gpusValidate, enqueueJob,
                      waitForCryosparc, clearIntermediateResults, fixVolume,
-                     copyFiles, getCryosparcVersion, getOutputPreffix, matchItemRow)
+                     copyFiles, getCryosparcVersion, getOutputPreffix, matchItemRow, parse_version)
 from ..constants import *
 
 
