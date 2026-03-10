@@ -27,7 +27,7 @@
 import os
 
 import emtable
-from pkg_resources import parse_version
+
 
 from pwem import ALIGN_PROJ
 import pwem.protocols as pwprot
@@ -43,7 +43,7 @@ from ..convert import (convertCs2Star, createItemMatrix,
                        setCryosparcAttributes)
 from ..utils import (addComputeSectionParams, cryosparcValidate, gpusValidate,
                      enqueueJob, waitForCryosparc, copyFiles,
-                     getCryosparcVersion)
+                     getCryosparcVersion, parse_version)
 
 from ..constants import *
 
@@ -58,7 +58,7 @@ class ProtCryoSparcGlobalCtfRefinement(ProtCryosparcBase, pwprot.ProtParticles):
     _className = "ctf_refine_global"
     _protCompatibility = [V3_3_1, V3_3_2, V4_0_0, V4_0_1, V4_0_2, V4_0_3, V4_1_0,
                           V4_1_1, V4_1_2, V4_2_0, V4_2_1, V4_3_1, V4_4_0, V4_4_1, V4_5_1,
-                          V4_5_3, V4_6_0, V4_6_1, V4_6_2, V4_7_0]
+                          V4_5_3, V4_6_0, V4_6_1, V4_6_2, V4_7_0, V4_7_1]
     newParamsName = []
 
     def _initialize(self):
