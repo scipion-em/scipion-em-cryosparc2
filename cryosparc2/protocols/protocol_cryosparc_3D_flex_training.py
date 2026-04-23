@@ -147,7 +147,7 @@ class ProtCryoSparc3DFlexTraining(ProtCryosparcBase, ProtFlexBase):
                            "precision, but can sometimes lead to poorly "
                            "structured latent spaces. See guide for more details.")
 
-        form.addParam('flex_latent_prior_lam', IntParam, default=20,
+        form.addParam('flex_latent_prior_lam', FloatParam, default=20.0,
                       label="Latent centering strength",
                       help="Strength of prior that keeps latent coordinates "
                            "centered and distributed around (0,0) in the "
@@ -163,7 +163,7 @@ class ProtCryoSparc3DFlexTraining(ProtCryosparcBase, ProtFlexBase):
                       label="Latent centering pow",
                       expertLevel=LEVEL_ADVANCED)
 
-        form.addParam('flex_latent_ext_init', BooleanParam, default=True,
+        form.addParam('flex_latent_ext_init', BooleanParam, default=False,
                       label="Initialize latents from input",
                       expertLevel=LEVEL_ADVANCED)
 

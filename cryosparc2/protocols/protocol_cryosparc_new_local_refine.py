@@ -409,7 +409,7 @@ class ProtCryoSparcLocalRefine(ProtCryosparcBase, ProtOperateParticles):
                   float(self.getAttributeValue(paramName)) > 0):
                 params[str(paramName)] = str(self.getAttributeValue(paramName))
             elif paramName == 'intermediate_plots':
-                params[str(paramName)] = 'False'
+                params[str(paramName)] = 'True'
             elif (paramName == 'sigma_prior_r' or
                   paramName == 'sigma_prior_s') and self.getAttributeValue('use_alignment_prior'):
                 params[str(paramName)] = str(self.getAttributeValue(paramName))

@@ -489,7 +489,7 @@ class ProtCryoSparc3DClassification(ProtCryosparcBase):
                 params[str(paramName)] = str(NOISE_MODEL_CHOICES[self.multirefine_noise_model.get()])
 
             elif paramName == 'intermediate_plots' or paramName == 'distribution_plots':
-                params[str(paramName)] = str("False")
+                params[str(paramName)] = str("True")
 
         # Determinate the GPUs to use (in dependence of
         # the cryosparc version)

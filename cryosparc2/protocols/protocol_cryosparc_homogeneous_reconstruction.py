@@ -227,7 +227,7 @@ class ProtCryoSparcHomogeneousReconstruct(ProtCryosparcBase):
                       help='Apply a wide mask to the final map, to reduce file '
                            'size after compression.')
 
-        form.addParam('intermediate_plots', BooleanParam, default=False,
+        form.addParam('intermediate_plots', BooleanParam, default=True,
                       expertLevel=LEVEL_ADVANCED,
                       label="Show plots from intermediate steps",
                       help='Hide plots from intermediate steps to speed up '

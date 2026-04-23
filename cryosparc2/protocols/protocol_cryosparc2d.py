@@ -432,7 +432,7 @@ class ProtCryo2D(ProtCryosparcBase, pwprot.ProtClassify2D):
                   "class2D_sigma_num_anneal_iters": str(
                       self.iterationToStartAnneal.get()),
                   "class2D_sigma_use_white": str(self.useWhiteNoiseModel.get()),
-                  "intermediate_plots": str('False'),
+                  "intermediate_plots": str('True'),
                   "compute_use_ssd": str(self.compute_use_ssd.get())}
         if self.class2D_window_inner_A.get() is not None:
             params["class2D_window_inner_A"] = str(
