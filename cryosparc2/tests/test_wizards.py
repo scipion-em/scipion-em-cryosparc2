@@ -18,6 +18,13 @@ class _DummyForm:
         self.values[key] = value
 
 
+
+
+class _DummyFormParam:
+    def __init__(self, attrName):
+        self.attrName = attrName
+
+
 class _DummyDialog:
     values = ['lane-a']
 
@@ -58,6 +65,18 @@ class TestProtCryosparcLanesWizard(unittest.TestCase):
         self.assertEqual(form.values.get('preprocess_lane'), 'lane-a')
         self.assertNotIn('compute_lane', form.values)
 
+
+
+    @patch('cryosparc2.wizards.LanesDialogView', _DummyDialogView)
+    @patch('cryosparc2.wizards.cryosparcValidate', return_value=[])
+    def test_show_uses_form_param_attr_name(self, _validate):
+        form = _DummyForm(_ProtocolWithPreprocessLane())
+
+        wizard = ProtCryosparcLanesWizard()
+        wizard.show(form, _DummyFormParam('preprocess_lane'))
+
+        self.assertEqual(form.values.get('preprocess_lane'), 'lane-a')
+        self.assertNotIn('compute_lane', form.values)
 
 if __name__ == '__main__':
     unittest.main()
