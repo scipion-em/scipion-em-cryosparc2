@@ -42,7 +42,7 @@ from ..utils import (addSymmetryParam, addComputeSectionParams,
                      cryosparcValidate, gpusValidate, getSymmetry,
                      waitForCryosparc, clearIntermediateResults, enqueueJob,
                      getCryosparcVersion, fixVolume, copyFiles,
-                     getOutputPreffix, parse_version)
+                     getOutputPreffix, parse_version, getCryosparcPreprocessLane)
 from ..constants import *
 
 
@@ -425,6 +425,14 @@ class ProtCryoSparc3DHomogeneousRefine(ProtCryosparcBase):
         form.addSection(label="Compute settings")
         addComputeSectionParams(form, allowMultipleGPUs=True)
 
+        defaultPreprocessLane = getCryosparcPreprocessLane()
+        if defaultPreprocessLane is None:
+            defaultPreprocessLane = str(self.getAttributeValue('compute_lane'))
+        form.addParam('preprocess_lane', StringParam,
+                      default=defaultPreprocessLane,
+                      label='Preprocessing lane name:', readOnly=True,
+                      help='Scheduler lane used for preprocessing imports (particles, volumes, masks).')
+
     # --------------------------- INSERT steps functions -----------------------
 
     def _insertAllSteps(self):
@@ -631,6 +639,7 @@ class ProtCryoSparc3DHomogeneousRefine(ProtCryosparcBase):
                             'compute_use_ssd'] + self.ewsParamsName
 
         self.lane = str(self.getAttributeValue('compute_lane'))
+        self.preprocessLane = str(self.getAttributeValue('preprocess_lane'))
 
     def doRunRefine(self):
         """
