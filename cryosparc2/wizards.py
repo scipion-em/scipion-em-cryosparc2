@@ -93,7 +93,15 @@ class ProtCryosparcLanesWizard(_BaseProtCryosparcLaneWizard):
 
 
 class ProtCryosparcPreprocessLanesWizard(_BaseProtCryosparcLaneWizard):
-    _targets = [(ProtCryoSparc3DHomogeneousRefine, ['preprocess_lane'])]
+    _targets = [(ProtCryo2D, ['preprocess_lane']),
+                (ProtCryoSparcLocalRefine, ['preprocess_lane']),
+                (ProtCryoSparcGlobalCtfRefinement, ['preprocess_lane']),
+                (ProtCryoSparcLocalCtfRefinement, ['preprocess_lane']),
+                (ProtCryoSparc3DClassification, ['preprocess_lane']),
+                (ProtCryoSparcHelicalRefine3D, ['preprocess_lane']),
+                (ProtCryoSparc3DHomogeneousRefine, ['preprocess_lane']),
+                (ProtCryoSparcNewNonUniformRefine3D, ['preprocess_lane']),
+                (ProtCryoSparcNew3DClassification, ['preprocess_lane'])]
     _laneParam = 'preprocess_lane'
 
 

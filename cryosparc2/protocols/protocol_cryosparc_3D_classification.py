@@ -38,7 +38,7 @@ from pyworkflow.protocol.params import (FloatParam, LEVEL_ADVANCED,
 from .protocol_base import ProtCryosparcBase
 from ..convert import (convertBinaryVol, convertCs2Star,
                        rowToAlignment, ALIGN_PROJ, cryosparcToLocation)
-from ..utils import (addSymmetryParam, addComputeSectionParams, doImportVolumes,
+from ..utils import (addSymmetryParam, addComputeSectionParams, addPreprocessLaneParam, doImportVolumes,
                      get_job_streamlog, calculateNewSamplingRate,
                      cryosparcValidate, gpusValidate, getSymmetry, enqueueJob,
                      waitForCryosparc, clearIntermediateResults, fixVolume,
@@ -225,6 +225,7 @@ class ProtCryoSparc3DClassification(ProtCryosparcBase):
         # --------------[Compute settings]---------------------------
         form.addSection(label="Compute settings")
         addComputeSectionParams(form, allowMultipleGPUs=False)
+        addPreprocessLaneParam(form)
 
     # --------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):

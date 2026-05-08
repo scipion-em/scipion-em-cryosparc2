@@ -39,7 +39,7 @@ from .protocol_base import ProtCryosparcBase
 from .. import RELIONCOLUMNS
 from ..convert import (convertCs2Star, createItemMatrix,
                        setCryosparcAttributes)
-from ..utils import (addComputeSectionParams, cryosparcValidate, gpusValidate,
+from ..utils import (addComputeSectionParams, addPreprocessLaneParam, cryosparcValidate, gpusValidate,
                      enqueueJob, waitForCryosparc, copyFiles)
 
 
@@ -120,6 +120,7 @@ class ProtCryoSparcLocalCtfRefinement(ProtCryosparcBase, ProtParticles):
         # --------------[Compute settings]---------------------------
         form.addSection(label="Compute settings")
         addComputeSectionParams(form, allowMultipleGPUs=False)
+        addPreprocessLaneParam(form)
 
     # --------------------------- INSERT steps functions -----------------------
 

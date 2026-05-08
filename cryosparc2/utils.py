@@ -1104,6 +1104,16 @@ def addComputeSectionParams(form, allowMultipleGPUs=True, needGPU=True):
                       help='Number of GPUs to compute:')
 
 
+
+def addPreprocessLaneParam(form):
+    defaultPreprocessLane = getCryosparcPreprocessLane()
+    if defaultPreprocessLane is None:
+        defaultPreprocessLane = str(form._protocol.getAttributeValue('compute_lane'))
+    form.addParam('preprocess_lane', StringParam,
+                  default=defaultPreprocessLane,
+                  label='Preprocessing lane name:', readOnly=True,
+                  help='Scheduler lane used for preprocessing imports (particles, volumes, masks).')
+
 def addSymmetryParam(form, help=""):
     """
     Add the symmetry param with the conventions
