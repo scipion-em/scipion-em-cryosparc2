@@ -1,11 +1,11 @@
 import unittest
 from unittest.mock import patch
 
-from cryosparc2.wizards import ProtCryosparcLanesWizard
+from cryosparc2.wizards import ProtCryosparcLanesWizard, ProtCryosparcPreprocessLanesWizard
 
 
 class _ProtocolWithPreprocessLane:
-    preprocess_lane = True
+    pass
 
 
 class _DummyForm:
@@ -18,11 +18,6 @@ class _DummyForm:
         self.values[key] = value
 
 
-
-
-class _DummyFormParam:
-    def __init__(self, attrName):
-        self.attrName = attrName
 
 
 class _DummyDialog:
@@ -44,36 +39,23 @@ class TestProtCryosparcLanesWizard(unittest.TestCase):
 
     @patch('cryosparc2.wizards.LanesDialogView', _DummyDialogView)
     @patch('cryosparc2.wizards.cryosparcValidate', return_value=[])
-    def test_show_sets_only_requested_parameter(self, _validate):
+    def test_compute_lane_wizard_updates_only_compute_lane(self, _validate):
         form = _DummyForm(_ProtocolWithPreprocessLane())
 
         wizard = ProtCryosparcLanesWizard()
-        wizard.show(form, 'preprocess_lane')
+        wizard.show(form)
 
-        self.assertEqual(form.values.get('preprocess_lane'), 'lane-a')
-        self.assertNotIn('compute_lane', form.values)
+        self.assertEqual(form.values.get('compute_lane'), 'lane-a')
+        self.assertNotIn('preprocess_lane', form.values)
 
 
     @patch('cryosparc2.wizards.LanesDialogView', _DummyDialogView)
     @patch('cryosparc2.wizards.cryosparcValidate', return_value=[])
-    def test_show_uses_explicit_lane_param_when_multiple_args(self, _validate):
+    def test_preprocess_lane_wizard_updates_only_preprocess_lane(self, _validate):
         form = _DummyForm(_ProtocolWithPreprocessLane())
 
-        wizard = ProtCryosparcLanesWizard()
-        wizard.show(form, 'compute_lane', 'preprocess_lane')
-
-        self.assertEqual(form.values.get('preprocess_lane'), 'lane-a')
-        self.assertNotIn('compute_lane', form.values)
-
-
-
-    @patch('cryosparc2.wizards.LanesDialogView', _DummyDialogView)
-    @patch('cryosparc2.wizards.cryosparcValidate', return_value=[])
-    def test_show_uses_form_param_attr_name(self, _validate):
-        form = _DummyForm(_ProtocolWithPreprocessLane())
-
-        wizard = ProtCryosparcLanesWizard()
-        wizard.show(form, _DummyFormParam('preprocess_lane'))
+        wizard = ProtCryosparcPreprocessLanesWizard()
+        wizard.show(form)
 
         self.assertEqual(form.values.get('preprocess_lane'), 'lane-a')
         self.assertNotIn('compute_lane', form.values)

@@ -57,41 +57,8 @@ class ProtCryo2DNumberOfClassesWizard(Wizard):
         form.setVar('numberOfClasses', self._getNumberOfClasses(form.protocol))
 
 
-class ProtCryosparcLanesWizard(Wizard):
-    _targets = [(ProtCryo2D, ['compute_lane']),
-                (ProtCryoSparcInitialModel, ['compute_lane']),
-                (ProtCryoSparcSubtract, ['compute_lane']),
-                (ProtCryoSparcLocalRefine, ['compute_lane']),
-                (ProtCryoSparcGlobalCtfRefinement, ['compute_lane']),
-                (ProtCryoSparcLocalCtfRefinement, ['compute_lane']),
-                (ProtCryoSparcSharppening, ['compute_lane']),
-                (ProtCryoSparc3DClassification, ['compute_lane']),
-                (ProtCryoSparcHelicalRefine3D, ['compute_lane']),
-                (ProtCryoSparc3DHomogeneousRefine, ['compute_lane', 'preprocess_lane']),
-                (ProtCryoSparcNewNonUniformRefine3D, ['compute_lane']),
-                (ProtCryoSparcSymmetryExpansion, ['compute_lane']),
-                (ProtCryoSparcHomogeneousReconstruct, ['compute_lane']),
-                (ProtCryoSparcNew3DClassification, ['compute_lane'])]
-
-    _LANE_TARGET_PARAMS = ('compute_lane', 'preprocess_lane')
-
-    def _resolveTargetParam(self, args):
-        for arg in args:
-            attr_name = getattr(arg, 'attrName', None)
-            if attr_name in self._LANE_TARGET_PARAMS:
-                return attr_name
-
-            name = getattr(arg, 'getName', None)
-            if callable(name):
-                resolved_name = name()
-                if resolved_name in self._LANE_TARGET_PARAMS:
-                    return resolved_name
-
-        for arg in reversed(args):
-            if isinstance(arg, str) and arg in self._LANE_TARGET_PARAMS:
-                return arg
-
-        return 'compute_lane'
+class _BaseProtCryosparcLaneWizard(Wizard):
+    _laneParam = None
 
     def show(self, form, *args):
         protocol = form.protocol
@@ -101,10 +68,33 @@ class ProtCryosparcLanesWizard(Wizard):
             dlg = d.show()
             if dlg.resultYes():
                 selectedLane = str(dlg.values[0])
-                targetParam = self._resolveTargetParam(args)
-                form.setVar(targetParam, selectedLane)
+                form.setVar(self._laneParam, selectedLane)
         else:
             showInfo('Info', csValidate[0], form.root)
+
+
+class ProtCryosparcLanesWizard(_BaseProtCryosparcLaneWizard):
+    _targets = [(ProtCryo2D, ['compute_lane']),
+                (ProtCryoSparcInitialModel, ['compute_lane']),
+                (ProtCryoSparcSubtract, ['compute_lane']),
+                (ProtCryoSparcLocalRefine, ['compute_lane']),
+                (ProtCryoSparcGlobalCtfRefinement, ['compute_lane']),
+                (ProtCryoSparcLocalCtfRefinement, ['compute_lane']),
+                (ProtCryoSparcSharppening, ['compute_lane']),
+                (ProtCryoSparc3DClassification, ['compute_lane']),
+                (ProtCryoSparcHelicalRefine3D, ['compute_lane']),
+                (ProtCryoSparc3DHomogeneousRefine, ['compute_lane']),
+                (ProtCryoSparcNewNonUniformRefine3D, ['compute_lane']),
+                (ProtCryoSparcSymmetryExpansion, ['compute_lane']),
+                (ProtCryoSparcHomogeneousReconstruct, ['compute_lane']),
+                (ProtCryoSparcNew3DClassification, ['compute_lane'])]
+    _laneParam = 'compute_lane'
+
+
+
+class ProtCryosparcPreprocessLanesWizard(_BaseProtCryosparcLaneWizard):
+    _targets = [(ProtCryoSparc3DHomogeneousRefine, ['preprocess_lane'])]
+    _laneParam = 'preprocess_lane'
 
 
 class LanesTreeProvider(TreeProvider):
