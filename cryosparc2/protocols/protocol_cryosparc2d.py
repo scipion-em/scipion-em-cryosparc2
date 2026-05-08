@@ -37,7 +37,7 @@ import pyworkflow.utils as pwutils
 
 from .protocol_base import ProtCryosparcBase
 from ..convert import (rowToAlignment, convertCs2Star, cryosparcToLocation)
-from ..utils import (addComputeSectionParams, cryosparcValidate, gpusValidate,
+from ..utils import (addComputeSectionParams, addPreprocessLaneParam, cryosparcValidate, gpusValidate,
                      enqueueJob, waitForCryosparc, clearIntermediateResults,
                      copyFiles, getOutputPreffix, isCryosparcStandalone)
 from ..constants import *
@@ -242,6 +242,7 @@ class ProtCryo2D(ProtCryosparcBase, pwprot.ProtClassify2D):
         # ----------- [Compute settings] --------------------------------
         form.addSection(label="Compute settings")
         addComputeSectionParams(form)
+        addPreprocessLaneParam(form)
 
     # --------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):

@@ -37,12 +37,12 @@ from pyworkflow.protocol.params import *
 from .protocol_base import ProtCryosparcBase
 from ..convert import (convertCs2Star, createItemMatrix,
                        setCryosparcAttributes)
-from ..utils import (addSymmetryParam, addComputeSectionParams,
+from ..utils import (addSymmetryParam, addComputeSectionParams, addPreprocessLaneParam,
                      calculateNewSamplingRate,
                      cryosparcValidate, gpusValidate, getSymmetry,
                      waitForCryosparc, clearIntermediateResults, enqueueJob,
                      getCryosparcVersion, fixVolume, copyFiles,
-                     getOutputPreffix, parse_version, getCryosparcPreprocessLane)
+                     getOutputPreffix, parse_version)
 from ..constants import *
 
 
@@ -424,14 +424,7 @@ class ProtCryoSparc3DHomogeneousRefine(ProtCryosparcBase):
         # --------------[Compute settings]---------------------------
         form.addSection(label="Compute settings")
         addComputeSectionParams(form, allowMultipleGPUs=True)
-
-        defaultPreprocessLane = getCryosparcPreprocessLane()
-        if defaultPreprocessLane is None:
-            defaultPreprocessLane = str(self.getAttributeValue('compute_lane'))
-        form.addParam('preprocess_lane', StringParam,
-                      default=defaultPreprocessLane,
-                      label='Preprocessing lane name:', readOnly=True,
-                      help='Scheduler lane used for preprocessing imports (particles, volumes, masks).')
+        addPreprocessLaneParam(form)
 
     # --------------------------- INSERT steps functions -----------------------
 
