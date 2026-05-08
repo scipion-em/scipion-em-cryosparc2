@@ -80,6 +80,16 @@ class ProtCryosparcLanesWizard(Wizard):
             if isinstance(arg, str) and arg in self._LANE_TARGET_PARAMS:
                 return arg
 
+            attr_name = getattr(arg, 'attrName', None)
+            if attr_name in self._LANE_TARGET_PARAMS:
+                return attr_name
+
+            name = getattr(arg, 'getName', None)
+            if callable(name):
+                resolved_name = name()
+                if resolved_name in self._LANE_TARGET_PARAMS:
+                    return resolved_name
+
         return 'compute_lane'
 
     def show(self, form, *args):
