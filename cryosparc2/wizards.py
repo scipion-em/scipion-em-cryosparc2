@@ -81,9 +81,8 @@ class ProtCryosparcLanesWizard(Wizard):
             dlg = d.show()
             if dlg.resultYes():
                 selectedLane = str(dlg.values[0])
-                form.setVar('compute_lane', selectedLane)
-                if hasattr(protocol, 'preprocess_lane'):
-                    form.setVar('preprocess_lane', selectedLane)
+                targetParam = args[0] if args else 'compute_lane'
+                form.setVar(targetParam, selectedLane)
         else:
             showInfo('Info', csValidate[0], form.root)
 
