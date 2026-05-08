@@ -73,6 +73,15 @@ class ProtCryosparcLanesWizard(Wizard):
                 (ProtCryoSparcHomogeneousReconstruct, ['compute_lane']),
                 (ProtCryoSparcNew3DClassification, ['compute_lane'])]
 
+    _LANE_TARGET_PARAMS = ('compute_lane', 'preprocess_lane')
+
+    def _resolveTargetParam(self, args):
+        for arg in reversed(args):
+            if isinstance(arg, str) and arg in self._LANE_TARGET_PARAMS:
+                return arg
+
+        return 'compute_lane'
+
     def show(self, form, *args):
         protocol = form.protocol
         csValidate = cryosparcValidate()
@@ -81,7 +90,7 @@ class ProtCryosparcLanesWizard(Wizard):
             dlg = d.show()
             if dlg.resultYes():
                 selectedLane = str(dlg.values[0])
-                targetParam = args[0] if args else 'compute_lane'
+                targetParam = self._resolveTargetParam(args)
                 form.setVar(targetParam, selectedLane)
         else:
             showInfo('Info', csValidate[0], form.root)

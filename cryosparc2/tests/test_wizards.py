@@ -47,5 +47,17 @@ class TestProtCryosparcLanesWizard(unittest.TestCase):
         self.assertNotIn('compute_lane', form.values)
 
 
+    @patch('cryosparc2.wizards.LanesDialogView', _DummyDialogView)
+    @patch('cryosparc2.wizards.cryosparcValidate', return_value=[])
+    def test_show_uses_explicit_lane_param_when_multiple_args(self, _validate):
+        form = _DummyForm(_ProtocolWithPreprocessLane())
+
+        wizard = ProtCryosparcLanesWizard()
+        wizard.show(form, 'compute_lane', 'preprocess_lane')
+
+        self.assertEqual(form.values.get('preprocess_lane'), 'lane-a')
+        self.assertNotIn('compute_lane', form.values)
+
+
 if __name__ == '__main__':
     unittest.main()
