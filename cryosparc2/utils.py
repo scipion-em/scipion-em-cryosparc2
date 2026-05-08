@@ -445,6 +445,27 @@ def createEmptyWorkSpace(projectName, workspaceTitle, workspaceComment):
     return runCmd(create_work_space_cmd, printCmd=False)
 
 
+def _getProtocolPreprocessLane(protocol):
+    preprocessLane = getattr(protocol, 'preprocessLane', None)
+    if preprocessLane:
+        return preprocessLane
+
+    defaultPreprocessLane = getCryosparcPreprocessLane()
+    if defaultPreprocessLane is not None:
+        return str(defaultPreprocessLane)
+
+    computeLane = getattr(protocol, 'lane', None)
+    if computeLane:
+        return computeLane
+
+    if hasattr(protocol, 'getAttributeValue'):
+        laneValue = protocol.getAttributeValue('compute_lane')
+        if laneValue is not None:
+            return str(laneValue)
+
+    return None
+
+
 def doImportParticlesStar(protocol):
     """
     do_import_particles_star(puid, wuid, uuid, abs_star_path,
@@ -460,7 +481,7 @@ def doImportParticlesStar(protocol):
               "psize_A": str(protocol._getInputParticles().getSamplingRate())
               }
 
-    preprocessLane = getattr(protocol, 'preprocessLane', protocol.lane)
+    preprocessLane = _getProtocolPreprocessLane(protocol)
     import_particles = enqueueJob(className, protocol.projectName, protocol.workSpaceName,
                                   str(params).replace('\'', '"'), '{}', preprocessLane)
 
@@ -482,7 +503,7 @@ def doImportVolumes(protocol, refVolumePath, refVolume, volType, msg):
               "volume_out_name": str(volType),
               "volume_psize": str(refVolume.getSamplingRate())}
 
-    preprocessLane = getattr(protocol, 'preprocessLane', protocol.lane)
+    preprocessLane = _getProtocolPreprocessLane(protocol)
     importedVolume = enqueueJob(className, protocol.projectName,
                                 protocol.workSpaceName,
                                 str(params).replace('\'', '"'), '{}',
@@ -521,7 +542,7 @@ def doImportMicrographs(protocol):
               "output_constant_ctf": "True"
               }
 
-    preprocessLane = getattr(protocol, 'preprocessLane', protocol.lane)
+    preprocessLane = _getProtocolPreprocessLane(protocol)
     import_particles = enqueueJob(className, protocol.projectName, protocol.workSpaceName,
                                   str(params).replace('\'', '"'), '{}', preprocessLane)
 
