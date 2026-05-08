@@ -67,7 +67,7 @@ class ProtCryosparcLanesWizard(Wizard):
                 (ProtCryoSparcSharppening, ['compute_lane']),
                 (ProtCryoSparc3DClassification, ['compute_lane']),
                 (ProtCryoSparcHelicalRefine3D, ['compute_lane']),
-                (ProtCryoSparc3DHomogeneousRefine, ['compute_lane']),
+                (ProtCryoSparc3DHomogeneousRefine, ['compute_lane', 'preprocess_lane']),
                 (ProtCryoSparcNewNonUniformRefine3D, ['compute_lane']),
                 (ProtCryoSparcSymmetryExpansion, ['compute_lane']),
                 (ProtCryoSparcHomogeneousReconstruct, ['compute_lane']),
@@ -80,7 +80,10 @@ class ProtCryosparcLanesWizard(Wizard):
             d = LanesDialogView(form.root, protocol)
             dlg = d.show()
             if dlg.resultYes():
-                form.setVar('compute_lane', str(dlg.values[0]))
+                selectedLane = str(dlg.values[0])
+                form.setVar('compute_lane', selectedLane)
+                if hasattr(protocol, 'preprocess_lane'):
+                    form.setVar('preprocess_lane', selectedLane)
         else:
             showInfo('Info', csValidate[0], form.root)
 
