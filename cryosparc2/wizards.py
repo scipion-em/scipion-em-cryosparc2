@@ -76,10 +76,7 @@ class ProtCryosparcLanesWizard(Wizard):
     _LANE_TARGET_PARAMS = ('compute_lane', 'preprocess_lane')
 
     def _resolveTargetParam(self, args):
-        for arg in reversed(args):
-            if isinstance(arg, str) and arg in self._LANE_TARGET_PARAMS:
-                return arg
-
+        for arg in args:
             attr_name = getattr(arg, 'attrName', None)
             if attr_name in self._LANE_TARGET_PARAMS:
                 return attr_name
@@ -89,6 +86,10 @@ class ProtCryosparcLanesWizard(Wizard):
                 resolved_name = name()
                 if resolved_name in self._LANE_TARGET_PARAMS:
                     return resolved_name
+
+        for arg in reversed(args):
+            if isinstance(arg, str) and arg in self._LANE_TARGET_PARAMS:
+                return arg
 
         return 'compute_lane'
 
