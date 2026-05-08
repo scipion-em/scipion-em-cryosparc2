@@ -460,8 +460,9 @@ def doImportParticlesStar(protocol):
               "psize_A": str(protocol._getInputParticles().getSamplingRate())
               }
 
+    preprocessLane = getattr(protocol, 'preprocessLane', protocol.lane)
     import_particles = enqueueJob(className, protocol.projectName, protocol.workSpaceName,
-                                  str(params).replace('\'', '"'), '{}', protocol.lane)
+                                  str(params).replace('\'', '"'), '{}', preprocessLane)
 
     waitForCryosparc(protocol.projectName.get(), import_particles.get(),
                      "An error occurred importing particles. "
@@ -481,10 +482,11 @@ def doImportVolumes(protocol, refVolumePath, refVolume, volType, msg):
               "volume_out_name": str(volType),
               "volume_psize": str(refVolume.getSamplingRate())}
 
+    preprocessLane = getattr(protocol, 'preprocessLane', protocol.lane)
     importedVolume = enqueueJob(className, protocol.projectName,
                                 protocol.workSpaceName,
                                 str(params).replace('\'', '"'), '{}',
-                                protocol.lane)
+                                preprocessLane)
 
     waitForCryosparc(protocol.projectName.get(), importedVolume.get(),
                      "An error occurred importing the volume. "
@@ -519,8 +521,9 @@ def doImportMicrographs(protocol):
               "output_constant_ctf": "True"
               }
 
+    preprocessLane = getattr(protocol, 'preprocessLane', protocol.lane)
     import_particles = enqueueJob(className, protocol.projectName, protocol.workSpaceName,
-                                  str(params).replace('\'', '"'), '{}', protocol.lane)
+                                  str(params).replace('\'', '"'), '{}', preprocessLane)
 
     waitForCryosparc(protocol.projectName.get(), import_particles.get(),
                      "An error occurred importing particles. "
