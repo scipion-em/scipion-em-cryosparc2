@@ -1106,6 +1106,8 @@ def addComputeSectionParams(form, allowMultipleGPUs=True, needGPU=True):
 
 
 def addPreprocessLaneParam(form):
+    from pyworkflow.protocol.params import StringParam
+
     defaultPreprocessLane = getCryosparcPreprocessLane()
     if defaultPreprocessLane is None:
         defaultPreprocessLane = str(form._protocol.getAttributeValue('compute_lane'))
