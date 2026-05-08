@@ -292,6 +292,14 @@ def getCryosparcDefaultLane():
     return os.environ.get(CRYOSPARC_DEFAULT_LANE, None)
 
 
+def getCryosparcPreprocessLane():
+    """
+    Get the cryoSPARC lane for lightweight preprocessing tasks.
+    If not defined, fallback to the default (heavy processing) lane.
+    """
+    return os.environ.get(CRYOSPARC_PREPROCESS_LANE, getCryosparcDefaultLane())
+
+
 def getCryosparcProjectsDir():
     """
     Get the path on the worker node to a writable directory
