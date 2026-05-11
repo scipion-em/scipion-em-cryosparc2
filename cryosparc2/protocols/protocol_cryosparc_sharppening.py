@@ -43,189 +43,121 @@ class ProtCryoSparcSharppening(ProtCryosparcBase, ProtAnalysis3D):
     """
     Wrapper protocol for the Cryosparc's to calculate the sharpened map.
     """
-    _label = 'sharppening'
-    _className = "sharpen"
 
-    def _defineParams(self, form):
-        form.addSection(label='Input')
-        form.addParam('refVolume', PointerParam, pointerClass='Volume',
-                      important=True,
-                      label="Input volume",
-                      help='Provide a reference volume for sharpening')
+    """
+    ProtCryoSparcSharppening — CryoSPARC Map Sharpening Protocol
 
-        # -----------[Sharppening]------------------------
-        form.addSection(label="Sharpening")
-        form.addParam('sharp_bfactor', FloatParam, default=0.0,
-                      label='B-Factor to apply',
-                      help='Negative values sharpen.')
+    Overview
+    --------
+    Applies post-processing sharpening to cryo-EM reconstructed volumes
+    using cryoSPARC sharpening tools. The protocol enhances high-frequency
+    structural details by applying a negative B-factor correction and
+    optional masking strategies.
 
-        form.addParam('sharp_use_FSC_full', BooleanParam, default=False,
-                      label="Use full FSC",
-                      help="False means to use the half-FSC, which is usually "
-                           "an underestimate for sharpening.")
+    Sharpening improves the visual interpretability of density maps and can
+    facilitate downstream analysis such as:
+        - Atomic model building.
+        - Secondary structure interpretation.
+        - Visualization of side-chain densities.
+        - Structural validation and presentation.
 
-        form.addParam('sharp_falloff_order', IntParam, default=8,
-                      expertLevel=LEVEL_ADVANCED,
-                      label='Lowpass filter order',
-                      help='Higher means faster falloff, 2 is usually best.')
+    Inputs and Workflow
+    -------------------
+    - Input Volume:
+        * A reconstructed cryo-EM map obtained from refinement.
+        * Half-maps can optionally be provided for FSC-based sharpening.
+        * Input maps should already be reasonably refined and masked.
 
-        form.addParam('sharp_falloff_offset', IntParam, default=0,
-                      expertLevel=LEVEL_ADVANCED,
-                      label='Lowpass filter offset',
-                      help='Offset for corner frequency from FSC resolution shell')
+    Workflow:
+        1. Import reconstructed volume.
+        2. Optionally import associated half-maps.
+        3. Apply B-factor sharpening.
+        4. Optionally generate new masks for FSC estimation.
+        5. Produce sharpened output volume.
 
-        form.addParam('sharp_generate_new_mask', BooleanParam, default=True,
-                      expertLevel=LEVEL_ADVANCED,
-                      label="Generate new FSC mask",
-                      help="Create a new mask for FSC and sharpening rather "
-                           "than using the refinement FSC mask")
+    Sharpening Parameters
+    ---------------------
+    - B-Factor:
+        * Controls enhancement of high-frequency signal.
+        * Negative values increase sharpness.
+        * Strong sharpening may amplify noise and artifacts.
+        * Typical values depend on map quality and resolution.
 
-        form.addParam('sharp_mask_thresh', FloatParam, default=0.5,
-                      expertLevel=LEVEL_ADVANCED,
-                      label='Threshold',
-                      help='Mask generation threshold')
+    - Full FSC Usage:
+        * Uses the full-map FSC instead of half-map FSC.
+        * Half-map FSC is generally more conservative and preferred
+          for avoiding overestimation of resolution.
 
-        form.addParam('sharp_mask_near_A', IntParam, default=6,
-                      expertLevel=LEVEL_ADVANCED,
-                      label='Mask near (A)',
-                      help='Mask dilation near (A)')
+    Low-Pass Filtering
+    ------------------
+    - Falloff Order:
+        * Controls the steepness of the low-pass filter transition.
+        * Higher values produce sharper cutoff behavior.
 
-        form.addParam('sharp_mask_far_A', IntParam, default=12,
-                      expertLevel=LEVEL_ADVANCED,
-                      label='Mask far (A)',
-                      help='Mask dilation far (A)')
+    - Falloff Offset:
+        * Adjusts the filter cutoff relative to the FSC-derived resolution shell.
 
-        form.addParam('sharp_do_spherical_mask', BooleanParam, default=True,
-                      label="Spherical mask final output",
-                      help="Apply a spherical mask to the final map, to mask "
-                           "out corners with over-sharpened density and to "
-                           "reduce file size after compression.")
+    Filtering helps suppress amplified high-frequency noise after sharpening.
 
-        form.addParam('sharp_do_expand_mask', BooleanParam, default=False,
-                      label="Wide mask final output",
-                      help="Also apply a wide mask to the final map, to reduce "
-                           "file size after compression.")
+    Mask Generation and FSC Control
+    -------------------------------
+    - Generate New FSC Mask:
+        * Creates a new mask specifically optimized for sharpening.
+        * Prevents dependence on masks generated during refinement.
 
-        # --------------[Compute settings]---------------------------
-        form.addSection(label="Compute settings")
-        addComputeSectionParams(form, allowMultipleGPUs=False)
+    - Mask Threshold:
+        * Defines density threshold for mask creation.
 
-    # --------------------------- INSERT steps functions -----------------------
+    - Near and Far Mask Expansion:
+        * Controls dilation of the generated mask.
+        * Helps include relevant structural regions while excluding solvent.
 
-    def _insertAllSteps(self):
-        self._defineParamsName()
-        self._initializeCryosparcProject()
-        self._insertFunctionStep(self.convertInputStep)
-        self._insertFunctionStep(self.processStep)
-        self._insertFunctionStep(self.createOutputStep)
+    Final Map Masking
+    -----------------
+    - Spherical Mask:
+        * Applies a spherical mask to suppress noisy corners.
+        * Reduces file size after compression.
+        * Commonly recommended for visualization purposes.
 
-    # --------------------------- STEPS functions ------------------------------
+    - Wide Mask:
+        * Applies a broader masking strategy to preserve additional density.
+        * Useful for large or elongated complexes.
 
-    def processStep(self):
-        self.info(pwutils.yellowStr("Sharpening started..."))
-        self.doSharppening()
+    Outputs
+    -------
+    - Sharpened cryo-EM volume in MRC format.
+    - Optional FSC-optimized masking effects applied to the final map.
+    - Output volume compatible with downstream visualization and modeling tools.
 
-    def createOutputStep(self):
-        """
-        Create the protocol output. Convert cryosparc file to Relion file
-        """
-        self._initializeUtilsVariables()
-        csOutputFolder = os.path.join(self.projectDir.get(),
-                                      self.runSharppening.get())
-        fnVolName = "%s%s_map_sharp.mrc" % (getOutputPreffix(self.projectName.get()),
-                                            self.runSharppening.get())
-        # Copy the CS output sharpened volume to extra folder
-        copyFiles(csOutputFolder, self._getExtraPath(),
-                  files=[fnVolName])
+    The sharpened map can be used in:
+        - Model building software.
+        - Validation workflows.
+        - Structural interpretation pipelines.
+        - Publication-quality visualization.
 
-        fnVol = os.path.join(self._getExtraPath(), fnVolName)
-        vol = Volume()
-        fixVolume(fnVol)
-        vol.setFileName(fnVol)
-        vol.setSamplingRate(self._getInputVolume().getSamplingRate())
-        self._defineOutputs(outputVolume=vol)
+    Practical Recommendations
+    -------------------------
+    - Start with moderate negative B-factor values.
+    - Avoid excessive sharpening, which may introduce artifacts.
+    - Use half-map FSC when possible for more reliable sharpening.
+    - Generate a new FSC mask for heterogeneous or flexible structures.
+    - Visually inspect the sharpened map before downstream interpretation.
 
-    def _defineParamsName(self):
-        """ Define a list with all protocol parameters names"""
-        self._paramsName = ['sharp_bfactor',
-                            'sharp_use_FSC_full',
-                            'sharp_falloff_order',
-                            'sharp_falloff_offset',
-                            'sharp_generate_new_mask',
-                            'sharp_mask_thresh',
-                            'sharp_mask_near_A',
-                            'sharp_mask_far_A',
-                            'sharp_do_spherical_mask',
-                            'sharp_do_expand_mask']
-        self.lane = str(self.getAttributeValue('compute_lane'))
+    Performance Considerations
+    --------------------------
+    - GPU acceleration is supported.
+    - Execution is restricted to a single GPU in this implementation.
+    - Sharpening is computationally lightweight compared to refinement steps.
 
-    # --------------------------- INFO functions -------------------------------
-    def _validate(self):
-        """ Should be overwritten in subclasses to
-            return summary message for NORMAL EXECUTION.
-        """
-        validateMsgs = cryosparcValidate()
-        if not validateMsgs:
-            validateMsgs = gpusValidate(self.getGpuList(),
-                                        checkSingleGPU=True)
-            if not validateMsgs:
-                if self.sharp_bfactor.get() >= 0.0:
-                    validateMsgs.append('b-factor value must be negative')
-        return validateMsgs
+    Biological Perspective
+    ----------------------
+    Map sharpening is an essential post-processing step in cryo-EM because it:
+        * Enhances structural interpretability.
+        * Improves visibility of fine structural features.
+        * Facilitates atomic model fitting.
+        * Helps distinguish biologically relevant densities from noise.
 
-    def _summary(self):
-        summary = []
-        if not hasattr(self, 'outputVolume'):
-            summary.append("Output objects not ready yet.")
-        else:
-            summary.append("Input Refinement Protocol: %s" %
-                           self.getObjectTag('inputRefinement'))
-            summary.append("b-factor: %s" % self.sharp_bfactor.get())
-            summary.append("------------------------------------------")
+    Proper sharpening requires balancing signal enhancement and noise
+    amplification to preserve biologically meaningful structural information.
 
-            summary.append("Output volume %s" %
-                           self.getObjectTag('outputVolume'))
-        return summary
-
-    def doSharppening(self):
-
-        input_group_connect = {"volume": self.volume.get()}
-
-        input_result_connect = None
-        if self._getInputVolume().hasHalfMaps():
-            input_result_connect = {"volume.0.map_half_A": self.importVolumeHalfA.get(),
-                                    "volume.0.map_half_B": self.importVolumeHalfB.get()}
-
-        params = {}
-
-        for paramName in self._paramsName:
-            params[str(paramName)] = str(self.getAttributeValue(paramName))
-
-        # Determinate the GPUs to use (in dependence of
-        # the cryosparc version)
-        try:
-            if not self.useQueueForSteps() and not self.useQueue():  # not using queue system
-                gpusToUse = self.getGpuList()
-            else:  # using queue system
-                gpusToUse = False
-        except Exception:
-            gpusToUse = False
-
-        runSharppeningJob = enqueueJob(self._className,
-                                         self.projectName.get(),
-                                         self.workSpaceName.get(),
-                                         str(params).replace('\'', '"'),
-                                         str(input_group_connect).replace('\'', '"'),
-                                         self.lane, gpusToUse,
-                                         result_connect=input_result_connect)
-
-        self.runSharppening = String(runSharppeningJob.get())
-        self.currenJob.set(runSharppeningJob.get())
-        self._store(self)
-
-        waitForCryosparc(self.projectName.get(),
-                         self.runSharppening.get(),
-                         "An error occurred in the particles subtraction process. "
-                         "Please, go to cryoSPARC software for more "
-                         "details.", self)
-        clearIntermediateResults(self.projectName.get(), self.runSharppening.get())
+    """

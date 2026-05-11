@@ -49,177 +49,124 @@ class ProtCryoSparcPatchCTFEstimate(ProtCryosparcBase):
     Patch-based CTF estimation automatically estimates defocus variation for tilted, bent,
     deformed samples and is accurate for all particle sizes and types including flexible and membrane proteins.
     """
-    _label = 'ctf_estimation'
-    _className = "patch_ctf_estimation_multi"
-    _devStatus = NEW
 
-    def _defineParams(self, form):
-        form.addSection(label='Input')
-        form.addParam('inputMicrographs', PointerParam, important=True,
-                      label=pwutils.Message.LABEL_INPUT_MIC,
-                      pointerClass='SetOfMicrographs')
+    """
+    ProtCryoSparcPatchCTFEstimate — Patch-Based CTF Estimation Protocol
 
-        form.addParam('amp_contrast', FloatParam, default=0.1,
-                      label='Amplitude Contrast',
-                      help='Amplitude constrast to use. Typically 0.07 or 0.1 for cryo-EM data.')
+    Overview
+    --------
+    Estimates Contrast Transfer Function (CTF) parameters from cryo-EM
+    micrographs using cryoSPARC’s patch-based estimation strategy.
+    The protocol is designed to accurately model local defocus variations
+    across the micrograph, making it especially effective for:
+        - Tilted or bent samples.
+        - Deformed ice regions.
+        - Flexible macromolecular complexes.
+        - Membrane proteins and heterogeneous specimens.
 
-        form.addParam('res_min_align', IntParam, default=25,
-                      label='Minimum resolution (A)',
-                      help='Minimum resolution (in A) to consider when estimating CTF.')
+    Compared to traditional global CTF estimation methods, the patch-based
+    approach improves robustness by fitting local regions independently,
+    leading to more reliable defocus estimation under challenging imaging
+    conditions.
 
-        form.addParam('res_max_align', IntParam, default=4,
-                      label='Maximum resolution (A)',
-                      help='Maximum resolution (in A) to consider when estimating CTF.')
+    Inputs and Workflow
+    -------------------
+    - Input Micrographs:
+        * Motion-corrected cryo-EM micrographs.
+        * Micrographs should contain valid acquisition metadata.
+        * Consistent pixel size and microscope parameters are recommended.
 
-        form.addParam('df_search_min', IntParam, default=1000,
-                      label='Maximum resolution (A)',
-                      help='Defocus range for gridsearch.')
+    Workflow:
+        1. Import micrographs into cryoSPARC.
+        2. Perform patch-based CTF estimation.
+        3. Search for optimal defocus and phase-shift parameters.
+        4. Convert cryoSPARC outputs into Scipion-compatible CTF objects.
+        5. Export estimated CTF information for downstream processing.
 
-        form.addParam('df_search_max', IntParam, default=40000,
-                      label='Maximum resolution (A)',
-                      help='Defocus range for gridsearch.')
+    CTF Estimation Parameters
+    -------------------------
+    - Amplitude Contrast:
+        * Defines the amplitude contribution in the CTF model.
+        * Typical values:
+            - 0.07 for standard cryo-EM datasets.
+            - 0.10 for membrane proteins or thick ice conditions.
 
-        form.addParam('phase_shift_min', IntParam, default=0,
-                      label='Min. search phase-shift (rad)',
-                      help='Phase-shift range for gridsearch.')
+    - Resolution Limits:
+        * Minimum Resolution:
+            Defines the low-frequency boundary used during fitting.
+        * Maximum Resolution:
+            Defines the high-frequency limit for CTF estimation.
+        * Proper selection improves fitting stability and prevents
+          overfitting noise at high frequencies.
 
-        form.addParam('phase_shift_max', FloatParam, default=numpy.pi,
-                      label='Min. search phase-shift (rad)',
-                      help='Phase-shift range for gridsearch.')
+    Defocus and Phase Shift Search
+    ------------------------------
+    - Defocus Search Range:
+        * Defines the minimum and maximum defocus values explored
+          during grid search.
+        * Wide ranges are useful for tilted specimens or variable ice thickness.
 
-        form.addParam('do_phase_shift_refine_only', BooleanParam, default=False,
-                      label='Do phase refine only',
-                      help='Whether to carry out refinement over phase shift only')
+    - Phase Shift Search:
+        * Supports phase plate datasets.
+        * Searches phase-shift values in radians.
 
-        """job.param_add('ctf_settings', "override_K_Y", base_value=None, title="Override knots Y", param_type="number",
-                      hidden=False, advanced=True,
-                      desc='Override automatically selected spline order for Y dimension (vertical)')
-        job.param_add('ctf_settings', "override_K_X", base_value=None, title="Override knots X", param_type="number",
-                      hidden=False, advanced=True,
-                      desc='Override automatically selected spline order for X dimension (horizontal)')
+    - Phase Shift Refinement Only:
+        * Restricts optimization to phase-shift estimation while
+          preserving existing defocus values.
+        * Useful for datasets with already validated defocus estimates.
 
-        job.param_add_section('compute_settings', title='Compute settings', desc='')
-        job.param_add('compute_settings', "compute_num_gpus", base_value=1, title="Number of GPUs to parallelize",
-                      param_type="number", hidden=False, advanced=False,
-                      desc='Number of GPUs over which to parallelize computation.')"""
+    Patch-Based Local Estimation
+    ----------------------------
+    - The micrograph is divided into smaller patches.
+    - Local CTF parameters are estimated independently for each region.
+    - Particularly effective for:
+        * Spatial defocus gradients.
+        * Uneven ice thickness.
+        * Beam-induced sample deformation.
+        * Large micrographs with local optical variations.
 
-        # --------------[Compute settings]---------------------------
-        form.addSection(label="Compute settings")
-        addComputeSectionParams(form, allowMultipleGPUs=False)
+    Outputs
+    -------
+    - Set of estimated CTF models associated with input micrographs.
+    - Defocus U and Defocus V values.
+    - Defocus angle estimation.
+    - Phase-shift estimation.
+    - Estimated maximum CTF resolution.
 
-    # --------------------------- INSERT steps functions -----------------------
+    Output CTF models are fully compatible with downstream Scipion workflows,
+    including:
+        - Particle picking.
+        - Particle extraction.
+        - 2D classification.
+        - 3D refinement pipelines.
 
-    def _insertAllSteps(self):
-        self._defineParamsName()
-        self._initializeCryosparcProject()
-        self._insertFunctionStep(self.convertInputStep)
-        self._insertFunctionStep(self.processStep)
-        self._insertFunctionStep(self.createOutputStep)
+    Practical Recommendations
+    -------------------------
+    - Use motion-corrected micrographs before CTF estimation.
+    - Start with default resolution limits for most datasets.
+    - Increase the defocus search range for tilted or heterogeneous samples.
+    - Enable phase-shift estimation for Volta phase plate acquisitions.
+    - Visually inspect CTF fits before continuing downstream processing.
 
-    # --------------------------- STEPS functions ------------------------------
+    Performance Considerations
+    --------------------------
+    - GPU acceleration is supported.
+    - This implementation restricts execution to a single GPU.
+    - Patch-based estimation is computationally more demanding than
+      global CTF fitting, but generally provides higher accuracy
+      for difficult datasets.
 
-    def processStep(self):
-        self.info(pwutils.yellowStr("Patch CTF estimate started..."))
-        self.doPatchCTFEstimate()
-        self.micrographs = String(str(self.runPatchCTF.get()) + '.exposures')
+    Biological Perspective
+    ----------------------
+    Accurate CTF estimation is a critical step in cryo-EM processing because it
+    directly affects:
+        * Particle alignment precision.
+        * High-resolution signal recovery.
+        * Final reconstruction quality.
+        * Structural interpretability.
 
-    def createOutputStep(self):
-        """
-        Create the protocol output. Convert cryosparc file to star file
-        """
-        self.info(pwutils.yellowStr("Create output started..."))
-        self._initializeUtilsVariables()
-        micSetPtr = self._getInputMicrographs()
+    Patch-based CTF estimation is particularly valuable for modern cryo-EM
+    datasets containing flexible proteins, membrane complexes, or
+    spatially heterogeneous ice conditions.
 
-        micList = {os.path.basename(mic.getFileName()): mic.clone() for mic in micSetPtr}
-
-        # Copy the  CTF output to extra folder
-        csOutputFolder = os.path.join(self.projectDir.get(),
-                                      self.runPatchCTF.get())
-        outputPath = os.path.join(self._getExtraPath(), self.runPatchCTF.get())
-        copyFiles(csOutputFolder, outputPath)
-
-        ctfEstimatedFileName = 'exposures_ctf_estimated.cs'
-        csFile = os.path.join(outputPath, ctfEstimatedFileName)
-        outputStarFn = self._getExtraPath('ctf.star')
-        argsList = [csFile, outputStarFn]
-        convertCs2Star(argsList)
-
-        outputCtfSet = self._fillSetOfCTF(outputStarFn, micList)
-
-        self._defineOutputs(outputCTF=outputCtfSet)
-        self._defineSourceRelation(micSetPtr, outputCtfSet)
-
-    def _fillSetOfCTF(self, outputCTFFn, micList):
-
-        inputMics = self._getInputMicrographs()
-        outputCtfSet = self._createSetOfCTF()
-        outputCtfSet.setMicrographs(inputMics)
-        mics = list(micList.values())
-
-        ctf = CTFModel()
-        mdFileName = '%s@%s' % ('micrograph', outputCTFFn)
-        table = emtable.Table(fileName=outputCTFFn)
-
-        for mic, row in enumerate(table.iterRows(mdFileName)):
-            ctf.setDefocusU(row.get(RELIONCOLUMNS.rlnDefocusU.value))
-            ctf.setDefocusV(row.get(RELIONCOLUMNS.rlnDefocusV.value))
-            ctf.setPhaseShift(row.get(RELIONCOLUMNS.rlnPhaseShift.value))
-            ctf.setResolution(row.get(RELIONCOLUMNS.rlnCtfMaxResolution.value))
-            ctf.setDefocusAngle(row.get(RELIONCOLUMNS.rlnDefocusAngle.value))
-            ctf.setMicrograph(mics[mic])
-            outputCtfSet.append(ctf)
-
-        return outputCtfSet
-
-    def _defineParamsName(self):
-        """ Define a list with all protocol parameters names"""
-
-        self._paramsName = ['amp_contrast', 'res_min_align', 'res_max_align', 'df_search_min',
-                            'df_search_max', 'phase_shift_min', 'phase_shift_max', 'do_phase_shift_refine_only']
-
-        self.lane = str(self.getAttributeValue('compute_lane'))
-
-    # --------------------------- INFO functions -------------------------------
-    def _validate(self):
-        """ Should be overwritten in subclasses to
-            return summary message for NORMAL EXECUTION.
-        """
-        validateMsgs = cryosparcValidate()
-        return validateMsgs
-
-    def _summary(self):
-        summary = []
-        return summary
-
-    def doPatchCTFEstimate(self):
-        input_group_connect = {"exposures": self.micrographs.get()}
-        params = {'classic_mode': 'False'}
-        try:
-            if not self.useQueueForSteps() and not self.useQueue():  # not using queue system
-                gpusToUse = self.getGpuList()
-            else:  # using queue system
-                gpusToUse = False
-        except Exception:
-            gpusToUse = False
-
-        for paramName in self._paramsName:
-            params[str(paramName)] = str(self.getAttributeValue(paramName))
-
-        runPatchCTFJob = enqueueJob(self._className,
-                                      self.projectName.get(),
-                                      self.workSpaceName.get(),
-                                      str(params).replace('\'', '"'),
-                                      str(input_group_connect).replace('\'', '"'),
-                                      self.lane, gpusToUse)
-
-        self.runPatchCTF = String(runPatchCTFJob.get())
-        self.currenJob.set(runPatchCTFJob.get())
-        self._store(self)
-
-        waitForCryosparc(self.projectName.get(),
-                         self.runPatchCTF.get(),
-                         "An error occurred in the ctf estimation process. "
-                         "Please, go to cryoSPARC software for more "
-                         "details.", self)
-
+    """

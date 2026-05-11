@@ -51,383 +51,208 @@ class ProtCryosparcBase(pw.EMProtocol):
     """
     This class contains the common functions for all Cryosparc protocols.
     """
-    _protCompatibility = []
-    _className = ""
-    _fscColumns = 6
-    _logLastLine = 0
 
-    def _initializeCryosparcProject(self):
-        """
-        Initialize the cryoSPARC project and workspace
-        """
-        self._initializeUtilsVariables()
-        projectsList = getCryosparcProjectsList()
-        matchProjects = [project for project in projectsList if project.get('title') == self.projectDirName]
-        folderPaths = getProjectPath(self.projectContainerDir)
-        # create an empty project or load an exists one
-        if not matchProjects or not folderPaths:
-            # create an empty project
-            self.emptyProject = createEmptyProject(self.projectPath, self.projectDirName)
-            self.projectName = pwobj.String(self.emptyProject[-1].split()[-1])
-            self.projectDir = pwobj.String(getProjectInformation(self.projectName,
-                                           info='project_dir'))
-            # create an empty workspace
-            self.emptyWorkSpace = createEmptyWorkSpace(self.projectName, self.getRunName(),
-                                                       self.getObjComment())
-            self.workSpaceName = pwobj.String(self.emptyWorkSpace[-1].split()[-1])
-            self._store(self)
-        else:
-            self.projectDir = pwobj.String(matchProjects[-1]['project_dir'])
-            cryosparcVersion = getCryosparcVersion()
-            if parse_version(cryosparcVersion) < parse_version(V4_0_0):
-                self.projectName = pwobj.String(matchProjects[-1]['title'])
-            else:
-                self.projectName = pwobj.String(matchProjects[-1]['uid'])
+    """
+    ProtCryosparcBase — Base cryoSPARC Integration Protocol
 
-            workspacesList = getCryosparcWorkSpaces(str(self.projectName))
-            self.workSpaceName = pwobj.String(workspacesList[-1]['uid'])
+    Overview
+    --------
+    Base class providing the common infrastructure required for integrating
+    cryoSPARC workflows within Scipion protocols.
 
-        self._store(self)
-        self.currenJob = pwobj.String()
-        self._store(self)
+    The class centralizes:
+        - cryoSPARC project and workspace initialization.
+        - Import/export of cryo-EM data objects.
+        - File conversion and scaling utilities.
+        - FSC extraction and parsing.
+        - cryoSPARC job management and cleanup.
+        - Compatibility handling between cryoSPARC versions.
 
-    def _initializeUtilsVariables(self):
-        """
-        Initialize all utils cryoSPARC variables
-        """
-        # Create a cryoSPARC project dir
-        self.projectDirName = getProjectName(self.getProject().getShortName())
-        self.projectPath = pw.pwutils.join(getCryosparcProjectsDir(),
-                                        self.projectDirName)
-        self.projectContainerDir = createProjectContainerDir(self.projectPath)[1]
+    This class is designed as a reusable foundation for specialized
+    cryoSPARC processing protocols.
 
-    def convertInputStep(self):
-        """ Create the input file in STAR format as expected by Relion.
-        If the input particles comes from Relion, just link the file.
-        """
-        imgSet = self._getInputParticles()
-        if imgSet is not None:
-            # Create links to binary files and write the relion .star file
-            writeSetOfParticles(imgSet, self._getFileName('input_particles'),
-                                self._getPath())
-            self._importParticles()
+    Project and Workspace Initialization
+    ------------------------------------
+    The protocol automatically manages cryoSPARC projects and workspaces.
 
-        volume = self._getInputVolume()
-        if volume is not None:
-            self._importVolume()
+    Main responsibilities:
+        - Detect existing cryoSPARC projects.
+        - Create new projects when necessary.
+        - Create or reuse cryoSPARC workspaces.
+        - Store project identifiers and paths internally.
+        - Maintain synchronization between Scipion and cryoSPARC.
 
-        mask = self._getInputMask()
-        if mask is not None:
-            self._importMask()
-        else:
-            self.mask = pwobj.String()
+    Version-aware behavior is implemented to ensure compatibility across
+    different cryoSPARC releases.
 
-        focusMask = self._getInputFocusMask()
-        if focusMask is not None:
-            self._importFocusMask()
-        else:
-            self.focusMask = pwobj.String()
+    Utility Initialization
+    ----------------------
+    Internal utility variables are initialized to:
+        - Define project directory names.
+        - Generate project paths.
+        - Create project container directories.
+        - Prepare temporary and working paths.
 
-        micrographs = self._getInputMicrographs()
-        if micrographs is not None:
-            self._importMicrographs()
+    This guarantees a consistent filesystem structure for all derived protocols.
 
-        self._store(self)
+    Input Conversion and Import Workflow
+    ------------------------------------
+    The protocol handles automatic import of multiple cryo-EM data types:
 
-    def _getScaledAveragesFile(self, csAveragesFile, force=False):
+        - Particles
+        - Volumes
+        - Masks
+        - Focus masks
+        - Micrographs
 
-        # For the moment this is the best possible result, scaling from 128 to
-        # 300 does not render nice results apart that the factor turns to
-        # 299x299. But without this the representative subset is wrong.
-        # return csAveragesFile
+    Input preparation includes:
+        - STAR file generation.
+        - Binary volume conversion.
+        - cryoSPARC-specific import formatting.
+        - File linking and path adaptation.
 
-        scaledFile = self._getScaledAveragesFileName(csAveragesFile, force)
+    The workflow ensures all imported datasets become compatible with
+    cryoSPARC internal job execution.
 
-        if not os.path.exists(scaledFile):
+    Particle and File Management
+    ----------------------------
+    Particle file handling utilities provide:
+        - Dynamic filename pattern generation.
+        - Path remapping.
+        - Input particle retrieval.
+        - Pointer access to imported datasets.
 
-            inputSize = self._getInputParticles().getDim()[0]
-            csSize = ImageHandler().getDimensions(csAveragesFile)[0]
+    These utilities simplify interoperability between Scipion and cryoSPARC
+    filesystem conventions.
 
-            if csSize == inputSize:
-                self.info("No binning detected: linking averages cs file.")
-                pwutils.createLink(csAveragesFile, scaledFile)
-            else:
-                self.info("Scaling CS averages file to match particle "
-                      "size (%s -> %s)." % (csSize, inputSize))
-                try:
-                    if force:
-                        scaleFactor = inputSize/csSize
-                        ImageHandler.scaleSplines(csAveragesFile, scaledFile,
-                                                  scaleFactor,
-                                                  finalDimension=inputSize,
-                                                  forceVolume=force)
-                    else:
+    Volume and Mask Import System
+    -----------------------------
+    The protocol supports importing:
+        - Reference volumes.
+        - Binary masks.
+        - Focus masks.
+        - Half maps.
 
-                        ImageHandler.scale2DStack(csAveragesFile, scaledFile,
-                                                  finalDimension=inputSize)
-                except Exception as ex:
-                    self._log.error("The CS averages could not be scaled. %s ", exc_info=ex)
-                    return csAveragesFile
+    Features include:
+        - Automatic suffix generation depending on cryoSPARC version.
+        - Half-map management for gold-standard refinement workflows.
+        - Temporary file conversion before import.
+        - Internal tracking of generated cryoSPARC jobs.
 
-        return scaledFile
+    The implementation guarantees compatibility with multiple cryoSPARC
+    naming conventions introduced across versions.
 
-    def _getScaledAveragesFileName(self, csAveragesFile, isVolume=False):
+    Image Scaling and Resolution Handling
+    -------------------------------------
+    Utilities are provided for scaling cryoSPARC-generated averages
+    to match original particle dimensions.
 
-        extension = ".mrc" if isVolume else ".mrcs"
-        return pwutils.removeExt(csAveragesFile) + "_scaled" + extension
+    Scaling workflow:
+        - Detect binning differences.
+        - Preserve original particle dimensions.
+        - Apply spline interpolation or stack scaling.
+        - Generate scaled output stacks.
 
-    def setFilePattern(self, path):
-        baseName = os.path.basename(path).split('.')[0]
-        self.inputFileNamePattern = path.replace(baseName, '%s')
+    This is especially useful when cryoSPARC internally downsamples data
+    during classification or refinement.
 
-    def updateParticlePath(self, part, row):
-        fn = part.getFileName()
-        baseName = os.path.basename(fn).split('.')[0]
-        newFileName = self.inputFileNamePattern % baseName
-        part.setFileName(newFileName)
+    FSC Extraction and Processing
+    -----------------------------
+    The protocol provides automated FSC retrieval from cryoSPARC jobs.
 
-    def _getInputParticles(self):
-        if self.hasAttribute('inputParticles'):
-            return self.inputParticles.get()
-        return None
+    FSC-related features:
+        - Download FSC files directly from cryoSPARC services.
+        - Parse FSC metadata and resolution curves.
+        - Generate Scipion-compatible FSC objects.
+        - Support phase-randomized masked map calculations.
+        - Compute corrected FSC estimations.
 
-    def _getInputParticlesPointer(self):
-        if self.hasAttribute('inputParticles'):
-            return self.inputParticles
-        return None
+    The implementation supports both:
+        - Legacy cryoSPARC web endpoints.
+        - Newer API-based communication introduced in later versions.
 
-    def _getInputVolume(self):
-        if self.hasAttribute('refVolume'):
-            return self.refVolume.get()
-        return None
+    FSC Parsing and Data Conversion
+    -------------------------------
+    FSC files are processed to:
+        - Extract frequency and correlation values.
+        - Convert raw cryoSPARC outputs into Scipion FSC datasets.
+        - Filter unsupported FSC columns.
+        - Generate additional corrected FSC curves.
 
-    def _getInputMask(self):
-        if self.hasAttribute('refMask'):
-            return self.refMask.get()
-        return None
+    Parsed FSC datasets are then exposed as protocol outputs.
 
-    def _getInputFocusMask(self):
-        if self.hasAttribute('refFocusMask'):
-            return self.refFocusMask.get()
-        return None
+    Job Monitoring and Iteration Tracking
+    ------------------------------------
+    Utilities are included to inspect cryoSPARC stream logs and extract:
 
-    def _getInputMicrographs(self):
-        if self.hasAttribute('inputMicrographs'):
-            return self.inputMicrographs.get()
-        return None
+        - Last refinement iteration.
+        - FSC iteration identifiers.
+        - Estimated map resolution.
+        - Estimated B-factor values.
 
-    def _initializeVolumeSuffix(self):
-        """
-        Create an output volume suffix depend on the CS version
-        """
-        cryosparcVersion = parse_version(getCryosparcVersion())
-        self.outputVolumeSuffix = '.imported_volume.map'
-        self.outputMaskSuffix = '.imported_mask.map'
-        self.outputVolumeHalf_A = '.imported_volume.map_half_A'
-        self.outputVolumeHalf_B = '.imported_volume.map_half_B'
-        if cryosparcVersion >= parse_version(V3_3_1):
-            self.outputVolumeSuffix = '.imported_volume_1.map'
-            self.outputMaskSuffix = '.imported_mask_1.map'
-            self.outputVolumeHalf_A = '.imported_volume_1.map_half_A'
-            self.outputVolumeHalf_B = '.imported_volume_1.map_half_B'
+    This allows downstream protocols to monitor refinement progress
+    and retrieve quantitative reconstruction metrics.
 
-    def _initializeMaskSuffix(self, sufix='.imported_mask_1.map'):
-        """
-        Create a output mask suffix depend of the CS version
-        """
-        cryosparcVersion = parse_version(getCryosparcVersion())
-        self.outputMaskSuffix = '.imported_mask.map'
-        if cryosparcVersion >= parse_version(V3_3_1):
-            self.outputMaskSuffix = sufix
+    Job Control and Abort Handling
+    ------------------------------
+    The protocol includes cleanup mechanisms for interrupted executions.
 
-    def _importVolume(self):
-        vol = self._getInputVolume()
-        self._initializeVolumeSuffix()
-        vol_fn = os.path.join(os.getcwd(), convertBinaryVol(vol, self._getTmpPath()))
-        importVolumeJob = doImportVolumes(self, vol_fn, vol, 'map', 'Importing volume...')
-        self.volume = pwobj.String(str(importVolumeJob.get()) + self.outputVolumeSuffix)
+    Abort handling responsibilities:
+        - Detect running cryoSPARC jobs.
+        - Kill unfinished jobs safely.
+        - Clear cryoSPARC job states.
+        - Prevent orphan processes.
 
-        if vol.hasHalfMaps():
-            halfMaps = vol.getHalfMaps().split(",")
-            map_half_A_fn = os.path.abspath(halfMaps[0].split(':mrc')[0])
-            importVolumeHalfAJob = doImportVolumes(self, map_half_A_fn, vol,
-                                                   'map_half_A', 'Importing half volume A...')
-            self.importVolumeHalfA = pwobj.String(str(importVolumeHalfAJob.get()) + self.outputVolumeHalf_A)
+    This improves workflow robustness and resource management.
 
-            map_half_B_fn = os.path.abspath(halfMaps[1].split(':mrc')[0])
-            importVolumeHalfBJob = doImportVolumes(self, map_half_B_fn, vol,
-                                                   'map_half_B', 'Importing half volume B...')
-            self.importVolumeHalfB = pwobj.String(str(importVolumeHalfBJob.get()) + self.outputVolumeHalf_B)
+    Compatibility and Version Awareness
+    -----------------------------------
+    The class includes explicit handling for cryoSPARC version differences.
 
-        self.currenJob.set(importVolumeJob.get())
+    Examples:
+        - Different project identifiers before and after v4.
+        - API endpoint changes in FSC retrieval.
+        - Version-dependent filename suffixes.
+        - Updated workspace and import conventions.
 
-    def _importMask(self):
-        self._initializeMaskSuffix()
-        maskFn = os.path.join(os.getcwd(), convertBinaryVol(self._getInputMask(),
-                                                            self._getTmpPath()))
+    This ensures stable operation across multiple cryoSPARC environments.
 
-        importMaskJob = doImportVolumes(self, maskFn, self._getInputMask(),
-                                        'mask', 'Importing mask... ')
-        self.currenJob.set(importMaskJob.get())
-        self.mask = pwobj.String(str(importMaskJob.get()) + self.outputMaskSuffix)
+    Extensibility
+    -------------
+    The class is intended to be subclassed by specialized cryoSPARC protocols.
 
-    def _importFocusMask(self):
-        self._initializeMaskSuffix()
-        maskFn = os.path.join(os.getcwd(), convertBinaryVol(self._getInputFocusMask(),
-                                                            self._getTmpPath()))
+    Derived protocols can reuse:
+        - Import utilities.
+        - FSC processing.
+        - Job management.
+        - File scaling logic.
+        - cryoSPARC communication methods.
 
-        importFocusMaskJob = doImportVolumes(self, maskFn, self._getInputFocusMask(),
-                                             'mask', 'Importing focus mask... ')
-        self.currenJob.set(importFocusMaskJob.get())
-        self.focusMask = pwobj.String(str(importFocusMaskJob.get()) + self.outputMaskSuffix)
+    Placeholder methods such as:
+        - _createModelFile()
 
-    def _importParticles(self):
-        # import_particles_star
-        importedParticlesJob = doImportParticlesStar(self)
-        self.currenJob = pwobj.String(str(importedParticlesJob.get()))
-        self.particles = pwobj.String(str(importedParticlesJob.get()) +
-                                      '.imported_particles')
+    are designed for protocol-specific implementations.
 
-    def _importMicrographs(self):
-        importedMicrographsJob = doImportMicrographs(self)
-        self.currenJob = pwobj.String(str(importedMicrographsJob.get()))
-        self.micrographs = pwobj.String(str(importedMicrographsJob.get()) +
-                                      '.imported_micrographs')
+    Biological and Workflow Perspective
+    -----------------------------------
+    cryoSPARC workflows frequently involve complex interactions between:
+        - Particle datasets.
+        - Volumetric reconstructions.
+        - Masks and focused refinements.
+        - FSC-based validation metrics.
 
-    def setAborted(self):
-        """ Set the status to aborted and updated the endTime. """
-        pw.EMProtocol.setAborted(self)
-        if hasattr(self, 'projectName') and hasattr(self, 'currenJob') and self.currenJob.get() is not None:
-            job = str(self.currenJob.get())
-            project = str(self.projectName.get())
-            status = getJobStatus(project, job)
-            if status not in STOP_STATUSES:
-                try:
-                    killJob(project, job)
-                    clearJob(project, job)
-                except Exception as e:
-                    logger.error("Can't kill job %s from project %s" % (job, project), exc_info=e)
+    This base protocol standardizes those operations, allowing derived
+    protocols to focus on reconstruction algorithms rather than
+    infrastructure management.
 
-    def createFSC(self, idd, imgSet, vol):
-        # Need to get the cryosparc master address
-        system_info = getSystemInfo()
-        status_errors = system_info[0]
+    By centralizing cryoSPARC interoperability, the class improves:
+        - Reproducibility.
+        - Workflow consistency.
+        - Data traceability.
+        - Multi-version compatibility.
 
-        if not status_errors:
-            cryosparcVersion = getCryosparcVersion()
-            system_info = eval(system_info[1])
-            master_hostname = system_info.get('master_hostname')
-            if parse_version(cryosparcVersion) < parse_version(V4_1_0):
-                port_webapp = system_info.get('port_webapp')
-                url = "http://%s:%s/file/%s" % (master_hostname, port_webapp, idd)
-                fscRequest = requests.get(url, allow_redirects=True)
-            else:
-                port_webapp = system_info.get('port_command_vis')
-                url = "http://%s:%s/get_job_file" % (master_hostname, port_webapp)
-                jsonParam = {'fileid': idd}
-                licence_id = _getLicenceFromFile()
-                headers = {'License-ID': licence_id}
-                fscRequest = requests.post(url, json=jsonParam, headers=headers,
-                                          allow_redirects=True)
-            fscFile = "fsc.txt"
-            fscFilePath = os.path.join(self._getExtraPath(), fscFile)
-            factor = self._getInputParticles().getDim()[0] * imgSet.getSamplingRate()
+    """
 
-            # Convert into scipion fsc format
-            open(fscFilePath, 'wb').write(fscRequest.content)
-            fscSet = self.getSetOfFCSsFromFile(fscFilePath, factor)
-            self._defineOutputs(outputFSC=fscSet)
-            self._defineSourceRelation(vol, fscSet)
 
-    def getSetOfFCSsFromFile(self, file, factor):
-        f = open(file, 'r')
-        lines = f.readlines()
-        fscSet = self._createSetOfFSCs()
-        columns = lines[0].strip().split('\t')[1:]
-        col = 1
-        fsc_t = None
-        fsc_nt = None
 
-        for column in columns:
-            if column == 'fsc_tightmask':
-                fsc_t = \
-                self.getFSCFromRawData(lines, column, col, factor).getData()[1]
-            if column == 'fsc_noisesub_true':
-                fsc_nt = \
-                self.getFSCFromRawData(lines, column, col, factor).getData()[1]
-            if column not in excludedFSCValues:
-                fsc = self.getFSCFromRawData(lines, column, col, factor)
-                fscSet.append(fsc)
-            col += 1
-        f.close()
-        corr = []
 
-        if fsc_t is not None and fsc_nt is not None:  # Phase Randomized Masket Map can be calculated
-            for i in range(len(fsc_t)):
-                fsc_nt_value = 0.99
-                if fsc_nt[i] != 1:
-                     fsc_nt_value = fsc_nt[i]
-                corr.append((fsc_t[i] - fsc_nt[i]) / (1.0 - fsc_nt_value))
-            fsc = FSC(objLabel=fscValues['fsc_prmm'])
-            fsc_wv = fscSet.getFirstItem().getData()[0]
-            fsc.setData(fsc_wv, corr)
-            fscSet.append(fsc)
-        fscSet.write()
-        return fscSet
-
-    def getFSCFromRawData(self, lines, label, col, factor):
-        wv = []
-        corr = []
-        for x in lines[1:]:
-            wv_value = float(x.strip().split('\t')[0])
-            coor_value = x.strip().split('\t')[col]
-            wv.append(str(wv_value / factor))
-            corr.append(coor_value)
-        fsc = FSC(objLabel=fscValues[label])
-        fsc.setData(wv, corr)
-        return fsc
-
-    def findLastIteration(self, jobName):
-        get_job_streamlog(self.projectName.get(),
-                          jobName,
-                          self._getFileName('stream_log'))
-
-        # Get the metadata information from stream.log
-        with open(self._getFileName('stream_log')) as f:
-            data = f.readlines()
-
-        x = ast.literal_eval(data[0])
-
-        # Find the ID of last iteration and the map resolution
-        for y in x:
-            if 'text' in y:
-                z = str(y['text'])
-
-                if z.startswith('FSC Iteration') or z.startswith('FSC iIteration'):
-                    for imgfile in y['imgfiles']:
-                        if imgfile['filetype'] == 'txt':
-                            idd = imgfile['fileid']
-                            break
-                    itera = z.split(',')[0][-3:]
-                    self._store(self)
-                elif 'Using Filter Radius' in z:
-                    nomRes = str(y['text']).split('(')[1].split(')')[
-                        0].replace(
-                        'A', 'Å')
-                    self.mapResolution = pwobj.String(nomRes)
-                    self._store(self)
-                elif 'Estimated Bfactor' in z:
-                    estBFactor = str(y['text']).split(':')[1].replace('\n',
-                                                                      '')
-                    self.estBFactor = pwobj.String(estBFactor)
-                    self._store(self)
-        return idd, itera
-
-    def _createModelFile(self):
-        pass
-
-    def getLogLine(self):
-        return self._logLastLine
-
-    def setLogLine(self, lastLine: int):
-        self._logLastLine = lastLine

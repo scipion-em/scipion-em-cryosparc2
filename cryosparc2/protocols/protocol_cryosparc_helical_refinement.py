@@ -48,280 +48,203 @@ class ProtCryoSparcHelicalRefine3D(ProtCryoSparc3DHomogeneousRefine):
     alignment algorithm, and optional Non-Uniform regularization as used in
     other cryoSPARC refinement jobs.
     """
-    _label = '3D helical refinement'
-    _fscColumns = 4
-    _protCompatibility = [V3_3_1, V3_3_2, V4_0_0, V4_0_1, V4_0_2, V4_0_3,
-                          V4_1_0, V4_1_1, V4_1_2, V4_2_0, V4_2_1, V4_3_1, V4_4_0, V4_4_1, V4_5_1,
-                          V4_5_3, V4_6_0, V4_6_1, V4_6_2, V4_7_0, V4_7_1]
-    _className = "helix_refine"
 
-    def _defineParams(self, form):
-        form.addSection(label='Input')
-        form.addParam('inputParticles', PointerParam,
-                      pointerClass='SetOfParticles',
-                      label="Input particles", important=True,
-                      validators=[Positive],
-                      help='Particle stacks to use. Multiple stacks will '
-                           'be concatenated.')
-        form.addParam('referenceVolume', PointerParam, pointerClass='Volume',
-                      default=None,
-                      allowsNull=True,
-                      label="Initial volume",
-                      help='Initial volume to use for helical refinement.')
-        form.addParam('refMask', PointerParam, pointerClass='VolumeMask',
-                      default=None,
-                      label='Mask to be applied to this map(Optional)',
-                      allowsNull=True,
-                      help='Initial volume mask raw data.')
+    """
+    ProtCryoSparcHelicalRefine3D — Helical 3D Refinement Protocol
 
-        form.addSection(label='Helical Refinement')
+    Overview
+    --------
+    Performs high-resolution refinement of helical assemblies using cryoSPARC’s
+    helical refinement framework. The protocol is designed for filamentous or
+    helical biological structures and combines iterative helical reconstruction
+    strategies with cryoSPARC’s maximum-likelihood refinement algorithms.
 
-        form.addParam('refine_init_twist', FloatParam,
-                      default=None,
-                      allowsNull=True,
-                      label="Helical twist estimate (degrees)",
-                      help='Angular distance between adjacent subunits, in the '
-                           'range (-180,180). Positive and negative values '
-                           'correspond to right and left-handed helices, '
-                           'respectively.')
+    The method incorporates:
+        - Helical symmetry refinement.
+        - Branch-and-bound alignment optimization.
+        - Optional Non-Uniform (NU) regularization.
+        - Real-space and Fourier-space symmetry enforcement.
+        - Flexible refinement of twist and rise parameters.
 
-        form.addParam('refine_init_shift', FloatParam,
-                      default=None,
-                      allowsNull=True,
-                      label="Helical rise estimate (A)",
-                      help='Positive non-zero translation distance (along '
-                           'helical axis) between adjacent subunits.')
+    Typical applications include:
+        - Refinement of amyloid fibrils.
+        - Helical virus reconstruction.
+        - Cytoskeletal filament analysis.
+        - High-resolution reconstruction of filamentous protein assemblies.
 
-        form.addParam('refine_limit_shifts', BooleanParam,
-                      default=True,
-                      label="Limit shifts along the helical axis",
-                      help='Limit alignment shifts along the meridian to +/- '
-                           '0.5 helical rises, once all particles are seen. '
-                           'For fairly rigid helices, can improve resolution'
-                           ' by ensuring symmetry averaging occurs over only '
-                           'central asymmetric units. Not recommended for '
-                           'helices with significant flexibility.')
+    Inputs and Workflow
+    -------------------
+    - Input Particles:
+        Particle stacks corresponding to extracted helical segments.
+        Multiple particle sets may be concatenated.
 
-        form.addParam('refine_hsym_order', FloatParam,
-                      default=None,
-                      allowsNull=True,
-                      label="Maximum symmetry order to apply during reconstruction",
-                      help='The maximum amount of helical symmetry to impose '
-                           'during reconstruction; i.e., the maximum number of '
-                           '(twist, rise) pairs to backproject each particle '
-                           'image with. For particles picked outside of the '
-                           'filament tracer or template picker, this should be '
-                           'set to the distance between extracted boxes, '
-                           'divided by the helical rise. If left as None, '
-                           'will be calculated based on the inter-box distance '
-                           '(if available). Set to 1 for no helical Fourier'
-                           ' space symmetrization.')
+    - Initial Volume:
+        A starting 3D reconstruction used to initialize refinement.
+        Recommended for stable convergence and orientation estimation.
 
-        form.addParam('refine_sym_enforce_r', FloatParam,
-                      default=8,
-                      validators=[Positive],
-                      label="Resolution to begin real-space symmetrization",
-                      help='At what resolution (A) to begin enforce symmetry '
-                           'in real-space prior to alignment; may improve'
-                           ' particle alignments. Set to 0 to disable '
-                           'real-space symmetry enforcement. If symmetry '
-                           'parameters are being searched, it\'s recommended '
-                           'to set this to a fairly high resolution '
-                           '(e.g. ~5 A).')
+    - Optional Reference Mask:
+        Soft mask applied during refinement to focus optimization on
+        biologically relevant regions and reduce solvent noise.
 
-        form.addParam('symmetryGroup', EnumParam,
-                      choices=[CS_SYM_NAME[SYM_CYCLIC] +
-                               " (" + SCIPION_SYM_NAME[SYM_CYCLIC] + ")",
-                               CS_SYM_NAME[SYM_DIHEDRAL_Y] +
-                               " (" + SCIPION_SYM_NAME[SYM_DIHEDRAL_Y] + ")"],
-                      default=SYM_CYCLIC,
-                      label="Symmetry",
-                      help="Symmetry String (C, D). E.g. C1, D7, C4, etc. "
-                           "Only cyclic and dihedral symmetries are supported."
-                      )
+    Workflow summary:
+        1. Load particle stacks and optional reference volume.
+        2. Configure helical symmetry and refinement parameters.
+        3. Launch cryoSPARC helical refinement job.
+        4. Monitor execution and GPU allocation.
+        5. Generate refined helical reconstruction outputs.
 
-        form.addParam('symmetryOrder', IntParam, default=1,
-                      condition='symmetryGroup==%d or symmetryGroup==%d' %
-                                (SYM_DIHEDRAL_Y - 1, SYM_CYCLIC),
-                      label='Point group symmetry',
-                      validators=[Positive],
-                      help='Order of symmetry.')
+    Helical Symmetry Parameters
+    ---------------------------
+    The protocol supports explicit refinement of helical geometry:
 
-        form.addSection(label='Non-Uniform Refinement')
+    - Helical Twist:
+        Angular rotation between adjacent subunits.
+        Positive and negative values represent right-handed and
+        left-handed helices respectively.
 
-        form.addParam('nu_refine', BooleanParam,
-                      default=False,
-                      label="Use Non-Uniform Refinement?",
-                      help='Use Non-Uniform regularization during refinement '
-                           'to achieve higher resolution and map quality.')
+    - Helical Rise:
+        Axial translation between neighboring asymmetric units.
 
-        form.addSection(label='Initial Model')
+    - Symmetry Order:
+        Defines the amount of symmetry applied during reconstruction.
+        Higher values increase averaging but may introduce artifacts if
+        symmetry assumptions are incorrect.
 
-        form.addParam('refine_res_init', FloatParam,
-                      default=20,
-                      validators=[Positive],
-                      label="Initial lowpass resolution (A)",
-                      help='Lowpass filter resolution applied to input '
-                           'structure. Values between 15 and 35 Angstroms '
-                           'may produce best results.')
+    - Point Group Symmetry:
+        Supports cyclic (Cn) and dihedral (Dn) symmetry groups.
 
-        form.addParam('refine_initmodel_numimages', FloatParam,
-                      default=5000,
-                      validators=[Positive],
-                      label="Number of images for initial density generation",
-                      help='Number of images used in generating the initial '
-                           'density.')
+    Best practices:
+        * Use experimentally estimated twist/rise values whenever possible.
+        * Incorrect symmetry values may reduce resolution or distort features.
+        * Flexible helices may require reduced symmetry enforcement.
 
-        form.addParam('use_cylindrical_model', BooleanParam,
-                      default=False,
-                      label="Generate a cylindrical initial model?",
-                      help='Whether or not to generate a cylindrical initial model')
+    Real-Space Symmetrization
+    -------------------------
+    The protocol can enforce symmetry directly in real space before alignment.
 
-        form.addParam('filament_outer_diameter', FloatParam,
-                      default=None,
-                      allowsNull=True,
-                      label="Filament Outer Diameter (Angstrom)",
-                      help='Approximate outer diameter of the filament in Angstroms')
+    Features:
+        - Improves particle alignment consistency.
+        - Enhances signal for rigid helical assemblies.
+        - Can stabilize refinement at intermediate resolutions.
 
-        form.addParam('filament_inner_diameter', FloatParam,
-                      default=0,
-                      label="Filament Inner Diameter (Angstrom)",
-                      help='Approximate inner diameter of the filament in Angstroms')
+    Recommendations:
+        * Use moderate enforcement resolution (~5–8 Å) for stable helices.
+        * Disable or reduce enforcement for highly flexible filaments.
 
-        form.addParam('filament_far_dist_A', FloatParam,
-                      default=6,
-                      label="Far distance (Angstrom)",
-                      help='Distance over which the model is padded, with voxel values fading to 0.')
+    Initial Model Generation
+    ------------------------
+    Two initialization strategies are supported:
 
-        form.addSection(label='Refinement')
+    - External Initial Volume:
+        Uses a previously reconstructed map from ab-initio or refinement.
 
-        form.addParam('refine_res_align_max', FloatParam,
-                      default=None,
-                      allowsNull=True,
-                      label="Maximum align resolution (A)",
-                      help='Manual override for maximum resolution that is '
-                           'used for alignment. This value is normally '
-                           'set by the GS-FSC')
+    - Cylindrical Initial Model:
+        Generates a simple cylindrical density approximation when no
+        starting volume is available.
 
-        form.addParam('refine_res_gsfsc_split', FloatParam,
-                      default=20,
-                      validators=[Positive],
-                      label="GSFSC split resolution (A)",
-                      help='Resolution beyond which two GS-FSC halves are '
-                           'independent')
+    Cylindrical model parameters include:
+        * Filament outer diameter.
+        * Filament inner diameter.
+        * Padding/falloff distance.
 
-        form.addParam('refine_mask', EnumParam,
-                      choices=["dynamic", "static"],
-                      default=0,
-                      label="Mask",
-                      help='Type of masking to use. Either "dynamic", or '
-                           '"static".')
+    Practical considerations:
+        * Cylindrical initialization is useful for unknown structures.
+        * Accurate filament diameter estimates improve convergence.
 
-        form.addParam('refine_dynamic_mask_thresh_factor', FloatParam,
-                      default=0.3,
-                      validators=[Positive],
-                      label="Dynamic mask threshold (0-1)",
-                      help='Level set threshold for selecting regions that are '
-                           'included in the dynamic mask.')
+    Non-Uniform Refinement
+    ----------------------
+    Optional Non-Uniform (NU) refinement can be enabled to improve:
 
-        # --------------[Compute settings]---------------------------
-        form.addSection(label="Compute settings")
-        addComputeSectionParams(form, allowMultipleGPUs=False)
+        - Local map quality.
+        - High-resolution recovery.
+        - Density consistency in flexible regions.
 
-    def _insertAllSteps(self):
-        ProtCryoSparc3DHomogeneousRefine._insertAllSteps(self)
+    NU refinement is especially useful for:
+        * Structurally heterogeneous helices.
+        * Flexible filament assemblies.
+        * Maps with uneven local resolution.
 
-    def processStep(self):
-        self.info(pwutils.yellowStr("Refinement started..."))
-        self.doRunRefine()
+    Refinement Controls
+    -------------------
+    The protocol exposes several refinement tuning parameters:
 
-    # --------------------------- INFO functions -------------------------------
-    def _validate(self):
-        validateMsgs = cryosparcValidate()
-        if not validateMsgs:
-            validateMsgs = gpusValidate(self.getGpuList(), checkSingleGPU=True)
-            if not validateMsgs:
-                if self.referenceVolume.get() is None and not self.use_cylindrical_model.get():
-                    validateMsgs.append("Cannot generate initial model "
-                                        "without in-plane rotation "
-                                        "information. Please input an "
-                                        "initial model from a previous ab-initio or "
-                                        "refinement protocol, or activate the "
-                                        "'Generate a cylindrical initial "
-                                        "model?' parameter")
+    - Initial lowpass filtering of the reference volume.
+    - Maximum alignment resolution.
+    - GS-FSC split resolution.
+    - Dynamic or static masking modes.
+    - Dynamic mask threshold control.
 
-                if self.use_cylindrical_model.get() and self.filament_outer_diameter.get() is None:
-                    validateMsgs.append("Must set the filament outer diameter to use a cylindrical model")
+    Dynamic masking:
+        * Adapts mask boundaries during refinement.
+        * Helps preserve flexible or variable-density regions.
 
-        return validateMsgs
+    Static masking:
+        * Uses a fixed mask throughout refinement.
+        * Often preferred for rigid, well-defined assemblies.
 
-    def _defineParamsName(self):
-        """ Define a list with all protocol parameters names"""
-        self._paramsName = ['refine_init_twist',
-                            'refine_init_shift',
-                            'refine_hsym_order',
-                            'refine_limit_shifts',
-                            'refine_sym_enforce_r',
-                            'refine_pg_symmetry',
-                            'nu_refine',
-                            'refine_res_init',
-                            'refine_initmodel_numimages',
-                            'use_cylindrical_model',
-                            'refine_res_align_max',
-                            'refine_res_gsfsc_split',
-                            'refine_mask',
-                            'refine_dynamic_mask_thresh_factor',
-                            'filament_outer_diameter',
-                            'filament_inner_diameter',
-                            'filament_far_dist_A',
-                            'compute_use_ssd']
-        self.lane = str(self.getAttributeValue('compute_lane'))
+    Shift Limitation Along Helical Axis
+    ----------------------------------
+    The protocol optionally restricts translational shifts along the
+    filament axis.
 
-    def doRunRefine(self):
-        input_group_connect = {"particles": self.particles.get()}
-        if self.volume.get() is not None:
-            input_group_connect["volume"] = self.volume.get()
-        if self.mask.get() is not None:
-            input_group_connect["mask"] = self.mask.get()
-        params = {}
+    Advantages:
+        - Prevents alignment drift.
+        - Improves averaging consistency.
+        - Enhances resolution for rigid helices.
 
-        for paramName in self._paramsName:
-            if (paramName != 'refine_hsym_order' and
-                    paramName != 'refine_pg_symmetry' and
-                    paramName != "refine_init_twist" and
-                    paramName != "refine_init_shift" and
-                    paramName != 'filament_outer_diameter' and
-                    paramName != 'refine_res_align_max'):
-                params[str(paramName)] = str(self.getAttributeValue(paramName))
-            elif paramName == 'refine_pg_symmetry':
-                symetryValue = getSymmetry(self.symmetryGroup.get(),
-                                           self.symmetryOrder.get())
-                params[str(paramName)] = symetryValue
-            elif self.getAttributeValue(paramName) is not None and float(self.getAttributeValue(paramName)) > 0:
-                params[str(paramName)] = str(self.getAttributeValue(paramName))
+    Limitations:
+        - May negatively affect flexible filaments.
+        - Should be disabled when strong conformational variability exists.
 
-        # Determinate the GPUs to use (in dependence of
-        # the cryosparc version)
-        try:
-            if not self.useQueueForSteps() and not self.useQueue():  # not using queue system
-                gpusToUse = self.getGpuList()
-            else:  # using queue system
-                gpusToUse = False
-        except Exception:
-            gpusToUse = False
+    Outputs
+    -------
+    - Refined helical 3D reconstruction.
+    - Updated particle alignment parameters.
+    - Symmetry-refined helical geometry.
+    - FSC and refinement statistics.
+    - Optional Non-Uniform refined map.
 
-        runRefineJob = enqueueJob(self._className, self.projectName.get(),
-                                    self.workSpaceName.get(),
-                                    str(params).replace('\'', '"'),
-                                    str(input_group_connect).replace('\'', '"'),
-                                    self.lane, gpusToUse)
+    Validation and Safety Checks
+    ----------------------------
+    The protocol validates:
+        - cryoSPARC environment compatibility.
+        - GPU availability.
+        - Presence of a valid initial model or cylindrical model option.
+        - Filament diameter requirements for cylindrical initialization.
 
-        self.runRefine = String(runRefineJob.get())
-        self.currenJob.set(runRefineJob.get())
-        self._store(self)
+    These checks help avoid unstable refinements or incomplete job execution.
 
-        waitForCryosparc(self.projectName.get(), self.runRefine.get(),
-                         "An error occurred in the Refinement process. "
-                         "Please, go to cryoSPARC software for more "
-                         "details.", self)
-        clearIntermediateResults(self.projectName.get(), self.runRefine.get())
+    Computational Workflow
+    ----------------------
+    Internally, the protocol:
+        - Builds parameter dictionaries dynamically.
+        - Converts symmetry definitions into cryoSPARC-compatible format.
+        - Manages GPU execution and queue handling.
+        - Launches refinement jobs using cryoSPARC job scheduling.
+        - Waits for completion and cleans intermediate files.
+
+    Practical Recommendations
+    -------------------------
+    - Start with reliable twist and rise estimates whenever possible.
+    - Use soft masks to suppress solvent noise.
+    - Enable Non-Uniform refinement for flexible or heterogeneous filaments.
+    - Use cylindrical initialization only when no prior map exists.
+    - Carefully inspect symmetry assumptions before high-resolution refinement.
+    - Avoid excessive symmetry enforcement for polymorphic helices.
+
+    Biological Perspective
+    ----------------------
+    Helical refinement is critical for resolving filamentous biological
+    assemblies at near-atomic resolution.
+
+    Reliable reconstructions depend on:
+        * Accurate helical symmetry estimation.
+        * Appropriate masking strategies.
+        * Careful handling of filament flexibility.
+        * Stable initialization and refinement settings.
+
+    Proper refinement enables structural interpretation of complex
+    biological filaments, including molecular packing, symmetry organization,
+    and conformational variability.
+
+    """

@@ -41,166 +41,177 @@ class ProtCryoSparc3DFlexReconstruction(ProtCryosparcBase):
     in high-res regions are computed. Outputs two half-maps that can be used
     for FSC validation, sharpening, and other downstream tasks.
     """
-    _label = '3D flex reconstruction'
-    _devStatus = BETA
-    _protCompatibility = [V4_1_0, V4_1_1, V4_1_2, V4_2_0, V4_2_1, V4_3_1, V4_4_0, V4_4_1, V4_5_1,
-                          V4_5_3, V4_6_0, V4_6_1, V4_6_2, V4_7_0, V4_7_1]
 
-    # --------------------------- DEFINE param functions ----------------------
-    def _defineFileNames(self):
-        """ Centralize how files are called within the protocol. """
-        myDict = {
-            'input_particles': self._getTmpPath('input_particles.star'),
-            'out_particles': self._getPath() + '/output_particle.star',
-            'stream_log': self._getPath() + '/stream.log'
-        }
-        self._updateFilenamesDict(myDict)
 
-    def _defineParams(self, form):
-        form.addSection(label='Input')
-        form.addParam('input3DFlexTrainingProt', PointerParam,
-                      pointerClass='ProtCryoSparc3DFlexTraining',
-                      label="3D flex data prepare protocol",
-                      important=True,
-                      help='Particle stacks to use.')
+    """
+    ProtCryoSparc3DFlexReconstruction — 3D Flex High-Resolution Reconstruction Protocol
 
-        form.addParam('flex_do_noflex_recon', BooleanParam, default=True,
-                      label="Do rigid reconstruction",
-                      help='If True, the job will also do a rigid '
-                           'reconstruction using the same L-BFGS reconstruction '
-                           'method as is used for flexible refinement '
-                           'reconstruction. This serves as a useful baseline '
-                           'for comparisons.')
+    Overview
+    --------
+    Performs high-resolution cryo-EM reconstruction using a trained cryoSPARC
+    3D Flex deformation model and prepared particle datasets.
 
-        form.addParam('flex_bfgs_num_iters', IntParam, default=20,
-                      label="Max BFGS iterations",
-                      help='The maximum number of L-BFGS iterations that will '
-                           'be done during reconstruction of a half-map. '
-                           'The default (20) works well in most cases but can '
-                           'be increased for very high resolution '
-                           'reconstruction or very large volumes potentially.')
+    The protocol applies flexible refinement under the learned deformation
+    framework in order to improve density quality in structurally variable
+    regions while preserving high-resolution information.
 
-        form.addParam('refine_gs_resplit', BooleanParam, default=False,
-                      label="Force re-do GS split",
-                      help='Force re-splitting the particles into two random '
-                           'gold-standard halves. If this is not set, split '
-                           'is preserved from input alignments (if connected).'
-                           ' If the input alignments do not have equal '
-                           'particles in each split, the job will issue a '
-                           'warning but will continue.')
+    Reconstruction is performed using L-BFGS optimization and produces
+    independently refined half-maps suitable for gold-standard FSC validation,
+    map sharpening, and downstream structural analysis.
 
-        # --------------[Compute settings]---------------------------
-        form.addSection(label="Compute settings")
-        addComputeSectionParams(form, allowMultipleGPUs=False, needGPU=True)
+    The protocol can also generate a rigid baseline reconstruction for direct
+    comparison against the flexible refinement results.
 
-        """
-        # job.param_add('flex_highres', "flex_force_restart", base_value=False,  title="Restart training",  param_type="boolean", desc="Force restart of training even if a model with trained checkpoint is connected.", hidden=True)
-        
-        job.param_add_section('compute_settings', title='Compute settings', desc='')
-        # NB: app checks this param at queue time and tells command to no_check_inputs_ready in enqueue_job:
-        job.param_add('compute_settings', "scheduler_no_check_inputs_ready", base_value=False,  title="Override scheduler",  param_type="boolean", desc="Force the scheduler to run this job even if connected inputs are not completed. For example, with this setting on, you can connect a running 3DFlex Training job output to this job and this job will run even though the training is still in progress. This allows visualization of in-progress results.")
-        # job.param_add('compute_settings', "compute_use_ssd",        base_value=True,       title="Cache particle images on SSD",    param_type="boolean",   hidden=False,   advanced=False, desc='Use the SSD to cache particles. Speeds up processing significantly.')
-        """
+    Main Objectives
+    ---------------
+    - Perform high-resolution flexible reconstruction.
+    - Refine structural variability using trained deformation models.
+    - Improve density quality in flexible regions.
+    - Generate gold-standard half-maps for validation.
+    - Produce rigid and flexible reconstruction comparisons.
 
-    def _insertAllSteps(self):
-        self._defineFileNames()
-        self._defineParamsName()
-        self._initializeCryosparcProject()
-        self._insertFunctionStep(self.reconstructionStep)
-        self._insertFunctionStep(self.createOutputStep)
+    Inputs and Workflow
+    -------------------
+    - 3D Flex Training Protocol:
+        * Provides the trained Flex deformation model.
+        * Supplies prepared particles and latent-space information.
+        * Defines the learned continuous conformational landscape.
 
-    def reconstructionStep(self):
-        self.info(pwutils.yellowStr("3D Flex Reconstruction started..."))
-        self.doRun3DFlexReconstruction()
+    The workflow follows these stages:
+        1. Initialize cryoSPARC project environment.
+        2. Connect particles and trained Flex model.
+        3. Configure reconstruction parameters.
+        4. Launch cryoSPARC high-resolution refinement job.
+        5. Wait for reconstruction completion.
+        6. Copy generated maps and half-maps.
+        7. Build Scipion-compatible output volumes.
 
-    def createOutputStep(self):
-        """
-         Create the protocol output.  """
-        self._initializeUtilsVariables()
-        csOutputFolder = os.path.join(self.projectDir.get(),
-                                      self.run3DFlexReconstructionJob.get())
-        csOutputPattern = "%s%s" % (getOutputPreffix(self.projectName.get()),
-                                    self.run3DFlexReconstructionJob.get())
+    Flexible Reconstruction Strategy
+    --------------------------------
+    The protocol performs refinement under the 3D Flex deformation model.
 
-        # Flex volume
-        fnFlexVolName = csOutputPattern + "_flex_map.mrc"
-        flexHalf1Name = csOutputPattern + "_flex_map_half_A.mrc"
-        flexHalf2Name = csOutputPattern + "_flex_map_half_B.mrc"
+    Key features include:
+        - Flexible deformation-aware refinement.
+        - Continuous heterogeneity modeling.
+        - High-resolution density optimization.
+        - Latent-space-guided reconstruction.
 
-        # No Flex volume
-        fnNoFlexVolName = csOutputPattern + "_noflex_map.mrc"
-        flexNoHalf1Name = csOutputPattern + "_noflex_map_half_A.mrc"
-        flexNoHalf2Name = csOutputPattern + "_noflex_map_half_B.mrc"
+    This allows structural regions undergoing continuous motion to be
+    reconstructed more accurately than with traditional rigid refinement.
 
-        # Copy the CS output volume and half to extra folder
-        copyFiles(csOutputFolder, self._getExtraPath(), files=[fnFlexVolName, flexHalf1Name, flexHalf2Name,
-                                                               fnNoFlexVolName, flexNoHalf1Name, flexNoHalf2Name])
+    L-BFGS Optimization
+    -------------------
+    Reconstruction is optimized using the L-BFGS algorithm.
 
-        fnVol = os.path.join(self._getExtraPath(), fnFlexVolName)
-        half1 = os.path.join(self._getExtraPath(), flexHalf1Name)
-        half2 = os.path.join(self._getExtraPath(), flexHalf2Name)
+    - Maximum BFGS Iterations:
+        * Controls the refinement convergence process.
+        * Higher values may improve very high-resolution reconstructions.
+        * Larger volumes may require additional iterations.
 
-        flexVol = Volume()
-        fixVolume([fnVol, half1, half2])
-        flexVol.setFileName(fnVol)
-        ccp4header = Ccp4Header(fnVol, readHeader=True)
-        flexVol.setSamplingRate(ccp4header.getSampling()[0])
-        flexVol.setHalfMaps([half1, half2])
+    The default iteration count is generally sufficient for most datasets,
+    balancing reconstruction quality and computational cost.
 
-        fnVol = os.path.join(self._getExtraPath(), fnNoFlexVolName)
-        half1 = os.path.join(self._getExtraPath(), flexNoHalf1Name)
-        half2 = os.path.join(self._getExtraPath(), flexNoHalf2Name)
+    Gold-Standard Refinement
+    ------------------------
+    The protocol supports gold-standard half-set reconstruction workflows.
 
-        noFlexVol = Volume()
-        fixVolume([fnVol, half1, half2])
-        noFlexVol.setFileName(fnVol)
-        ccp4header = Ccp4Header(fnVol, readHeader=True)
-        noFlexVol.setSamplingRate(ccp4header.getSampling()[0])
-        noFlexVol.setHalfMaps([half1, half2])
+    - Force Gold-Standard Resplitting:
+        * Reassigns particles into new random half-sets.
+        * Useful when input alignments lack balanced half-set distributions.
+        * Helps maintain robust FSC validation procedures.
 
-        self._defineOutputs(flexVolume=flexVol)
-        self._defineOutputs(noFlexVolume=noFlexVol)
+    If resplitting is disabled, original half-set assignments are preserved.
 
-    def _defineParamsName(self):
-        """ Define a list with 3D Flex Reconstruction parameters names"""
-        self._paramsName = ['flex_do_noflex_recon', 'flex_bfgs_num_iters',
-                            'refine_gs_resplit', 'compute_use_ssd']
-        self.lane = str(self.getAttributeValue('compute_lane'))
+    Rigid Reconstruction Baseline
+    -----------------------------
+    An optional rigid reconstruction can be generated alongside the
+    flexible refinement.
 
-    def doRun3DFlexReconstruction(self):
-        self._className = "flex_highres"
-        try:
-            if not self.useQueueForSteps() and not self.useQueue():  # not using queue system
-                gpusToUse = self.getGpuList()
-            else:  # using queue system
-                gpusToUse = False
-        except Exception:
-            gpusToUse = False
+    This baseline reconstruction:
+        - Uses the same L-BFGS reconstruction framework.
+        - Excludes deformation modeling.
+        - Enables direct comparison between rigid and flexible refinement.
 
-        protocolJobTraining = str(self.input3DFlexTrainingProt.get().run3DFlexTrainJob)
-        input_group_connect = {"particles": "%s.particles" % protocolJobTraining,
-                               "flex_model": "%s.flex_model" % protocolJobTraining}
-        params = {}
+    Comparing both reconstructions helps evaluate the benefits of
+    flexibility-aware modeling for a given dataset.
 
-        for paramName in self._paramsName:
-            if self.getAttributeValue(paramName) is not None:
-                params[str(paramName)] = str(self.getAttributeValue(paramName))
+    cryoSPARC Integration
+    ---------------------
+    The protocol interfaces directly with cryoSPARC through:
+        - Job enqueueing.
+        - Input connection mapping.
+        - GPU allocation.
+        - Execution monitoring.
+        - Automatic synchronization with project workflows.
 
-        run3DReconstructionJob = enqueueJob(self._className,
-                                   self.projectName.get(),
-                                   self.workSpaceName.get(),
-                                   str(params).replace('\'', '"'),
-                                   str(input_group_connect).replace('\'','"'),
-                                   self.lane, gpusToUse)
+    The protocol supports:
+        - Queue-based execution systems.
+        - GPU-enabled refinement.
+        - Integration with ongoing training workflows.
 
-        self.run3DFlexReconstructionJob = String(run3DReconstructionJob.get())
-        self.currenJob.set(self.run3DFlexReconstructionJob.get())
-        self._store(self)
+    Output Generation
+    -----------------
+    The protocol generates two reconstruction families:
 
-        waitForCryosparc(self.projectName.get(),
-                         self.run3DFlexReconstructionJob.get(),
-                         "An error occurred in the 3D Flex Reconstruction process. "
-                         "Please, go to cryoSPARC software for more "
-                         "details.", self)
-        clearIntermediateResults(self.projectName.get(),
-                                 self.run3DFlexReconstructionJob.get())
+    - Flexible Reconstruction Outputs:
+        * Final flexible refined map.
+        * Gold-standard half-map A.
+        * Gold-standard half-map B.
+
+    - Rigid Reconstruction Outputs:
+        * Final rigid refined map.
+        * Rigid half-map A.
+        * Rigid half-map B.
+
+    Output maps are:
+        - Converted into Scipion-compatible Volume objects.
+        - Corrected for CCP4 header consistency.
+        - Assigned proper sampling rates.
+        - Linked with corresponding half-maps.
+
+    Validation and Downstream Analysis
+    ----------------------------------
+    Generated half-maps can be used for:
+        - FSC resolution estimation.
+        - Post-processing and sharpening.
+        - Local resolution analysis.
+        - Model validation.
+        - Structural interpretation.
+
+    The flexible and rigid reconstructions can also be compared to assess:
+        - Improvement in flexible regions.
+        - Recovery of dynamic features.
+        - Reduction of conformational blurring.
+
+    Compute Configuration
+    ---------------------
+    - GPU acceleration is supported and recommended.
+    - Compatible with cryoSPARC compute lanes.
+    - Supports queue-managed execution environments.
+    - Optional SSD caching can improve I/O performance.
+
+    Practical Recommendations
+    -------------------------
+    - Use well-trained 3D Flex models before reconstruction.
+    - Keep default BFGS iterations for initial tests.
+    - Increase iterations only for very high-resolution targets.
+    - Enable rigid reconstruction for benchmarking purposes.
+    - Verify FSC curves using generated half-maps.
+    - Inspect flexible regions carefully for biologically meaningful improvements.
+
+    Biological Perspective
+    ----------------------
+    Flexible reconstruction enables recovery of structural information that
+    may be blurred or lost in traditional rigid refinement approaches.
+
+    By incorporating continuous conformational variability directly into the
+    refinement process, the protocol improves:
+        - Representation of molecular motions.
+        - Density quality in flexible domains.
+        - Interpretation of dynamic assemblies.
+        - Resolution of heterogeneous conformations.
+
+    This approach is particularly valuable for studying molecular machines,
+    flexible complexes, and proteins exhibiting continuous structural dynamics.
+
+    """

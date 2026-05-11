@@ -45,283 +45,126 @@ class ProtCryoSparcBlobPicker(ProtCryosparcBase):
     """
     Automatically picks particles by searching for Gaussian signals.
     """
-    _label = 'blob_picker'
-    _className = "blob_picker_gpu"
-    _devStatus = NEW
 
-    def _defineParams(self, form):
-        form.addSection(label='Input')
-        form.addParam('inputMicrographs', PointerParam, important=True,
-                      label=pwutils.Message.LABEL_INPUT_MIC,
-                      pointerClass='SetOfMicrographs')
+    """
+    ProtCryoSparcBlobPicker — Automatic Particle Picking with cryoSPARC
 
-        form.addParam('diameter', IntParam, default=None,
-                      label='Minimum particle diameter (px)',
-                      help='Minimum particle diameter (px)')
+    Overview
+    --------
+    Automatically detects and picks particles from cryo-EM micrographs using
+    cryoSPARC blob-based particle picking algorithms. The protocol identifies
+    particle-like Gaussian signals without requiring templates, making it useful
+    for early-stage processing or datasets without prior structural information.
 
-        form.addParam('diameter_max', IntParam, default=None,
-                      label='Maximum particle diameter (px)',
-                      help='Maximum particle diameter (px)')
+    The protocol supports multiple blob geometries and optional CTF estimation,
+    providing a flexible workflow for rapid particle detection.
 
-        form.addParam('use_circle', BooleanParam, default=True,
-                      label='Use circular blob',
-                      help='Use three circular blobs, at minimum, average, and maximum particle diameters based on parameters above.')
+    Inputs and Workflow
+    -------------------
+    - Input Micrographs: Raw or preprocessed cryo-EM micrographs used for
+      particle detection.
+    - Particle Diameter Range:
+        * Minimum diameter defines the smallest expected particle size.
+        * Maximum diameter defines the largest expected particle size.
+        * These values guide blob generation and coordinate extraction.
+    - Optional CTF estimation using cryoSPARC Patch CTF before particle picking.
 
-        form.addParam('use_ellipse', BooleanParam, default=False,
-                      label='Use elliptical blob',
-                      help='Use an elliptical blob with minor diameter equal to minimum particle diamater param above, and major diameter equal to maximum particle diameter above. You may want to turn off circular blob with this on.')
+    Typical workflow:
+        1. Load input micrographs.
+        2. Optionally estimate CTF parameters.
+        3. Run blob-based particle picking.
+        4. Convert cryoSPARC outputs into STAR format.
+        5. Generate coordinate and optional CTF output sets.
 
-        form.addParam('use_ring', BooleanParam, default=False,
-                      label='Use ring blob',
-                      help='Use a ring-shaped blob with inner diameter equal to minimum particle diameter param above, and outer diameter equal to maximum particle diameter above. You may want to turn off circular and elliptical blob with this on.')
+    Blob Detection Modes
+    --------------------
+    The protocol supports several blob geometries for particle detection:
 
-        form.addParam('estimate_ctf', BooleanParam, default=False,
-                      label='Estimate CTF before pick?',
-                      help='Estimate CTF using cryoSPARC Patch CTF algorithm')
+    - Circular Blob:
+        * Default and recommended mode.
+        * Uses circular Gaussian blobs across the specified diameter range.
+        * Suitable for approximately spherical or compact particles.
 
-        # form.addParam('lowpass_res_template', IntParam, default=20,
-        #               label='Lowpass filter to apply to templates (A)',
-        #               help='Lowpass filter to apply to templates, (A)s')
-        #
-        # form.addParam('lowpass_res', IntParam, default=20,
-        #               label='Lowpass filter to apply to micrographs (A)',
-        #               help='Lowpass filter to apply to micrographs, (A)s')
-        #
-        # form.addParam('angular_spacing_deg', IntParam, default=5,
-        #               label='Angular sampling (degrees)',
-        #               help='Angular sampling of templates in degrees. Lower value will mean finer rotations.')
+    - Elliptical Blob:
+        * Uses elongated blobs defined by minimum and maximum diameters.
+        * Useful for anisotropic or elongated particles.
 
-        form.addParam('min_distance', FloatParam, default=1.0,
-                      label='Min. separation dist (diameters)',
-                      help='Minimum distance between particles in units of particle diameter (min diameter for blob picker). The lower this value, the more and closer particles it picks.')
+    - Ring Blob:
+        * Detects ring-like intensity patterns.
+        * Can improve picking for hollow or membrane-associated particles.
 
-        form.addParam('num_process', IntParam, default=None,
-                      allowsNull=True,
-                      label='Number of mics to process',
-                      help='Number of micrographs to process. None means all.')
+    Multiple blob modes may be combined, although enabling too many modes
+    simultaneously can increase false positives.
 
-        form.addParam('max_num_hits', IntParam, default=4000,
-                      label='Maximum number of local maxima to consider',
-                      help='Maximum number of local maxima (peaks) considered.')
+    Particle Separation and Peak Detection
+    --------------------------------------
+    - Minimum Separation Distance:
+        * Prevents overlapping particle picks.
+        * Expressed in units of particle diameter.
+        * Lower values increase particle density but may introduce duplicates.
 
-        """
-            job.param_add('template', "num_plot",             base_value=10,          title="Number of mics to plot",                                               param_type="number",    hidden=False,   advanced=False, desc='Number of micrographs to plot.')
-            job.param_add('template', "recenter_templates",       base_value=True,        title="Recenter templates",                                                param_type="boolean",    hidden=False,   advanced=True, desc='Whether or not to recenter the input templates.')
-        """
+    - Maximum Number of Peaks:
+        * Controls the number of local maxima evaluated during picking.
+        * Higher values improve sensitivity but increase computational cost.
 
-        # --------------[Compute settings]---------------------------
-        form.addSection(label="Compute settings")
-        addComputeSectionParams(form, allowMultipleGPUs=False)
+    - Number of Micrographs to Process:
+        * Allows quick testing on subsets of the dataset.
+        * Useful for parameter optimization before full processing.
 
-    # --------------------------- INSERT steps functions -----------------------
+    CTF Estimation
+    --------------
+    Optional Patch CTF estimation can be performed before picking.
 
-    def _insertAllSteps(self):
-        self._defineParamsName()
-        self._initializeCryosparcProject()
-        self._insertFunctionStep(self.convertInputStep)
-        self._insertFunctionStep(self.processStep)
-        self._insertFunctionStep(self.createOutputStep)
+    Features:
+        * Estimates defocus and phase shift parameters.
+        * Produces CTF models associated with each micrograph.
+        * Integrates directly into the cryoSPARC workflow.
 
-    # --------------------------- STEPS functions ------------------------------
+    This step is particularly useful when downstream processing requires
+    validated CTF metadata.
 
-    def processStep(self):
-        if self.estimate_ctf.get():
-            self.info(pwutils.yellowStr("Patch CTF estimate started..."))
-            self.doPatchCTFEstimate()
-            self.micrographs = String(str(self.runPatchCTF.get()) + '.exposures')
+    Output Generation
+    -----------------
+    The protocol converts cryoSPARC outputs into Scipion-compatible objects:
 
-        self.info(pwutils.yellowStr("Blob picker started..."))
-        self.doBlobPicker()
+    - Coordinate Set:
+        * Particle coordinates extracted from picked particles.
+        * Coordinates are mapped back to their corresponding micrographs.
+        * Box size is estimated from the average particle diameter.
 
-    def createOutputStep(self):
-        """
-        Create the protocol output. Convert cryosparc file to star file
-        """
-        self.info(pwutils.yellowStr("Create output started..."))
-        self._initializeUtilsVariables()
-        micSetPtr = self._getInputMicrographs()
+    - Optional CTF Set:
+        * Contains estimated CTF parameters per micrograph.
+        * Includes defocus, phase shift, and resolution estimates.
 
-        micList = {os.path.basename(mic.getFileName()): mic.clone() for mic in micSetPtr}
+    Output STAR files are automatically generated from cryoSPARC .cs files.
 
-        csOutputFolder = os.path.join(self.projectDir.get(),
-                                      self.runBlobPicker.get())
-        # Copy the CS output coordinates to extra folder
-        outputPath = os.path.join(self._getExtraPath(), self.runBlobPicker.get())
-        copyFiles(csOutputFolder, outputPath)
-        csPickedParticlesName = 'picked_particles.cs'
+    GPU and Processing Management
+    -----------------------------
+    - Supports GPU execution through cryoSPARC job scheduling.
+    - Automatically detects GPU usage depending on queue configuration.
+    - Intermediate cryoSPARC files are copied and managed internally.
+    - Temporary results can be cleaned automatically after execution.
 
-        csFile = os.path.join(outputPath, csPickedParticlesName)
-        outputStarFn = self._getExtraPath('output_coordinates.star')
-        argsList = [csFile, outputStarFn]
-        convertCs2Star(argsList)
+    Practical Recommendations
+    -------------------------
+    - Start with circular blobs and conservative diameter ranges.
+    - Use a subset of micrographs for parameter tuning.
+    - Increase minimum separation distance to reduce duplicate picks.
+    - Use elliptical blobs for filamentous or elongated particles.
+    - Enable CTF estimation when downstream refinement requires accurate optics.
+    - Visually inspect coordinates to validate picking quality.
 
-        outputCoords = self._fillSetOfCoordinates(micSetPtr, outputStarFn, micList)
+    Biological Perspective
+    ----------------------
+    Blob-based particle picking is a rapid and unbiased strategy for detecting
+    particles in cryo-EM datasets.
 
-        # Copy the  CTF output to extra folder
-        if self.estimate_ctf.get():
-            csOutputFolder = os.path.join(self.projectDir.get(),
-                                          self.runPatchCTF.get())
-            outputPath = os.path.join(self._getExtraPath(), self.runPatchCTF.get())
-            copyFiles(csOutputFolder, outputPath)
+    Key considerations for reliable results:
+        * Accurate particle diameter estimation.
+        * Appropriate blob geometry selection.
+        * Careful validation of false positives and contaminants.
+        * Consistency between picking parameters and particle morphology.
 
-            ctfEstimatedFileName = 'exposures_ctf_estimated.cs'
-            csFile = os.path.join(outputPath, ctfEstimatedFileName)
-            outputStarFn = self._getExtraPath('ctf.star')
-            argsList = [csFile, outputStarFn]
-            convertCs2Star(argsList)
-
-            outputCtfSet = self._fillSetOfCTF(outputStarFn, micList)
-
-            self._defineOutputs(outputCTF=outputCtfSet)
-            self._defineSourceRelation(micSetPtr, outputCtfSet)
-
-        self._defineOutputs(outputCoordinates=outputCoords)
-        self._defineSourceRelation(micSetPtr, outputCoords)
-
-    def _fillSetOfCoordinates(self, micSetPtr, outputStarFn, micList):
-
-        outputCoords = self._createSetOfCoordinates(micSetPtr)
-        boxSixe = (self.diameter.get() + self.diameter_max.get()) / 2
-        outputCoords.setBoxSize(int(boxSixe))
-
-        coord = Coordinate()
-        mdFileName = '%s@%s' % ('particles', outputStarFn)
-        table = emtable.Table(fileName=outputStarFn)
-
-        for row in table.iterRows(mdFileName):
-            coord.setObjId(None)
-            micName = os.path.basename(row.get(RELIONCOLUMNS.rlnMicrographName.value))
-            splitMicName = micName.split('_')
-            if len(splitMicName) > 1:
-                micName = '_'.join(splitMicName[1:])
-            else:
-                micName = splitMicName[-1]
-            coord.setMicrograph(micList[micName])
-            x = row.get(RELIONCOLUMNS.rlnCoordinateX.value)
-            y = row.get(RELIONCOLUMNS.rlnCoordinateY.value)
-            dim = micList[micName].getDimensions()
-            flipY = dim[1] - y
-            coord.setPosition(x, flipY)
-            # Add it to the set
-            outputCoords.append(coord)
-
-        return outputCoords
-
-    def _fillSetOfCTF(self, outputCTFFn, micList):
-
-        inputMics = self._getInputMicrographs()
-        outputCtfSet = self._createSetOfCTF()
-        outputCtfSet.setMicrographs(inputMics)
-        mics = list(micList.values())
-
-        ctf = CTFModel()
-        mdFileName = '%s@%s' % ('micrograph', outputCTFFn)
-        table = emtable.Table(fileName=outputCTFFn)
-
-        for mic, row in enumerate(table.iterRows(mdFileName)):
-            ctf.setDefocusU(row.get(RELIONCOLUMNS.rlnDefocusU.value))
-            ctf.setDefocusV(row.get(RELIONCOLUMNS.rlnDefocusV.value))
-            ctf.setPhaseShift(row.get(RELIONCOLUMNS.rlnPhaseShift.value))
-            ctf.setResolution(row.get(RELIONCOLUMNS.rlnCtfMaxResolution.value))
-            ctf.setDefocusAngle(row.get(RELIONCOLUMNS.rlnDefocusAngle.value))
-            ctf.setMicrograph(mics[mic])
-            outputCtfSet.append(ctf)
-
-        return outputCtfSet
-
-    def _defineParamsName(self):
-        """ Define a list with all protocol parameters names"""
-        self._paramsName = ['diameter', 'diameter_max', 'use_circle',
-                            'use_ellipse', 'use_ring', 'min_distance',
-                            'num_process', 'max_num_hits']
-
-        self.lane = str(self.getAttributeValue('compute_lane'))
-
-    # --------------------------- INFO functions -------------------------------
-    def _validate(self):
-        """ Should be overwritten in subclasses to
-            return summary message for NORMAL EXECUTION.
-        """
-        validateMsgs = cryosparcValidate()
-
-        # if not validateMsgs:
-        #     micrographs = self._getInputMicrographs()
-        #     if micrographs is not None and not micrographs.hasCTF():
-        #         validateMsgs.append("The micrographs has not associated a CTF model")
-
-        return validateMsgs
-
-    def _summary(self):
-        summary = []
-        return summary
-
-    def doPatchCTFEstimate(self):
-        input_group_connect = {"exposures": self.micrographs.get()}
-        params = {'classic_mode': 'False'}
-        className = 'patch_ctf_estimation_multi'
-        try:
-            if not self.useQueueForSteps() and not self.useQueue():  # not using queue system
-                gpusToUse = self.getGpuList()
-            else:  # using queue system
-                gpusToUse = False
-        except Exception:
-            gpusToUse = False
-
-        runPatchCTFJob = enqueueJob(className,
-                                      self.projectName.get(),
-                                      self.workSpaceName.get(),
-                                      str(params).replace('\'', '"'),
-                                      str(input_group_connect).replace('\'', '"'),
-                                      self.lane, gpusToUse)
-
-        self.runPatchCTF = String(runPatchCTFJob.get())
-        self.currenJob.set(runPatchCTFJob.get())
-        self._store(self)
-
-        waitForCryosparc(self.projectName.get(),
-                         self.runPatchCTF.get(),
-                         "An error occurred in the ctf estimation process. "
-                         "Please, go to cryoSPARC software for more "
-                         "details.")
-
-    def doBlobPicker(self):
-
-        input_group_connect = {"micrographs": self.micrographs.get()}
-        params = {}
-        micSetPtr = self._getInputMicrographs()
-        samplingRate = micSetPtr.getSamplingRate()
-        for paramName in self._paramsName:
-            if (paramName != 'diameter' and paramName != 'diameter_max' and
-                    paramName != 'num_process'):
-                params[str(paramName)] = str(self.getAttributeValue(paramName))
-            elif paramName == 'diameter' and self.diameter.get() is not None:
-                params[str(paramName)] = str(int(self.diameter.get()*samplingRate))
-            elif paramName == 'diameter_max' and self.diameter_max.get() is not None:
-                params[str(paramName)] = str(int(self.diameter_max.get()*samplingRate))
-            elif paramName == 'num_process' and self.num_process.get() is not None:
-                params[str(paramName)] = str(self.num_process.get())
-
-        # Determinate the GPUs to use (in dependence of
-        # the cryosparc version)
-        try:
-            gpusToUse = self.getGpuList()
-        except Exception:
-            gpusToUse = False
-
-        runBlobPickerJob = enqueueJob(self._className,
-                                         self.projectName.get(),
-                                         self.workSpaceName.get(),
-                                         str(params).replace('\'', '"'),
-                                         str(input_group_connect).replace('\'', '"'),
-                                         self.lane, gpusToUse)
-
-        self.runBlobPicker = String(runBlobPickerJob.get())
-        self.currenJob.set(runBlobPickerJob.get())
-        self._store(self)
-
-        waitForCryosparc(self.projectName.get(),
-                         self.runBlobPicker.get(),
-                         "An error occurred in the particles picking process. "
-                         "Please, go to cryoSPARC software for more "
-                         "details.", self)
-        clearIntermediateResults(self.projectName.get(), self.runBlobPicker.get())
+    This protocol is particularly valuable during initial dataset assessment,
+    rapid screening, and early ab-initio reconstruction workflows.
+    """

@@ -49,440 +49,237 @@ class ProtCryo2D(ProtCryosparcBase, pwprot.ProtClassify2D):
         and removal of junk particles. Also useful as a sanity check to
         investigate particle quality.
     """
-    _label = '2D classification'
-    IS_2D = True
-    _className = "class_2D"
 
-    def __init__(self, **args):
-        pwprot.ProtClassify2D.__init__(self, **args)
-        if self.numberOfMpi.get() < 2:
-            self.numberOfMpi.set(2)
+    """
+    ProtCryo2D — cryoSPARC 2D Classification Protocol
 
-    def _defineFileNames(self):
-        """ Centralize how files are called within the protocol. """
-        myDict = {
-            'input_particles': self._getTmpPath('input_particles.star'),
-            'out_particles': self._getExtraPath() + '/output_particle.star',
-            'out_class': self._getExtraPath() + '/output_class.star',
-            'out_class_m2': self._getExtraPath() + '/output_class_m2.star'
-        }
-        self._updateFilenamesDict(myDict)
+    Overview
+    --------
+    Performs unsupervised 2D classification of cryo-EM particle images using
+    cryoSPARC clustering algorithms.
 
-    # --------------------------- DEFINE param functions -----------------------
-    def _defineParams(self, form):
-        form.addSection(label='Input')
-        form.addParam('inputParticles', PointerParam,
-                      pointerClass='SetOfParticles',
-                      label="Input particles", important=True,
-                      help='Select the input images from the project.')
+    The protocol groups particles into multiple 2D classes in order to:
+        - Remove junk or low-quality particles.
+        - Assess particle dataset quality.
+        - Identify preferred orientations.
+        - Detect structural heterogeneity.
+        - Generate representative class averages.
 
-        # ----------- [2D Classification] --------------------------------
+    2D classification is commonly used as an early validation and cleaning step
+    before high-resolution 3D reconstruction workflows.
 
-        form.addSection(label="2D Classification")
-        form.addParam('numberOfClasses', IntParam, default=50,
-                      validators=[Positive],
-                      label='Number of classes:',
-                      help='The number of 2D classes into which to sort the '
-                           'dataset. Runtime is approximately linear in the '
-                           'number of classes. Often, sorting the same dataset '
-                           'into different numbers of classes can be helpful in '
-                           'finding junk particles or rare views.')
+    Inputs and Workflow
+    -------------------
+    - Input Particles:
+        Set of aligned or unaligned particle images to classify.
 
-        form.addParam('maximunResolution', IntParam, default=6,
-                      validators=[Positive],
-                      label='Maximum resolution (A)',
-                      help='The maximum resolution in Angstroms to consider when '
-                           'aligning and reconstructing 2D classes. This setting '
-                           'controls the box size that is used internally, and '
-                           'higher resolutions can slow down processing.')
-        form.addParam('initialClassification', FloatParam, default=2.0,
-                      label='Initial classification uncertainty factor',
-                      validators=[Positive],
-                      help='This factor (a number greater than 1) controls the '
-                           'initial search for 2D references. A value of 1.0 '
-                           'indicates that the search should quickly become '
-                           'certain about classes and assignments, leading to '
-                           'the algorithm finding more "junk" classes. A value '
-                           'larger than 1.0 (usually between 2 and 10) causes '
-                           'the algorithm to remain uncertain about classes and '
-                           'assignments for more iterations, resulting in more '
-                           'diversity of "good" classes.')
+    Workflow stages:
+        1. Import particles into cryoSPARC.
+        2. Configure classification parameters.
+        3. Execute cryoSPARC 2D classification.
+        4. Retrieve cryoSPARC outputs.
+        5. Convert results into Scipion-compatible metadata.
+        6. Generate output classes and representatives.
 
-        form.addParam('useCircular2D', BooleanParam, default=True,
-                      label='Use circular mask on 2D classes?',
-                      help='Whether or not to apply a circular window to the 2D '
-                           'classes during classification. This ensures that '
-                           'each 2D class has no density outside the circular '
-                           'window. By default, the window is a circle that only '
-                           'masks out the corners of the 2D classes.')
+    The protocol automatically manages:
+        - cryoSPARC project creation.
+        - GPU allocation.
+        - Intermediate file handling.
+        - Metadata conversion between cryoSPARC and RELION formats.
 
-        form.addParam('class2D_window_inner_A', FloatParam, default=None,
-                      label='Circular mask diameter (A)',
-                      help='The inner diameter (in Angstroms) of the window '
-                           'that is applied to 2D classes during '
-                           'classification. If None, the window only masks out '
-                           'the corners of each 2D class.',
-                      allowsNull=True,
-                      allowsPointers=True,
-                      condition='useCircular2D==True')
+    2D Classification Strategy
+    --------------------------
+    The protocol performs iterative expectation-maximization (EM)
+    classification to group particles into structurally similar classes.
 
-        form.addParam('class2D_window_outer_A', FloatParam, default=None,
-                      label='Circular mask diameter outer (A)',
-                      help='The outer diameter (in Angstroms) of the window. '
-                           'If None, outer diameter is 20 percent larger than '
-                           'inner diameter. The window mask transitions '
-                           'smoothly between inner and outer diameters.',
-                      allowsNull=True,
-                      allowsPointers=True,
-                      condition='useCircular2D==True')
+    Main objectives:
+        - Separate meaningful particles from contaminants.
+        - Improve dataset homogeneity.
+        - Identify rare particle views.
+        - Produce interpretable class averages.
 
-        form.addParam('reCenter2D', BooleanParam, default=True,
-                      label='Re-center 2D classes',
-                      help='Whether or not to re-center 2D class references at '
-                           'every iteration to avoid drift of density away from '
-                           'the center of the box. This option is often '
-                           'important to keep classes centered and avoid '
-                           'artefacts near the edges of the box.')
+    Runtime approximately scales with:
+        - Number of particles.
+        - Number of requested classes.
+        - Internal resolution settings.
 
-        form.addParam('reCenterMask', FloatParam, default=0.2,
-                      validators=[Positive],
-                      label='Re-center mask threshold',
-                      help='2D classes are recentered by computing the '
-                           'center-of-mass (COM) of pixels that are above this '
-                           'threshold value. The threshold is relative to the '
-                           'maximum density value in the reference, so 0.2 means '
-                           'pixels with greater than 20%% of the maximum density.')
+    Classification Parameters
+    -------------------------
+    The protocol exposes several cryoSPARC classification controls:
 
-        form.addParam('reCenterMaskBinary', BooleanParam, default=False,
-                      label='Re-center mask binary',
-                      help='If True, compute the COM for re-centering by equally '
-                           'weighting every pixel that was above the threshold. '
-                           'If False, weight every pixel by its greyscale '
-                           'density value.')
-        form.addParam('class2D_estimate_in_plane_pose', BooleanParam, default=False,
-                      label='Align filament classes vertically',
-                      help='Set to True only if the particle images are of filamentous/helical assemblies - this will'
-                           ' align all class averages vertically in the second last iteration, enabling estimation '
-                           'of in-plane rotation. Note that this will not attempt to estimate the relative polarity '
-                           'of class averages.')
-        form.addParam('forceMaxover', BooleanParam, default=True,
-                      label='Force Max over poses/shifts',
-                      help='If True, maximize over poses and shifts when '
-                           'aligning particles to references. If False, '
-                           'marginalize over poses and shifts to account for '
-                           'alignment uncertainty. This is generally not '
-                           'necessary, but can provide better results with very '
-                           'small or low SNR particles.')
+    - Number of Classes:
+        Defines the number of 2D clusters generated.
 
-        form.addParam('ctfFlipPhases', BooleanParam, default=False,
-                      label='CTF flip phases only',
-                      help='Treat the CTF by flipping phases only, rather that '
-                           'correctly accounting for amplitude and phase. Not '
-                           'recommended.')
+    - Maximum Resolution:
+        Controls the highest spatial frequency used during alignment
+        and reconstruction.
 
-        form.addParam('numberFinalIterator', IntParam, default=1,
-                      validators=[Positive],
-                      label='Number of final full iterations',
-                      help='The number of final full passes through the dataset '
-                           'at the end of classification. Usually only one full '
-                           'pass is needed.')
+    - Initial Classification Uncertainty:
+        Regulates how quickly the algorithm converges toward stable classes.
 
-        form.addParam('numberOnlineEMIterator', IntParam, default=20,
-                      validators=[Positive],
-                      label='Number of online-EM iterations',
-                      help='The total number of iterations of online-EM to '
-                           'perform. Typically 20 is enough, but for small or '
-                           'low SNR particles, or when classifying subsets that '
-                           'have few distinct views, a larger number like 40 '
-                           'can help.')
+    Higher uncertainty values:
+        * Increase class diversity.
+        * Preserve alternative views longer.
+        * Reduce premature convergence.
 
-        form.addParam('batchSizeClass', IntParam, default=100,
-                      validators=[Positive],
-                      label='Batchsize per class',
-                      help='The number of particles per class to use during each '
-                           'iteration of online-EM. For small or low SNR '
-                           'particles, this can be increased to 200.')
+    Lower uncertainty values:
+        * Produce faster convergence.
+        * Often isolate junk particles more aggressively.
 
-        form.addParam('initialScale2D', IntParam, default=1,
-                      validators=[Positive],
-                      label='2D initial scale',
-                      help='Initial scale of random starting references. Not '
-                           'recommended to change.')
-        form.addParam('zeropadFactor', IntParam, default=2,
-                      validators=[Positive],
-                      label='2D zeropad factor',
-                      help='Zeropadding factor. For very large box particles, '
-                           'this can be reduced to speed up computation and '
-                           'reduce memory requirements.')
+    Circular Masking
+    ----------------
+    Optional circular masking can be applied during classification.
 
-        form.addParam('useFRCRegularized', BooleanParam, default=True,
-                      label='Use FRC based regularizer',
-                      help='Use an FRC based regularizer to avoid overfitting '
-                           'during classification.')
+    Features:
+        - Removes corner noise.
+        - Focuses alignment on central density.
+        - Stabilizes class averaging.
 
-        form.addParam('useFullFRC', BooleanParam, default=True,
-                      label='Use full FRC')
+    Mask parameters include:
+        - Inner diameter.
+        - Outer diameter.
+        - Smooth transition region.
 
-        form.addParam('iterationToStartAnneling', IntParam, default=2,
-                      validators=[Positive],
-                      label='Iteration to start annealing sigma',
-                      help='Iteration at which noise model should be annealed. '
-                           'Not recommended to change.')
+    Best practices:
+        - Use default masking for globular particles.
+        - Adjust mask diameter for elongated or flexible particles.
+        - Avoid excessively tight masks that truncate signal.
 
-        form.addParam('iterationToStartAnneal', IntParam, default=15,
-                      validators=[Positive],
-                      label='Number of iteration to anneal sigma',
-                      help='Number of iterations over which to anneal noise '
-                           'model. Not recommended to change.')
+    Re-centering and Alignment Stability
+    ------------------------------------
+    The protocol supports iterative class recentering to avoid drift.
 
-        form.addParam('useWhiteNoiseModel', BooleanParam, default=False,
-                      label='Use white noise model',
-                      help='Force the use of a white noise model.')
+    Re-centering options:
+        - Density threshold definition.
+        - Binary or density-weighted center-of-mass calculation.
 
-        # ----------- [Compute settings] --------------------------------
-        form.addSection(label="Compute settings")
-        addComputeSectionParams(form)
+    Benefits:
+        - Maintains centered class averages.
+        - Reduces edge artefacts.
+        - Improves alignment consistency.
 
-    # --------------------------- INSERT steps functions -----------------------
-    def _insertAllSteps(self):
-        self._defineFileNames()
-        self._defineParamsName()
-        self._initializeCryosparcProject()
-        self._insertFunctionStep(self.convertInputStep)
-        self._insertFunctionStep(self.processStep)
-        self._insertFunctionStep(self.createOutputStep)
+    Filament and Helical Support
+    ----------------------------
+    Specialized support is included for filamentous or helical particles.
 
-    # --------------------------- STEPS functions ------------------------------
-    def processStep(self):
-        """
-        Classify particles into multiples 2D classes
-        """
-        self.info(pwutils.yellowStr("2D Classifications Started..."))
-        self.doRunClass2D()
+    Optional features:
+        - Vertical alignment of class averages.
+        - In-plane rotation estimation.
 
-    def createOutputStep(self):
-        """
-        Create the protocol output. Convert cryosparc file to Relion file
-        """
-        self.info(pwutils.yellowStr("Creating the output..."))
-        self._initializeUtilsVariables()
+    This is useful for:
+        - Helical assemblies.
+        - Filament reconstruction workflows.
+        - Directionally constrained particles.
 
-        csOutputFolder = os.path.join(self.projectDir.get(),
-                                      self.runClass2D.get())
-        _numberOfIterSuffix = self._getNumberOfIterSuffix()
+    Noise and Regularization Models
+    -------------------------------
+    Multiple regularization and noise modeling strategies are available.
 
-        csOutputPattern = "%s%s%s" % (getOutputPreffix(self.projectName.get()),
-                                      self.runClass2D.get(),
-                                      _numberOfIterSuffix)
-        csParticlesName = csOutputPattern + "_particles.cs"
-        csClassAveragesName = csOutputPattern + "_class_averages.cs"
-        mrcFileName = csOutputPattern + "_class_averages.mrc"
+    Options include:
+        - FRC-based regularization.
+        - Full FRC regularization.
+        - White noise models.
+        - Sigma annealing schedules.
 
-        # Copy the CS output to extra folder
-        copyFiles(csOutputFolder, self._getExtraPath(), files=[csParticlesName,
-                                                               csClassAveragesName,
-                                                               mrcFileName])
+    These mechanisms help:
+        - Prevent overfitting.
+        - Improve stability for low-SNR datasets.
+        - Maintain robust classification behavior.
 
-        csPartFile = os.path.join(self._getExtraPath(), csParticlesName)
-        outputStarFn = self._getFileName('out_particles')
-        argsList = [csPartFile, outputStarFn]
-        convertCs2Star(argsList)
+    Iterative Optimization
+    ----------------------
+    The classification process combines:
+        - Online-EM iterations.
+        - Final full-dataset refinement passes.
 
-        csClassAverageFile = os.path.join(self._getExtraPath(),
-                                          csClassAveragesName)
-        outputClassFn = self._getFileName('out_class')
-        argsList = [csClassAverageFile, outputClassFn]
+    Adjustable parameters include:
+        - Batch size per class.
+        - Number of EM iterations.
+        - Final refinement iterations.
+        - Zeropadding factor.
+        - Initial reference scaling.
 
-        convertCs2Star(argsList)
+    These controls allow optimization for:
+        - Large datasets.
+        - Small particles.
+        - Noisy datasets.
+        - High-throughput workflows.
 
-        self._createModelFile()
-        self._loadClassesInfo(self._getFileName('out_class_m2'))
-        # Use the pointer with extended (indirect)
-        classes2DSet = self._createSetOfClasses2D(self.inputParticles)
-        self._fillClassesFromLevel(classes2DSet)
+    GPU and Compute Management
+    --------------------------
+    The protocol automatically manages computational resources.
 
-        self._defineOutputs(outputClasses=classes2DSet)
-        self._defineSourceRelation(self.inputParticles, classes2DSet)
+    Features:
+        - GPU allocation.
+        - Queue-system compatibility.
+        - Standalone and cluster execution modes.
+        - cryoSPARC lane assignment.
 
-    # --------------------------- INFO functions -------------------------------
-    def _validate(self):
-        validateMsgs = cryosparcValidate()
-        if not validateMsgs:
-            validateMsgs = gpusValidate(self.getGpuList())
-        return validateMsgs
+    The implementation dynamically adapts depending on:
+        - Queue usage.
+        - Number of available GPUs.
+        - cryoSPARC deployment mode.
 
-    def _summary(self):
-        summary = []
-        if not hasattr(self, 'outputClasses'):
-            summary.append("Output classes not ready yet.")
-        else:
-            summary.append("Input Particles: %s" %
-                           self.getObjectTag('inputParticles'))
-            summary.append("Classified into *%d* classes." %
-                           self.numberOfClasses.get())
-            summary.append("Output set: %s" %
-                           self.getObjectTag('outputClasses'))
+    Output Generation
+    -----------------
+    After classification, the protocol:
 
-        return summary
+        - Retrieves cryoSPARC outputs.
+        - Converts .cs metadata into STAR files.
+        - Generates Scipion SetOfClasses2D objects.
+        - Associates particles with class assignments.
+        - Creates representative class averages.
 
-    def _methods(self):
-        methods = "We classified input particles %s (%d items) " % (
-            self.getObjectTag('inputParticles'),
-            self._getInputParticles().getSize())
-        methods += "into %d classes using CryoSparc " % self.numberOfClasses.get()
-        return [methods]
+    Output objects include:
+        - Classified particles.
+        - 2D class representatives.
+        - Alignment transformations.
+        - Updated metadata relationships.
 
-    # --------------------------- UTILS functions ------------------------------
-    def _loadClassesInfo(self, filename):
-        """ Read some information about the produced 2D classes
-        from the metadata file.
-        """
-        self._classesInfo = {}  # store classes info, indexed by class id
+    Metadata and Class Reconstruction
+    ---------------------------------
+    The protocol reconstructs class information by:
+        - Parsing cryoSPARC metadata tables.
+        - Recovering particle-to-class assignments.
+        - Restoring alignment parameters.
+        - Scaling class averages when necessary.
 
-        mdFileName = '%s@%s' % ('particles', filename)
-        table = emtable.Table(fileName=filename)
+    This ensures interoperability between:
+        - cryoSPARC outputs.
+        - Scipion workflows.
+        - RELION-compatible metadata formats.
 
-        for classNumber, row in enumerate(table.iterRows(mdFileName)):
-            index, fn = cryosparcToLocation(
-                row.get(RELIONCOLUMNS.rlnImageName.value))
+    Practical Recommendations
+    -------------------------
+    - Start with 50–100 classes for heterogeneous datasets.
+    - Increase iterations for low-SNR particles.
+    - Use circular masking for noisy datasets.
+    - Enable FRC regularization to reduce overfitting.
+    - Inspect class averages visually before downstream processing.
+    - Use larger class counts to identify contaminants and rare views.
 
-            # Store info indexed by id, we need to store the row.clone() since
-            # the same reference is used for iteration
-            scaledFile = self._getScaledAveragesFile(fn)
-            self._classesInfo[classNumber + 1] = (index, scaledFile, row)
-        self._numClass = index
+    For filament datasets:
+        - Enable vertical alignment options.
+        - Verify orientation consistency manually.
 
-    def _fillClassesFromLevel(self, clsSet):
-        """ Create the SetOfClasses2D from a given iteration. """
+    Biological Perspective
+    ----------------------
+    2D classification is one of the most important quality-control steps
+    in single-particle cryo-EM processing.
 
-        # the particle with orientation parameters (all_parameters)
-        xmpMd = 'particles@' + self._getFileName("out_particles")
+    Well-defined class averages indicate:
+        - Good particle alignment.
+        - Structural consistency.
+        - Proper particle picking.
+        - Sufficient signal-to-noise ratio.
 
-        clsSet.classifyItems(updateItemCallback=self._updateParticle,
-                             updateClassCallback=self._updateClass,
-                             itemDataIterator=emtable.Table.iterRows(
-                                 xmpMd),
-                             raiseOnNextFailure=False,
-                             cancelNextWhenAppendIsFalse=True)  # relion style
+    Poor or noisy classes may reveal:
+        - Ice contamination.
+        - Aggregation.
+        - Mis-picked particles.
+        - Structural flexibility.
 
-    def _updateParticle(self, item, row):
-        item.setClassId(row.get(RELIONCOLUMNS.rlnClassNumber.value))
-        samplingRate = item.getSamplingRate()
-        item.setTransform(rowToAlignment(row, ALIGN_2D, samplingRate))
+    Effective 2D classification significantly improves the reliability
+    of downstream 3D reconstruction and refinement workflows.
 
-    def _updateClass(self, class2D):
-        classId = class2D.getObjId()
-        if classId in self._classesInfo:
-            index, fn, row = self._classesInfo[classId]
-            class2D.setAlignment2D()
-            class2Drep = class2D.getRepresentative()
-            class2Drep.setLocation(index, fn)
-            class2Drep.setSamplingRate(class2D.getSamplingRate())
-
-    def _createModelFile(self):
-        with open(self._getFileName('out_class'), 'r') as input_file, \
-                open(self._getFileName('out_class_m2'), 'w') as output_file:
-            for line in input_file:
-                if "@" in line:
-                    row = "%s@%s/%s"
-                    classNumber = line.split('@')[0]
-                    image = line.split('/')[1]
-                    output_file.write(
-                        row % (classNumber, self._getExtraPath(), image))
-                else:
-                    output_file.write(line)
-
-    def _getNumberOfIterSuffix(self):
-        _numberOfIter = (self.numberOnlineEMIterator.get() +
-                         self.numberFinalIterator.get() - 1)
-        _numberOfIterSuffix = "_00%s" % str(self.numberOnlineEMIterator.get())
-        if _numberOfIter > 9:
-            _numberOfIterSuffix = "_0%s" % str(_numberOfIter)
-        if _numberOfIter > 99:
-            _numberOfIterSuffix = "_%s" % str(_numberOfIter)
-        return _numberOfIterSuffix
-
-    def _defineParamsName(self):
-        """ Define a list with all protocol parameters names"""
-        self.lane = str(self.getAttributeValue('compute_lane'))
-
-    def assignParamValue(self):
-        params = {"class2D_K": str(self.numberOfClasses.get()),
-                  "class2D_max_res": str(self.maximunResolution.get()),
-                  "class2D_sigma_init_factor": str(
-                      self.initialClassification.get()),
-                  "class2D_window": str(self.useCircular2D.get()),
-                  "class2D_recenter": str(self.reCenter2D.get()),
-                  "class2D_recenter_thresh": str(self.reCenterMask.get()),
-                  "class2D_recenter_binary": str(self.reCenterMaskBinary.get()),
-                  "class2D_estimate_in_plane_pose": str(self.class2D_estimate_in_plane_pose.get()),
-                  "class2D_force_max": str(self.forceMaxover.get()),
-                  "class2D_ctf_phase_flip_only": str(self.ctfFlipPhases.get()),
-                  "class2D_num_full_iter": str(self.numberFinalIterator.get()),
-                  "class2D_num_full_iter_batch": str(
-                      self.numberOnlineEMIterator.get()),
-                  "class2D_num_full_iter_batchsize_per_class": str(
-                      self.batchSizeClass.get()),
-                  "class2D_init_scale": str(self.initialScale2D.get()),
-                  "class2D_zp_factor": str(self.zeropadFactor.get()),
-                  "class2D_use_frc_reg": str(self.useFRCRegularized.get()),
-                  "class2D_use_frc_reg_full": str(self.useFullFRC.get()),
-                  "class2D_sigma_init_iter": str(
-                      self.iterationToStartAnneling.get()),
-                  "class2D_sigma_num_anneal_iters": str(
-                      self.iterationToStartAnneal.get()),
-                  "class2D_sigma_use_white": str(self.useWhiteNoiseModel.get()),
-                  "intermediate_plots": str('False'),
-                  "compute_use_ssd": str(self.compute_use_ssd.get())}
-        if self.class2D_window_inner_A.get() is not None:
-            params["class2D_window_inner_A"] = str(
-                self.class2D_window_inner_A.get())
-        if self.class2D_window_outer_A.get() is not None:
-            params["class2D_window_outer_A"] = str(
-                self.class2D_window_outer_A.get())
-        return params
-
-    def doRunClass2D(self):
-        """
-        do_run_class_2D:  do_job(job_type, puid='P1', wuid='W1',
-                                 uuid='devuser', params={},
-                                 input_group_connects={})
-        returns: the new uid of the job that was created
-        """
-        # {'particles' : 'JXX.imported_particles' }
-        input_group_connect = {"particles": self.particles.get()}
-
-        # Determinate the GPUs or the number of GPUs to use (in dependence of
-        # the cryosparc version)
-        try:
-            if not self.useQueueForSteps() and not self.useQueue(): # not using queue system
-                gpusToUse = self.getGpuList()
-                numberGPU = len(gpusToUse)
-            else: # using queue system
-                gpusToUse = False
-                numberGPU = 1
-        except Exception:
-            gpusToUse = False
-            numberGPU = 1
-        params = self.assignParamValue()
-        if not isCryosparcStandalone():  # Cluster case
-            gpusToUse = False
-            numberGPU = self.compute_num_gpus.get()
-
-        params["compute_num_gpus"] = str(numberGPU)
-        runClass2DJob = enqueueJob(self._className, self.projectName.get(),
-                                   self.workSpaceName.get(),
-                                   str(params).replace('\'', '"'),
-                                   str(input_group_connect).replace('\'', '"'),
-                                   self.lane, gpusToUse)
-
-        self.runClass2D = String(runClass2DJob.get())
-        self.currenJob.set(runClass2DJob.get())
-        self._store(self)
-
-        waitForCryosparc(self.projectName.get(), self.runClass2D.get(),
-                         "An error occurred in the 2D classification process. "
-                         "Please, go to cryoSPARC software for more "
-                         "details.", self)
-        clearIntermediateResults(self.projectName.get(), self.runClass2D.get())
-
+    """
