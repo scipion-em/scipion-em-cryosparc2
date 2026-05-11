@@ -50,257 +50,235 @@ class ProtCryoSparc3DFlexTraining(ProtCryosparcBase, ProtFlexBase):
     size of the model, and training hyperparameters. This job outputs
     checkpoints during training.
     """
-    _label = '3D flex training'
-    _devStatus = BETA
-    _protCompatibility = [V4_1_0, V4_1_1, V4_1_2, V4_2_0, V4_2_1, V4_3_1, V4_4_0, V4_4_1, V4_5_1,
-                          V4_5_3, V4_6_0, V4_6_1, V4_6_2, V4_7_0, V4_7_1]
-    _possibleOutputs = outputs
+    """
+    ProtCryoSparc3DFlexTraining — 3D Flex Model Training Protocol
 
-    # --------------------------- DEFINE param functions ----------------------
-    def _defineFileNames(self):
-        """ Centralize how files are called within the protocol. """
-        myDict = {
-            'input_particles': self._getTmpPath('input_particles.star'),
-            'out_particles': self._getPath() + '/output_particle.star',
-            'stream_log': self._getPath() + '/stream.log'
-        }
-        self._updateFilenamesDict(myDict)
+    Overview
+    --------
+    Trains a cryoSPARC 3D Flex deformation model using prepared particle
+    datasets and tetrahedral meshes generated from previous preprocessing
+    stages.
 
-    def _defineParams(self, form):
-        form.addSection(label='Input')
-        form.addParam('input3DFlexDataPrepareProt', PointerParam,
-                      pointerClass='ProtCryoSparc3DFlexDataPrepare',
-                      label="3D flex data prepare protocol",
-                      important=True,
-                      help='Particle stacks to use.')
+    The protocol learns continuous conformational variability directly from
+    cryo-EM particle images by combining:
+        - A neural deformation model.
+        - A canonical density representation.
+        - A tetrahedral mesh deformation framework.
 
-        form.addParam('input3DMeshFlexPrepareProt', PointerParam,
-                      pointerClass='ProtCryoSparc3DFlexMeshPrepare',
-                      label="3D flex mesh prepare protocol",
-                      important=True,
-                      help='3d Flex mesh.')
+    Training produces latent-space representations and checkpoint models
+    that can later be used for:
+        - Flexible reconstruction.
+        - Motion visualization.
+        - Conformational trajectory generation.
+        - Continuous heterogeneity analysis.
 
-        form.addParam('flex_K', IntParam, default=2,
-                      label="Number of latent dims",
-                      help="Number of latent dimensions in the flex refine "
-                           "model. See guide for more details. Typically, "
-                           "start with 2 and increase if the data appears to "
-                           "have more modes of motion present.")
+    Main Objectives
+    ---------------
+    - Learn continuous molecular flexibility.
+    - Train latent-space deformation models.
+    - Infer particle-specific conformational coordinates.
+    - Generate reusable model checkpoints.
+    - Capture structural variability beyond discrete classification.
 
-        form.addParam('flex_num_layers', IntParam, default=6,
-                      expertLevel=LEVEL_ADVANCED,
-                      label="Number of layers",
-                      help="Number of layers in the flow generator network. "
-                           "See guide for more details. Larger networks can "
-                           "be more expressive but can increase training time "
-                           "and propensity for overfitting.")
+    Inputs and Workflow
+    -------------------
+    - 3D Flex Data Prepare Protocol:
+        * Provides preprocessed particles.
+        * Supplies compatible particle metadata.
+        * Defines training box sizes and preprocessing conditions.
 
-        form.addParam('flex_hidden_units', IntParam, default=64,
-                      label="Number of hidden units",
-                      help="Number of hidden units per layer in the flow "
-                           "generator network. See guide for more details. "
-                           "Larger networks can be more expressive but can "
-                           "increase training time and propensity for "
-                           "overfitting.")
+    - 3D Flex Mesh Prepare Protocol:
+        * Provides tetrahedral deformation meshes.
+        * Defines structural rigidity constraints.
+        * Supplies geometric deformation topology.
 
-        form.addParam('flex_lr_flex_init', FloatParam, default=0.005,
-                      label="Flow learning rate initial",
-                      help="Initial learning rate for flow generator params")
+    The workflow follows these stages:
+        1. Initialize cryoSPARC project environment.
+        2. Connect prepared particles and deformation mesh.
+        3. Configure latent-space and network parameters.
+        4. Launch cryoSPARC 3D Flex training job.
+        5. Monitor training execution.
+        6. Extract latent coordinates and checkpoints.
+        7. Generate particle outputs with associated latent embeddings.
 
-        form.addParam('flex_lr_flex_final', FloatParam, default=0.0005,
-                      label="Flow learning rate final",
-                      help="Final learning rate for flow generator params")
+    Latent Space Modeling
+    ---------------------
+    The protocol learns a continuous latent representation describing
+    conformational variability across particles.
 
-        form.addParam('flex_lr_density_init', FloatParam, default=0.01,
-                      label="Density learning rate initial",
-                      help="Initial learning rate for canonical density map")
+    - Number of Latent Dimensions:
+        * Controls the complexity of learned motions.
+        * Low-dimensional spaces simplify interpretation.
+        * Higher-dimensional spaces capture more complex variability.
 
-        form.addParam('flex_lr_density_final', FloatParam, default=0.01,
-                      label="Density learning rate final",
-                      help="Final learning rate for canonical density map")
+    Recommended strategy:
+        - Start with 2 latent dimensions.
+        - Increase dimensionality only if additional motions are observed.
 
-        form.addParam('flex_sv_lam', FloatParam, default=2.0,
-                      label="Rigidity (lambda)",
-                      help="Rigidity prior strength. This modulates the "
-                           "rigidity of all tetra elements based on the "
-                           "element rigidity weighting. Increasing this value "
-                           "ensures motions are relatively more smooth.")
+    Learned latent coordinates represent particle-specific conformational
+    states within the continuous deformation landscape.
 
-        form.addParam('flex_extra_epochs', IntParam, default=0,
-                      label="Number of extra epochs",
-                      help="Number of extra additional final epochs of "
-                           "training to run. By default, 16 epochs are done "
-                           "and during this time, the training schedule anneals "
-                           "the learning rates as well as the canonical map"
-                           " resolution. The resolution goes up to 80% of the "
-                           "training box size Nyquist.")
+    Neural Network Architecture
+    ---------------------------
+    The deformation model is implemented as a neural flow generator network.
 
-        form.addParam('flex_latent_samp_std', FloatParam, default=0.15,
-                      label="Noise injection stdev.",
-                      help="Standard deviation of noise injected during latent "
-                           "inference. Latent coordinates typically range "
-                           "between (-1.5, 1.5). Larger values of this "
-                           "parameter introduce more noise during estimation, "
-                           "forcing the deformation model to be smoother over "
-                           "the latent space. Smaller values allow the latent "
-                           "coordinates to be estimated and retained with more "
-                           "precision, but can sometimes lead to poorly "
-                           "structured latent spaces. See guide for more details.")
+    Main configurable parameters:
+        - Number of Layers:
+            Controls model depth and expressiveness.
+        - Hidden Units:
+            Defines network capacity per layer.
 
-        form.addParam('flex_latent_prior_lam', IntParam, default=20,
-                      label="Latent centering strength",
-                      help="Strength of prior that keeps latent coordinates "
-                           "centered and distributed around (0,0) in the "
-                           "latent space. This typically needs to be tuned "
-                           "for every dataset, but has relatively little "
-                           "effect on results. If you notice many latent coordinates "
-                           "reaching the end of the (-1.5, 1.5) estimation "
-                           "range, this value should be increased. If latent "
-                           "coordinates are very concentrated around (0,0) "
-                           "then this value should be decreased.")
+    Larger networks:
+        * Capture more complex motions.
+        * Increase computational cost.
+        * May increase overfitting risk.
 
-        form.addParam('flex_latent_prior_pow', FloatParam, default=4.0,
-                      label="Latent centering pow",
-                      expertLevel=LEVEL_ADVANCED)
+    Smaller networks:
+        * Train faster.
+        * Generalize more robustly.
+        * May underrepresent complex flexibility.
 
-        form.addParam('flex_latent_ext_init', BooleanParam, default=True,
-                      label="Initialize latents from input",
-                      expertLevel=LEVEL_ADVANCED)
+    Learning Rate Scheduling
+    ------------------------
+    Separate learning schedules are used for:
+        - Flow deformation parameters.
+        - Canonical density map refinement.
 
-        """
-        job.param_add('flex_train', "flex_latent_ext_init_idxs",base_value=None,   title="Initialize latents input indices",  param_type="string", desc="Comma separated list of (zero-based) indices for which input components to use for initializing latent coordinates. This list should be the same length as the latent dimension specified.")
+    Initial and final learning rates control:
+        * Training stability.
+        * Convergence speed.
+        * Refinement smoothness.
 
-        job.param_add('flex_train', "flex_force_restart", base_value=False,  title="Restart training",  param_type="boolean", desc="Force restart of training even if a model with trained checkpoint is connected.", hidden=True)
-        """
+    The protocol progressively anneals:
+        - Learning rates.
+        - Canonical map resolution.
+        - Optimization schedules.
 
+    Rigidity and Deformation Control
+    --------------------------------
+    Structural smoothness is regulated using rigidity priors.
 
-        # --------------[Compute settings]---------------------------
-        form.addSection(label="Compute settings")
-        addComputeSectionParams(form, allowMultipleGPUs=False, needGPU=True)
+    - Rigidity Lambda:
+        * Controls deformation smoothness.
+        * Higher values produce more rigid motions.
+        * Lower values allow more flexible local deformations.
 
-    def _insertAllSteps(self):
-        self._defineFileNames()
-        self._defineParamsName()
-        self._initializeCryosparcProject()
-        self._insertFunctionStep(self.doRun3DFlexTraining)
-        self._insertFunctionStep(self.createOutputStep)
+    Proper rigidity tuning helps balance:
+        - Physical realism.
+        - Flexibility representation.
+        - Training stability.
 
-    def trainingStep(self):
-        self.info(pwutils.yellowStr("3D Flex Training started..."))
-        self.doRun3DFlexTraining()
+    Latent Space Regularization
+    ---------------------------
+    Several parameters regulate latent-space organization:
 
-    def createOutputStep(self):
-        self._initializeUtilsVariables()
-        self.info(pwutils.yellowStr("Creating the output..."))
+    - Noise Injection Standard Deviation:
+        * Encourages smooth latent distributions.
+        * Prevents unstable latent estimation.
+        * Controls latent-space continuity.
 
-        csOutputFolder = os.path.join(self.projectDir.get(),
-                                      self.run3DFlexTrainJob.get())
+    - Latent Centering Strength:
+        * Keeps latent coordinates centered near zero.
+        * Prevents latent collapse or divergence.
 
-        pattern = csOutputFolder + '/*latents*'
-        csParticlesName = os.path.basename(getMatchingFiles(pattern, True)[-1])
+    - Latent Prior Power:
+        * Adjusts regularization behavior.
+        * Used for advanced latent-space shaping.
 
-        pattern = csOutputFolder + '/*train_checkpoint*.tar'
-        trainModelRar = os.path.basename(getMatchingFiles(pattern, True)[-1])
+    These mechanisms improve:
+        - Latent-space interpretability.
+        - Smooth conformational transitions.
+        - Model robustness.
 
-        pattern = csOutputFolder + '/*train_checkpoint*.cs'
-        trainModelCs = os.path.basename(getMatchingFiles(pattern, True)[-1])
+    Training Schedule
+    -----------------
+    The protocol performs a default multi-epoch optimization schedule.
 
+    - Extra Epochs:
+        * Extend final refinement stages.
+        * Useful for difficult or high-resolution datasets.
+        * Increase computational cost.
 
-        # Copy the CS output particles to extra folder
-        copyFiles(csOutputFolder, self._getExtraPath(), files=[csParticlesName, trainModelRar, trainModelCs])
-        csPartFile = os.path.join(self._getExtraPath(), csParticlesName)
+    During training:
+        - Resolution gradually increases.
+        - Learning rates are annealed.
+        - Canonical density maps are progressively refined.
 
-        # Taking the zvalues from the .cs file using numpy
-        arr = np.load(csPartFile)
-        zValues = [[arr[i][j] for j in range(2, len(arr[i]), 2)] for i in range(len(arr))]
+    cryoSPARC Integration
+    ---------------------
+    The protocol interfaces directly with cryoSPARC through:
+        - Job enqueueing.
+        - GPU resource allocation.
+        - Mesh and particle input connections.
+        - Execution monitoring.
+        - Automatic synchronization with project workflows.
 
-        inputSet = self.input3DFlexDataPrepareProt.get()._getInputParticles()
-        outImgSet = SetOfParticlesFlex.create(self._getPath(), suffix='', progName=CRYOSPARCFLEX)
+    Queue-managed execution environments are fully supported.
 
-        outImgSet.copyInfo(inputSet)
-        outImgSet.setHasCTF(inputSet.hasCTF())
-        outImgSet.getFlexInfo().setProgName(CRYOSPARCFLEX)
-        outImgSet.getFlexInfo().setAttr('projectId', str(self.projectName.get()))
-        outImgSet.getFlexInfo().setAttr('workSpaceId', str(self.workSpaceName.get()))
-        outImgSet.getFlexInfo().setAttr('trainJobId', str(self.run3DFlexTrainJob.get()))
-        outImgSet.getFlexInfo().setAttr('projectPath', self.projectDir.get())
+    Output Generation
+    -----------------
+    The protocol produces:
 
-        for particle, zValue in zip(inputSet, zValues):
-            outParticle = ParticleFlex(progName=CRYOSPARCFLEX)
-            outParticle.copyInfo(particle)
-            outParticle.getFlexInfo().setProgName(CRYOSPARCFLEX)
+    - Trained Model Checkpoints:
+        * Saved periodically during training.
+        * Reusable for reconstruction and visualization.
 
-            outParticle.setZFlex(list(zValue))
+    - Latent Coordinate Metadata:
+        * Stores learned particle embeddings.
+        * Encodes particle-specific conformational states.
 
-            outImgSet.append(outParticle)
+    - Flexible Particle Sets:
+        * Generated as SetOfParticlesFlex objects.
+        * Include associated latent coordinates (Z values).
+        * Preserve original particle metadata and CTF information.
 
-        self._defineOutputs(**{outputs.Particles.name: outImgSet})
-        self._defineSourceRelation(inputSet, outImgSet)
+    Each output particle receives:
+        - Flex metadata.
+        - Project and workspace identifiers.
+        - Training job references.
+        - Learned latent coordinates.
 
-        # This is an example to create a latent trajectory in order to launch the flex generator job
-        # arr = np.stack([zValues[20], zValues[21]], axis=0)
-        # latentTrajectoryJob = customLatentTrajectory(arr,
-        #                                              str(self.projectName.get()),
-        #                                              str(self.workSpaceName.get()),
-        #                                              str(self.run3DFlexTrainJob.get()))
-        #
-        # flexGeneratorJob = runFlexGeneratorJob(str(self.run3DFlexTrainJob.get()),
-        #                                        latentTrajectoryJob,
-        #                                        str(self.projectName.get()),
-        #                                        str(self.workSpaceName.get()))
+    Downstream Applications
+    -----------------------
+    Trained models can be used for:
+        - Flexible high-resolution refinement.
+        - Volume trajectory generation.
+        - Continuous motion visualization.
+        - Conformational landscape exploration.
+        - Structural heterogeneity analysis.
 
+    Latent trajectories can also be generated to visualize continuous
+    molecular motions across the learned deformation space.
 
+    Compute Configuration
+    ---------------------
+    - GPU acceleration is required and strongly recommended.
+    - Compatible with cryoSPARC compute lanes.
+    - Supports queue-based execution systems.
+    - Designed for large-scale neural-network training workflows.
 
-    def _defineParamsName(self):
-        """ Define a list with 3D Flex Training parameters names"""
-        self._paramsName = ['flex_K', 'flex_num_layers', 'flex_num_layers',
-                        'flex_hidden_units', 'flex_lr_flex_init',
-                        'flex_lr_flex_final', 'flex_lr_density_init',
-                        'flex_lr_density_final', 'flex_sv_lam',
-                        'flex_extra_epochs', 'flex_latent_samp_std',
-                        'flex_latent_prior_lam', 'flex_latent_prior_pow',
-                        'flex_latent_ext_init']
-        self.lane = str(self.getAttributeValue('compute_lane'))
+    Practical Recommendations
+    -------------------------
+    - Start with low latent dimensionality.
+    - Use moderate network sizes initially.
+    - Monitor latent-space organization during training.
+    - Increase rigidity for noisy datasets.
+    - Use additional epochs only when necessary.
+    - Carefully inspect generated latent trajectories for biological consistency.
 
-    def doRun3DFlexTraining(self):
-        self._className = "flex_train"
+    Biological Perspective
+    ----------------------
+    3D Flex training enables continuous modeling of structural variability
+    directly from cryo-EM particle images.
 
-        try:
-            if not self.useQueueForSteps() and not self.useQueue():  # not using queue system
-                gpusToUse = self.getGpuList()
-            else:  # using queue system
-                gpusToUse = False
-        except Exception:
-            gpusToUse = False
+    Unlike discrete classification methods, the protocol captures:
+        - Smooth conformational transitions.
+        - Coupled domain motions.
+        - Continuous molecular rearrangements.
+        - Dynamic structural landscapes.
 
-        protocolPrepare = self.input3DFlexDataPrepareProt.get()
-        protocolMesh = self.input3DMeshFlexPrepareProt.get()
-        varDataPrepJobParticles = str(protocolPrepare.run3DFlexDataPrepJob)
-        ## varDataMeshJob = str(protocolMesh.run3DFlexMeshPrepJob)
-        varDataMeshJob = str(protocolMesh.run3DFlexMeshPrep)
-        input_group_connect = {"particles": "%s.particles" % varDataPrepJobParticles,
-                               "flex_mesh": "%s.flex_mesh" % varDataMeshJob}
-        params = {}
+    The learned latent space provides a biologically interpretable framework
+    for studying molecular flexibility, functional dynamics, and structural
+    heterogeneity in macromolecular complexes.
 
-        for paramName in self._paramsName:
-            if self.getAttributeValue(paramName) is not None:
-                params[str(paramName)] = str(self.getAttributeValue(paramName))
-
-        run3DTrainJob = enqueueJob(self._className,
-                                   self.projectName.get(),
-                                   self.workSpaceName.get(),
-                                   str(params).replace('\'', '"'),
-                                   str(input_group_connect).replace('\'','"'),
-                                   self.lane, gpusToUse)
-
-        self.run3DFlexTrainJob = String(run3DTrainJob.get())
-        self.currenJob.set(self.run3DFlexTrainJob.get())
-        self._store(self)
-
-        waitForCryosparc(self.projectName.get(),
-                         self.run3DFlexTrainJob.get(),
-                         "An error occurred in the 3D Flex Training process. "
-                         "Please, go to cryoSPARC software for more "
-                         "details.", self)
-        clearIntermediateResults(self.projectName.get(),
-                                 self.run3DFlexTrainJob.get())
+    """

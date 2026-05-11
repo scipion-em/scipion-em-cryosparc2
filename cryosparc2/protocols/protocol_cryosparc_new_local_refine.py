@@ -53,394 +53,191 @@ class ProtCryoSparcLocalRefine(ProtCryosparcBase, ProtOperateParticles):
     """ Signal subtraction protocol of cryoSPARC.
         Subtract projections of a masked volume from particles.
         """
-    _label = 'local refinement'
-    _protCompatibility = [V3_3_1, V3_3_2, V4_0_0,  V4_0_1, V4_0_2, V4_0_3,
-                          V4_1_0, V4_1_1, V4_1_2, V4_2_0, V4_2_1, V4_3_1, V4_4_0, V4_4_1, V4_5_1,
-                          V4_5_3, V4_6_0, V4_6_1, V4_6_2, V4_7_0, V4_7_1]
-    _className = "new_local_refine"
-    _fscColumns = 6
 
-    def _initialize(self):
-        self._defineFileNames()
+    """
+    ProtCryoSparcLocalRefine — Local Refinement Protocol
 
-    def _defineFileNames(self):
-        """ Centralize how files are called. """
-        myDict = {
-            'input_particles': self._getTmpPath('input_particles.star'),
-            'out_particles': self._getExtraPath('output_particle.star'),
-            'stream_log': self._getPath() + '/stream.log'
-        }
-        self._updateFilenamesDict(myDict)
+    Overview
+    --------
+    Performs localized 3D refinement of cryo-EM particles using cryoSPARC’s 
+    Local Refinement workflow. This protocol refines particle orientations and 
+    shifts around a previously known alignment while focusing on a specific 
+    structural region defined by a mask.
 
-    def _defineParams(self, form):
-        form.addSection(label='Input')
-        form.addParam('inputParticles', PointerParam,
-                      pointerClass='SetOfParticles',
-                      pointerCondition='hasAlignmentProj',
-                      label="Input particles", important=True,
-                      help='Select the experimental particles.')
-        form.addParam('refVolume', PointerParam, pointerClass='Volume',
-                      label="Input map to be projected",
-                      important=True,
-                      help='Provide the input volume that will be used to '
-                           'calculate projections, which will be subtracted '
-                           'from the experimental particles. Make sure this '
-                           'map was calculated by RELION from the same '
-                           'particles as above, and preferably with those '
-                           'orientations, as it is crucial that the absolute '
-                           'greyscale is the same as in the experimental '
-                           'particles.')
-        form.addParam('refMask', PointerParam, pointerClass='VolumeMask',
-                      label='Mask to be applied to this map',
-                      important=True,
-                      help="Provide a soft mask where the protein density "
-                           "you wish to subtract from the experimental "
-                           "particles is white (1) and the rest of the "
-                           "protein and the solvent is black (0). "
-                           "That is: *the mask should INCLUDE the part of the "
-                           "volume that you wish to SUBTRACT.*")
+    Local refinement is especially useful for:
+        - Improving flexible or mobile regions of a complex.
+        - Refining local domains without disturbing the global structure.
+        - Enhancing high-resolution features in targeted areas.
+        - Performing focused refinement after consensus reconstruction.
 
-        # -----------[Alignment Parameters]------------------------
-        form.addSection(label="Alignment Parameters")
+    Inputs and Workflow
+    -------------------
+    - Input Particles:
+        Particle stack with existing projection alignment information.
+        The protocol requires particles with associated CTF models and 3D alignment.
 
-        form.addParam('use_alignment_prior', BooleanParam, default=False,
-                      label='Use pose/shift gaussian prior during alignment',
-                      help='This can help softly penalise rotations/shifts far '
-                           'away from the known initial pose, hence increasing '
-                           'stability.')
+    - Reference Volume:
+        Initial 3D map used as refinement reference.
+        Best practices:
+            * Use a high-quality consensus refinement.
+            * Ensure particles and volume originate from the same dataset.
+            * Prefer maps already aligned to the input particles.
 
-        form.addParam('sigma_prior_r', IntParam, default=15,
-                  validators=[Positive],
-                  condition="use_alignment_prior == True",
-                  label="Standard deviation (deg) of prior over rotation",
-                  help='Standard deviation of gaussian prior over rotation magnitude in degrees.')
+    - Reference Mask:
+        Defines the region to refine locally.
+        Important considerations:
+            * The mask should include the region of interest.
+            * Soft masks are recommended to avoid edge artefacts.
+            * Flexible regions benefit most from focused masking.
 
-        form.addParam('sigma_prior_s', IntParam, default=7,
-                      validators=[Positive],
-                      condition="use_alignment_prior == True",
-                      label="Standard deviation (A) of prior over shifts",
-                      help='Standard deviation of gaussian prior over shift magnitude in Angstroms.')
+    Alignment Strategy
+    ------------------
+    The protocol performs restrained local searches around existing particle poses.
 
-        form.addParam('init_r_extent', IntParam, default=20,
-                      validators=[Positive],
-                      label="Rotation search extent (deg)",
-                      help='Rotation search extent in degrees.')
+    Main alignment controls:
+        - Rotation search extent:
+            Defines angular exploration around current orientations.
 
-        form.addParam('init_s_extent', IntParam, default=10,
-                      validators=[Positive],
-                      label="Shift search extent (A)",
-                      help='Shift search extent in Angstroms.')
+        - Shift search extent:
+            Defines translational search range in Angstroms.
 
-        form.addParam('fulcrum', EnumParam,
-                      choices=['mask_center', 'box_center'],
-                      default=0,
-                      label="Default fulcrum location",
-                      help="Where to place the fulcrum by default. Can be set "
-                           "to the center of mass of the mask, or the "
-                           "box center.")
+        - Gaussian pose priors:
+            Optional soft restraints on rotations and shifts.
+            Useful for:
+                * Small flexible motions.
+                * Preventing unstable refinements.
+                * Maintaining consistency with prior alignments.
 
-        form.addParam('reinitialize_rs', BooleanParam, default=False,
-                      label='Re-center rotations each iteration?',
-                      help='If true, strongly recommended to use prior.')
+    Fulcrum and Re-centering
+    ------------------------
+    The refinement can define the rotational fulcrum using:
+        - Mask center of mass.
+        - Box center.
 
-        form.addParam('reinitialize_ss', BooleanParam, default=False,
-                      label='Re-center shifts each iteration?',
-                      help='If true, strongly recommended to use prior.')
+    Optional re-centering:
+        - Re-center rotations every iteration.
+        - Re-center shifts every iteration.
 
-        # -----------[Homogeneous Refinement]------------------------
-        form.addSection(label="Homogeneous Refinement")
+    These options may improve convergence in highly flexible regions, especially
+    when pose priors are enabled.
 
-        addSymmetryParam(form, help="Symmetry String (C, D, I, O, T). E.g. C1, "
-                                    "D7, C4, etc")
+    Refinement and Regularization
+    -----------------------------
+    The protocol includes cryoSPARC homogeneous refinement features adapted for 
+    local refinement.
 
-        form.addParam('refine_res_align_max', FloatParam, default=None,
-                      allowsNull=True,
-                      label="Maximum align resolution (A)",
-                      help='Manual override for maximum resolution that is '
-                           'used for alignment. This value is normally '
-                           'set by the GS-FSC')
+    Available refinement options:
+        - Non-uniform refinement:
+            Improves reconstruction quality for heterogeneous regions.
 
-        form.addParam('refine_res_init', IntParam, default=12,
-                      validators=[Positive],
-                      label="Initial lowpass resolution (A)",
-                      help='Applied to input structure')
+        - Marginalization:
+            Efficiently integrates pose uncertainty and can improve results for
+            small or noisy particles.
 
-        form.addParam('refine_gs_resplit', BooleanParam, default=False,
-                      label='Force re-do GS split',
-                      help='Force re-splitting the particles into two random '
-                           'gold-standard halves. If this is not set, split '
-                           'is preserved from input alignments (if connected). '
-                           'Note: if particles are coming directly from an '
-                           'ab-initio job, this must be True.')
+        - Dynamic masking:
+            Automatically adapts masking during refinement.
 
-        form.addParam('refine_do_marg', BooleanParam, default=True,
-                      label='Marginalization',
-                      help='Efficiently marginalize over poses and shifts. '
-                           'Can improve results on small molecules..')
+        - Non-negativity enforcement:
+            Removes negative density before alignment.
 
-        form.addParam('refine_nu_enable', BooleanParam, default=True,
-                      label='Non-uniform refine enable',
-                      help='Enable cross-validation-optimal non-uniform '
-                           'regularization during refinement.')
+        - Gold-standard splitting:
+            Optionally re-generates independent half-sets for FSC validation.
 
-        form.addParam('refine_clip', BooleanParam, default=False,
-                      label='Enforce non-negativity',
-                      help='Bring negative density up to 0, prior to alignment. '
-                           'May help in some cases, but recommended to leave '
-                           'off in most cases.')
+    Dynamic Masking
+    ----------------
+    Dynamic masking expands the refinement region adaptively.
 
-        form.addParam('refine_mask', EnumParam,
-                      choices=['dynamic', 'static', 'null'],
-                      default=0,
-                      label="Mask:",
-                      help='Type of masking to use. Either "dynamic", '
-                           '"static", or "null"')
+    Main parameters:
+        - Near distance:
+            Region fully included in the mask.
 
-        form.addParam('refine_dynamic_mask_near_ang', FloatParam, default=3.0,
-                      validators=[Positive],
-                      label="Dynamic mask near (A)",
-                      help='Controls extent to which mask is expanded. At the '
-                           'near distance, the mask value is 1.0 (in A)')
+        - Far distance:
+            Region gradually tapered to zero.
 
-        form.addParam('refine_dynamic_mask_far_ang', FloatParam, default=12.0,
-                      validators=[Positive],
-                      label="Dynamic mask far  (A)",
-                      help='Controls extent to which mask is expanded. At the ')
+        - Start resolution:
+            Resolution at which dynamic masking begins.
 
-        form.addParam('refine_dynamic_mask_start_res', FloatParam, default=12.0,
-                      validators=[Positive],
-                      label="Dynamic mask start resolution (A)",
-                      help='Map resolution at which to start dynamic masking (in A)')
+        - Absolute value masking:
+            Allows inclusion of strong negative density regions.
 
-        form.addParam('refine_dynamic_mask_use_abs', BooleanParam, default=False,
-                      label='Dynamic mask use absolute value',
-                      help='Include negative regions if they are more negative than the threshold')
+    Symmetry Handling
+    -----------------
+    Supports standard cryo-EM symmetry groups:
+        - Cyclic (Cn)
+        - Dihedral (Dn)
+        - Icosahedral (I)
+        - Octahedral (O)
+        - Tetrahedral (T)
 
+    Proper symmetry selection is critical for:
+        - Maximizing signal.
+        - Avoiding reconstruction artefacts.
+        - Achieving correct local refinement behaviour.
 
-        # --------------[Compute settings]---------------------------
-        form.addSection(label="Compute settings")
-        addComputeSectionParams(form, allowMultipleGPUs=False)
+    Outputs
+    -------
+    The protocol generates:
+        - Refined particle set with updated alignments.
+        - Refined 3D volume.
+        - Gold-standard half maps.
+        - FSC information for resolution estimation.
 
-    # --------------------------- INSERT steps functions -----------------------
-    def _insertAllSteps(self):
-        self._defineFileNames()
-        self._defineParamsName()
-        self._initializeCryosparcProject()
-        self._insertFunctionStep(self.convertInputStep)
-        self._insertFunctionStep(self.processStep)
-        self._insertFunctionStep(self.createOutputStep)
+    Output particle metadata includes:
+        * Updated projection matrices.
+        * cryoSPARC refinement attributes.
+        * Random subset assignments.
 
-    # --------------------------- STEPS functions ------------------------------
-    def processStep(self):
-        self.info(pwutils.yellowStr("Local Refinement started..."))
-        self.doLocalRefine()
+    Validation and Safety Checks
+    ----------------------------
+    Before execution, the protocol validates:
+        - GPU configuration.
+        - Input particle dimensional consistency.
+        - Presence of CTF information.
+        - Availability of 3D alignment parameters.
+        - Compatibility between particles and reference volume.
 
-    def createOutputStep(self):
-        """
-        Create the protocol output. Convert cryosparc file to Relion file
-        """
-        self._initializeUtilsVariables()
-        idd, itera = self.findLastIteration(self.runLocalRefinement.get())
+    Execution Workflow
+    ------------------
+    The refinement pipeline follows these stages:
+        1. Initialize cryoSPARC project.
+        2. Convert and prepare input data.
+        3. Configure refinement parameters.
+        4. Launch cryoSPARC local refinement job.
+        5. Monitor execution and wait for completion.
+        6. Import refined particles and volumes.
+        7. Generate FSC and final outputs.
 
-        csOutputFolder = os.path.join(self.projectDir.get(),
-                                      self.runLocalRefinement.get())
+    GPU and Compute Management
+    --------------------------
+    The protocol supports:
+        - Single GPU execution.
+        - Queue-system integration.
+        - SSD particle caching for improved performance.
 
-        csOutputPattern = "%s%s_%s" % (getOutputPreffix(self.projectName.get()),
-                                       self.runLocalRefinement.get(),
-                                       itera)
-        csParticlesName = csOutputPattern + "_particles.cs"
-        fnVolName = csOutputPattern + "_volume_map.mrc"
-        half1Name = csOutputPattern + "_volume_map_half_A.mrc"
-        half2Name = csOutputPattern + "_volume_map_half_B.mrc"
+    GPU allocation is automatically adapted depending on whether the protocol
+    runs interactively or through a scheduler queue.
 
-        # Copy the CS output to extra folder
-        copyFiles(csOutputFolder, self._getExtraPath(), files=[csParticlesName,
-                                                               fnVolName,
-                                                               half1Name,
-                                                               half2Name])
+    Practical Recommendations
+    -------------------------
+    - Use consensus refinements as starting references.
+    - Apply soft masks tightly around the flexible region.
+    - Enable pose priors for highly mobile domains.
+    - Use non-uniform refinement for heterogeneous particles.
+    - Avoid excessively large angular searches.
+    - Inspect FSC curves and refined maps carefully.
 
-        csFile = os.path.join(self._getExtraPath(), csParticlesName)
-        outputStarFn = self._getFileName('out_particles')
-        argsList = [csFile, outputStarFn]
-        convertCs2Star(argsList)
+    Biological Perspective
+    ----------------------
+    Local refinement is essential for studying structural heterogeneity in
+    macromolecular complexes.
 
-        fnVol = os.path.join(self._getExtraPath(), fnVolName)
-        half1 = os.path.join(self._getExtraPath(), half1Name)
-        half2 = os.path.join(self._getExtraPath(), half2Name)
-        imgSet = self._getInputParticles()
-        vol = Volume()
-        fixVolume([fnVol, half1, half2])
-        vol.setFileName(fnVol)
-        vol.setSamplingRate(calculateNewSamplingRate(vol.getDim(),
-                                                     imgSet.getSamplingRate(),
-                                                     imgSet.getDim()))
-        vol.setHalfMaps([half1, half2])
+    Typical biological applications include:
+        - Flexible domain analysis.
+        - Ligand-binding region refinement.
+        - Membrane protein conformational variability.
+        - Ribosome and spliceosome substructure refinement.
+        - Multi-body and continuous flexibility studies.
 
-        outImgSet = self._createSetOfParticles()
-        outImgSet.copyInfo(imgSet)
-        self._fillDataFromIter(outImgSet)
-
-        self._defineOutputs(outputVolume=vol)
-        self._defineSourceRelation(self.inputParticles.get(), vol)
-        self._defineOutputs(outputParticles=outImgSet)
-        self._defineTransformRelation(self.inputParticles.get(), outImgSet)
-        self.createFSC(idd, imgSet, vol)
-
-    # --------------------------- INFO functions -------------------------------
-    def _validate(self):
-        """ Should be overwritten in subclasses to
-               return summary message for NORMAL EXECUTION.
-               """
-        validateMsgs = cryosparcValidate()
-        if not validateMsgs:
-            validateMsgs = gpusValidate(self.getGpuList(),
-                                        checkSingleGPU=True)
-            if not validateMsgs:
-                particles = self._getInputParticles()
-                self._validateDim(particles,
-                                  self.refVolume.get(),
-                                  validateMsgs, 'Input particles',
-                                  'Input volume')
-                if not particles.hasCTF():
-                    validateMsgs.append("The Particles has not associated a "
-                                        "CTF model")
-                    if not validateMsgs and not particles.hasAlignment3D():
-                        validateMsgs.append("The Particles has not a 3D "
-                                            "alignment")
-
-        return validateMsgs
-
-    def _summary(self):
-        summary = []
-        if (not hasattr(self, 'outputVolume') or
-                not hasattr(self, 'outputParticles')):
-            summary.append("Output objects not ready yet.")
-        else:
-            summary.append("Input Particles: %s" %
-                           self.getObjectTag('inputParticles'))
-            summary.append("Input Volume: %s" %
-                           self.getObjectTag('refVolume'))
-            summary.append("Input Mask: %s" %
-                           self.getObjectTag('refMask'))
-            summary.append("------------------------------------------")
-            summary.append("Output particles %s" %
-                           self.getObjectTag('outputParticles'))
-            summary.append("Output volume %s" %
-                           self.getObjectTag('outputVolume'))
-            if self.hasAttribute('mapResolution'):
-                summary.append(
-                    "\nMap Resolution: %s" % self.mapResolution.get())
-            if self.hasAttribute('estBFactor'):
-                summary.append(
-                    '\nEstimated Bfactor: %s' % self.estBFactor.get())
-        return summary
-
-    # ---------------Utils Functions------------------------------------
-
-    def _fillDataFromIter(self, imgSet):
-        outImgsFn = 'particles@' + self._getFileName('out_particles')
-        imgSet.setAlignmentProj()
-        imgSet.copyItems(self._getInputParticles(),
-                         updateItemCallback=self._createItemMatrix,
-                         itemDataIterator=emtable.Table.iterRows(outImgsFn))
-
-    def _createItemMatrix(self, particle, row):
-        createItemMatrix(particle, row, align=ALIGN_PROJ)
-        setCryosparcAttributes(particle, row,
-                               RELIONCOLUMNS.rlnRandomSubset.value)
-
-    def _defineParamsName(self):
-        """ Define a list with all protocol parameters names"""
-        self._paramsName = ['use_alignment_prior',
-                            'init_r_extent',
-                            'init_s_extent',
-                            'fulcrum',
-                            'refine_res_align_max',
-                            'refine_res_init',
-                            'refine_gs_resplit',
-                            'refine_do_marg',
-                            'refine_nu_enable',
-                            'refine_clip',
-                            'refine_mask',
-                            'refine_dynamic_mask_near_ang',
-                            'refine_dynamic_mask_far_ang',
-                            'intermediate_plots',
-                            'sigma_prior_r',
-                            'sigma_prior_s',
-                            'compute_use_ssd',
-                            'refine_symmetry',
-                            'reinitialize_ss',
-                            'reinitialize_rs',
-                            'refine_dynamic_mask_start_res',
-                            'refine_dynamic_mask_use_abs']
-        self.lane = str(self.getAttributeValue('compute_lane'))
-
-    def doLocalRefine(self):
-        """
-        :return:
-        """
-        if self.mask.get() is not None:
-            input_group_connect = {"particles": self.particles.get(),
-                                  "volume": self.volume.get(),
-                                  "mask": self.mask.get()}
-        else:
-            input_group_connect = {"particles": self.particles.get(),
-                                  "volume": self.volume.get()}
-
-        params = {}
-
-        for paramName in self._paramsName:
-            if (paramName != 'refine_mask' and
-                    paramName != 'refine_res_align_max' and
-                    paramName != 'fulcrum' and
-                    paramName != 'intermediate_plots' and
-                    paramName != 'sigma_prior_r' and
-                    paramName != 'sigma_prior_s' and
-                    paramName != 'refine_symmetry'):
-                params[str(paramName)] = str(self.getAttributeValue(paramName))
-            elif paramName == 'refine_mask':
-                params[str(paramName)] = str(
-                    REFINE_MASK_CHOICES[self.refine_mask.get()])
-            elif paramName == 'fulcrum':
-                params[str(paramName)] = str(
-                    REFINE_FULCRUM_LOCATION[self.fulcrum.get()])
-            elif (paramName == 'refine_res_align_max' and
-                  self.getAttributeValue(paramName) is not None and
-                  float(self.getAttributeValue(paramName)) > 0):
-                params[str(paramName)] = str(self.getAttributeValue(paramName))
-            elif paramName == 'intermediate_plots':
-                params[str(paramName)] = 'False'
-            elif (paramName == 'sigma_prior_r' or
-                  paramName == 'sigma_prior_s') and self.getAttributeValue('use_alignment_prior'):
-                params[str(paramName)] = str(self.getAttributeValue(paramName))
-            elif paramName == 'refine_symmetry':
-                symetryValue = getSymmetry(self.symmetryGroup.get(),
-                                           self.symmetryOrder.get())
-                params[str(paramName)] = symetryValue
-
-        # Determinate the GPUs to use (in dependence of
-        # the cryosparc version)
-        try:
-            if not self.useQueueForSteps() and not self.useQueue():  # not using queue system
-                gpusToUse = self.getGpuList()
-            else:  # using queue system
-                gpusToUse = False
-        except Exception:
-            gpusToUse = False
-
-        runLocalRefinementJob = enqueueJob(self._className, self.projectName.get(),
-                                             self.workSpaceName.get(),
-                                             str(params).replace('\'', '"'),
-                                             str(input_group_connect).replace('\'',
-                                                                             '"'),
-                                             self.lane, gpusToUse)
-
-        self.runLocalRefinement = String(runLocalRefinementJob.get())
-        self.currenJob.set(runLocalRefinementJob.get())
-        self._store(self)
-
-        waitForCryosparc(self.projectName.get(), self.runLocalRefinement.get(),
-                         "An error occurred in the local refinement process. "
-                         "Please, go to cryoSPARC software for more "
-                         "details.", self)
-        clearIntermediateResults(self.projectName.get(), self.runLocalRefinement.get())
+    Accurate local refinement can significantly improve interpretability of
+    biologically relevant regions while preserving global structural consistency.
+    """

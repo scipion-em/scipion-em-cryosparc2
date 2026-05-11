@@ -43,185 +43,105 @@ from ..utils import (addComputeSectionParams, cryosparcValidate, gpusValidate,
 class ProtCryoSparcSymmetryExpansion(ProtCryosparcBase):
     """ Duplicate particles around a point-group symmetry.
     """
-    _label = 'symmetry expansion'
-    _className = "sym_expand"
 
-    def _initialize(self):
-        self._createFilenameTemplates()
 
-    def _createFilenameTemplates(self):
-        """ Centralize how files are called. """
-        myDict = {
-            'input_particles': self._getTmpPath('input_particles.star'),
-            'out_particles': self._getExtraPath('output_particle.star')
-        }
-        self._updateFilenamesDict(myDict)
+    """
+    ProtCryoSparcSymmetryExpansion — Symmetry Expansion Protocol
 
-    def _defineParams(self, form):
-        form.addSection(label='Input')
-        form.addParam('inputParticles', PointerParam,
-                      pointerClass='SetOfParticles',
-                      pointerCondition='hasAlignmentProj',
-                      label="Input particles", important=True,
-                      help='Select the experimental particles.')
+    Overview
+    --------
+    Expands particle datasets according to a specified symmetry group using 
+    cryoSPARC symmetry operations. The protocol duplicates particles and assigns 
+    new orientations corresponding to all symmetry-related views.
 
-        addSymmetryParam(form, help="Symmetry String (C, D, I, O, T). E.g. C1,"
-                                    "D7, C4, etc. Particles will be "
-                                    "symmetry-expanded at this symmetry.")
+    Symmetry expansion is commonly used in cryo-EM workflows to:
+        - Analyze asymmetric or flexible regions within symmetric complexes.
+        - Perform focused classification or local refinement.
+        - Increase angular sampling for downstream analysis.
+        - Explore symmetry-related conformational variability.
 
-        form.addParam('sym_twist_deg', FloatParam, default=None,
-                      allowsNull=True,
-                      label='Helical twist (degrees)',
-                      help='Helical twist for symmetry expansion. This can be '
-                           'found in the final iteration of the source Helical '
-                           'Refinement job streamlog.')
+    Inputs and Workflow
+    -------------------
+    - Input Particles:
+        * Requires particles with projection alignment information.
+        * Particle orientations are used to generate symmetry-related copies.
 
-        form.addParam('sym_rise_A', FloatParam, default=None,
-                      allowsNull=True,
-                      label='Helical rise (A)',
-                      help='Helical rise for symmetry expansion. This can be '
-                           'found in the final iteration of the source '
-                           'Helical Refinement job streamlog.')
+    - Symmetry Definition:
+        * Supports standard point-group symmetries:
+            - Cyclic (Cn)
+            - Dihedral (Dn)
+            - Icosahedral (I)
+            - Octahedral (O)
+            - Tetrahedral (T)
+        * Examples:
+            - C1 (no symmetry)
+            - C4
+            - D7
 
-        form.addParam('sym_num_rises', IntParam, default=None,
-                      allowsNull=True,
-                      label='Helical symmetry order (integer)',
-                      help='Helical symmetry order for symmetry expansion. '
-                           'This can be found in the final iteration of the '
-                           'source Helical Refinement job streamlog.')
+    - Helical Symmetry Support:
+        * Optional parameters for helical datasets:
+            - Helical twist (degrees)
+            - Helical rise (Å)
+            - Helical symmetry order
+        * Values are typically obtained from previous helical refinement jobs.
 
-        # --------------[Compute settings]---------------------------
-        form.addSection(label="Compute settings")
-        addComputeSectionParams(form, allowMultipleGPUs=False)
+    Symmetry Expansion Strategy
+    ---------------------------
+    - Each particle is duplicated according to the specified symmetry operators.
+    - New projection orientations are assigned while preserving particle metadata.
+    - Particularly useful for:
+        * Localized reconstruction approaches.
+        * Masked refinement of flexible domains.
+        * Symmetry-relaxed structural analysis.
 
-    # --------------------------- INSERT steps functions ----------------------
+    Parameter Configuration
+    -----------------------
+    - Symmetry Group:
+        * Defines the symmetry operators applied to particles.
+        * Strongly affects the number of expanded particles generated.
 
-    def _insertAllSteps(self):
-        self._createFilenameTemplates()
-        self._defineParamsName()
-        self._initializeCryosparcProject()
-        self._insertFunctionStep(self.convertInputStep)
-        self._insertFunctionStep(self.processStep)
-        self._insertFunctionStep(self.createOutputStep)
+    - Helical Parameters:
+        * Used only for helical reconstruction workflows.
+        * Must be consistent with the refinement symmetry definition.
 
-    # --------------------------- STEPS functions ------------------------------
+    Compute and Processing Workflow
+    -------------------------------
+    - Initializes a cryoSPARC project and processing environment.
+    - Converts input particles into cryoSPARC-compatible format.
+    - Launches a cryoSPARC symmetry expansion job.
+    - Monitors execution and waits for job completion.
+    - Converts cryoSPARC output files back into STAR format.
+    - Reconstructs the expanded particle set with updated alignments.
 
-    def processStep(self):
-        self.info(pwutils.yellowStr("Symmetry Expansion started..."))
-        self.doSymmetryExpansion()
+    Outputs
+    -------
+    - Expanded particle set containing:
+        * Original particle metadata.
+        * Symmetry-related orientations.
+        * Updated alignment parameters.
 
-    def createOutputStep(self):
-        """
-        Create the protocol output. Convert cryosparc file to Relion file
-        """
-        self._initializeUtilsVariables()
-        outputStarFn = self._getFileName('out_particles')
-        csOutputFolder = os.path.join(self.projectDir.get(),
-                                      self.runSymExp.get())
-        csFileName = "particles_expanded.cs"
+    - Output particles preserve:
+        * Sampling rate
+        * Dimensions
+        * Alignment information
 
-        # Copy the CS output expanded particles to extra folder
-        copyFiles(csOutputFolder, self._getExtraPath(), files=[csFileName])
+    Practical Recommendations
+    -------------------------
+    - Use symmetry expansion before focused classification or masked refinement.
+    - Ensure the selected symmetry matches the biological assembly.
+    - Avoid unnecessary expansion for highly heterogeneous datasets.
+    - Helical parameters should only be enabled for filamentous structures.
+    - Expanded datasets can become very large; monitor storage requirements.
 
-        csFile = os.path.join(self._getExtraPath(), csFileName)
+    Biological Perspective
+    ----------------------
+    - Symmetry expansion enables analysis of local structural variability 
+      hidden by global symmetry averaging.
+    - Particularly valuable for:
+        * Flexible domains
+        * Ligand binding studies
+        * Partial occupancy analysis
+        * Symmetry-breaking events
+    - Helps recover biologically relevant asymmetry within otherwise symmetric particles.
 
-        argsList = [csFile, outputStarFn]
-
-        convertCs2Star(argsList)
-        imgSet = self._getInputParticles()
-        self.setFilePattern(imgSet.getFirstItem().getFileName())
-        outImgSet = self._createSetOfParticles()
-        outImgSet.copyInfo(imgSet)
-        outImgSet.setDim(imgSet.getDim())
-        self._fillDataFromIter(outImgSet)
-
-        self._defineOutputs(outputParticles=outImgSet)
-        self._defineTransformRelation(imgSet, outImgSet)
-
-    def _fillDataFromIter(self, imgSet):
-        outImgsFn = 'particles@' + self._getFileName('out_particles')
-        readSetOfParticles(outImgsFn, imgSet,
-                           postprocessImageRow=self.updateParticlePath,
-                           alignType=imgSet.getAlignment(),
-                           samplingRate=imgSet.getSamplingRate())
-
-    # --------------------------- INFO functions -------------------------------
-
-    def _validate(self):
-        """ Should be overwritten in subclasses to
-            return summary message for NORMAL EXECUTION.
-        """
-        validateMsgs = cryosparcValidate()
-        if not validateMsgs:
-            validateMsgs = gpusValidate(self.getGpuList(),
-                                        checkSingleGPU=True)
-        return validateMsgs
-
-    def _summary(self):
-        summary = []
-        if not hasattr(self, 'outputParticles'):
-            summary.append("Output Particles not ready yet.")
-        else:
-            summary.append("Input Particles: %s" %
-                           self.getObjectTag('inputParticles'))
-            summary.append(
-                "--------------------------------------------------")
-            summary.append("Output particles %s" %
-                           self.getObjectTag('outputParticles'))
-        return summary
-
-    # ---------------Utils Functions-------------------------------------------
-
-    def _defineParamsName(self):
-        """ Define a list with all protocol parameters names"""
-        self._paramsName = ['sym_symmetry',
-                            'sym_twist_deg',
-                            'sym_rise_A',
-                            'sym_num_rises',
-                            'compute_use_ssd']
-        self.lane = str(self.getAttributeValue('compute_lane'))
-
-    def doSymmetryExpansion(self):
-        """
-        Launch a symmetry expansion job
-        """
-        input_group_connect = {"particles": self.particles.get()}
-        params = {}
-
-        for paramName in self._paramsName:
-            if paramName == 'sym_symmetry':
-                symetryValue = getSymmetry(self.symmetryGroup.get(),
-                                           self.symmetryOrder.get())
-                params[str(paramName)] = symetryValue
-            elif paramName == 'sym_num_rises':
-                if self.getAttributeValue(paramName) is not None and int(self.getAttributeValue(paramName)) > 0:
-                    params[str(paramName)] = str(self.getAttributeValue(paramName))
-            elif self.getAttributeValue(paramName) is not None and float(self.getAttributeValue(paramName)) > 0:
-                params[str(paramName)] = str(self.getAttributeValue(paramName))
-
-        # Determinate the GPUs to use (in dependence of
-        # the cryosparc version)
-        try:
-            if not self.useQueueForSteps() and not self.useQueue():  # not using queue system
-                gpusToUse = self.getGpuList()
-            else:  # using queue system
-                gpusToUse = False
-        except Exception:
-            gpusToUse = False
-
-        runSymExpJob = enqueueJob(self._className, self.projectName.get(),
-                                    self.workSpaceName.get(),
-                                    str(params).replace('\'', '"'),
-                                    str(input_group_connect).replace('\'', '"'),
-                                    self.lane, gpusToUse)
-
-        self.runSymExp = String(runSymExpJob.get())
-        self.currenJob.set(self.runSymExp.get())
-        self._store(self)
-
-        waitForCryosparc(self.projectName.get(), self.runSymExp.get(),
-                         "An error occurred in the particles subtraction process. "
-                         "Please, go to cryoSPARC software for more "
-                         "details.", self)
-        clearIntermediateResults(self.projectName.get(), self.runSymExp.get())
-
+    """

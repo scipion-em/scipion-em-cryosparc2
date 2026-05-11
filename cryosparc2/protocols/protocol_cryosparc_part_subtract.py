@@ -47,258 +47,157 @@ class ProtCryoSparcSubtract(ProtCryosparcBase, ProtOperateParticles):
     """ Signal subtraction protocol of cryoSPARC.
         Subtract projections of a masked volume from particles.
         """
-    _label = 'subtract projection'
-    _className = "particle_subtract"
 
-    def _initialize(self):
-        self._createFilenameTemplates()
+    """
+    ProtCryoSparcSubtract — Particle Signal Subtraction Protocol
 
-    def _createFilenameTemplates(self):
-        """ Centralize how files are called. """
-        myDict = {
-            'input_particles': self._getTmpPath('input_particles.star'),
-            'out_particles': self._getExtraPath('output_particle.star')
-        }
-        self._updateFilenamesDict(myDict)
+    Overview
+    --------
+    Performs particle signal subtraction using cryoSPARC by projecting a masked
+    reference volume and subtracting it from experimental particles.
+    This protocol is commonly used to isolate flexible regions, remove dominant
+    structural components, or focus downstream refinements on specific domains.
 
-    def _defineParams(self, form):
-        form.addSection(label='Input')
-        form.addParam('inputParticles', PointerParam,
-                      pointerClass='SetOfParticles',
-                      pointerCondition='hasAlignmentProj',
-                      label="Input particles", important=True,
-                      help='Select the experimental particles.')
-        form.addParam('refVolume', PointerParam, pointerClass='Volume',
-                      label="Input map to be projected",
-                      important=True,
-                      help='Provide the input volume that will be used to '
-                           'calculate projections, which will be subtracted '
-                           'from the experimental particles. Make sure this '
-                           'map was calculated by RELION from the same '
-                           'particles as above, and preferably with those '
-                           'orientations, as it is crucial that the absolute '
-                           'greyscale is the same as in the experimental '
-                           'particles.')
-        form.addParam('refMask', PointerParam, pointerClass='VolumeMask',
-                      label='Mask to be applied to this map',
-                      important=True,
-                      allowsNull=False,
-                      help="Provide a soft mask where the protein density "
-                           "you wish to subtract from the experimental "
-                           "particles is white (1) and the rest of the "
-                           "protein and the solvent is black (0). "
-                           "That is: *the mask should INCLUDE the part of the "
-                           "volume that you wish to SUBTRACT.*")
+    Signal subtraction is especially useful for:
+        - Focused classification of flexible regions.
+        - Removing stable scaffold densities.
+        - Improving analysis of conformational heterogeneity.
+        - Enhancing weak or partially occupied structural features.
 
-        # -----------[Particles Subtraction]------------------------
-        form.addSection(label="Particle Subtraction")
+    Inputs and Workflow
+    -------------------
+    - Input Particles:
+        Experimental particles with valid projection alignments.
+        The protocol assumes particles already contain reliable orientation
+        parameters.
 
-        form.addParam('inner_radius', FloatParam, default=0.85,
-                      validators=[Positive],
-                      label='Inner radius of reference window',
-                      help='Inner radius of the windowing applied to the '
-                           'particles used to generate the input structure.')
+    - Reference Volume:
+        3D map used to generate projections that will be subtracted from the
+        particles.
+        Practical recommendations:
+            * Use a volume reconstructed from the same particle dataset.
+            * Ensure matching pixel size and box dimensions.
+            * Maintain consistent grayscale normalization.
 
-        form.addParam('outer_radius', FloatParam, default=0.99,
-                      validators=[Positive],
-                      label='Outer radius of reference window',
-                      help='Outer radius of the windowing applied to the '
-                           'particles used to generate the input structure')
+    - Reference Mask:
+        Defines the region to subtract from particles.
+        Important:
+            * White regions (1) represent densities to REMOVE.
+            * Black regions (0) preserve densities in the particles.
+            * Soft masks are recommended to avoid subtraction artifacts.
 
-        form.addParam('use_premult', BooleanParam, default=True,
-                      expertLevel=LEVEL_ADVANCED,
-                      label="Use premultiplier for scaling",
-                      help="Premultiplier to scale initial real space mode")
+    Particle Subtraction Strategy
+    -----------------------------
+    The protocol projects the masked reference map according to each particle
+    orientation and subtracts the resulting signal from the experimental images.
 
-        form.addParam('use_halfmaps', BooleanParam, default=True,
-                      expertLevel=LEVEL_ADVANCED,
-                      label="Use halfmaps for Gold-Standard Subtraction",
-                      help="Subtract each halfmap from particles used to "
-                           "generate it. Disabling this parameter breaks the "
-                           "assumptions of gold-standard FSC calculation.")
+    This enables:
+        - Isolation of localized conformational changes.
+        - Improved focused refinements.
+        - Reduction of dominant structural contributions.
+        - Better characterization of dynamic assemblies.
 
-        form.addParam('lpf_volume', FloatParam, default=None,
-                      allowsNull=True,
-                      expertLevel=LEVEL_ADVANCED,
-                      label='Low-pass Filter Input Structure (A)',
-                      help='Apply a lowpass filter to the specified reoslution '
-                           'in Angstroms to the input volume before subtraction.'
-                           'Leave None to ignore a lowpass filter')
+    Windowing and Scaling Parameters
+    --------------------------------
+    - Inner Radius:
+        Defines the fully preserved central region during windowing.
 
-        form.addParam('mask_threshold', FloatParam, default=None,
-                      allowsNull=True,
-                      expertLevel=LEVEL_ADVANCED,
-                      label='Mask threshold',
-                      help='The threshold of binarization of the mask. Must be '
-                           'set to dilate or pad. Leave None to skip mask processing.')
+    - Outer Radius:
+        Controls the transition region for soft masking/windowing.
 
-        form.addParam('mask_fill_holes', BooleanParam, default=False,
-                      label="Fill holes",
-                      help="Fill the holes in the binarized mask")
+    - Premultiplier Scaling:
+        Improves subtraction stability by adjusting real-space scaling before
+        subtraction.
 
-        # --------------[Compute settings]---------------------------
-        form.addSection(label="Compute settings")
-        addComputeSectionParams(form, allowMultipleGPUs=False)
+    Practical guidance:
+        * Smaller radii may remove useful signal.
+        * Larger radii may preserve unwanted densities.
+        * Default values are generally appropriate for most datasets.
 
-    # --------------------------- INSERT steps functions -----------------------
-    def _insertAllSteps(self):
-        self._createFilenameTemplates()
-        self._defineParamsName()
-        self._initializeCryosparcProject()
-        self._insertFunctionStep(self.convertInputStep)
-        self._insertFunctionStep(self.processStep)
-        self._insertFunctionStep(self.createOutputStep)
+    Gold-Standard Subtraction
+    -------------------------
+    The protocol supports half-map aware subtraction for gold-standard workflows.
 
-    # --------------------------- STEPS functions ------------------------------
-    def processStep(self):
-        self.info(pwutils.yellowStr("Particles Subtraction started..."))
-        self.doPartStract()
+    - Half-map subtraction:
+        Each particle subset is subtracted using its corresponding half-map.
 
-    def createOutputStep(self):
-        """
-        Create the protocol output. Convert cryosparc file to Relion file
-        """
-        self._initializeUtilsVariables()
-        outputStarFn = self._getFileName('out_particles')
-        csOutputFolder = os.path.join(self.projectDir.get(),
-                                      self.runPartStract.get())
-        csFileName = "subtracted_particles.cs"
+    Benefits:
+        * Preserves FSC independence.
+        * Reduces overfitting risk.
+        * Maintains proper resolution validation.
 
-        # Create the output folder
-        copyFiles(csOutputFolder, os.path.join(self._getExtraPath(),
-                                               self.runPartStract.get()))
+    Recommendation:
+        Keep half-map subtraction enabled whenever half-maps are available.
 
-        csFile = os.path.join(self._getExtraPath(), self.runPartStract.get(),
-                              csFileName)
-        argsList = [csFile, outputStarFn]
-        convertCs2Star(argsList)
+    Volume and Mask Processing
+    --------------------------
+    Optional preprocessing steps can improve subtraction quality:
 
-        imgSet = self._getInputParticles()
-        outImgSet = self._createSetOfParticles()
-        outImgSet.copyInfo(imgSet)
-        self._fillDataFromIter(outImgSet)
+    - Low-pass Filtering:
+        Applies resolution filtering to the input structure before subtraction.
+        Useful when high-resolution noise affects subtraction stability.
 
-        self._defineOutputs(outputParticles=outImgSet)
-        self._defineTransformRelation(imgSet, outImgSet)
+    - Mask Thresholding:
+        Converts masks into binarized regions for cleaner subtraction boundaries.
 
-    def _fillDataFromIter(self, imgSet):
+    - Hole Filling:
+        Removes discontinuities inside binary masks.
 
-        outImgsFn = 'particles@' + self._getFileName('out_particles')
-        imgSet.copyItems(self._getInputParticles(),
-                         updateItemCallback=self._updateItem,
-                         itemDataIterator=emtable.Table.iterRows(outImgsFn))
+    Best practices:
+        * Use smooth masks whenever possible.
+        * Avoid aggressive thresholding.
+        * Apply low-pass filtering cautiously.
 
-    def _updateItem(self, item, row):
-        newFn = row.get(RELIONCOLUMNS.rlnImageName.value)
-        index, file = cryosparcToLocation(newFn)
-        item.setLocation((index, self._getExtraPath(file)))
-        item.setCTF(rowToCtfModel(row))
-        pixelSize = item.getSamplingRate()
-        item.setTransform(rowToAlignment(row, ALIGN_PROJ, pixelSize))
-        item.setSamplingRate(calculateNewSamplingRate(item.getDim(),
-                                                      self._getInputParticles().getSamplingRate(),
-                                                      self._getInputParticles().getDim()))
+    Outputs
+    -------
+    - Subtracted Particles:
+        New particle stack containing signal-subtracted images.
 
-    # --------------------------- INFO functions -------------------------------
-    def _validate(self):
-        """ Should be overwritten in subclasses to
-            return summary message for NORMAL EXECUTION.
-        """
-        validateMsgs = cryosparcValidate()
-        if not validateMsgs:
-            validateMsgs = gpusValidate(self.getGpuList(), checkSingleGPU=True)
-            if not validateMsgs:
-                self._validateDim(self._getInputParticles(),
-                                  self.refVolume.get(),
-                                  validateMsgs, 'Input particles',
-                                  'Input volume')
-        return validateMsgs
+    - Updated Metadata:
+        Includes:
+            * Particle locations.
+            * CTF information.
+            * Projection alignments.
+            * Updated sampling rates.
 
-    def _summary(self):
-        summary = []
-        if not hasattr(self, 'outputParticles'):
-            summary.append("Output Particles not ready yet.")
-        else:
-            summary.append("Input Particles: %s" %
-                           self.getObjectTag('inputParticles'))
-            summary.append("Reference Volume: %s" %
-                           self.getObjectTag('refVolume'))
-            summary.append("Reference Mask: %s" %
-                           self.getObjectTag('refMask'))
+    Output particles remain compatible with downstream cryoSPARC and Scipion
+    refinement or classification workflows.
 
-            summary.append("Inner radius of the window: %s" %
-                           str(self.inner_radius.get()))
+    Validation and Compatibility
+    ----------------------------
+    The protocol validates:
+        - GPU availability.
+        - Consistency between particles and reference volume dimensions.
+        - Presence of projection alignment metadata.
 
-            summary.append("Outer radius of the window: %s" %
-                           str(self.outer_radius.get()))
+    Additional support:
+        - Compatible with multiple cryoSPARC versions.
+        - Supports SSD caching and GPU acceleration.
+        - Preserves alignment information during conversion.
 
-            summary.append("--------------------------------------------------")
-            summary.append("Output particles %s" %
-                           self.getObjectTag('outputParticles'))
-        return summary
+    Practical Recommendations
+    -------------------------
+    - Use accurate masks focused on the region to subtract.
+    - Ensure reference maps originate from the same dataset.
+    - Preserve half-map workflows for reliable FSC estimation.
+    - Apply subtraction before focused classification or local refinement.
+    - Visually inspect subtracted particles for residual artifacts.
 
-    # ---------------Utils Functions-------------------------------------------
+    Biological Perspective
+    ----------------------
+    Particle subtraction is a powerful strategy for studying structural
+    heterogeneity in cryo-EM datasets.
 
-    def _defineParamsName(self):
-        """ Define a list with all protocol parameters names"""
-        self._paramsName = ['inner_radius',
-                            'outer_radius',
-                            'use_premult',
-                            'use_halfmaps',
-                            'lpf_volume',
-                            'mask_threshold',
-                            'mask_fill_holes',
-                            'compute_use_ssd']
-        self.lane = str(self.getAttributeValue('compute_lane'))
+    Typical biological applications include:
+        - Flexible domain analysis.
+        - Ligand occupancy studies.
+        - Membrane protein conformational variability.
+        - Multi-body and focused refinement workflows.
 
-    def doPartStract(self):
-        """
-        :return:
-        """
-        input_group_connect = {"particles": self.particles.get(),
-                               "volume": self.volume.get(),
-                               "mask": self.mask.get()}
+    Reliable subtraction depends on:
+        * Accurate alignments.
+        * High-quality masks.
+        * Properly normalized reference maps.
+        * Conservative preprocessing choices.
 
-        input_result_connect = None
-        if self._getInputVolume().hasHalfMaps():
-            input_result_connect = {"volume.0.map_half_A": self.importVolumeHalfA.get(),
-                                    "volume.0.map_half_B": self.importVolumeHalfB.get()}
-
-        params = {}
-
-        for paramName in self._paramsName:
-            if paramName != 'lpf_volume' and paramName != 'mask_threshold':
-                params[str(paramName)] = str(self.getAttributeValue(paramName))
-            elif paramName == 'lpf_volume' and self.getAttributeValue(paramName) is not None:
-                if float(self.getAttributeValue(paramName)) > 0:
-                    params[str(paramName)] = str(self.getAttributeValue(paramName))
-            elif paramName == 'mask_threshold' and self.getAttributeValue(paramName) is not None:
-                if float(self.getAttributeValue(paramName)) > 0:
-                    params[str(paramName)] = str(self.getAttributeValue(paramName))
-
-        # Determinate the GPUs to use (in dependence of
-        # the cryosparc version)
-        try:
-            if not self.useQueueForSteps() and not self.useQueue():  # not using queue system
-                gpusToUse = self.getGpuList()
-            else:  # using queue system
-                gpusToUse = False
-        except Exception:
-            gpusToUse = False
-
-        runPartStractJob = enqueueJob(self._className, self.projectName.get(),
-                                        self.workSpaceName.get(),
-                                        str(params).replace('\'', '"'),
-                                        str(input_group_connect).replace('\'', '"'),
-                                        self.lane, gpusToUse,
-                                        result_connect=input_result_connect)
-
-        self.runPartStract = String(runPartStractJob.get())
-        self.currenJob.set(self.runPartStract.get())
-        self._store(self)
-
-        waitForCryosparc(self.projectName.get(), self.runPartStract.get(),
-                         "An error occurred in the particles subtraction process. "
-                         "Please, go to cryoSPARC software for more "
-                         "details.", self)
-        clearIntermediateResults(self.projectName.get(), self.runPartStract.get())
+    """

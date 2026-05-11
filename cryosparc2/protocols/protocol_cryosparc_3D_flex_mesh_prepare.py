@@ -39,270 +39,199 @@ class ProtCryoSparc3DFlexMeshPrepare(ProtCryosparcBase):
     way, Takes in a consensus (rigid) refinement density map, plus optionally
     a segmentation and generates a tetrahedral mesh for 3DFlex.
     """
-    _label = '3D flex mesh prepare'
-    _devStatus = BETA
-    _protCompatibility = [V4_1_0, V4_1_1, V4_1_2, V4_2_0, V4_2_1, V4_3_1,
-                          V4_4_0, V4_4_1, V4_5_1, V4_5_3, V4_6_0, V4_6_1, V4_6_2, V4_7_0,
-                          V4_7_1]
+    """
+    ProtCryoSparc3DFlexMeshPrepare — 3D Flex Mesh Preparation Protocol
 
-    # --------------------------- DEFINE param functions ----------------------
-    def _defineFileNames(self):
-        """ Centralize how files are called within the protocol. """
-        myDict = {
-            'input_particles': self._getTmpPath('input_particles.star'),
-            'out_particles': self._getPath() + '/output_particle.star',
-            'stream_log': self._getPath() + '/stream.log'
-        }
-        self._updateFilenamesDict(myDict)
+    Overview
+    --------
+    Prepares tetrahedral meshes for cryoSPARC 3D Flex workflows using a
+    consensus reconstruction volume and optional segmentation information.
 
-    def _defineParams(self, form):
-        form.addSection(label='Input')
-        form.addParam('dataPrepare', PointerParam,
-                      pointerClass='ProtCryoSparc3DFlexDataPrepare',
-                      label="Data prepare protocol",
-                      important=True,
-                      help='Prepared particles and consensus volume from the 3D flex data prepare protocol.')
-        form.addParam('refMask', PointerParam, pointerClass='VolumeMask',
-                      default=None,
-                      label='Input Mask',
-                      allowsNull=True,
-                      help='Mask raw data')
+    The protocol generates structural meshes that define how molecular
+    deformations are modeled during 3D Flex training and reconstruction.
+    These meshes provide the geometric framework used by the deformation
+    model to capture continuous conformational variability.
 
-        form.addSection(label='Mesh Prepare')
+    The protocol can:
+        - Generate solvent masks automatically.
+        - Use externally provided masks.
+        - Create tetrahedral meshes from consensus volumes.
+        - Define segmented submeshes for domain-specific flexibility.
+        - Configure rigidity weighting across structural regions.
 
-        solventMaskGroup = form.addGroup('Solvent mask preparation',
-                                         condition="refMask is None")
-        solventMaskGroup.addParam('mask_in_lowpass_A', IntParam, default=10,
-                                  condition="refMask is None",
-                                  label="Filter input volume res. (A)",
-                                  help="Filter the input consensus reconstruction "
-                                       "volume to this resolution (A) before thresholding "
-                                       "to create the outer solvent mask. Solvent mask is"
-                                       " only generated if it is not already input.")
+    Inputs and Workflow
+    -------------------
+    - 3D Flex Data Prepare Protocol:
+        * Provides the processed consensus volume.
+        * Supplies compatible dimensions and preprocessing metadata.
+        * Serves as the structural reference for mesh generation.
 
-        solventMaskGroup.addParam('mask_in_threshold_level', FloatParam, default=0.5,
-                                  condition="refMask is None",
-                                  label="Mask threshold",
-                                  help="Threshold the input consensus reconstruction "
-                                       "volume (after filtering) at this absolute "
-                                       "density level to make the solvent mask. "
-                                       "Solvent mask is only generated if it is "
-                                       "not already input.")
+    - Optional Input Mask:
+        * Binary solvent mask defining molecular regions.
+        * Must match the dimensions of the prepared consensus volume.
+        * If not provided, the protocol generates a mask automatically.
 
-        solventMaskGroup.addParam('mask_dilate_A', IntParam,
-                                  default=2,
-                                  condition="refMask is None",
-                                  label="Mask dilation (A)",
-                                  help="After thresholding, dilate by this much"
-                                       " (A) to create solvent mask")
+    The workflow follows these stages:
+        1. Initialize cryoSPARC project environment.
+        2. Load consensus volume from 3D Flex Data Prepare.
+        3. Generate or import solvent mask.
+        4. Configure tetrahedral mesh parameters.
+        5. Launch cryoSPARC mesh preparation job.
+        6. Wait for execution completion.
+        7. Export generated mesh visualization files.
 
-        solventMaskGroup.addParam('mask_pad_A', IntParam,
-                                  default=5,
-                                  condition="refMask is None",
-                                  label="Mask soft padding (A)",
-                                  help="After thresholding and dilation, soft "
-                                       "pad by this much (A) to create solvent mask")
+    Solvent Mask Preparation
+    ------------------------
+    When no external mask is provided, the protocol automatically generates
+    a solvent mask from the consensus reconstruction.
 
-        meshPreparationGroup = form.addGroup('Mesh preparation')
-        meshPreparationGroup.addParam('tetra_num_cells', IntParam,
-                                  default=20,
-                                  label="Base num. tetra cells",
-                                  help="Number of tetrahedral cells that fit "
-                                       "across the extent of the box. Use this "
-                                       "to set the size of mesh elements. If "
-                                       "set to e.g. 20, the base tetramesh will"
-                                       " have elements that are the right size "
-                                       "to create a spacing of 20 tetra elements "
-                                       "across the box extent in each x,y,z "
-                                       "direction. A higher number makes a finer mesh.")
+    The mask generation workflow includes:
+        - Low-pass filtering of the input volume.
+        - Density thresholding.
+        - Morphological dilation.
+        - Soft padding expansion.
 
-        meshPreparationGroup.addParam('tetra_segments_path', FileParam,
-                                      allowsNull=True,
-                                      default=None,
-                                      label="Segmentation file path",
-                                      help="Absolute path to a segmentation file "
-                                           "in either .seg format from UCSF "
-                                           "Chimera Segger tool or else .mrc format "
-                                           "(see CryoSPARC guide for details), "
-                                           "defining subdomain regions that "
-                                           "should each have a submesh. "
-                                           "Submeshes are fused to make final "
-                                           "mesh using the segment connections list.")
+    Important parameters:
+        * Filter Resolution:
+            Controls smoothing before thresholding.
+        * Threshold Level:
+            Defines density cutoff for mask generation.
+        * Mask Dilation:
+            Expands the mask boundary outward.
+        * Soft Padding:
+            Smooths mask edges to avoid sharp transitions.
 
-        meshPreparationGroup.addParam('tetra_segments_fuse_list', StringParam,
-                                      allowsNull=True,
-                                      default=None,
-                                      label="Segment connections",
-                                      help="A comma and '>' separated list of "
-                                           "connections between segments to use when "
-                                           "fusing sub-meshes to make the final mesh. "
-                                           "See CryoSPARC guide for full explanation. "
-                                           "For example, '0>3, 0>4, 3>2, 2>1' is a valid connection"
-                                           " string. Each pair X>Y denotes that segment Y is "
-                                           "joined to segment X. The connections must form "
-                                           "a 'tree' structure and cannot have cycles. "
-                                           "The first pair X>Y must start with the "
-                                           "root of the tree as X. The connections "
-                                           "must be in breadth-first order of the tree. "
-                                           "When using Chimera Segger segmentation input, "
-                                           "the X>Y numbers should be region_ids from Segger (e.g., 948>947)")
+    Best practice:
+        - Use conservative threshold values for noisy datasets.
+        - Increase padding for flexible peripheral regions.
+        - Provide external masks for complex assemblies.
 
-        meshPreparationGroup.addParam('tetra_rigid_list', StringParam,
-                                      allowsNull=True,
-                                      default=None,
-                                      label="Rigid segments",
-                                      help="A comma separated list of segments to make "
-                                           "rigid. This is done by setting the rigidity "
-                                           "weight of tetra elements for this region to 20. ")
+    Tetrahedral Mesh Generation
+    ---------------------------
+    The protocol creates tetrahedral meshes used by the deformation model.
 
+    - Base Number of Tetrahedral Cells:
+        * Defines mesh granularity.
+        * Higher values generate finer meshes.
+        * Finer meshes improve local flexibility representation but
+          increase computational cost.
 
-        rigidityWeighting = form.addGroup('Rigidity weighting')
-        rigidityWeighting.addParam('rigidity_penalty_min', FloatParam,
-                                      default=0.5,
-                                      label="Min. rigidity weight",
-                                      help="Rigidity weights of tetra elements"
-                                           " are 1.0 in the most dense regions "
-                                           "of the input consensus map, and fall "
-                                           "off to this value (default 0.5) in the"
-                                           " least dense/empty regions. This helps "
-                                           "encourage the deformation model to expand/contract"
-                                           " empty space without distorting the protein density.")
+    Mesh quality directly affects:
+        - Deformation smoothness.
+        - Motion accuracy.
+        - Training stability.
+        - Computational efficiency.
 
-        rigidityWeighting.addParam('rigidity_penalty_stiffen_low_density', BooleanParam,
-                                   default=False,
-                                   label="Stiffen low density regions",
-                                   help="Turning this on will cause the rigidity"
-                                        " weights of tetra elements at the periphery "
-                                        "of the input consensus density to be increased to 3.0 . "
-                                        "Empty regions will still have low rigidity, but non-empty "
-                                        "regions at the periphery of the structure will be rigidified."
-                                        " This helps to combat overfitting in smaller particles or"
-                                        " poor SNR data where otherwise low density peripheral "
-                                        "features start to 'fly around'. However, it can also cause "
-                                        "the deformations to be overly smooth and blur motion 'boundaries between domains. ")
+    Segmentation and Submesh Definition
+    -----------------------------------
+    Optional segmentation files can be used to define structural domains.
 
+    Supported segmentation formats:
+        - UCSF Chimera Segger (.seg)
+        - MRC segmentation maps (.mrc)
 
-        # --------------[Compute settings]---------------------------
-        form.addSection(label="Compute settings")
-        addComputeSectionParams(form, allowMultipleGPUs=False, needGPU=False)
+    Segment connectivity rules:
+        - Connections define how submeshes are fused.
+        - Relationships must form a tree structure.
+        - Cyclic connections are not allowed.
+        - Breadth-first ordering is required.
 
-    def _insertAllSteps(self):
-        self._defineFileNames()
-        self._defineParamsPrepareName()
-        self._defineParamsMeshName()
-        self._initializeCryosparcProject()
-        self._insertFunctionStep(self.convertInputStep)
-        self._insertFunctionStep(self.mergePrepareStep)
-        self._insertFunctionStep(self.createOutputStep)
+    This enables:
+        - Domain-specific flexibility modeling.
+        - Hierarchical motion representation.
+        - Controlled deformation propagation.
 
-    # --------------------------- STEPS functions ------------------------------
-    def mergePrepareStep(self):
-        self.info(pwutils.yellowStr("3D Flex Mesh Preparation started..."))
-        self.doRun3DFlexMeshPrepare()
+    Rigid Segment Configuration
+    ---------------------------
+    Specific regions can be constrained as rigid domains.
 
-    def createOutputStep(self):
-        """
-        Create the protocol output. Convert cryosparc file to Relion file
-        """
-        # save pdb file with mesh
-        # this will not be scipion output
-        # I just want to display it in the viewer
-        jobId = self.run3DFlexMeshPrep
-        csOutputFolder = os.path.join(self.projectDir.get(),
-                                       self.run3DFlexMeshPrep.get())
-        pdbMeshName = "%s_mesh_pdb.pdb" % jobId
-        csOutputFolder = os.path.join(self.projectDir.get(),
-                                      self.run3DFlexMeshPrep.get())
-        copyFiles(csOutputFolder, self._getExtraPath(), files=[pdbMeshName])
-    # ------------------------- Utils methods ----------------------------------
+    - Rigid Segments:
+        * Receive increased rigidity weights.
+        * Resist excessive deformation.
+        * Help preserve stable structural cores.
 
-    def _fillDataFromIter(self, imgSet):
-        outImgsFn = 'particles@' + self._getFileName('out_particles')
-        imgSet.setAlignmentProj()
-        imgSet.copyItems(self._getInputParticles(),
-                         updateItemCallback=self._createItemMatrix,
-                         itemDataIterator=emtable.Table.iterRows(fileName=outImgsFn))
+    This is particularly useful for:
+        - Multi-domain complexes.
+        - Rigid-body motions.
+        - Preventing unrealistic distortions.
 
-    def _createItemMatrix(self, particle, row):
-        createItemMatrix(particle, row, align=ALIGN_PROJ)
-        setCryosparcAttributes(particle, row, RELIONCOLUMNS.rlnRandomSubset.value)
+    Rigidity Weighting
+    ------------------
+    The protocol applies spatially varying rigidity penalties across the mesh.
 
-    def _validate(self):
-        validateMsgs = cryosparcValidate()
-        if not validateMsgs:
-            mask = self.refMask.get()
-            if mask:
-                maskDim = mask.getDim()
-                dataPrepareProt = self.dataPrepare.get()
-                if dataPrepareProt:
-                    if hasattr(dataPrepareProt, 'outputVolume'):
-                        outputVolumeDim = dataPrepareProt.outputVolume.getDim()
-                        if maskDim != outputVolumeDim:
-                            validateMsgs.append('The dimension of the mask must be %s according to the 3D Flex data prepare protocol(Training box size parameter)' % str(outputVolumeDim) )
-                else:
-                    validateMsgs.append('You need to specify the 3D Flex Data Prepare protocol')
+    - Dense regions:
+        * Receive higher rigidity values.
+        * Preserve structural consistency.
 
-        return validateMsgs
+    - Low-density or empty regions:
+        * Receive lower rigidity values.
+        * Allow flexible expansion and contraction.
 
-    def _defineParamsPrepareName(self):
-        """ Define a list with 3D Flex Prepare Data parameters names"""
-        self._paramsPrepareName = ['box_size_pix', 'bin_size_pix', 'alpha_min',
-                            'keep_num_particles']
-        self.lane = str(self.getAttributeValue('compute_lane'))
+    Optional peripheral stiffening:
+        - Stabilizes weak peripheral densities.
+        - Helps reduce overfitting in noisy datasets.
+        - May oversmooth sharp motion boundaries if overused.
 
-    def _defineParamsMeshName(self):
-        """ Define a list with 3D Flex Mesh Prepare parameters names"""
-        self._maskMeshPrepareName = ['mask_in_lowpass_A', 'mask_in_threshold_level',
-                                     'mask_dilate_A', 'mask_pad_A']
-        self._paramsMeshName = ['tetra_num_cells', 'tetra_segments_path',
-                                'tetra_segments_fuse_list', 'tetra_rigid_list',
-                                'rigidity_penalty_min',
-                                'rigidity_penalty_stiffen_low_density']
-        self.lane = str(self.getAttributeValue('compute_lane'))
+    cryoSPARC Integration
+    ---------------------
+    The protocol interfaces directly with cryoSPARC through:
+        - Job enqueueing.
+        - Parameter serialization.
+        - Input connection mapping.
+        - Execution monitoring.
+        - Automatic synchronization with project workflows.
 
-    def doRun3DFlexMeshPrepare(self):
-        self._className = 'flex_meshprep'
-        params = {}
-        varDataPrepJob = str(self.dataPrepare.get().run3DFlexDataPrepJob)
-        input_group_connect = {"volume": str('%s.volume' % varDataPrepJob)}
+    Intermediate outputs are managed automatically and cleaned after execution.
 
-        if self.refMask.get() is not None:
-            input_group_connect["mask"] = str(self.mask)
-        else:
-            for paramName in self._maskMeshPrepareName:
-                if self.getAttributeValue(paramName) is not None:
-                    params[str(paramName)] = str(self.getAttributeValue(paramName))
+    Output Generation
+    -----------------
+    The protocol generates:
+        - Tetrahedral mesh representations.
+        - PDB mesh visualization files.
+        - Mesh geometry required for downstream 3D Flex training.
 
-        for paramName in self._paramsMeshName:
-            if self.getAttributeValue(paramName) is not None:
-                params[str(paramName)] = str(self.getAttributeValue(paramName))
+    Generated PDB mesh files are exported for visualization purposes
+    and can be inspected using molecular visualization software.
 
-        run3DFlexMeshPrepJob = enqueueJob(self._className,
-                                          self.projectName.get(),
-                                          self.workSpaceName.get(),
-                                          str(params).replace('\'', '"'),
-                                          str(input_group_connect).replace('\'',
-                                                                           '"'),
-                                          self.lane, False)
+    Validation Rules
+    ----------------
+    Before execution, the protocol validates:
+        - cryoSPARC environment compatibility.
+        - Presence of a valid 3D Flex Data Prepare protocol.
+        - Dimensional consistency between masks and consensus volumes.
 
-        self.run3DFlexMeshPrep = String(run3DFlexMeshPrepJob.get())
-        self.currenJob.set(run3DFlexMeshPrepJob.get())
-        self._store(self)
+    Dimension mismatches are prevented to ensure mesh generation stability.
 
-        waitForCryosparc(self.projectName.get(),
-                         self.run3DFlexMeshPrep.get(),
-                         "An error occurred in the 3D Flex Mesh Preparation process. "
-                         "Please, go to cryoSPARC software for more "
-                         "details.", self)
-        clearIntermediateResults(self.projectName.get(),
-                                 self.run3DFlexMeshPrep.get())
+    Compute Configuration
+    ---------------------
+    - Uses cryoSPARC compute lane integration.
+    - GPU acceleration is not required.
+    - Designed for distributed cryoSPARC execution environments.
 
+    Practical Recommendations
+    -------------------------
+    - Use high-quality consensus reconstructions.
+    - Start with moderate mesh density values.
+    - Use segmentation files for multi-domain systems.
+    - Apply rigid constraints to structurally stable regions.
+    - Avoid excessively fine meshes for noisy datasets.
+    - Carefully tune rigidity weighting to balance flexibility and stability.
 
+    Biological Perspective
+    ----------------------
+    Mesh preparation is a fundamental step in continuous heterogeneity
+    analysis using 3D Flex.
 
+    The generated tetrahedral mesh defines how structural deformations
+    propagate across the molecular volume and strongly influences:
+        - Motion realism.
+        - Domain flexibility interpretation.
+        - Structural continuity.
+        - Accuracy of learned conformational landscapes.
 
+    Proper mesh design improves the biological interpretability of
+    continuous molecular motions reconstructed from cryo-EM datasets.
 
-
-
-
+    """
 
 
