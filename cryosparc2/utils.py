@@ -28,10 +28,11 @@ import ast
 import getpass
 import logging
 import os
+import re
 import shutil
 import time
-from packaging.version import Version
 
+from pkg_resources import parse_version
 
 import pyworkflow.utils as pwutils
 from pwem.constants import SCIPION_SYM_NAME
@@ -1193,9 +1194,3 @@ def matchItemRow(item, row):
     except Exception:
         return False  # In case of unexpected format, assume no match
 
-
-def parse_version(value: str) -> Version:
-    value = str(value).strip()
-    if value[:1] in {"V", "v"}:
-        value = value[1:]
-    return Version(value)

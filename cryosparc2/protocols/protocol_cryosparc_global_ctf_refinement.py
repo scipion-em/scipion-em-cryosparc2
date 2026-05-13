@@ -27,7 +27,7 @@
 import os
 
 import emtable
-
+from pkg_resources import parse_version
 
 from pwem import ALIGN_PROJ
 import pwem.protocols as pwprot
@@ -43,7 +43,7 @@ from ..convert import (convertCs2Star, createItemMatrix,
                        setCryosparcAttributes)
 from ..utils import (addComputeSectionParams, cryosparcValidate, gpusValidate,
                      enqueueJob, waitForCryosparc, copyFiles,
-                     getCryosparcVersion, parse_version)
+                     getCryosparcVersion)
 
 from ..constants import *
 

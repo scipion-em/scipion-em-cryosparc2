@@ -26,6 +26,8 @@
 # *
 # **************************************************************************
 import os
+import time
+
 import emtable
 
 import pwem.protocols as pwprot

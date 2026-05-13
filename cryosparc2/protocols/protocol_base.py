@@ -24,11 +24,16 @@
 # *  e-mail address 'scipion@cnb.csic.es'
 # *
 # **************************************************************************
+import itertools
 import os
 import ast
+import time
+
 import requests
 import logging
 logger = logging.getLogger(__name__)
+
+from pkg_resources import parse_version
 
 import pwem.protocols as pw
 import pyworkflow.object as pwobj
@@ -44,7 +49,7 @@ from ..utils import (getProjectPath, createEmptyProject,
                      get_job_streamlog, getSystemInfo, getJobStatus,
                      STOP_STATUSES, getCryosparcVersion, getProjectInformation,
                      getCryosparcProjectId, _getLicenceFromFile, doImportMicrographs, getCryosparcProjectsList,
-                     getCryosparcWorkSpaces, parse_version)
+                     getCryosparcWorkSpaces)
 
 
 class ProtCryosparcBase(pw.EMProtocol):

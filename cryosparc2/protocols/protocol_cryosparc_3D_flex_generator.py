@@ -36,7 +36,6 @@ from ..convert import *
 from ..utils import *
 from ..constants import *
 
-
 class ProtCryoSparc3DFlexGenerator(ProtCryosparcBase, ProtFlexBase):
     """
     Takes in a checkpoint from training and generates volume series from it, to show what the model is learning

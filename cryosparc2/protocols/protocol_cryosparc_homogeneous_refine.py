@@ -26,7 +26,7 @@
 # **************************************************************************
 import os
 import emtable
-
+from pkg_resources import parse_version
 
 import pwem.objects as pwobj
 import pyworkflow.utils as pwutils
@@ -42,7 +42,7 @@ from ..utils import (addSymmetryParam, addComputeSectionParams,
                      cryosparcValidate, gpusValidate, getSymmetry,
                      waitForCryosparc, clearIntermediateResults, enqueueJob,
                      getCryosparcVersion, fixVolume, copyFiles,
-                     getOutputPreffix, parse_version)
+                     getOutputPreffix)
 from ..constants import *
 
 
