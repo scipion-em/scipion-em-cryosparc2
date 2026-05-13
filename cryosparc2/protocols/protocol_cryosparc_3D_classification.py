@@ -48,11 +48,183 @@ from ..constants import *
 
 class ProtCryoSparc3DClassification(ProtCryosparcBase):
     """
-    Heterogeneous Refinement simultaneously classifies particles and refines
-    structures from n initial structures, usually obtained following an
-    Ab-Initio Reconstruction. This facilitates the ability to look for small
-    differences between structures which may not be obvious at low resolutions,
-    and also to re-classify particles to aid in sorting.
+    Performs heterogeneous 3D refinement and particle classification in cryo-EM datasets using multiple initial reference volumes. The protocol is designed to separate structurally distinct particle populations while simultaneously refining the corresponding 3D reconstructions, enabling the identification of conformational variability, compositional heterogeneity, or differences in structural quality within a dataset.
+
+    AI Generated:
+
+    3D Heterogeneous Refinement (ProtCryoSparc3DClassification) — User Manual
+        Overview
+
+        The 3D Heterogeneous Refinement protocol classifies particles into
+        multiple structural groups while refining an independent 3D map for
+        each group. This strategy is particularly important in cryo-EM studies
+        where the sample contains several conformational states, partially
+        assembled complexes, ligand-bound and ligand-free populations, or
+        damaged and low-quality particles mixed together.
+
+        Rather than treating all particles as belonging to a single structure,
+        the protocol continuously evaluates similarities between particles and
+        multiple reference maps. As refinement progresses, particles are
+        redistributed among the classes and the maps improve iteratively. This
+        approach allows subtle biological differences to emerge even when they
+        are not initially obvious at low resolution.
+
+        In practical cryo-EM workflows, heterogeneous refinement is commonly
+        applied after Ab-Initio Reconstruction or after obtaining preliminary
+        consensus refinements. The protocol is often one of the key stages for
+        understanding structural dynamics and biochemical variability.
+
+        Inputs and Biological Context
+
+        The protocol requires a particle dataset together with at least two
+        initial reference volumes. These references define the starting point
+        for the classification process and ideally represent distinct
+        conformational or compositional states. In many workflows, the initial
+        maps are generated from ab-initio reconstruction methods or previous
+        classification steps.
+
+        Biological interpretation strongly depends on the quality and diversity
+        of the starting references. If all references are too similar, the
+        classification may fail to separate meaningful structural states.
+        Conversely, if references are unrealistically different or contain
+        artifacts, particles may be forced into biologically incorrect classes.
+
+        Input particles should already contain accurate imaging information and
+        reliable alignment parameters. Proper preprocessing, including motion
+        correction, CTF estimation, and particle polishing when appropriate,
+        generally improves the stability and interpretability of the refinement.
+
+        Classification and Refinement Strategy
+
+        The protocol performs classification and refinement simultaneously.
+        During each refinement cycle, particles are probabilistically assigned
+        to the reference map that best explains their signal. At the same time,
+        each map is reconstructed and improved using the particles associated
+        with that class.
+
+        This iterative approach is especially powerful for detecting continuous
+        or discrete conformational variability. For example, flexible domains,
+        binding events, rotational rearrangements, or assembly intermediates
+        may emerge naturally as distinct structural classes.
+
+        In many biological systems, some particle populations are much smaller
+        than others. The protocol is capable of preserving minority classes,
+        although very small populations may still become unstable or noisy if
+        insufficient particle numbers are available.
+
+        Symmetry Considerations
+
+        Symmetry can be applied during refinement to improve signal quality and
+        reconstruction stability. For highly symmetric particles such as viral
+        capsids or oligomeric assemblies, symmetry enforcement often produces
+        significant resolution improvements.
+
+        However, symmetry should only be imposed when biologically justified.
+        Incorrect symmetry can obscure meaningful asymmetry, hide flexible
+        regions, or merge distinct conformational states into artificial
+        averages. For complexes with partial symmetry breaking or asymmetric
+        ligand binding, lower symmetry or fully asymmetric refinement may be
+        more appropriate.
+
+        Hard and Soft Classification
+
+        The protocol supports both probabilistic and strict particle assignment
+        strategies. In probabilistic classification, particles may contribute
+        partially to multiple classes during refinement. This approach is often
+        beneficial when structural differences are subtle or when conformational
+        transitions are continuous.
+
+        Hard classification forces each particle into a single class at every
+        iteration. This strategy may improve class separation in some cases,
+        particularly when the expected structural states are highly distinct.
+        However, it can also introduce instability when transitions between
+        states are gradual.
+
+        From a biological perspective, soft classification is generally more
+        tolerant of structural continua, whereas hard classification emphasizes
+        discrete state separation.
+
+        Resolution and Box Size Considerations
+
+        The refinement box size determines the working resolution and memory
+        requirements of the protocol. Smaller box sizes reduce computational
+        cost and are often sufficient during early exploratory analyses.
+        Larger box sizes preserve higher-frequency information but require
+        substantially more GPU memory and processing time.
+
+        Initial low-pass filtering is commonly used to stabilize early
+        refinement iterations. Starting from lower resolution information helps
+        prevent overfitting and encourages robust convergence, especially when
+        initial references are noisy or uncertain.
+
+        In practical workflows, users often begin with moderate resolutions and
+        later continue refinement using higher-resolution settings once stable
+        classes have emerged.
+
+        Noise Modeling and Optimization
+
+        The protocol includes several optimization and noise modeling strategies
+        that influence refinement behavior. Most standard cryo-EM workflows can
+        rely on the default parameters, which are designed to provide stable
+        convergence across a wide range of datasets.
+
+        Advanced optimization settings become relevant mainly in difficult
+        cases, such as highly heterogeneous samples, extremely noisy datasets,
+        or very large particle collections. Careful tuning may improve class
+        separation, but excessive parameter manipulation can also destabilize
+        refinement or introduce overfitting.
+
+        In general biological practice, conservative parameter choices are
+        recommended unless there is a clear experimental reason to modify the
+        optimization behavior.
+
+        Outputs and Their Interpretation
+
+        The protocol produces a set of refined 3D classes together with their
+        associated particle assignments. Each class corresponds to a refined
+        volume representing one structural population within the dataset.
+
+        The resulting maps can reveal distinct conformations, binding states,
+        assembly intermediates, or quality differences among particles.
+        Particle assignments may also be used for downstream refinement,
+        focused classification, variability analysis, or atomic modeling.
+
+        Interpretation should always consider the particle distribution across
+        classes. Large classes generally produce more stable reconstructions,
+        while very small classes may contain either rare biological states or
+        poorly aligned particles. Visual inspection and biological consistency
+        remain essential for distinguishing meaningful heterogeneity from noise.
+
+        Practical Recommendations
+
+        For most cryo-EM projects, it is advisable to begin with diverse but
+        biologically plausible initial references. If classification collapses
+        into nearly identical classes, stronger structural diversity among the
+        starting maps may be needed. Conversely, unrealistic starting maps may
+        bias the refinement toward incorrect solutions.
+
+        Moderate box sizes and default optimization settings are usually
+        sufficient for initial exploration. Once meaningful classes appear,
+        selected subsets can be refined further at higher resolution using more
+        specialized refinement strategies.
+
+        Biological users should carefully inspect not only the final resolution
+        values but also the structural interpretability of each class. Flexible
+        regions, domain motions, and ligand densities often provide more
+        meaningful insight than global resolution alone.
+
+        Final Perspective
+
+        Heterogeneous refinement is one of the most biologically informative
+        stages in modern cryo-EM analysis because it transforms structural
+        variability into interpretable three-dimensional states. Successful
+        application depends on thoughtful selection of initial references,
+        careful interpretation of class distributions, and biological awareness
+        of the expected conformational landscape.
+
+        When used appropriately, the protocol enables researchers to move
+        beyond consensus averaging and directly investigate the dynamic and
+        heterogeneous nature of macromolecular systems.
     """
     _label = '3D Heterogeneous Refinement'
     _className = "hetero_refine"

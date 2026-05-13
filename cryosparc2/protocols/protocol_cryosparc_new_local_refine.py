@@ -50,9 +50,177 @@ from ..constants import *
 
 
 class ProtCryoSparcLocalRefine(ProtCryosparcBase, ProtOperateParticles):
-    """ Signal subtraction protocol of cryoSPARC.
-        Subtract projections of a masked volume from particles.
-        """
+    """
+    Performs focused local refinement of cryo-EM particle datasets using
+    cryoSPARC local refinement strategies. The protocol improves structural
+    detail in specific regions of a macromolecular complex by refining particle
+    orientations and shifts relative to a masked target region while preserving
+    the broader global reconstruction context.
+
+    AI Generated:
+
+    Local Refinement (ProtCryoSparcLocalRefine) — User Manual
+        Overview
+
+        The Local Refinement protocol is designed for high-resolution focused
+        refinement of selected structural regions within a cryo-EM reconstruction.
+        In many biological systems, different parts of a complex exhibit distinct
+        levels of flexibility or conformational variability. While global
+        refinement may produce an accurate overall structure, local regions such
+        as membrane domains, flexible arms, ligand-binding pockets, or dynamic
+        interfaces often remain poorly resolved. Local refinement addresses this
+        problem by concentrating alignment and refinement on a defined masked
+        region.
+
+        The protocol uses a reference volume together with a user-defined mask
+        that specifies the region of interest. During refinement, particle poses
+        and shifts are optimized with respect to the masked target while retaining
+        consistency with the original particle alignments. This strategy can
+        significantly improve map quality and local interpretability in regions
+        that are difficult to refine globally.
+
+        Biological Applications
+
+        Local refinement is particularly valuable in studies of heterogeneous
+        complexes and flexible molecular machines. Common applications include
+        improving density around ligand-binding sites, membrane-embedded regions,
+        flexible domains, symmetry mismatches, or conformationally variable
+        interfaces between subunits.
+
+        In membrane proteins, local refinement is frequently used to enhance the
+        transmembrane core while reducing the influence of disordered detergent
+        micelles or flexible peripheral domains. In ribosomes, spliceosomes,
+        viral assemblies, and multi-domain enzymes, focused refinement often
+        reveals biologically important conformational transitions that remain
+        hidden in consensus refinements.
+
+        The protocol is also useful for improving densities intended for atomic
+        modeling, especially when local side-chain interpretation or ligand
+        placement is required.
+
+        Inputs and General Workflow
+
+        The protocol requires a set of particles with existing projection
+        alignments, an input reference volume, and a mask defining the target
+        region for refinement. The quality of the input alignments strongly
+        influences the final result, since local refinement assumes that the
+        particles are already approximately aligned globally.
+
+        The mask is one of the most critical elements of the workflow. It should
+        tightly encompass the biologically relevant region while avoiding large
+        solvent regions or unrelated flexible density. Excessively broad masks
+        reduce the benefits of focused refinement, whereas overly restrictive
+        masks may introduce alignment instability or edge artifacts.
+
+        In practice, soft-edged masks generally provide the most stable behavior.
+        The masked region should ideally include sufficient structural signal to
+        support reliable orientation refinement across the particle population.
+
+        Alignment Priors and Refinement Stability
+
+        The protocol allows the use of rotational and translational priors during
+        alignment refinement. These priors are biologically important because
+        they constrain the search around previously known particle orientations,
+        preventing unstable alignment jumps in highly flexible or low-signal
+        regions.
+
+        For difficult datasets, especially small particles or flexible domains,
+        enabling alignment priors often improves convergence and reconstruction
+        stability. Narrow priors maintain close agreement with the initial global
+        alignment, while broader priors allow greater local flexibility during
+        refinement.
+
+        Re-centering options can iteratively adjust rotational and translational
+        reference frames during optimization. These strategies may improve local
+        convergence but are generally most effective when combined with
+        appropriate alignment priors.
+
+        Search Extent and Local Optimization
+
+        The rotational and translational search ranges determine how broadly the
+        refinement explores alternative particle poses. Small search ranges are
+        appropriate when the initial alignment is already highly accurate and the
+        target region behaves as a relatively rigid body. Larger ranges may be
+        required for flexible domains or partially misaligned datasets, although
+        excessive search freedom can reduce stability and increase computation
+        time.
+
+        In most biological workflows, moderate search extents provide a good
+        balance between refinement flexibility and alignment robustness. The
+        optimal values depend on the degree of structural variability and the
+        reliability of the initial consensus refinement.
+
+        Symmetry and Structural Interpretation
+
+        The protocol supports symmetry constraints during refinement. Applying
+        symmetry can substantially improve local signal when the biological
+        assembly truly obeys the selected symmetry relationship. However,
+        incorrect symmetry assignment may distort asymmetric structural features
+        or obscure biologically meaningful heterogeneity.
+
+        For pseudo-symmetric complexes or assemblies containing flexible
+        asymmetric regions, local refinement without symmetry or with reduced
+        symmetry is often preferable.
+
+        Dynamic Masking and Non-uniform Regularization
+
+        Dynamic masking strategies allow the refinement process to adapt the mask
+        during iterations based on evolving map features. This approach improves
+        robustness when the target region changes during refinement or when
+        neighboring flexible density influences alignment quality.
+
+        Non-uniform regularization further improves reconstruction quality by
+        accounting for spatial variability in map reliability and local
+        resolution. Regions with strong and consistent signal receive different
+        treatment from flexible or disordered regions, reducing overfitting and
+        enhancing biologically interpretable density.
+
+        For many membrane proteins and flexible complexes, the combination of
+        focused masking and non-uniform refinement produces substantial
+        improvements in local map quality.
+
+        Gold-Standard Refinement and Resolution Assessment
+
+        The protocol preserves gold-standard refinement principles by operating
+        on independently refined particle halves. This strategy minimizes
+        overfitting and enables reliable Fourier Shell Correlation analysis for
+        resolution estimation.
+
+        The final outputs typically include a refined density map, corresponding
+        half maps, refined particle alignments, and FSC-based resolution
+        estimates. These outputs support downstream tasks such as model building,
+        validation, conformational analysis, and visualization.
+
+        Practical Recommendations
+
+        Successful local refinement depends heavily on thoughtful mask design and
+        realistic expectations regarding particle flexibility. The best results
+        are usually obtained when the target region behaves approximately as a
+        rigid body relative to the rest of the complex.
+
+        When refinement becomes unstable, reducing the search extent, enabling
+        alignment priors, or improving the mask often provides substantial
+        improvements. Flexible solvent regions and poorly defined peripheral
+        density should generally be excluded whenever possible.
+
+        For membrane proteins and highly heterogeneous assemblies, enabling
+        non-uniform refinement and dynamic masking is commonly beneficial. Users
+        should visually inspect intermediate and final maps carefully to confirm
+        that refinement improves biologically meaningful detail rather than
+        amplifying noise.
+
+        Final Perspective
+
+        Local refinement is one of the most powerful strategies for extracting
+        biologically meaningful detail from heterogeneous cryo-EM datasets.
+        Rather than treating the macromolecular assembly as a completely rigid
+        object, the protocol allows refinement to focus on the structural region
+        most relevant to the biological question under investigation.
+
+        Careful mask definition, realistic alignment constraints, and thoughtful
+        interpretation of local resolution improvements are essential for
+        obtaining reliable and biologically informative results.
+    """
     _label = 'local refinement'
     _protCompatibility = [V3_3_1, V3_3_2, V4_0_0,  V4_0_1, V4_0_2, V4_0_3,
                           V4_1_0, V4_1_1, V4_1_2, V4_2_0, V4_2_1, V4_3_1, V4_4_0, V4_4_1, V4_5_1,

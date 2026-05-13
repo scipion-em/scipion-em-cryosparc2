@@ -35,9 +35,198 @@ from ..constants import *
 
 class ProtCryoSparc3DFlexMeshPrepare(ProtCryosparcBase):
     """
-    Prepares particles for use in 3DFlex training and reconstruction. At the same
-    way, Takes in a consensus (rigid) refinement density map, plus optionally
-    a segmentation and generates a tetrahedral mesh for 3DFlex.
+    Prepares consensus cryo-EM density maps and associated particle information
+    for downstream 3DFlex analysis by generating a tetrahedral mesh representation
+    suitable for modeling continuous structural heterogeneity.
+
+    AI Generated:
+
+    3D Flex Mesh Prepare (ProtCryoSparc3DFlexMeshPrepare) — User Manual
+        Overview
+
+        The 3D Flex Mesh Prepare protocol generates the structural mesh required
+        for CryoSPARC 3DFlex workflows. Its primary purpose is to transform a
+        consensus cryo-EM reconstruction into a deformable tetrahedral model
+        capable of representing continuous molecular motions. This mesh serves
+        as the physical framework that later stages of 3DFlex use to learn and
+        reconstruct conformational variability directly from particle images.
+
+        In practical cryo-EM studies, biological macromolecules often exhibit
+        flexibility that cannot be adequately described by a small number of
+        discrete classes. Instead of separating particles into rigid states,
+        3DFlex attempts to model smooth transitions and continuous structural
+        landscapes. The mesh preparation stage is therefore essential because
+        it defines how the structure can deform during downstream analysis.
+
+        Biological Motivation
+
+        Flexible proteins, ribosomes, membrane complexes, viral assemblies,
+        and multi-domain machines frequently contain regions that move relative
+        to one another. Traditional refinement approaches may average these
+        motions together, causing blurred density and limiting biological
+        interpretation. The 3DFlex framework addresses this limitation by
+        introducing a physically structured deformation model.
+
+        The mesh generated in this protocol approximates the molecular volume
+        using connected tetrahedral elements. During later refinement and
+        reconstruction stages, these elements deform smoothly in response to
+        latent conformational coordinates. As a result, biologically meaningful
+        motions such as domain rotations, hinge bending, breathing motions,
+        or gradual conformational transitions can be represented more naturally.
+
+        Inputs and General Workflow
+
+        The protocol requires a previously prepared consensus reconstruction
+        originating from a dedicated 3DFlex data preparation workflow. This
+        consensus map defines the overall molecular shape from which the mesh
+        will be generated. Optionally, a user-defined solvent mask may also
+        be provided to constrain the molecular region used during mesh creation.
+
+        When no mask is supplied, the protocol can automatically generate one
+        from the consensus density. This automatic masking strategy is often
+        sufficient for compact and well-resolved particles. However, for
+        challenging datasets containing weak peripheral density, detergent
+        micelles, flexible extensions, or surrounding noise, providing a
+        carefully designed mask is usually preferable.
+
+        The dimensions of the mask should match the dimensions of the consensus
+        reconstruction. Consistent voxel size and box dimensions are important
+        because the resulting mesh must accurately correspond to the molecular
+        volume used throughout the 3DFlex workflow.
+
+        Solvent Mask Preparation
+
+        Solvent masking is one of the most biologically important aspects of
+        mesh generation because it determines which regions of the reconstruction
+        participate in the deformation model. Regions outside the mask are
+        considered irrelevant background and are excluded from the mesh.
+
+        The protocol allows automatic mask generation by filtering the input
+        map, thresholding the density, dilating the selected region, and adding
+        soft padding. Together, these operations define a continuous molecular
+        envelope suitable for deformation modeling.
+
+        The filtering step suppresses high-frequency noise before thresholding.
+        Lower threshold values generally include more peripheral density, while
+        higher values produce tighter masks focused on the strongest structural
+        regions. Dilation expands the mask slightly to ensure the molecular
+        boundaries remain connected, while soft padding smooths transitions
+        near the solvent boundary.
+
+        From a biological perspective, the mask should ideally contain all
+        regions expected to move while excluding disconnected noise or empty
+        solvent areas. Overly restrictive masks may artificially constrain
+        biologically meaningful motions, whereas excessively loose masks may
+        introduce unstable or unrealistic deformations.
+
+        Mesh Resolution and Tetrahedral Elements
+
+        The central parameter controlling mesh complexity is the number of
+        tetrahedral cells spanning the reconstruction volume. This setting
+        determines the effective spatial resolution of the deformation model.
+
+        A coarse mesh contains fewer and larger tetrahedra, producing smoother
+        and more global motions. Such meshes are computationally efficient and
+        often appropriate for large conformational rearrangements or noisy
+        datasets. In contrast, finer meshes contain smaller tetrahedral
+        elements that can capture more localized flexibility but require
+        increased computational resources and may become more sensitive to
+        overfitting.
+
+        In biological practice, the optimal mesh density depends on particle
+        size, structural complexity, and expected flexibility. Large molecular
+        machines with multiple independently moving domains may benefit from
+        finer meshes, whereas small or relatively rigid particles are often
+        better modeled using coarser representations.
+
+        Segmentation and Subdomain Modeling
+
+        The protocol optionally supports segmentation-guided mesh generation.
+        This is particularly useful for complexes composed of multiple domains
+        or subunits that move semi-independently.
+
+        Segmentation files can define biologically meaningful structural
+        regions, allowing the protocol to construct separate submeshes that
+        are later connected into a unified deformation framework. This strategy
+        improves the interpretability of flexible motions and can significantly
+        stabilize refinement in systems with articulated or modular architecture.
+
+        Segment connection definitions specify how individual regions are linked
+        together. Biologically, these connections should reflect realistic
+        structural relationships between domains. Incorrect connectivity may
+        generate deformation paths that are physically implausible or difficult
+        to interpret.
+
+        The protocol also supports rigid segment definitions. Regions marked
+        as rigid are constrained to resist deformation more strongly than
+        surrounding areas. This is especially useful for highly stable cores,
+        membrane-embedded domains, or experimentally validated rigid bodies.
+
+        Rigidity Weighting and Motion Regularization
+
+        Rigidity weighting controls how easily different parts of the structure
+        can deform. Dense structural regions generally behave more rigidly,
+        while low-density or peripheral regions are allowed greater flexibility.
+
+        The minimum rigidity weight parameter regulates the contrast between
+        stable and flexible regions. Lower values permit greater expansion and
+        contraction in weak-density areas, whereas higher values produce more
+        globally constrained motions.
+
+        An additional option allows peripheral low-density regions to be
+        artificially stiffened. This can help prevent unstable or noisy motions
+        in poorly resolved regions, particularly in small particles or datasets
+        with limited signal-to-noise ratio. However, excessive rigidity may
+        oversmooth biologically meaningful transitions and blur the boundaries
+        between independently moving domains.
+
+        From a biological standpoint, rigidity regularization should balance
+        stability and realism. The goal is to suppress implausible deformations
+        while preserving authentic conformational variability.
+
+        Outputs and Their Interpretation
+
+        The protocol produces a tetrahedral mesh representation associated with
+        the consensus reconstruction. This mesh becomes the structural foundation
+        for downstream 3DFlex training and reconstruction stages.
+
+        A mesh visualization file is also generated for inspection and validation.
+        Visual examination of the mesh is strongly recommended before proceeding
+        with training. Users should verify that tetrahedral elements adequately
+        cover the molecular density, preserve major structural regions, and avoid
+        disconnected or excessively distorted areas.
+
+        Biologically meaningful motion modeling depends heavily on the quality
+        of this mesh. Poor mesh geometry, incomplete masking, or inappropriate
+        segmentation can negatively affect all subsequent stages of flexible
+        refinement.
+
+        Practical Recommendations
+
+        For most biological datasets, beginning with automatic mask generation
+        and moderate mesh density is a reasonable strategy. If the resulting
+        motions appear unstable or physically unrealistic during downstream
+        analysis, refining the solvent mask or increasing rigidity constraints
+        often improves stability.
+
+        Segmentation-guided meshes are especially valuable for complexes with
+        clearly separable domains or hinge-like motions. In such systems,
+        incorporating prior biological knowledge into the mesh design can
+        substantially improve interpretability.
+
+        Smaller particles or low-resolution datasets may require stronger
+        rigidity weighting to avoid overfitting. Conversely, highly flexible
+        systems with large conformational transitions may benefit from reduced
+        rigidity constraints and finer mesh representations.
+
+        Final Perspective
+
+        The mesh preparation stage is not merely a technical preprocessing step
+        but a biologically meaningful definition of how molecular motion will
+        be represented throughout the 3DFlex workflow. Careful masking, sensible
+        mesh density selection, and biologically informed rigidity constraints
+        are essential for obtaining realistic and interpretable continuous
+        heterogeneity models in cryo-EM studies.
     """
     _label = '3D flex mesh prepare'
     _devStatus = BETA

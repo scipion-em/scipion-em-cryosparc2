@@ -44,9 +44,139 @@ from ..constants import *
 
 
 class ProtCryoSparcSubtract(ProtCryosparcBase, ProtOperateParticles):
-    """ Signal subtraction protocol of cryoSPARC.
-        Subtract projections of a masked volume from particles.
-        """
+    """
+    Performs signal subtraction on cryo-EM particle images by removing the contribution
+    of a selected region of a reference structure from experimental particles. The protocol
+    is intended to isolate flexible domains, compositional heterogeneity, or weakly resolved
+    regions that may otherwise be obscured by dominant structural features.
+
+    AI Generated:
+
+    Particle Subtraction (ProtCryoSparcSubtract) — User Manual
+        Overview
+
+        The Particle Subtraction protocol removes projected density corresponding to a
+        selected region of a reconstructed volume from aligned experimental particles.
+        In cryo-EM workflows, this operation is widely used to study structural flexibility,
+        compositional variability, or local conformational changes that are difficult to
+        analyze when the complete particle dominates the signal.
+
+        From a biological perspective, subtraction is particularly useful for large
+        macromolecular assemblies containing flexible domains, transient binding partners,
+        membrane-associated regions, or heterogeneous subcomplexes. By computationally
+        removing part of the signal, the remaining density can be analyzed independently
+        through focused classification, local refinement, or variability analysis.
+
+        Inputs and Biological Context
+
+        The protocol requires a set of aligned particles, a reference volume, and a mask
+        defining the density to subtract. The biological interpretation of the subtraction
+        strongly depends on the quality and consistency of these inputs. The reference map
+        should ideally originate from the same dataset and reconstruction workflow as the
+        particles being processed. Using inconsistent maps or mismatched scaling may lead
+        to subtraction artifacts or biologically misleading residual densities.
+
+        The alignment information associated with the particles is essential because the
+        subtraction relies on projecting the reference structure into the orientation of
+        each particle image. Accurate angular assignments are therefore critical for
+        reliable subtraction quality.
+
+        Defining the Subtraction Mask
+
+        The subtraction mask is the most biologically important parameter of the protocol.
+        The mask must include the density intended for removal while excluding the regions
+        that should remain available for downstream analysis. In practical cryo-EM work,
+        masks are often designed around flexible domains, peripheral subunits, ligand
+        densities, or regions undergoing conformational rearrangements.
+
+        Soft masks are generally preferred because they reduce sharp boundary artifacts and
+        minimize Fourier ringing effects. Abrupt mask edges can introduce subtraction
+        errors that may later appear as artificial densities during focused refinement or
+        classification.
+
+        Careful biological interpretation is required when defining the subtraction region.
+        Removing too much density may eliminate important structural context, while removing
+        too little may leave dominant signal contributions that continue masking the region
+        of interest.
+
+        Windowing and Scaling Considerations
+
+        The protocol allows control over the inner and outer radii used during particle
+        windowing and normalization. These parameters influence how smoothly the particle
+        edges are treated and can affect subtraction stability.
+
+        In most biological applications, default values are appropriate, particularly when
+        particles are well centered and reconstructed under standard cryo-EM conditions.
+        However, for particles with large box sizes, elongated geometries, or substantial
+        peripheral flexibility, adjusting the windowing parameters may improve subtraction
+        quality.
+
+        Scaling options are also important because subtraction assumes that the projected
+        density and the experimental particle images share consistent intensity scaling.
+        Improper scaling may result in over-subtraction or under-subtraction, both of which
+        can complicate downstream interpretation.
+
+        Gold-Standard and Half-Map Strategies
+
+        The protocol supports subtraction strategies compatible with gold-standard cryo-EM
+        refinement practices. When half-maps are available, subtraction can be performed
+        independently for each half dataset, preserving statistical independence during
+        subsequent resolution estimation and refinement.
+
+        Maintaining gold-standard separation is particularly important in publication-level
+        workflows or whenever focused refinement will be followed by FSC-based resolution
+        analysis. Disabling this strategy may introduce correlations that artificially
+        inflate reported resolutions.
+
+        Optional Low-Pass Filtering and Mask Processing
+
+        The input structure may optionally be low-pass filtered before subtraction. This is
+        biologically useful when the reference map contains high-resolution features that
+        are not reliably represented in the particle images. Applying moderate filtering
+        can stabilize subtraction and reduce high-frequency artifacts.
+
+        Additional mask processing options allow thresholding and hole filling. These tools
+        help produce more continuous subtraction regions, particularly for fragmented masks
+        or noisy segmentations. In practice, biologically meaningful masks should remain
+        smooth, interpretable, and consistent with the expected molecular boundaries.
+
+        Outputs and Interpretation
+
+        The protocol produces a new particle dataset in which the selected density has been
+        computationally removed. These particles preserve their original orientations and
+        metadata while emphasizing the remaining structural information.
+
+        Biologically, the resulting particles often reveal weak conformational variability,
+        transient interactions, or mobile regions that were previously obscured. The output
+        particles are commonly used for focused classification, local refinement, masked
+        reconstruction, or heterogeneity analysis.
+
+        Interpretation of subtraction results should always be performed carefully. Residual
+        density does not necessarily indicate a true biological feature and may reflect
+        imperfect masking, alignment inaccuracies, or subtraction artifacts.
+
+        Practical Recommendations
+
+        In routine cryo-EM workflows, the most reliable subtraction results are obtained
+        when the reference map, mask, and particles all originate from a consistent
+        refinement strategy. Before large-scale analysis, it is advisable to visually
+        inspect a subset of subtracted particles to verify that the targeted density has
+        been removed cleanly without introducing strong artifacts.
+
+        For flexible assemblies, subtracting only the dominant rigid core often improves
+        focused classification of mobile regions. Conversely, when analyzing ligand binding
+        or small peripheral domains, highly precise masks and conservative subtraction
+        settings are usually preferable.
+
+        Final Perspective
+
+        Particle subtraction is one of the most powerful focused-analysis techniques in
+        modern cryo-EM image processing. Rather than treating the particle as a single
+        rigid object, the protocol enables researchers to isolate biologically relevant
+        variability and investigate local structural behavior in much greater detail.
+        Successful application depends on careful masking, accurate alignments, and
+        biologically meaningful interpretation of the remaining signal.
+    """
     _label = 'subtract projection'
     _className = "particle_subtract"
 

@@ -51,9 +51,178 @@ from ..constants import *
 
 class ProtCryoSparcInitialModel(ProtCryosparcBase, ProtInitialVolume,
                                 ProtClassify3D):
-    """    
-    Generate a 3D initial model _de novo_ from 2D particles using
-    CryoSparc Stochastic Gradient Descent (SGD) algorithm.
+    """
+    Generates de novo 3D initial models from particle images using
+    CryoSPARC stochastic gradient descent optimization. The protocol is
+    intended for early-stage cryo-EM reconstruction workflows where no
+    reliable starting structure is available and one or more initial
+    volumes must be estimated directly from experimental particle data.
+
+    AI Generated:
+
+    Initial Model (ProtCryoSparcInitialModel) - User Manual
+        Overview
+
+        The Initial Model protocol performs ab initio 3D reconstruction
+        from 2D particle projections using CryoSPARC optimization methods.
+        Its primary goal is to generate one or more biologically meaningful
+        starting volumes without requiring a pre-existing reference map.
+        This stage is often one of the most important moments in a cryo-EM
+        workflow because the quality of the initial model strongly
+        influences downstream refinement, classification, and structural
+        interpretation.
+
+        In practical biological workflows, this protocol is commonly used
+        after particle extraction and CTF estimation, once a sufficiently
+        clean particle dataset has been obtained. It is particularly useful
+        for newly characterized complexes, flexible assemblies, or systems
+        where no homologous structure exists that could serve as an initial
+        reference.
+
+        Inputs and Dataset Requirements
+
+        The protocol requires a set of particles with associated CTF
+        information. Good particle quality is essential because ab initio
+        reconstruction relies entirely on the information present in the
+        experimental images. Highly heterogeneous datasets, poorly centered
+        particles, or strong contamination may prevent convergence toward a
+        meaningful structure.
+
+        From a biological perspective, users should ideally provide
+        particles corresponding to a single dominant structural state during
+        initial model generation. Although the protocol can estimate
+        multiple classes simultaneously, extreme compositional or
+        conformational heterogeneity may still complicate interpretation.
+
+        Number of Initial Classes
+
+        One of the central parameters is the number of ab initio classes.
+        This determines how many independent structures will be generated
+        during optimization. Using a single class is appropriate when the
+        sample is expected to represent one dominant conformation. Multiple
+        classes become useful when structural variability, compositional
+        heterogeneity, or different assembly states are suspected.
+
+        Biologically, increasing the number of classes may help separate
+        distinct conformations or remove damaged particles and contaminants.
+        However, requesting too many classes for a limited dataset can
+        produce noisy or poorly resolved reconstructions. A practical
+        strategy is often to begin conservatively and increase the number
+        of classes only when heterogeneity is clearly supported by the data.
+
+        Resolution Scheduling and Optimization
+
+        The reconstruction process progressively refines structural detail
+        from low to higher spatial frequencies. Early iterations focus on
+        coarse structural organization, while later stages recover finer
+        features. This gradual strategy improves robustness and reduces the
+        risk of converging toward noise or incorrect orientations.
+
+        Initial low-resolution stages are especially important for highly
+        challenging datasets because they stabilize orientation assignment
+        before fine structural details are considered. In many biological
+        projects, conservative low-resolution initialization improves the
+        probability of obtaining physically meaningful maps.
+
+        The protocol also allows control over optimization duration,
+        learning rates, minibatch sizes, and momentum parameters. These
+        options mainly affect convergence behavior and computational
+        stability. Most routine biological applications work well with
+        default settings, while advanced users may adjust optimization
+        behavior for particularly difficult datasets.
+
+        Symmetry Considerations
+
+        Symmetry can optionally be enforced during reconstruction. This is
+        appropriate for highly symmetric particles such as viral capsids,
+        oligomeric channels, or symmetric molecular assemblies. Correct
+        symmetry application can significantly improve reconstruction
+        quality and convergence speed.
+
+        However, applying incorrect symmetry may introduce severe artifacts
+        and mask biologically relevant asymmetry. For exploratory ab initio
+        reconstruction, especially when the true symmetry is uncertain,
+        using C1 symmetry is generally the safest approach. Symmetry should
+        only be imposed when supported by prior biological or structural
+        evidence.
+
+        Noise Modeling and Stability
+
+        The protocol includes several noise modeling strategies designed to
+        improve robustness against experimental variability. These models
+        help distinguish meaningful structural signal from background noise,
+        ice contamination, or imaging artifacts.
+
+        In practical cryo-EM workflows, datasets with low signal-to-noise
+        ratio may benefit from conservative optimization settings and longer
+        stabilization phases. Experimental options related to scaling and
+        noise estimation can further improve performance in challenging
+        cases, although they are usually reserved for experienced users.
+
+        Non-Negativity and Real-Space Constraints
+
+        The protocol can enforce non-negativity constraints during
+        reconstruction. From a biological perspective, this helps maintain
+        physically plausible density distributions and suppress unstable
+        oscillations during optimization. In most situations, enabling
+        non-negativity produces cleaner and more interpretable initial
+        volumes.
+
+        Additional real-space centering and windowing options improve
+        stability by maintaining compact structures within the reconstruction
+        box. These operations are especially useful for particles with large
+        solvent regions or poorly centered signal.
+
+        Outputs and Their Interpretation
+
+        The protocol produces one or more initial 3D volumes together with
+        classified particle assignments. Each resulting class represents a
+        subset of particles associated with a reconstructed structural
+        state. These outputs can be directly used for downstream refinement,
+        heterogeneous classification, variability analysis, or biological
+        interpretation.
+
+        The generated maps should initially be interpreted cautiously.
+        Early ab initio reconstructions may contain artifacts, incomplete
+        regions, or unstable orientations, particularly at low particle
+        counts. Visual inspection and subsequent refinement remain essential
+        before drawing biological conclusions.
+
+        In heterogeneous datasets, different classes may represent distinct
+        conformations, assembly intermediates, damaged particles, or noise
+        populations. Careful biological interpretation is therefore
+        necessary when selecting volumes for refinement.
+
+        Practical Recommendations
+
+        For most biological projects, it is advisable to begin with a small
+        number of classes and default optimization settings. If meaningful
+        structural variability is observed, the number of classes can later
+        be increased. Datasets suspected to contain multiple conformations
+        often benefit from generating several initial models simultaneously.
+
+        When convergence appears unstable, reducing heterogeneity through
+        improved particle cleaning or selecting a more homogeneous subset of
+        particles frequently provides better results than aggressively
+        tuning optimization parameters.
+
+        Symmetry should only be enabled when strongly justified by prior
+        evidence. Similarly, advanced optimization parameters should
+        generally remain at default values unless specific reconstruction
+        problems are encountered.
+
+        Final Perspective
+
+        Ab initio reconstruction is one of the foundational steps in modern
+        single-particle cryo-EM because it transforms raw particle images
+        into the first interpretable three-dimensional structural models.
+        Successful initial model generation requires not only computational
+        optimization but also thoughtful biological judgment regarding data
+        quality, heterogeneity, symmetry, and structural plausibility.
+
+        Careful dataset preparation, conservative interpretation of early
+        maps, and iterative refinement remain essential for obtaining
+        reliable and biologically meaningful structural results.
     """
     _label = 'initial model'
     _className = "homo_abinit"

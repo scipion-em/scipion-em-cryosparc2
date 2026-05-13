@@ -48,6 +48,147 @@ class ProtCryoSparcPatchCTFEstimate(ProtCryosparcBase):
     """
     Patch-based CTF estimation automatically estimates defocus variation for tilted, bent,
     deformed samples and is accurate for all particle sizes and types including flexible and membrane proteins.
+
+    AI Generated:
+
+    Patch CTF Estimation (ProtCryoSparcPatchCTFEstimate) - User Manual
+        Overview
+
+        The Patch CTF Estimation protocol estimates the Contrast Transfer Function (CTF)
+        parameters of cryo-EM micrographs using a patch-based strategy designed to remain
+        robust across a wide range of biological specimens and imaging conditions. Its
+        primary purpose is to characterize microscope-induced phase distortions and
+        defocus variations so that downstream particle processing steps can accurately
+        reconstruct high-resolution structures.
+
+        In practical cryo-EM workflows, CTF estimation is one of the earliest and most
+        critical preprocessing stages because the quality of these measurements directly
+        influences particle alignment, classification, refinement, and map interpretability.
+        Accurate defocus estimation becomes especially important for tilted datasets,
+        flexible assemblies, membrane proteins, and heterogeneous samples where local
+        optical conditions may vary substantially across the micrograph.
+
+        Biological Context and Motivation
+
+        Cryo-EM images are affected by microscope optics that modulate the recorded signal
+        in a frequency-dependent manner. The CTF estimation process attempts to recover
+        these optical parameters so that later computational corrections can compensate
+        for information loss and phase inversions introduced during imaging.
+
+        Traditional global estimation approaches may struggle when samples exhibit bending,
+        local thickness variations, charging effects, uneven ice distribution, or tilted
+        acquisition geometries. The patch-based strategy addresses this limitation by
+        analyzing multiple local regions independently, improving robustness in difficult
+        experimental conditions.
+
+        This approach is particularly valuable for membrane proteins embedded in detergent
+        or nanodiscs, filamentous systems, flexible molecular assemblies, and in situ
+        datasets where local image conditions are often non-uniform. For many biological
+        projects, reliable local defocus estimation significantly improves the quality of
+        downstream refinements.
+
+        Inputs and Experimental Considerations
+
+        The protocol requires a set of micrographs as input. These micrographs should
+        ideally originate from a well-calibrated acquisition workflow with consistent
+        pixel size, acceleration voltage, and microscope metadata. Poor-quality images,
+        severe contamination, crystalline ice, or extreme drift may reduce estimation
+        accuracy regardless of the computational method used.
+
+        The amplitude contrast parameter represents the fraction of electron scattering
+        contributing to amplitude rather than phase contrast. Typical cryo-EM datasets
+        commonly use values around 0.07 to 0.1. Although small inaccuracies in this
+        parameter are often tolerated, biologically meaningful high-resolution analysis
+        benefits from realistic values matching the imaging conditions.
+
+        Resolution Search Range
+
+        The protocol allows users to define minimum and maximum resolution limits for
+        CTF estimation. These settings determine which spatial frequencies contribute
+        to the fitting procedure.
+
+        Lower-resolution limits help exclude very broad image features that are not
+        informative for oscillatory CTF fitting, while upper-resolution limits define
+        how far high-frequency information is considered. In routine biological workflows,
+        default values are often appropriate, but challenging datasets may benefit from
+        adjustment.
+
+        For noisy datasets or thick ice conditions, restricting the highest resolution
+        considered during fitting may improve stability. Conversely, exceptionally clean
+        datasets with strong Thon rings can support higher-resolution fitting and more
+        accurate optical characterization.
+
+        Defocus Search Parameters
+
+        The protocol includes configurable defocus search boundaries that determine the
+        range explored during estimation. These values should approximately reflect the
+        acquisition strategy used during microscopy.
+
+        Wider search ranges improve robustness when acquisition conditions are uncertain,
+        but they may increase runtime and occasionally introduce unstable fits. Narrower
+        ranges are generally preferable when the microscope defocus settings are already
+        known with confidence.
+
+        Biological users should interpret defocus values in the context of their imaging
+        goals. Lower defocus values generally preserve higher-resolution information but
+        reduce image contrast, while higher defocus values improve visibility at the cost
+        of high-frequency detail.
+
+        Phase Shift Estimation
+
+        The protocol supports phase shift estimation for datasets acquired using phase
+        plates or other imaging modalities where additional phase modulation is present.
+        Accurate phase-shift determination can substantially improve downstream refinement
+        quality and map interpretability.
+
+        The user may define the phase-shift search range and optionally restrict refinement
+        exclusively to phase-shift optimization. This mode can be useful when defocus values
+        are already reliable and only phase-related corrections need adjustment.
+
+        For conventional cryo-EM datasets acquired without phase plates, default settings
+        are generally sufficient. For Volta phase plate experiments or similar acquisition
+        strategies, careful phase estimation becomes much more important.
+
+        Outputs and Interpretation
+
+        After execution, the protocol produces a set of estimated CTF models associated
+        with the input micrographs. These outputs typically include defocus values,
+        astigmatism parameters, phase shifts, and estimated resolution limits describing
+        the quality of the fit.
+
+        Biologically, these measurements help determine whether the dataset is suitable
+        for high-resolution reconstruction. Large astigmatism, poor fit resolution, or
+        inconsistent defocus behavior across micrographs may indicate acquisition problems
+        that should be addressed before extensive downstream processing.
+
+        The resulting CTF estimations are intended for subsequent particle extraction,
+        refinement, and reconstruction workflows, where accurate optical correction is
+        essential for preserving structural detail.
+
+        Practical Recommendations
+
+        In routine cryo-EM practice, users should visually inspect representative CTF
+        fits and verify that estimated defocus values are physically reasonable relative
+        to acquisition conditions. Extremely inconsistent measurements may indicate poor
+        ice quality, contamination, incorrect metadata, or acquisition instability.
+
+        For tilted or heterogeneous datasets, patch-based estimation is often preferable
+        to simpler global methods because it better captures local variations across the
+        micrograph. Membrane proteins, flexible complexes, and tomography-derived images
+        particularly benefit from this local strategy.
+
+        When processing high-quality single-particle datasets, the default parameters
+        usually provide reliable results. More advanced tuning is typically reserved for
+        difficult imaging conditions or specialized acquisition strategies.
+
+        Final Perspective
+
+        For most cryo-EM projects, accurate CTF estimation forms the optical foundation
+        of the entire reconstruction workflow. Reliable characterization of defocus and
+        phase behavior directly impacts the quality of particle alignment, classification,
+        and final map reconstruction. Careful parameter selection, validation of estimated
+        fits, and awareness of the biological sample conditions are essential for obtaining
+        meaningful structural results.
     """
     _label = 'ctf_estimation'
     _className = "patch_ctf_estimation_multi"

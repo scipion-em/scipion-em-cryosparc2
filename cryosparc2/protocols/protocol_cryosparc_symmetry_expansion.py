@@ -41,7 +41,149 @@ from ..utils import (addComputeSectionParams, cryosparcValidate, gpusValidate,
 
 
 class ProtCryoSparcSymmetryExpansion(ProtCryosparcBase):
-    """ Duplicate particles around a point-group symmetry.
+    """
+    Expands particle datasets according to a specified symmetry group by
+    generating symmetry-related orientations for each particle. The protocol
+    is designed to increase angular sampling and improve the exploration of
+    symmetric conformations in cryo-EM single-particle analysis workflows.
+
+    AI Generated:
+
+    Symmetry Expansion (ProtCryoSparcSymmetryExpansion) — User Manual
+        Overview
+
+        The Symmetry Expansion protocol generates multiple symmetry-related
+        copies of each particle according to a defined point-group or helical
+        symmetry. Its main objective is to expose all equivalent orientations
+        hidden by molecular symmetry so that downstream analyses can treat
+        each asymmetric unit independently.
+
+        In cryo-EM workflows, this operation is especially important when
+        studying local conformational variability within symmetric complexes.
+        Many biological assemblies possess rotational or helical symmetry,
+        and standard reconstruction procedures typically average all symmetric
+        regions together. While this averaging improves signal-to-noise ratio,
+        it can also conceal biologically meaningful local heterogeneity.
+        Symmetry expansion addresses this limitation by assigning each particle
+        to all symmetry-equivalent orientations, enabling focused analysis of
+        individual subunits or domains.
+
+        Biological Motivation
+
+        Symmetric macromolecular assemblies are extremely common in structural
+        biology, including viral capsids, ion channels, membrane pores,
+        filamentous assemblies, molecular motors, and oligomeric enzymes.
+        Although these complexes may obey global symmetry, individual subunits
+        frequently exhibit local flexibility, partial occupancy, asymmetric
+        ligand binding, or conformational transitions.
+
+        Without symmetry expansion, these local differences are averaged across
+        all equivalent copies and may become invisible in the final map.
+        Symmetry-expanded particles allow downstream focused classification,
+        localized refinement, and variability analysis to isolate these subtle
+        structural changes.
+
+        This protocol is therefore particularly useful when the biological
+        question concerns asymmetric behavior inside an otherwise symmetric
+        assembly.
+
+        Inputs and General Workflow
+
+        The protocol requires a particle set with valid projection alignment
+        information. These alignments define the orientation of each particle
+        relative to the reconstructed structure and are necessary for computing
+        the corresponding symmetry-related orientations.
+
+        Users must define the symmetry group associated with the reconstruction.
+        Standard cyclic, dihedral, tetrahedral, octahedral, and icosahedral
+        symmetries are supported. In addition, helical symmetry parameters may
+        be provided for filamentous or helical assemblies.
+
+        During execution, the protocol creates multiple transformed versions
+        of every particle according to the selected symmetry operators. The
+        resulting expanded particle set preserves the original experimental
+        images while assigning new orientation parameters corresponding to
+        each symmetry-equivalent view.
+
+        Point-Group Symmetry Expansion
+
+        For standard point-group symmetry, the protocol generates one copy
+        of each particle for every symmetry operator in the selected group.
+        For example, a particle belonging to a D7 assembly produces multiple
+        symmetry-equivalent orientations corresponding to the rotational and
+        dihedral operators of that symmetry.
+
+        This approach is especially valuable for focused classification and
+        signal subtraction strategies. By expanding the particles first, users
+        can later isolate individual asymmetric regions and analyze them as if
+        they were independently sampled particles.
+
+        Biological users frequently apply this workflow when studying partial
+        occupancy, asymmetric ligand binding, subunit flexibility, or local
+        maturation states in otherwise highly symmetric assemblies.
+
+        Helical Symmetry Expansion
+
+        The protocol also supports helical symmetry parameters, including
+        helical twist, rise, and symmetry order. These parameters describe
+        the geometric relationship between repeating subunits along a filament
+        or helical assembly.
+
+        Helical symmetry expansion is particularly useful for filamentous
+        systems such as actin, microtubules, amyloid fibrils, or helical viral
+        assemblies. In these systems, local structural variability may occur
+        along the filament axis even when the global helical organization is
+        preserved.
+
+        Correct helical parameters are essential for biologically meaningful
+        expansion. These values are typically obtained from the final stages
+        of a helical refinement workflow and should reflect the best available
+        reconstruction geometry.
+
+        Outputs and Their Interpretation
+
+        The protocol produces a new expanded particle set containing all
+        symmetry-related orientations derived from the original particles.
+        The particle images themselves remain unchanged, but the associated
+        alignment parameters are expanded according to the specified symmetry.
+
+        Biologically, the expanded dataset should not be interpreted as
+        containing additional experimental observations. Instead, it provides
+        alternative symmetry-equivalent representations of the same particles,
+        enabling downstream algorithms to analyze asymmetric features that
+        would otherwise remain averaged.
+
+        The expanded particles are commonly used in focused refinement,
+        localized masking, signal subtraction, variability analysis, and
+        asymmetric classification workflows.
+
+        Practical Recommendations
+
+        Symmetry expansion is most effective when the underlying reconstruction
+        already has reliable alignment parameters and accurately determined
+        symmetry. Incorrect symmetry assignment or poor alignments can propagate
+        systematic errors throughout downstream analyses.
+
+        For local refinement workflows, it is generally advisable to combine
+        symmetry expansion with carefully designed masks that isolate the
+        biological region of interest. Without focused masking, downstream
+        classification may remain dominated by the highly symmetric core of
+        the structure.
+
+        Users should also consider the substantial increase in dataset size
+        produced by symmetry expansion. Large symmetry groups can multiply the
+        number of particles dramatically, increasing computational and storage
+        requirements for subsequent processing steps.
+
+        Final Perspective
+
+        Symmetry expansion is a powerful strategy for revealing asymmetric
+        biological behavior hidden within globally symmetric cryo-EM assemblies.
+        By exposing all symmetry-equivalent orientations, the protocol enables
+        detailed investigation of local flexibility, heterogeneous occupancy,
+        conformational variability, and subunit-specific interactions. In many
+        modern cryo-EM studies, it has become an essential preparatory step
+        for high-resolution focused analysis of complex molecular machines.
     """
     _label = 'symmetry expansion'
     _className = "sym_expand"
