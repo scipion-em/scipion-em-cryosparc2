@@ -45,6 +45,98 @@ class ProtCryoSparcBlobPicker(ProtCryosparcBase):
     """
     Automatically picks particles by searching for Gaussian signals.
     """
+    """
+        CryoSPARC Blob Picker Protocol — User Manual
+
+        Overview
+        --------
+        ProtCryoSparcBlobPicker is a CryoSPARC-based protocol integrated into
+        Scipion for automatic particle picking in cryo-EM micrographs using
+        Gaussian blob detection methods. The protocol identifies particle-like
+        regions directly from image intensity and expected particle dimensions
+        without requiring reference templates. This strategy is particularly
+        useful during the early stages of cryo-EM processing, exploratory
+        analyses, or workflows where template bias should be avoided.
+
+        Inputs and General Workflow
+        ---------------------------
+        The protocol requires a SetOfMicrographs as input and allows the user to
+        define the minimum and maximum expected particle diameters. These values
+        guide the detection algorithm toward biologically relevant structures and
+        help reduce the identification of contaminants or background features.
+        The protocol supports different blob geometries, including circular,
+        elliptical, and ring-shaped models, allowing adaptation to a wide range
+        of particle morphologies and imaging conditions.
+
+        An optional CTF estimation stage can be executed before particle picking
+        using the CryoSPARC Patch CTF Estimation algorithm. When enabled, the
+        protocol first estimates the optical parameters of each micrograph and
+        then uses the corrected exposures during the particle detection stage.
+        This integrated workflow simplifies downstream cryo-EM preprocessing and
+        improves compatibility with later reconstruction steps.
+
+        Particle Detection and Processing
+        ---------------------------------
+        The blob picker searches for local maxima in the micrographs whose signal
+        characteristics resemble particles of the expected size range. Detection
+        sensitivity is controlled through parameters such as particle separation
+        distance, number of micrographs to process, and maximum number of local
+        maxima considered during detection. These parameters allow users to
+        balance sensitivity, computational cost, and false positive reduction.
+
+        During execution, the protocol initializes a CryoSPARC project and
+        converts the input data into CryoSPARC-compatible formats. The execution
+        workflow optionally launches Patch CTF estimation before starting the
+        blob-picking job itself. All computations are submitted as GPU-enabled
+        CryoSPARC jobs through the enqueueJob mechanism.
+
+        Before job submission, particle diameters are converted according to the
+        micrograph sampling rate to ensure consistency between user-defined
+        dimensions and CryoSPARC internal units. GPU allocation is automatically
+        determined depending on whether the workflow is executed locally or
+        through a queue management system, allowing efficient execution on both
+        workstations and computational clusters.
+
+        Outputs and Metadata Reconstruction
+        -----------------------------------
+        After CryoSPARC processing is completed, the protocol converts CryoSPARC
+        .cs metadata files into STAR-format files compatible with Scipion and
+        Relion workflows. The detected particle coordinates are reconstructed as
+        a SetOfCoordinates object and reassigned to their corresponding
+        micrographs. Coordinate positions are also corrected to account for image
+        axis conventions, including vertical axis inversion.
+
+        If CTF estimation was enabled, the protocol additionally reconstructs a
+        SetOfCTF object containing the estimated optical parameters for each
+        micrograph. These parameters include defocus values, phase shift,
+        defocus angle, and estimated resolution, allowing immediate reuse in
+        downstream cryo-EM processing pipelines.
+
+        Biological Perspective
+        ----------------------
+        Blob picking is widely used as an initial particle selection strategy in
+        cryo-EM workflows because it provides a fast and unbiased way to generate
+        preliminary particle datasets. Although it is generally less precise than
+        template-based or deep-learning approaches, it is highly valuable during
+        dataset screening, exploratory analyses, and projects where no reliable
+        structural references are available.
+
+        The protocol is particularly useful in automated processing pipelines and
+        facility environments because it minimizes the amount of prior structural
+        information required. In challenging datasets with low contrast,
+        heterogeneous particles, or significant contamination, careful adjustment
+        of particle diameters and blob geometry becomes essential for obtaining
+        biologically meaningful coordinates.
+
+        Final Perspective
+        -----------------
+        ProtCryoSparcBlobPicker combines CryoSPARC blob-detection algorithms with
+        Scipion workflow management to provide a fast and flexible particle
+        picking solution. By integrating optional CTF estimation, GPU execution,
+        metadata conversion, and coordinate reconstruction into a unified
+        workflow, the protocol offers an efficient entry point for cryo-EM
+        particle selection and preprocessing.
+        """
     _label = 'blob_picker'
     _className = "blob_picker_gpu"
     _devStatus = NEW

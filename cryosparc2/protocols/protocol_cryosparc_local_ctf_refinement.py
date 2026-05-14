@@ -49,6 +49,148 @@ class ProtCryoSparcLocalCtfRefinement(ProtCryosparcBase, ProtParticles):
     Performs per-particle defocus estimation for each particle in a dataset,
     against a given 3D reference structure.
     """
+
+    """
+        Local CTF Refinement (ProtCryoSparcLocalCtfRefinement) — User Manual
+
+        Overview
+
+        The Local CTF Refinement protocol performs per-particle Contrast Transfer
+        Function (CTF) refinement using cryoSPARC algorithms integrated within the
+        Scipion framework. Its primary objective is to improve the estimation of
+        local defocus values for individual particles against a reference 3D map,
+        allowing more accurate reconstruction and higher-quality structural detail
+        recovery in cryo-electron microscopy workflows.
+
+        In practical biological applications, this protocol is especially valuable
+        for high-resolution datasets where subtle optical inaccuracies may limit
+        the interpretability of reconstructed maps. By refining defocus values at
+        the particle level, the protocol helps recover high-frequency information,
+        improves density sharpness, and enhances the visibility of fine structural
+        features such as side chains, secondary structure elements, or flexible
+        regions.
+
+        Inputs and General Workflow
+
+        The protocol requires a set of aligned particles, a reference volume, and
+        a soft mask defining the biologically relevant region of the structure.
+        The input particles must already contain projection alignment information,
+        since the refinement process relies on previously estimated orientations
+        to optimize local optical parameters.
+
+        The reference volume acts as the structural model used during refinement,
+        while the mask restricts optimization to meaningful molecular regions.
+        This prevents solvent noise or flexible peripheral densities from biasing
+        the defocus estimation process.
+
+        During execution, the workflow initializes a cryoSPARC refinement job,
+        converts input metadata into compatible formats, launches the local CTF
+        optimization procedure, and finally imports the refined particle metadata
+        back into the Scipion environment.
+
+        If the reference structure contains half maps, the protocol automatically
+        connects them to the refinement process in order to estimate resolution
+        limits more robustly through FSC-based criteria. This improves refinement
+        stability and reduces the risk of overfitting high-frequency noise.
+
+        Masking and Biological Relevance
+
+        Masking is one of the most biologically important aspects of local CTF
+        refinement because it determines which structural regions contribute to
+        the optimization process. The protocol requires a soft mask either
+        provided explicitly by the user or inherited from previous refinement
+        protocols.
+
+        In biological datasets containing flexible domains, membrane regions,
+        disordered appendages, or solvent noise, appropriate masking becomes
+        essential for obtaining reliable defocus estimates. The mask should focus
+        on structurally conserved and well-resolved regions while excluding noisy
+        or highly mobile areas that may destabilize the refinement.
+
+        Poor masking strategies may lead to inaccurate local CTF estimation,
+        reduced map quality, or unstable refinement behavior. For this reason,
+        carefully designed masks are particularly important in heterogeneous
+        macromolecular assemblies or flexible protein complexes.
+
+        Refinement Parameters and Optimization Strategy
+
+        The protocol provides several advanced parameters controlling the local
+        refinement behavior. Users can define the refinement box size, resolution
+        limits, plotting behavior, and defocus search range used during the
+        optimization process.
+
+        The refinement box size determines the reconstruction region used during
+        local optimization. Smaller boxes reduce computational cost, whereas larger
+        boxes preserve more structural context. In most standard workflows, the
+        default particle box size is sufficient unless sampling differences or
+        scaling issues are suspected.
+
+        The minimum and maximum fit resolutions define the frequency range used
+        during refinement. Lower resolutions emphasize global structural features,
+        while higher resolutions allow the protocol to exploit fine structural
+        details when the dataset quality supports it.
+
+        The defocus search range determines how broadly the protocol explores
+        possible corrections around the initial defocus estimation. Wider search
+        ranges may help when initial CTF parameters are inaccurate, although very
+        large ranges may increase computational time and reduce optimization
+        stability.
+
+        GPU Integration and Execution
+
+        The protocol is designed for GPU-accelerated execution within cryoSPARC
+        environments. During runtime, it automatically determines whether GPU
+        resources should be allocated directly or managed through an external queue
+        system depending on the execution environment.
+
+        Once the refinement job is launched, the workflow continuously monitors
+        the cryoSPARC execution state until completion. If errors occur during the
+        refinement process, users are encouraged to inspect the corresponding
+        cryoSPARC job logs for detailed diagnostic information.
+
+        Outputs and Their Interpretation
+
+        After execution, the protocol generates an updated particle set containing
+        refined local CTF information and updated alignment metadata. The output
+        particles preserve the identity of the original dataset while incorporating
+        improved optical parameter estimation.
+
+        Biologically, these refined particles often produce sharper reconstructions,
+        improved local resolution, and better visualization of structurally relevant
+        details. High-resolution refinements particularly benefit from accurate
+        local defocus correction because small optical inaccuracies can strongly
+        affect map interpretability.
+
+        The protocol also preserves transformation information and cryoSPARC
+        metadata, enabling seamless integration with subsequent refinement,
+        classification, or reconstruction workflows within Scipion.
+
+        Practical Recommendations
+
+        In most cryo-EM processing pipelines, local CTF refinement is most useful
+        after obtaining a stable consensus refinement. Applying local refinement
+        too early in the workflow may provide limited improvements because particle
+        orientations and structural references may still be unstable.
+
+        For high-resolution biological studies, careful mask design and appropriate
+        resolution limits are typically the most important factors affecting the
+        quality of the refinement. Flexible complexes usually benefit from masks
+        focused on the rigid structural core.
+
+        Datasets collected with tilted acquisition schemes, local defocus
+        variability, or subtle optical distortions are particularly good
+        candidates for this protocol. In contrast, highly heterogeneous or
+        low-resolution datasets may show smaller refinement gains.
+
+        Final Perspective
+
+        Local CTF refinement represents an important optimization stage in modern
+        cryo-EM workflows because it improves the accuracy of particle-specific
+        optical parameter estimation. Although technically focused on defocus
+        correction, its biological impact is substantial, directly influencing
+        map sharpness, reconstruction quality, and the interpretability of
+        macromolecular structures at high resolution.
+        """
     _label = 'local ctf refinement'
     _className = "ctf_refine_local"
 

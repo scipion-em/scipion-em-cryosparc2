@@ -39,6 +39,129 @@ class ProtCryoSparc3DFlexDataPrepare(ProtCryosparcBase):
     way, takes in a consensus (rigid) refinement density map, plus optionally
     a segmentation and generates a tetrahedral mesh for 3DFlex.
     """
+    """
+        3D Flex Data Prepare (ProtCryoSparc3DFlexDataPrepare) — User Manual
+
+        Overview
+
+        The 3D Flex Data Prepare protocol prepares particle datasets and
+        consensus maps for subsequent 3D Flex training and reconstruction
+        within cryoSPARC. Its main purpose is to transform a rigidly refined
+        cryo-EM dataset into an optimized input representation suitable for
+        modeling continuous structural heterogeneity. In practice, this
+        protocol standardizes particle metadata, crops and downsamples
+        particle images when necessary, filters particles according to
+        quality criteria, and generates the consensus density map required
+        for flexible reconstruction workflows.
+
+        In a typical cryo-EM analysis pipeline, this protocol is used after
+        consensus refinement has already been completed and particle poses
+        are known. It acts as a preprocessing bridge between traditional
+        rigid refinement and neural-network-based flexibility analysis.
+        For biological users, this becomes especially important when
+        studying molecular motions, conformational continua, or structural
+        transitions that cannot be captured by discrete classification alone.
+
+        Inputs and General Workflow
+
+        The protocol requires two essential inputs: a particle set with
+        associated CTF information and 3D alignment parameters, and a
+        reference consensus volume representing the rigid reconstruction.
+        The particle set must already be aligned, since 3D Flex relies on
+        known particle orientations as the structural basis for learning
+        conformational variability. The reference map serves as the
+        structural scaffold from which the flexible model will infer
+        continuous deformation fields.
+
+        An optional preprocessing stage allows cropping the particles and
+        consensus volume to a smaller box size. This is typically used to
+        remove empty solvent regions and reduce computational cost. For
+        biological systems where the particle occupies only a fraction of
+        the original reconstruction box, cropping can substantially improve
+        training efficiency without losing structural information. Care
+        should be taken to ensure the biologically relevant density remains
+        fully contained within the cropped region.
+
+        The protocol also supports downsampling to a training box size,
+        which defines the effective resolution used during model
+        optimization. This is one of the most critical parameters for
+        successful 3D Flex analysis. Smaller training boxes reduce
+        computational burden and often stabilize optimization, while
+        excessively large values can dramatically increase runtime and may
+        attempt to learn high-resolution detail beyond what the consensus
+        reconstruction can reliably support. In most practical workflows,
+        the chosen training resolution should remain below the validated FSC
+        resolution of the rigid consensus map.
+
+        Particle filtering options allow selecting only subsets of the input
+        dataset for training. The minimum scale threshold removes particles
+        whose scale factors suggest poor signal quality or contamination,
+        which is often useful for excluding junk particles or poorly
+        reconstructed views. Similarly, the protocol allows restricting the
+        total number of particles used. This is particularly relevant for
+        large datasets, since 3D Flex training can become computationally
+        expensive. The selected particle count must always be divisible by
+        1000, which reflects internal cryoSPARC batching constraints for
+        training and reconstruction consistency.
+
+        Internal Processing
+
+        Internally, the protocol launches a cryoSPARC flex_prep job that
+        processes the input particles and reference map according to the
+        selected parameters. Once execution completes, cryoSPARC outputs are
+        automatically copied into the protocol workspace and converted into
+        RELION-compatible STAR metadata for integration within the Scipion
+        ecosystem. This conversion ensures interoperability with downstream
+        Scipion workflows while preserving particle identity and alignment
+        information.
+
+        Outputs and Interpretation
+
+        The output consists of two biologically meaningful objects. The
+        first is a new prepared particle set, which contains only the
+        selected particles reformatted for 3D Flex compatibility while
+        preserving their original metadata and sampling information. The
+        second is the prepared consensus volume, stored as an MRC map with
+        corrected dimensions and sampling rate adjusted to match the
+        processed particle box size. Together, these outputs define the
+        complete structural input required for subsequent 3D Flex training.
+
+        Validation and Consistency Checks
+
+        Validation checks ensure that the input data satisfy all
+        requirements before execution begins. The protocol verifies that
+        particles contain associated CTF models and valid 3D alignment
+        parameters, since flexible reconstruction cannot proceed without
+        these prerequisites. It also confirms that any explicitly requested
+        particle count satisfies divisibility requirements. These safeguards
+        prevent incompatible datasets from entering computationally
+        expensive processing stages.
+
+        Practical Recommendations
+
+        From a biological perspective, careful parameter selection is
+        essential for meaningful flexibility analysis. Excessive cropping
+        may truncate flexible peripheral regions, while aggressive
+        downsampling can suppress subtle motions of interest. Conversely,
+        overly large box sizes may increase computational cost without
+        improving interpretability. In most workflows, it is advisable to
+        begin with conservative downsampling and moderate particle
+        filtering, then refine these settings based on the quality and
+        resolution of the consensus refinement.
+
+        Final Perspective
+
+        For most cryo-EM practitioners, 3D Flex Data Prepare is more than a
+        simple formatting step. It defines the structural representation
+        that the flexible neural model will learn from, directly shaping
+        the biological motions that can ultimately be resolved. Thoughtful
+        preprocessing therefore has a strong influence on the quality,
+        interpretability, and reliability of downstream continuous
+        heterogeneity analysis.
+        """
+
+
+
     _label = '3D flex data prepare'
     _devStatus = BETA
     _protCompatibility = [V4_1_0, V4_1_1, V4_1_2, V4_2_0, V4_2_1, V4_3_1,

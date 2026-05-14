@@ -56,6 +56,68 @@ class ProtCryosparcBase(pw.EMProtocol):
     """
     This class contains the common functions for all Cryosparc protocols.
     """
+
+    """
+        XmippProtAlignVolume is a protocol specialized in the alignment of
+        three-dimensional cryo-EM volumes using Xmipp-based alignment
+        methodologies. The protocol allows multiple reconstructed maps to be
+        transformed into a common spatial coordinate system so that they can
+        be directly compared, averaged, visualized, or biologically analyzed.
+
+        The protocol operates by selecting a reference volume that defines
+        the target spatial framework and then aligning one or more input
+        volumes against that reference. During execution, the protocol
+        computes the rigid-body transformations required to maximize the
+        structural correspondence between maps while preserving the identity
+        of each aligned volume.
+
+        Several alignment strategies are conceptually supported within the
+        protocol. These include Fast Fourier Transform based alignment,
+        exhaustive global searches, local refinement searches, and combined
+        exhaustive plus local refinement workflows. The FFT approach is
+        designed for efficient routine processing, while exhaustive searches
+        provide higher robustness in cases where the relative orientation
+        between volumes is largely unknown. Local refinement methods instead
+        focus on small orientation corrections when approximate alignment is
+        already available.
+
+        The protocol also incorporates masking concepts to improve alignment
+        robustness and biological relevance. By restricting the alignment
+        calculation to selected structural regions, masking reduces the
+        influence of solvent noise, flexible domains, and heterogeneous
+        regions. This behavior is particularly important for membrane
+        proteins, flexible assemblies, and multi-domain complexes where
+        unrestricted global alignment may produce unstable results.
+
+        Angular search ranges, translational shifts, and optional scale
+        optimization parameters can be configured to control the exploration
+        of the alignment search space. Angular parameters regulate rotational
+        sampling during alignment, while translational ranges determine the
+        displacement allowed along spatial axes. Scale optimization can be
+        useful when small magnification differences or voxel size
+        inconsistencies exist between reconstructed volumes.
+
+        After execution, the protocol produces aligned output volumes
+        expressed within the reference coordinate system together with the
+        corresponding geometric transformations. When requested, the
+        protocol can additionally generate an averaged consensus volume that
+        enhances common structural features while reducing noise. Although
+        averaging may improve signal quality, biologically meaningful
+        conformational variability can become attenuated when heterogeneous
+        states are combined.
+
+        From an implementation perspective, XmippProtAlignVolume mainly acts
+        as a workflow coordination layer responsible for parameter handling,
+        alignment configuration, masking management, and output generation.
+        The low-level numerical computations associated with the alignment
+        process are delegated to Xmipp alignment routines provided by the
+        underlying framework infrastructure.
+
+        The protocol is commonly used in cryo-EM workflows involving
+        structural comparison, consensus reconstruction generation,
+        coordinate system standardization, and preparation of maps for
+        visualization, quantitative analysis, or atomic modeling.
+        """
     _protCompatibility = []
     _className = ""
     _fscColumns = 6

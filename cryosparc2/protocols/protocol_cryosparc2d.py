@@ -51,6 +51,85 @@ class ProtCryo2D(ProtCryosparcBase, pwprot.ProtClassify2D):
         and removal of junk particles. Also useful as a sanity check to
         investigate particle quality.
     """
+
+    """
+        ProtCryo2D is a CryoSPARC-based protocol dedicated to two-dimensional
+        particle classification within cryo-electron microscopy workflows.
+        The protocol classifies input particle images into multiple 2D
+        classes in order to improve dataset quality, identify structural
+        variability, and facilitate the removal of junk or low-quality
+        particles before downstream reconstruction steps.
+
+        The protocol operates by importing a set of particle images and
+        performing iterative 2D clustering using CryoSPARC classification
+        algorithms. During execution, particles are grouped according to
+        their visual similarity and alignment consistency, generating class
+        averages that represent distinct particle views or structural
+        conformations. This process is commonly used as an initial quality
+        assessment step in cryo-EM processing pipelines.
+
+        From a biological perspective, 2D classification is essential for
+        evaluating particle integrity, angular distribution, and dataset
+        heterogeneity. Well-defined class averages generally indicate good
+        particle quality and stable molecular features, while noisy or
+        poorly resolved classes frequently correspond to contaminants,
+        aggregation, damaged particles, or alignment artefacts. The protocol
+        therefore acts both as a cleaning procedure and as a diagnostic tool
+        for assessing the overall quality of the acquired dataset.
+
+        The protocol supports extensive parameterization of the
+        classification process. Users can define the number of output
+        classes, the maximum alignment resolution, and the uncertainty
+        behavior during the initial classification stages. These parameters
+        directly influence classification diversity, convergence stability,
+        computational cost, and the sensitivity of the algorithm to rare
+        particle views or low signal-to-noise ratio data.
+
+        Circular masking options are also incorporated into the workflow.
+        The protocol allows the application of soft circular masks during
+        classification in order to suppress noisy peripheral regions and
+        improve alignment robustness. Additional inner and outer diameter
+        controls allow smooth masking transitions that reduce edge artefacts
+        and stabilize the classification process. Re-centering mechanisms
+        are additionally implemented to prevent density drift during
+        iterative refinement and maintain particles aligned near the center
+        of the image box.
+
+        The implementation also supports specialized alignment behaviors for
+        filamentous or helical assemblies. In these cases, class averages
+        can be vertically aligned during the final iterations to facilitate
+        the estimation of in-plane rotational consistency between filament
+        segments. Additional controls are available for pose maximization,
+        CTF phase treatment, noise regularization, annealing schedules, and
+        white noise modeling.
+
+        Internally, the protocol follows a structured workflow that begins
+        with CryoSPARC project initialization and particle importation.
+        Classification jobs are then submitted to CryoSPARC using the
+        selected computational resources and GPU configuration. Once the
+        classification process finishes, the protocol converts CryoSPARC
+        outputs into STAR-compatible metadata formats and reconstructs the
+        corresponding Scipion SetOfClasses2D objects.
+
+        Output generation includes the aligned particle metadata, class
+        assignment information, representative class averages, and
+        associated geometric transformations. The protocol additionally
+        scales and organizes CryoSPARC-generated class average files so that
+        they can be visualized and processed consistently within the Scipion
+        framework.
+
+        From an implementation perspective, ProtCryo2D acts primarily as an
+        orchestration layer between Scipion and CryoSPARC. The class manages
+        protocol parameters, metadata conversion, CryoSPARC job submission,
+        GPU handling, output reconstruction, and class association logic,
+        while the underlying numerical classification algorithms are
+        executed directly by CryoSPARC.
+
+        The protocol is widely used in cryo-EM workflows involving particle
+        cleaning, dataset quality validation, angular coverage inspection,
+        structural heterogeneity exploration, and preparation of particle
+        subsets for high-resolution three-dimensional reconstruction.
+        """
     _label = '2D classification'
     IS_2D = True
     _className = "class_2D"

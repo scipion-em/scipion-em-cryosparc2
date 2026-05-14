@@ -54,6 +54,166 @@ class ProtCryoSparcGlobalCtfRefinement(ProtCryosparcBase, pwprot.ProtParticles):
     Performs per-exposure-group CTF parameter refinement of higher-order
     aberrations, against a given 3D reference
     """
+
+    """
+        Global CTF Refinement (ProtCryoSparcGlobalCtfRefinement) — User Manual
+
+        Overview
+
+        The Global CTF Refinement protocol performs per-exposure-group refinement
+        of higher-order optical aberrations using CryoSPARC refinement strategies.
+        The protocol operates on an existing set of aligned particles together with
+        a reference 3D volume and improves the accuracy of Contrast Transfer Function
+        (CTF) parameters across the dataset. The main objective is to correct optical
+        imperfections that may limit high-resolution reconstruction quality.
+
+        In practical cryo-EM workflows, this refinement stage is commonly applied
+        after obtaining a reliable consensus reconstruction and accurate particle
+        alignments. By refining aberration parameters such as beam tilt, trefoil,
+        tetrafoil, spherical aberration, or anisotropic magnification, the protocol
+        improves consistency between experimental images and the reference projection
+        model, which can significantly enhance downstream map resolution and structural
+        interpretability.
+
+        Inputs and General Workflow
+
+        The protocol requires three main inputs: a set of particles with projection
+        alignment information, a reference volume, and a soft mask associated with
+        the reference map. The particles must already contain valid alignment
+        parameters because the refinement process depends on comparing experimental
+        particle images against projections derived from the reference structure.
+
+        The reference volume defines the structural model used during refinement.
+        Biologically, the quality of this reference strongly influences the quality
+        of the refined optical parameters. A high-resolution and well-converged map
+        generally produces more stable refinement results.
+
+        The soft mask is also an important component of the workflow because it
+        restricts the refinement to biologically relevant regions of the structure.
+        Applying an appropriate mask reduces solvent influence and minimizes noise
+        contributions from flexible or poorly resolved regions.
+
+        During execution, the protocol initializes a CryoSPARC project environment,
+        converts the input metadata into CryoSPARC-compatible formats, launches the
+        refinement job, waits for completion, and finally converts the resulting
+        particle metadata back into STAR format for Scipion integration.
+
+        Higher-Order Aberration Refinement
+
+        The protocol provides refinement of several higher-order aberration terms.
+        Beam tilt correction compensates for systematic angular deviations in the
+        electron beam that can introduce phase errors into the reconstruction.
+        Trefoil and tetrafoil refinement model more complex optical distortions
+        originating from microscope imperfections. Spherical aberration refinement
+        further improves phase consistency at high spatial frequencies.
+
+        For CryoSPARC versions supporting anisotropic magnification refinement,
+        the protocol can additionally estimate directional magnification distortions.
+        This correction becomes particularly relevant in high-resolution datasets
+        where small calibration inaccuracies may otherwise reduce reconstruction quality.
+
+        The protocol also supports Ewald Sphere curvature correction. This option
+        becomes increasingly important for large particles or near-atomic-resolution
+        reconstructions where curvature effects can no longer be neglected. The user
+        may define whether positive or negative curvature should be applied during
+        correction.
+
+        Iterative Refinement Strategy
+
+        The refinement process can be repeated for multiple iterations. Performing
+        several iterations allows corrections estimated in one cycle to influence
+        the estimation of other aberration parameters in subsequent cycles. For
+        example, anisotropic magnification refinement may improve the stability of
+        trefoil or tetrafoil estimation during later iterations.
+
+        The protocol also provides reset options for tilt, trefoil, tetrafoil,
+        and anisotropic magnification parameters. These settings restore selected
+        aberration terms to their default values before refinement begins. Such
+        resets can be useful when previous refinement attempts introduced unstable
+        or biologically implausible parameter estimates.
+
+        Resolution and Plotting Parameters
+
+        The minimum fitting resolution parameter determines the lowest spatial
+        frequency considered during aberration estimation. Restricting refinement
+        to higher-resolution information can improve sensitivity to subtle optical
+        effects, although excessively aggressive settings may reduce robustness
+        in noisy datasets.
+
+        The protocol additionally allows generation of diagnostic plots for a
+        selected number of exposure groups. These plots help evaluate refinement
+        quality and visualize optical distortions across the dataset. Optional
+        plot binning improves visual interpretation of trefoil, tilt, and related
+        aberration patterns without altering the refinement results themselves.
+
+        GPU and CryoSPARC Integration
+
+        The implementation automatically integrates with CryoSPARC job management.
+        Depending on the execution environment, GPU resources are assigned either
+        directly or through a queue system. The protocol constructs parameter
+        dictionaries dynamically, launches the CryoSPARC refinement job, monitors
+        execution, and waits until the refinement process completes successfully.
+
+        If the input reference contains half maps, the protocol automatically links
+        them to the CryoSPARC refinement job. This behavior ensures compatibility
+        with advanced refinement workflows that rely on independent half-map
+        information.
+
+        Outputs and Interpretation
+
+        After completion, the protocol generates a refined set of particles with
+        updated projection alignment and refined optical parameters. The output
+        particles preserve the original dataset structure while incorporating the
+        corrected CTF information estimated during refinement.
+
+        Internally, CryoSPARC output metadata is converted into STAR format and
+        copied into the Scipion project structure. Particle transformation matrices
+        and CryoSPARC-specific attributes are reconstructed and assigned to each
+        particle object to maintain compatibility with downstream processing steps.
+
+        From a biological perspective, successful global CTF refinement often leads
+        to improved map sharpness, enhanced high-resolution features, and better
+        interpretability of structural details such as side chains, ligand density,
+        or secondary-structure elements.
+
+        Validation and Compatibility
+
+        The protocol validates CryoSPARC installation compatibility, GPU availability,
+        and consistency between input particles and the reference volume dimensions.
+        Only particles with projection alignment information are accepted because
+        accurate alignment parameters are essential for reliable optical refinement.
+
+        The implementation is compatible with multiple CryoSPARC versions ranging
+        from v3.3.1 up to v4.7.1, with additional refinement features automatically
+        enabled depending on the detected software version.
+
+        Practical Recommendations
+
+        In routine cryo-EM processing, global CTF refinement is typically most useful
+        after achieving stable particle alignments and an accurate consensus map.
+        Applying the protocol too early in the workflow may produce unstable results
+        because aberration estimation depends strongly on the quality of the reference.
+
+        Beam tilt and spherical aberration refinement are usually safe starting
+        points for most datasets. Trefoil, tetrafoil, and anisotropic magnification
+        refinement become increasingly important for high-resolution studies where
+        subtle optical distortions limit reconstruction quality.
+
+        Careful mask design remains essential. Masks should include the stable and
+        biologically meaningful regions of the structure while excluding solvent and
+        highly flexible domains. Poor masking may bias aberration estimation and
+        reduce refinement stability.
+
+        Final Perspective
+
+        Global CTF refinement is a critical high-resolution optimization step in
+        modern cryo-EM workflows. Beyond simple parameter correction, it improves
+        the physical consistency between experimental images and the reconstruction
+        model, enabling more accurate structural interpretation. When combined with
+        reliable alignments, appropriate masking, and a high-quality reference map,
+        this protocol can substantially improve the final reconstruction quality and
+        enhance confidence in downstream biological conclusions.
+        """
     _label = 'global ctf refinement'
     _className = "ctf_refine_global"
     _protCompatibility = [V3_3_1, V3_3_2, V4_0_0, V4_0_1, V4_0_2, V4_0_3, V4_1_0,

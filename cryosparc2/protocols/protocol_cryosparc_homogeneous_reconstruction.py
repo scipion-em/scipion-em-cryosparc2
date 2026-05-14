@@ -53,6 +53,152 @@ from ..constants import *
 class ProtCryoSparcHomogeneousReconstruct(ProtCryosparcBase):
     """ Create a 3D reconstruction from input particles that already have alignments in 3D.
     """
+
+    """
+        Creates a homogeneous 3D reconstruction from particles that already contain
+        valid 3D alignment information. The protocol uses cryoSPARC’s homogeneous
+        reconstruction framework to generate a consensus density map together with
+        refined particle alignment metadata. The implementation supports symmetry
+        application, helical reconstruction, FSC-based validation, and optional
+        Ewald Sphere correction strategies for high-resolution cryo-EM workflows.
+
+        AI Generated:
+
+        Homogeneous Reconstruction (ProtCryoSparcHomogeneousReconstruct) — User Manual
+            Overview
+
+            The Homogeneous Reconstruction protocol generates a 3D density map from
+            previously aligned cryo-EM particles. Its primary objective is to combine
+            aligned particle images into a consistent three-dimensional reconstruction
+            while preserving structural features shared across the dataset. In practical
+            cryo-EM workflows, this protocol is commonly used after particle alignment
+            and classification stages in order to obtain a high-quality consensus map.
+
+            From a biological perspective, homogeneous reconstruction is most appropriate
+            when the dataset represents a relatively stable conformational state. The
+            protocol assumes that all particles correspond to the same structural
+            arrangement and therefore contributes to a single averaged reconstruction.
+            When strong conformational heterogeneity exists, additional classification
+            or heterogeneous refinement approaches may be more appropriate before using
+            this protocol.
+
+            Inputs and General Workflow
+
+            The protocol requires a set of particles with valid 3D alignment parameters.
+            These alignments define the orientation and position of each particle during
+            reconstruction. Optionally, a mask volume may be provided for FSC calculation
+            and reconstruction evaluation. The mask defines which regions of the map are
+            considered during resolution estimation and helps reduce solvent noise.
+
+            During execution, the protocol prepares the reconstruction parameters,
+            launches the corresponding cryoSPARC job, monitors processing status,
+            retrieves the reconstructed maps, and converts the generated outputs into
+            Scipion-compatible formats for downstream analysis.
+
+            Symmetry and Helical Reconstruction
+
+            One of the central features of this protocol is support for symmetry-aware
+            reconstruction. Standard point-group symmetries such as cyclic, dihedral,
+            tetrahedral, octahedral, and icosahedral symmetries can be applied during
+            reconstruction to improve signal averaging and enhance map quality.
+
+            The protocol also supports helical reconstruction through user-defined
+            helical twist, rise, and symmetry order parameters. These settings are
+            especially important for filamentous or repetitive biological assemblies
+            such as amyloid fibrils, cytoskeletal filaments, or helical membrane
+            complexes. Proper estimation of helical parameters is critical because
+            incorrect values may introduce reconstruction artifacts or distort the
+            biological interpretation of the structure.
+
+            Reconstruction Parameters and Advanced Processing
+
+            The protocol allows users to define the reconstruction box size, which
+            determines the dimensions of the generated volume. By default, the particle
+            dimensions are used directly, although manual adjustment may be useful when
+            optimizing computational efficiency or handling oversampled datasets.
+
+            Several advanced refinement controls are also available. The protocol can
+            force a new gold-standard particle split, flip the reconstruction hand,
+            ignore specific aberration terms such as tilt, trefoil, tetrafoil, or
+            anisotropic magnification, and optionally optimize FSC masking procedures.
+
+            Ewald Sphere correction is additionally supported for high-resolution
+            reconstructions. The implementation includes both simple and iterative
+            correction methods, allowing compensation for curvature effects that become
+            increasingly relevant at near-atomic resolution. These options are generally
+            most useful for advanced users working with very high-quality datasets.
+
+            Filtering and Sharpening
+
+            The protocol supports manual filtering and sharpening overrides in addition
+            to the standard FSC-based filtering pipeline. Users may specify filtering
+            resolution limits, Butterworth filter order, and B-factor sharpening
+            parameters. These controls provide flexibility when preparing maps for
+            visualization, interpretation, or publication-quality presentation.
+
+            In practical cryo-EM workflows, automatic FSC filtering is usually sufficient
+            for most datasets. Manual override options are primarily intended for expert
+            optimization and careful post-processing refinement.
+
+            GPU Processing and Execution Workflow
+
+            During execution, the protocol dynamically prepares all reconstruction
+            parameters and submits the corresponding cryoSPARC reconstruction task.
+            GPU allocation is automatically handled depending on the execution
+            environment and queue configuration. The protocol monitors job execution,
+            waits for successful completion, and clears intermediate files after
+            processing in order to reduce unnecessary storage usage.
+
+            Validation checks are also performed before execution. The implementation
+            verifies GPU compatibility, confirms the existence of CTF information, and
+            ensures that particles contain valid 3D alignments before reconstruction
+            begins.
+
+            Outputs and Interpretation
+
+            After completion, the protocol generates the reconstructed 3D volume,
+            associated half maps, updated particle metadata, and FSC-related validation
+            information. The resulting maps are automatically converted into formats
+            compatible with downstream Scipion workflows and structural analysis tools.
+
+            The reconstructed volume represents the consensus structural state present
+            across the aligned particles. Half maps are used for independent validation
+            and resolution estimation through FSC calculations. Biologically, the final
+            map quality depends strongly on particle alignment accuracy, symmetry
+            correctness, masking strategy, and dataset homogeneity.
+
+            The protocol also updates particle transformation matrices and alignment
+            information, allowing the refined particles to be reused in subsequent
+            refinement, classification, or reconstruction workflows.
+
+            Practical Recommendations
+
+            In routine cryo-EM processing, homogeneous reconstruction is often performed
+            after obtaining stable particle alignments from refinement or classification
+            protocols. For symmetric assemblies, applying the correct symmetry typically
+            improves resolution and map interpretability significantly.
+
+            Helical reconstruction parameters should be carefully validated visually and
+            through FSC consistency because incorrect helical geometry may produce strong
+            reconstruction artifacts. Similarly, Ewald Sphere correction should generally
+            be reserved for datasets approaching very high resolution where curvature
+            effects become biologically meaningful.
+
+            When preparing maps for interpretation or publication, it is advisable to
+            inspect both sharpened and unsharpened maps, verify FSC behavior carefully,
+            and evaluate whether masking introduces artificial structural features.
+
+            Final Perspective
+
+            Homogeneous reconstruction is a central stage in cryo-EM structural analysis
+            because it transforms aligned particle images into biologically interpretable
+            three-dimensional density maps. The quality of the final reconstruction
+            depends not only on computational refinement but also on careful selection
+            of symmetry parameters, masking strategies, and reconstruction settings.
+            When properly configured, the protocol provides reliable high-resolution
+            consensus maps suitable for structural interpretation, model building,
+            comparative analysis, and downstream biological studies.
+        """
     _label = 'homogeneous reconstruction'
     _className = "homo_reconstruct"
     _devStatus = NEW

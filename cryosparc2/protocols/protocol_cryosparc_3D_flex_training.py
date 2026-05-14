@@ -50,6 +50,190 @@ class ProtCryoSparc3DFlexTraining(ProtCryosparcBase, ProtFlexBase):
     size of the model, and training hyperparameters. This job outputs
     checkpoints during training.
     """
+    """
+        Trains a CryoSPARC 3DFlex model using previously prepared particles and a
+        tetrahedral mesh representation of the structure. The protocol learns the
+        continuous conformational variability of macromolecular complexes by modeling
+        structural deformations in a low-dimensional latent space. During training,
+        the protocol generates checkpoints and latent coordinates that describe the
+        motion and flexibility of particles across different conformational states.
+
+        AI Generated:
+
+        3D Flex Training (ProtCryoSparc3DFlexTraining) — User Manual
+            Overview
+
+            The 3D Flex Training protocol performs the core learning stage of the
+            CryoSPARC 3DFlex workflow. Using downsampled particles together with a
+            tetrahedral deformation mesh, the protocol trains a neural deformation
+            model capable of representing continuous molecular motion directly from
+            cryo-EM particle images.
+
+            Unlike traditional discrete classification approaches, this protocol
+            models conformational variability as a continuous latent space. Each
+            particle receives latent coordinates describing its structural state,
+            allowing biological motions to be explored as smooth transitions rather
+            than isolated classes. This makes the protocol particularly useful for
+            studying flexible proteins, dynamic assemblies, multi-domain complexes,
+            and molecular machines exhibiting continuous motion.
+
+            Inputs and General Workflow
+
+            The protocol requires two main inputs. The first is a 3D Flex Data
+            Prepare protocol containing the downsampled particles and associated
+            metadata. The second is a 3D Flex Mesh Prepare protocol containing the
+            tetrahedral mesh used to regularize and constrain structural deformations.
+
+            During execution, the protocol connects both particle and mesh data to
+            the CryoSPARC training job and launches the flexible refinement model.
+            The training process optimizes both the canonical density map and the
+            deformation field simultaneously while learning latent coordinates for
+            each particle.
+
+            The workflow is designed to capture biologically meaningful continuous
+            motion while maintaining physically realistic deformations through mesh
+            regularization and rigidity constraints.
+
+            Latent Space Representation
+
+            One of the central concepts of the protocol is the latent space, defined
+            by the number of latent dimensions parameter. This latent space represents
+            the continuous conformational landscape explored by the particles.
+
+            Lower-dimensional latent spaces are generally easier to interpret and are
+            often sufficient for simple motions such as hinge bending or domain
+            rotations. In many biological applications, starting with two latent
+            dimensions provides a good balance between interpretability and flexibility.
+            More complex systems containing multiple coupled motions may require higher
+            dimensional latent representations.
+
+            From a biological perspective, latent coordinates can later be analyzed
+            to identify conformational trajectories, structural transitions, or
+            distinct motion pathways within heterogeneous datasets.
+
+            Neural Network Architecture
+
+            The protocol allows control over the architecture of the deformation
+            network through parameters such as the number of layers and hidden units.
+            Larger neural networks can model more complex motions and deformation
+            patterns but also increase computational cost and the risk of overfitting.
+
+            For most routine cryo-EM datasets, the default architecture provides a
+            good compromise between flexibility and stability. Increasing network size
+            may become useful when studying highly dynamic complexes with large-scale
+            structural rearrangements.
+
+            Excessively large models, however, may start fitting noise instead of
+            biologically meaningful motion, especially in datasets with limited signal
+            or poor particle quality.
+
+            Learning Rates and Optimization
+
+            Separate learning rates are defined for the deformation model and the
+            canonical density map. This separation allows independent control over
+            how rapidly structural deformations and density features evolve during
+            optimization.
+
+            Higher learning rates can accelerate convergence but may lead to unstable
+            training or unrealistic deformations. Lower learning rates generally
+            improve stability at the expense of longer training times.
+
+            The protocol progressively anneals learning rates during training while
+            gradually increasing the effective resolution of the canonical density.
+            This strategy improves robustness during early optimization and refines
+            structural details during later stages.
+
+            Rigidity Regularization
+
+            Rigidity regularization is one of the most biologically important aspects
+            of the protocol. The rigidity lambda parameter controls how smoothly the
+            tetrahedral mesh deforms during training.
+
+            Higher rigidity values favor smooth, coordinated motions and reduce the
+            likelihood of unrealistic local distortions. Lower rigidity values allow
+            more flexible and localized deformations but may increase the risk of
+            overfitting noise or generating physically implausible motions.
+
+            In practice, relatively rigid settings are often preferred for small
+            particles, low signal-to-noise datasets, or systems with subtle motions.
+            More flexible settings may be beneficial when studying highly dynamic
+            assemblies or large conformational rearrangements.
+
+            Latent Space Regularization
+
+            The protocol includes several parameters dedicated to stabilizing and
+            organizing the latent space representation. Noise injection during latent
+            inference helps smooth the conformational landscape and prevents unstable
+            latent clustering.
+
+            The latent centering parameters constrain latent coordinates to remain
+            distributed around the center of latent space. Proper balancing of these
+            parameters improves the continuity and interpretability of conformational
+            trajectories.
+
+            If latent coordinates accumulate excessively near the boundaries of the
+            estimation range, increasing the latent centering strength can stabilize
+            training. Conversely, overly concentrated latent distributions may indicate
+            excessive regularization.
+
+            Training Outputs
+
+            After training, the protocol produces several important outputs. The most
+            significant output is a particle set containing latent coordinates for
+            every particle. These latent values encode the conformational state of
+            each observation within the learned flexibility landscape.
+
+            The protocol also stores CryoSPARC checkpoint files that preserve the
+            trained model and allow downstream protocols such as 3D Flex Generator
+            or 3D Flex Reconstruction to continue processing.
+
+            Internally, the protocol extracts latent coordinates from CryoSPARC output
+            files and associates them with Scipion particle objects, creating a
+            flexible particle dataset compatible with downstream flexibility analysis.
+
+            Biological Interpretation
+
+            Biologically, the trained latent space can reveal continuous molecular
+            motions that are often hidden in conventional discrete classifications.
+            Smooth trajectories through latent space may correspond to domain motions,
+            ligand-induced rearrangements, breathing motions, or assembly transitions.
+
+            Interpretation should nevertheless be performed carefully. Not every latent
+            dimension necessarily corresponds to a unique biological motion, and some
+            variability may still reflect noise, preferred orientations, or imperfect
+            reconstruction conditions.
+
+            Visual inspection of generated trajectories and reconstructed maps remains
+            essential to validate that observed motions are structurally and
+            biologically meaningful.
+
+            Practical Recommendations
+
+            For most cryo-EM workflows, beginning with two latent dimensions and
+            default training parameters provides a robust starting point. If the
+            resulting latent space appears too simple or fails to capture observed
+            heterogeneity, additional latent dimensions can be introduced gradually.
+
+            When training becomes unstable or generates unrealistic motions, increasing
+            rigidity regularization or reducing network complexity often improves
+            robustness. Conversely, highly dynamic systems may benefit from slightly
+            lower rigidity constraints and richer latent representations.
+
+            Careful inspection of latent distributions, generated trajectories, and
+            reconstructed density maps is critical before drawing biological conclusions.
+
+            Final Perspective
+
+            The 3D Flex Training protocol represents the central learning stage of the
+            CryoSPARC flexibility framework. Rather than separating particles into
+            discrete structural classes, it models structural heterogeneity as a
+            continuous conformational landscape.
+
+            For biological users, this provides a powerful framework to investigate
+            molecular dynamics directly from cryo-EM data, enabling visualization and
+            interpretation of motions that are often inaccessible through conventional
+            refinement approaches.
+        """
     _label = '3D flex training'
     _devStatus = BETA
     _protCompatibility = [V4_1_0, V4_1_1, V4_1_2, V4_2_0, V4_2_1, V4_3_1, V4_4_0, V4_4_1, V4_5_1,

@@ -51,10 +51,223 @@ from ..constants import *
 
 class ProtCryoSparcInitialModel(ProtCryosparcBase, ProtInitialVolume,
                                 ProtClassify3D):
-    """    
+    """
     Generate a 3D initial model _de novo_ from 2D particles using
     CryoSparc Stochastic Gradient Descent (SGD) algorithm.
     """
+
+    """
+        Generates ab initio 3D initial models from 2D particle images using
+        the CryoSPARC stochastic gradient descent (SGD) reconstruction algorithm.
+        The protocol is designed to estimate one or multiple initial volumes
+        directly from particle data without requiring a prior structural model.
+
+        AI Generated:
+
+        Initial Model Reconstruction (ProtCryoSparcInitialModel) — User Manual
+            Overview
+
+            The Initial Model protocol reconstructs one or several 3D ab initio
+            volumes from 2D cryo-EM particles using the CryoSPARC homogeneous
+            ab initio reconstruction algorithm. Its primary objective is to
+            generate an initial structural model suitable for downstream
+            refinement, heterogeneous classification, or structural exploration
+            in cryo-electron microscopy workflows.
+
+            From a biological perspective, this protocol is typically used
+            during the earliest stages of structural determination, when no
+            reliable reference structure is available. Instead of relying on
+            template-based approaches, the method reconstructs structures
+            directly from experimental particle images through iterative
+            stochastic optimization. This makes it especially valuable for
+            novel macromolecular complexes, unknown conformational states,
+            or datasets with significant structural variability.
+
+            Inputs and General Workflow
+
+            The protocol requires a set of particles with associated CTF
+            information. These particles represent the experimental projections
+            used to estimate the initial 3D reconstruction. Proper preprocessing,
+            including particle extraction and CTF estimation, is essential for
+            obtaining biologically meaningful results.
+
+            The reconstruction process begins by initializing one or several
+            random 3D volumes. During optimization, CryoSPARC iteratively
+            estimates particle orientations, class assignments, and volume
+            updates using stochastic gradient descent. Over successive iterations,
+            the structures progressively evolve from low-resolution random
+            densities toward biologically interpretable maps.
+
+            The protocol supports generation of multiple ab initio classes.
+            This functionality is particularly important for heterogeneous
+            datasets containing different conformations, compositional states,
+            or partially damaged particles. Each class evolves independently,
+            allowing the algorithm to separate distinct structural populations.
+
+            Number of Classes and Structural Heterogeneity
+
+            One of the most biologically relevant parameters is the number
+            of ab initio classes. Using a single class is appropriate for
+            homogeneous datasets where all particles are expected to belong
+            to the same structural state. In contrast, heterogeneous datasets
+            often benefit from multiple classes because the protocol can
+            separate different conformations or assemblies during reconstruction.
+
+            Increasing the number of classes may improve structural separation,
+            but it also increases computational complexity and the risk of
+            generating noisy or poorly populated classes. In practical cryo-EM
+            workflows, users often start with a small number of classes and
+            iteratively refine the strategy based on the biological quality
+            of the resulting maps.
+
+            Resolution Progression and Optimization Strategy
+
+            The reconstruction follows a progressive optimization scheme.
+            The initial resolution parameter controls the starting frequency
+            information used during early iterations. Beginning with low-resolution
+            information stabilizes orientation estimation and avoids overfitting
+            noise. As optimization progresses, the maximum resolution parameter
+            determines the highest spatial frequency incorporated into the model.
+
+            The protocol separates optimization into initial and final iteration
+            phases. Early iterations focus on global convergence and orientation
+            stabilization, while later iterations progressively refine structural
+            details. The Fourier radius step parameter controls how rapidly
+            higher-resolution information is introduced during optimization.
+
+            From a biological standpoint, gradual resolution annealing improves
+            robustness, especially for difficult datasets with low signal-to-noise
+            ratios or strong preferred orientations.
+
+            SGD Optimization and Learning Parameters
+
+            The reconstruction is driven by stochastic gradient descent.
+            Several parameters regulate optimization stability and convergence,
+            including learning rate, learning rate duration, momentum,
+            minibatch size, and sparsity regularization.
+
+            The learning rate controls the magnitude of volume updates during
+            optimization. Higher values accelerate convergence but may introduce
+            instability, whereas lower values improve stability at the expense
+            of runtime. The protocol initially applies an elevated learning rate
+            to accelerate exploration of the solution space before transitioning
+            to more stable refinement phases.
+
+            Momentum can improve convergence by smoothing stochastic updates,
+            although excessive momentum may destabilize difficult datasets.
+            Sparsity regularization may help suppress noisy regions in some
+            reconstructions, particularly for small particles or weak datasets.
+
+            Minibatch sizes determine how many particles contribute to each
+            optimization step. Small minibatches introduce stochastic variability
+            that may help escape local minima, whereas larger minibatches provide
+            smoother and more stable optimization. The protocol also supports
+            automatic minibatch tuning for adaptive optimization behavior.
+
+            Noise Modeling and Stability
+
+            Cryo-EM particle images contain substantial experimental noise,
+            making noise estimation a central component of ab initio reconstruction.
+            The protocol supports symmetric, white, and coloured noise models.
+
+            The symmetric model is generally recommended for most biological
+            datasets because it approximates coloured noise while assuming
+            radial symmetry in Fourier space. White noise is computationally
+            simpler but biologically less realistic for most cryo-EM experiments.
+            The coloured noise model may improve reconstruction quality in
+            datasets with complex background characteristics.
+
+            Additional parameters regulate the prior and initialization weights
+            of the noise estimation procedure. These parameters influence
+            optimization stability during early iterations, particularly when
+            dealing with low particle counts or noisy experimental conditions.
+
+            Symmetry and Structural Constraints
+
+            The protocol supports symmetry enforcement during reconstruction,
+            including cyclic, dihedral, tetrahedral, octahedral, and icosahedral
+            symmetries. Applying symmetry can dramatically improve reconstruction
+            quality when the biological complex genuinely possesses the specified
+            symmetry.
+
+            However, enforcing incorrect symmetry may introduce severe structural
+            artifacts or mask biologically relevant asymmetry. For this reason,
+            symmetry above C1 is generally discouraged during exploratory
+            ab initio reconstruction unless strong prior biological evidence
+            exists.
+
+            The protocol also supports real-space centering and windowing of
+            reconstructed volumes. These operations improve numerical stability
+            and help maintain compact, centered density distributions during
+            optimization.
+
+            Non-negativity constraints can additionally be enforced in real
+            space. This is biologically meaningful because electron density
+            values are expected to remain physically positive in most regions.
+
+            Particle Alignment and Classification
+
+            During optimization, particles are iteratively assigned orientations
+            and, when multiple classes are used, class memberships. The protocol
+            automatically stores these alignments and reconstructs representative
+            volumes for each class.
+
+            Internally, particle alignment information is converted into
+            compatible metadata formats for downstream integration with
+            Scipion and RELION-style workflows. Representative volumes are
+            associated with their corresponding classes, preserving particle-to-class
+            relationships throughout the processing chain.
+
+            Outputs and Their Interpretation
+
+            After completion, the protocol produces a set of reconstructed
+            3D volumes together with their associated particle classifications.
+            Each output class contains a representative volume and the aligned
+            particles assigned to that structural state.
+
+            Biologically, these volumes often represent candidate conformational
+            states, compositional assemblies, or distinct structural populations.
+            Interpretation should therefore consider both map quality and
+            particle occupancy.
+
+            The protocol also exports intermediate metadata files and converted
+            STAR-format outputs to facilitate interoperability with external
+            cryo-EM software ecosystems.
+
+            Practical Recommendations
+
+            In most routine cryo-EM workflows, it is advisable to begin with
+            conservative parameters and a limited number of classes. Excessive
+            heterogeneity or aggressive optimization settings can destabilize
+            convergence and produce noisy maps.
+
+            For difficult datasets, gradual resolution progression, moderate
+            minibatch sizes, and symmetric noise modeling generally improve
+            robustness. Enabling non-negativity and real-space centering is
+            also recommended for most biological applications.
+
+            Symmetry should only be enforced when strongly supported by prior
+            structural knowledge. Incorrect symmetry assumptions are among the
+            most common causes of biologically misleading reconstructions.
+
+            Visual inspection of intermediate and final volumes remains essential.
+            Successful reconstructions should exhibit coherent structural features,
+            stable particle assignments, and biologically interpretable density
+            distributions.
+
+            Final Perspective
+
+            Ab initio reconstruction represents one of the most critical stages
+            in single-particle cryo-EM analysis because it establishes the
+            structural foundation for all subsequent refinement and interpretation.
+            Reliable initial models facilitate downstream classification,
+            high-resolution refinement, and biological discovery.
+
+            Careful parameter selection, realistic handling of structural
+            heterogeneity, and biologically informed interpretation of the
+            resulting maps are essential for obtaining meaningful structural
+            insights from experimental cryo-EM datasets.
+        """
     _label = 'initial model'
     _className = "homo_abinit"
     # --------------------------- DEFINE param functions ----------------------

@@ -43,6 +43,129 @@ class ProtCryoSparc3DFlexGenerator(ProtCryosparcBase, ProtFlexBase):
     This job can also optionally take in a high-resolution density map (e.g., from 3D Flex Reconstruction) and
     will upscale the deformation model and apply deformations to the high resolution map.
     """
+    """
+        3D Flex Generator (ProtCryoSparc3DFlexGenerator) — User Manual
+
+        Overview
+
+        The 3D Flex Generator protocol generates a series of density maps
+        from a previously trained 3D Flex model in order to visualize the
+        continuous conformational variability learned during training. Its
+        primary purpose is to transform the latent information encoded by
+        the neural network into interpretable structural motions that can
+        be explored as ordered volumetric trajectories. In practical cryo-EM
+        workflows, this protocol provides a direct way to inspect how the
+        particle changes across different conformational states and to
+        evaluate whether the learned flexibility corresponds to meaningful
+        biological motion.
+
+        The protocol is designed to operate after a 3D Flex Training job
+        has already been completed or while training is still ongoing.
+        Because the generator reads checkpoints directly from the training
+        process, users can monitor the evolution of the deformation model
+        throughout optimization and assess whether the learned motions are
+        stable, interpretable, and biologically plausible.
+
+        Inputs and General Workflow
+
+        The protocol requires a completed or partially completed 3D Flex
+        Training protocol as its main input. This training job contains the
+        learned deformation model and latent representation that define the
+        conformational landscape of the particle. The generator accesses
+        the flex_model output from the training checkpoint and uses it to
+        synthesize a sequence of volumetric reconstructions along selected
+        latent dimensions.
+
+        One of the central parameters of the protocol is the number of
+        frames generated per series. This value defines how densely the
+        conformational trajectory is sampled across the latent space.
+        Odd-numbered frame counts are recommended because they ensure that
+        the central frame corresponds to the neutral or zero position of
+        the latent dimension. In biological terms, this often represents
+        the consensus or average conformation around which structural
+        motions are distributed.
+
+        The generated volume series allows users to visualize gradual
+        transitions between conformational states rather than discrete
+        structural classes. This capability is especially valuable for
+        studying continuous molecular motions such as domain breathing,
+        hinge movements, ligand-induced rearrangements, or flexible
+        assemblies that cannot be adequately represented by rigid
+        classification approaches.
+
+        Internal Processing
+
+        Internally, the protocol launches a cryoSPARC flex_generate job
+        connected to the selected 3D Flex training checkpoint. Depending on
+        the execution environment, GPU resources may be assigned directly
+        or managed through the queue system. The protocol automatically
+        transfers the selected parameters and establishes the appropriate
+        connection to the flex_model generated during training.
+
+        After execution, cryoSPARC produces compressed volume series files
+        representing the generated conformational trajectories. The
+        protocol automatically copies these files into the Scipion working
+        directory, extracts the generated series, and organizes them into
+        accessible folders for downstream visualization and analysis.
+
+        Outputs and Interpretation
+
+        The main output of the protocol consists of one or more ordered
+        series of reconstructed density maps representing structural motion
+        along latent dimensions learned by the 3D Flex model. Each volume
+        within a series corresponds to a different position in the latent
+        conformational landscape, allowing users to inspect how the
+        structure continuously evolves.
+
+        Biologically, these generated trajectories can reveal coordinated
+        domain rearrangements, flexible linkers, breathing motions, or
+        transitions between functional states. However, interpretation
+        should always be approached carefully, since generated motions are
+        inferred from the learned latent representation and may sometimes
+        include non-physical deformations if training quality is limited or
+        the dataset contains insufficient signal.
+
+        Validation and Consistency Checks
+
+        Before execution, the protocol verifies that the selected 3D Flex
+        training job contains an available flex_model checkpoint with valid
+        generated data. If the training process has not yet produced usable
+        outputs, the protocol prevents execution and informs the user that
+        there is no data available for visualization. These validation
+        checks ensure that the generator only operates on meaningful and
+        interpretable deformation models.
+
+        Practical Recommendations
+
+        In routine biological workflows, it is generally advisable to begin
+        with a moderate number of frames in order to obtain smooth and
+        interpretable conformational trajectories without generating
+        unnecessarily large datasets. Increasing the number of frames may
+        improve visualization of subtle motions but can also make analysis
+        more computationally demanding.
+
+        Since the generated volumes represent learned structural motions,
+        users should visually inspect the trajectories carefully and verify
+        that observed deformations remain biologically plausible. Motions
+        involving disconnected densities, unrealistic stretching, or severe
+        distortions may indicate insufficient training convergence,
+        excessive flexibility in the dataset, or limitations in the
+        consensus refinement used during training.
+
+        Final Perspective
+
+        For most cryo-EM practitioners, the 3D Flex Generator protocol is
+        not simply a visualization utility but a biologically meaningful
+        interpretation tool that translates abstract latent representations
+        into observable molecular motion. By generating continuous
+        trajectories directly from the trained deformation model, the
+        protocol provides valuable insight into the dynamic behavior of
+        macromolecular complexes and helps bridge the gap between static
+        structural reconstruction and functional conformational analysis.
+        """
+
+
+
     _label = '3D flex generator'
     _devStatus = BETA
     _protCompatibility = [V4_1_0, V4_1_1, V4_1_2, V4_2_0, V4_2_1, V4_3_1, V4_4_0, V4_4_1, V4_5_1,

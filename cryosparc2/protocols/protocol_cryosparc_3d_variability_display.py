@@ -48,6 +48,132 @@ class ProtCryoSparc3DVariabilityDisplay(ProtCryosparcBase, ProtRefine3D):
     Protocol to create various versions of a 3D variability result that can be
     used for display
     """
+
+    """
+        3D Variability Display (ProtCryoSparc3DVariabilityDisplay) — User Manual
+
+        Overview
+
+        The 3D Variability Display protocol generates visualization-oriented outputs from a previously computed
+        3D Variability Analysis in CryoSPARC. Its main purpose is to transform the variability components and
+        latent heterogeneity information into interpretable structural representations that can be explored by
+        cryo-EM users. Depending on the selected mode, the protocol can generate clustered conformational states,
+        linear variability trajectories, or intermediate reconstructions that describe continuous structural
+        transitions.
+
+        In practical cryo-EM workflows, this protocol is commonly used after 3D Variability Analysis to inspect
+        conformational landscapes, identify discrete structural states, and visualize flexible motions in large
+        macromolecular complexes. The protocol is especially useful for studying molecular dynamics, domain
+        rearrangements, compositional heterogeneity, or continuous conformational changes that cannot be fully
+        captured by standard discrete classification methods.
+
+        Inputs and General Workflow
+
+        The protocol requires as input a completed 3D Variability Analysis job. This previous analysis provides
+        the variability components, reconstructed maps, and particle information needed for visualization and
+        interpretation. The workflow begins by connecting the variability analysis outputs with the display job,
+        followed by reconstruction and organization of the selected variability representations.
+
+        The protocol supports three different visualization modes. The cluster mode groups particles into
+        discrete conformational clusters and reconstructs representative volumes for each cluster. The simple
+        mode generates a linear series of volumes along each variability component, effectively producing a
+        structural movie that illustrates gradual transitions. The intermediates mode reconstructs multiple
+        intermediate states along variability dimensions, allowing a more detailed representation of non-linear
+        conformational changes.
+
+        From a biological perspective, the selected mode depends on the type of heterogeneity present in the
+        dataset. Cluster mode is generally preferred when distinct conformational states are expected, whereas
+        simple and intermediates modes are more appropriate for studying continuous flexibility and gradual
+        molecular motions.
+
+        Cluster-Based Visualization
+
+        In cluster mode, the protocol separates particles into multiple groups according to their variability
+        coordinates and reconstructs representative volumes for each cluster. This approach is particularly useful
+        for identifying biologically meaningful conformational states, such as open and closed forms of a protein
+        complex or assemblies with different ligand occupancies.
+
+        The number of clusters determines how finely the conformational landscape is partitioned. A small number
+        of clusters typically captures broad structural differences, while larger numbers may reveal more subtle
+        variability patterns. However, excessive clustering can produce noisy or poorly populated classes that
+        may not correspond to biologically relevant states.
+
+        The protocol also supports generation of particle subsets associated with each cluster. These subsets can
+        later be refined independently or used for downstream structural analysis. Additionally, optional 3D
+        cluster plots can be produced to better visualize the spatial distribution of variability components.
+
+        Intermediate and Continuous Variability Representation
+
+        The simple and intermediates modes are designed to visualize continuous conformational variability.
+        Instead of separating particles into discrete classes, the protocol reconstructs ordered trajectories
+        along variability dimensions. This produces a sequence of maps that can be interpreted as structural
+        transitions or molecular motions.
+
+        The intermediates mode is especially useful when variability follows non-linear trajectories. In this
+        configuration, the protocol reconstructs multiple intermediate frames using rolling windows or particle
+        subsets distributed across the variability landscape. From a biological standpoint, this allows a more
+        realistic representation of continuous flexibility, particularly in molecular machines, membrane proteins,
+        or highly dynamic assemblies.
+
+        The protocol can optionally export particle subsets associated with individual intermediate frames. This
+        functionality is useful for additional focused refinement or for validating whether specific conformational
+        states correspond to stable particle populations.
+
+        Resolution Control and Filtering
+
+        Several parameters control the quality and appearance of the reconstructed outputs. The protocol supports
+        optional downsampling and cropping of reconstructed volumes, which can reduce computational cost and
+        simplify visualization for exploratory analyses.
+
+        Filtering parameters allow users to control the effective resolution of the displayed variability maps.
+        Low-pass filtering is useful for emphasizing large-scale structural motions and suppressing high-frequency
+        noise, while high-pass filtering can help isolate localized variability features. Proper filtering is
+        particularly important when interpreting flexible regions, since noise and reconstruction artefacts may
+        otherwise be mistaken for biologically meaningful motions.
+
+        The protocol also supports optional hand inversion of output volumes. This operation affects only the
+        reconstructed maps and not the particle alignments themselves.
+
+        Output Generation and Interpretation
+
+        After execution, the protocol generates organized sets of reconstructed volumes corresponding to the
+        selected variability mode. In cluster mode, the outputs include representative 3D classes together with
+        associated particle assignments. In simple and intermediates modes, the outputs consist of ordered volume
+        series representing structural transitions along variability dimensions.
+
+        The protocol automatically converts CryoSPARC outputs into Scipion-compatible formats, generates STAR
+        metadata files, and creates the corresponding volume and particle objects required for downstream
+        visualization and processing.
+
+        From a biological perspective, the reconstructed trajectories should not be interpreted as exact physical
+        molecular pathways. Instead, they represent statistically dominant modes of variability extracted from the
+        experimental dataset. Careful interpretation is therefore required, especially in cases where variability
+        may arise from noise, preferred orientations, compositional mixtures, or reconstruction artefacts.
+
+        Practical Recommendations
+
+        In routine cryo-EM workflows, cluster mode is often the best starting point when discrete conformational
+        states are suspected. For datasets dominated by continuous flexibility, the intermediates mode generally
+        provides a more informative representation of structural dynamics.
+
+        Users should carefully choose the number of frames or clusters according to dataset size and structural
+        complexity. Excessively large numbers may over-segment the variability landscape and generate noisy
+        reconstructions, while very small numbers may oversimplify meaningful conformational differences.
+
+        Filtering and downsampling parameters should be adjusted conservatively. Over-filtering can obscure
+        relevant structural features, whereas insufficient filtering may amplify noise and hinder interpretation.
+        Visual inspection of all reconstructed volumes remains essential before drawing biological conclusions.
+
+        Final Perspective
+
+        For most cryo-EM users, the 3D Variability Display protocol serves as a bridge between abstract
+        variability analysis and biologically interpretable structural visualization. By transforming latent
+        variability components into clustered states or continuous trajectories, the protocol enables researchers
+        to explore molecular flexibility in a more intuitive and structurally meaningful way. Careful selection
+        of visualization modes, reconstruction parameters, and interpretation strategies is essential for
+        obtaining reliable insights into conformational heterogeneity and molecular dynamics.
+        """
+
     _label = '3D variability Display'
     _devStatus = BETA
     partClassDict = NestedDict(depth=2)

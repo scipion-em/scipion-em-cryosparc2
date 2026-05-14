@@ -43,6 +43,131 @@ from ..utils import (addComputeSectionParams, cryosparcValidate, gpusValidate,
 class ProtCryoSparcSymmetryExpansion(ProtCryosparcBase):
     """ Duplicate particles around a point-group symmetry.
     """
+
+    """
+        CryoSPARC Symmetry Expansion Protocol — User Manual
+
+        Overview
+
+        The ProtCryoSparcSymmetryExpansion protocol is a Scipion wrapper
+        designed to execute cryoSPARC symmetry expansion jobs within an
+        integrated cryo-electron microscopy workflow. Its primary purpose is
+        to duplicate particle orientations according to a specified symmetry
+        group so that each particle can be represented multiple times under
+        all symmetry-related orientations. In cryo-EM structural analysis,
+        symmetry expansion is particularly important for studying local
+        conformational variability, asymmetric structural features, and
+        flexible regions inside otherwise symmetric macromolecular complexes.
+
+        The protocol inherits from ProtCryosparcBase and acts as a bridge
+        between Scipion and cryoSPARC. Internally, it prepares the particle
+        metadata, defines the symmetry parameters, launches the cryoSPARC
+        symmetry expansion job, monitors execution, and imports the expanded
+        particle dataset back into the Scipion project for downstream
+        processing and analysis.
+
+        Inputs and Workflow
+
+        The protocol requires an input set of particles containing projection
+        alignment information. These particles typically originate from a
+        previous refinement or reconstruction step in which particle
+        orientations have already been estimated. The presence of alignment
+        parameters is essential because symmetry expansion generates new
+        symmetry-related orientations from the existing alignment solutions.
+
+        The workflow begins with initialization of filename templates and
+        protocol parameters. The protocol then prepares the cryoSPARC project
+        environment, converts the input metadata, executes the symmetry
+        expansion job, and finally imports the generated expanded particle
+        dataset into Scipion.
+
+        During execution, the protocol creates temporary STAR and cryoSPARC
+        metadata files that allow compatibility between both software
+        environments. Once the cryoSPARC job finishes, the generated
+        `particles_expanded.cs` file is converted into STAR format and used
+        to reconstruct the expanded Scipion particle set.
+
+        Symmetry Definition
+
+        The central parameter of the protocol is the symmetry definition.
+        Users may specify standard point-group symmetries such as cyclic,
+        dihedral, tetrahedral, octahedral, or icosahedral symmetry. Examples
+        include C1, C4, D7, and other commonly used cryo-EM symmetry groups.
+
+        Biologically, symmetry expansion allows each particle to contribute
+        multiple symmetry-equivalent orientations. This is especially useful
+        when investigating local asymmetry inside globally symmetric
+        assemblies. For example, ligand binding, conformational flexibility,
+        or partial occupancy may only affect a subset of symmetry-related
+        regions. Symmetry expansion enables these regions to be analyzed
+        independently during focused classification or local refinement.
+
+        The protocol also supports helical symmetry parameters including
+        helical twist, helical rise, and helical symmetry order. These values
+        are commonly obtained from previous helical refinement jobs and are
+        necessary when processing filamentous or helical biological systems.
+        In these cases, symmetry expansion generates multiple symmetry-related
+        representations along the helical lattice, improving the analysis of
+        local structural variability within repetitive filament assemblies.
+
+        Parameter Management and Validation
+
+        Internally, the protocol stores all symmetry-related parameters inside
+        a dedicated parameter list that is later transmitted to cryoSPARC.
+        Parameters are only included when biologically meaningful values are
+        provided. For example, helical rise and twist values are ignored if
+        they are undefined or non-positive.
+
+        Before execution, the protocol validates cryoSPARC accessibility and
+        GPU configuration to ensure compatibility with the current execution
+        environment. GPU validation is especially important because cryoSPARC
+        processing workflows rely heavily on GPU acceleration for efficient
+        large-scale cryo-EM computation.
+
+        GPU Management and cryoSPARC Integration
+
+        During execution, the protocol dynamically determines whether GPU
+        resources should be assigned directly or managed through a queue
+        system. This behavior allows compatibility with both standalone
+        workstations and distributed computing infrastructures commonly used
+        in cryo-EM facilities.
+
+        The actual symmetry expansion job is launched through the cryoSPARC
+        scheduling interface using `enqueueJob`. Once submitted, the protocol
+        continuously monitors execution status using `waitForCryosparc`,
+        ensuring synchronization between Scipion and cryoSPARC execution
+        states. Intermediate cryoSPARC files are removed after completion in
+        order to reduce unnecessary storage consumption.
+
+        Outputs and Biological Interpretation
+
+        After successful execution, the protocol generates an expanded set of
+        particles in which every original particle has been duplicated across
+        all symmetry-related orientations defined by the selected symmetry
+        group. The expanded particles preserve the original acquisition and
+        alignment metadata while introducing the additional transformed
+        orientations generated during expansion.
+
+        The resulting particle set is imported back into Scipion as an output
+        `SetOfParticles` object and maintains the same dimensionality,
+        alignment type, and sampling rate as the original dataset. A
+        transformation relationship is also established between the original
+        particles and the expanded particles so that downstream protocols can
+        track their correspondence.
+
+        From a biological perspective, symmetry expansion is not intended to
+        improve global resolution directly. Instead, it provides a framework
+        for studying local heterogeneity within symmetric assemblies. This is
+        particularly valuable when analyzing flexible domains, asymmetric
+        ligand binding, partial occupancy events, or localized conformational
+        transitions that would otherwise be averaged out during standard
+        symmetric reconstruction.
+
+        In practical cryo-EM workflows, symmetry-expanded particles are
+        commonly used for focused classification, local refinement, masked
+        variability analysis, and detailed investigation of asymmetric
+        structural features embedded within highly symmetric complexes.
+        """
     _label = 'symmetry expansion'
     _className = "sym_expand"
 

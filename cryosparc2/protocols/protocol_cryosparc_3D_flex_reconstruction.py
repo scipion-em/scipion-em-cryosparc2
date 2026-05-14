@@ -41,6 +41,163 @@ class ProtCryoSparc3DFlexReconstruction(ProtCryosparcBase):
     in high-res regions are computed. Outputs two half-maps that can be used
     for FSC validation, sharpening, and other downstream tasks.
     """
+    """
+        Performs high-resolution flexible refinement reconstruction using a previously
+        trained 3DFlex model in CryoSPARC. The protocol reconstructs flexible and,
+        optionally, rigid density maps from prepared particle datasets by applying
+        L-BFGS optimization under the learned deformation model. The resulting maps
+        can be used for structural interpretation, FSC validation, sharpening, and
+        downstream cryo-EM analysis workflows.
+
+        AI Generated:
+
+        3D Flex Reconstruction (ProtCryoSparc3DFlexReconstruction) — User Manual
+            Overview
+
+            The 3D Flex Reconstruction protocol performs high-resolution refinement
+            using a trained CryoSPARC 3DFlex model together with previously prepared
+            particle datasets. Its main purpose is to recover high-resolution density
+            information while incorporating conformational variability learned during
+            3DFlex training. Unlike conventional rigid refinements, this protocol
+            models continuous structural motion and applies flexible deformation
+            during reconstruction.
+
+            In practical cryo-EM workflows, this protocol is commonly used after
+            3DFlex Training to improve density quality in regions affected by
+            conformational heterogeneity. The reconstruction stage generates both
+            flexible and optional rigid reconstructions, enabling direct comparison
+            between motion-aware refinement and standard rigid refinement approaches.
+
+            Inputs and General Workflow
+
+            The protocol requires as input a completed 3DFlex Training protocol,
+            which provides both the trained deformation model and the associated
+            prepared particles. The reconstruction process uses these inputs to
+            generate high-resolution maps using L-BFGS optimization under the
+            learned latent deformation space.
+
+            During execution, CryoSPARC reconstructs two independent half-maps
+            following gold-standard refinement principles. These half-maps are later
+            combined into a final reconstruction and can be used for FSC validation,
+            local resolution estimation, sharpening, and further post-processing.
+
+            The protocol can also generate a rigid reconstruction using the same
+            optimization framework. This rigid reconstruction serves as a biological
+            and methodological baseline, allowing users to evaluate whether flexible
+            refinement genuinely improves structural interpretation.
+
+            Flexible and Rigid Reconstruction
+
+            One of the central aspects of this protocol is the distinction between
+            flexible and rigid reconstruction modes. Flexible reconstruction applies
+            the learned deformation model to account for structural motion during
+            refinement, which often improves density quality in dynamic regions of
+            macromolecular complexes.
+
+            The optional rigid reconstruction disables deformation modeling and
+            instead reconstructs the structure using a traditional rigid framework.
+            Comparing rigid and flexible maps is particularly useful when evaluating
+            whether observed improvements correspond to biologically meaningful
+            flexibility or potential overfitting.
+
+            From a biological perspective, flexible refinement is especially valuable
+            for complexes containing mobile domains, flexible linkers, or continuous
+            conformational transitions that are difficult to resolve with standard
+            refinement methods.
+
+            Optimization Strategy
+
+            Reconstruction is performed using the L-BFGS optimization algorithm.
+            The parameter controlling the maximum number of iterations defines how
+            extensively the optimizer refines each half-map during reconstruction.
+
+            In most biological applications, the default number of iterations is
+            sufficient to obtain stable and reliable reconstructions. Increasing the
+            number of iterations may improve convergence in very high-resolution
+            datasets or particularly large molecular assemblies, although it also
+            increases computational cost and runtime.
+
+            Excessively large optimization settings are not always beneficial and
+            should be interpreted carefully, especially in datasets with limited
+            signal-to-noise ratio or strong structural heterogeneity.
+
+            Gold-Standard Half-Map Handling
+
+            The protocol preserves or regenerates the gold-standard particle split
+            used during refinement. Maintaining independent half datasets is critical
+            for proper FSC validation and for avoiding overfitting during flexible
+            refinement.
+
+            Users may optionally force a new gold-standard split. This option is
+            useful when input alignments contain inconsistent or imbalanced particle
+            distributions between half-sets. Re-splitting ensures statistical
+            independence between reconstructions and can improve validation
+            reliability.
+
+            Biologically, careful half-map management is essential because flexible
+            refinement methods can otherwise introduce misleading high-resolution
+            features if overfitting is not properly controlled.
+
+            GPU and Computational Considerations
+
+            The protocol supports GPU acceleration and is designed to integrate
+            directly into CryoSPARC scheduling environments. GPU execution is highly
+            recommended because flexible high-resolution reconstruction is
+            computationally demanding.
+
+            Depending on the execution environment, GPU resources may be selected
+            automatically or provided through an external queue system. Runtime is
+            influenced by particle count, box size, map resolution, and the number
+            of optimization iterations.
+
+            Outputs and Their Interpretation
+
+            After completion, the protocol generates two main reconstruction outputs:
+            a flexible reconstruction and, optionally, a rigid reconstruction. Each
+            reconstruction includes its corresponding pair of gold-standard half-maps.
+
+            The flexible reconstruction represents the primary scientific output and
+            reflects density refinement under the learned deformation model. This map
+            is generally expected to improve density continuity and structural detail
+            in mobile regions compared to rigid refinement approaches.
+
+            The rigid reconstruction provides a direct comparison reference. When the
+            flexible map shows meaningful improvements over the rigid map, it
+            suggests that the learned motion model successfully captures biologically
+            relevant conformational variability.
+
+            The generated half-maps can be used for FSC analysis, local resolution
+            estimation, sharpening, map validation, and further structural modeling
+            workflows.
+
+            Practical Recommendations
+
+            In routine cryo-EM practice, it is generally advisable to begin with the
+            default reconstruction parameters and visually compare the flexible and
+            rigid outputs. Improvements should be assessed carefully, particularly in
+            flexible peripheral regions where overfitting risks are higher.
+
+            Increasing the number of L-BFGS iterations may help in difficult
+            high-resolution datasets, but excessively aggressive optimization should
+            be avoided unless supported by clear validation metrics.
+
+            When working with highly heterogeneous complexes, preserving proper
+            gold-standard separation is especially important to ensure reliable FSC
+            interpretation and biologically meaningful conclusions.
+
+            Final Perspective
+
+            For many cryo-EM studies, 3D Flex Reconstruction represents the stage
+            where conformational variability becomes directly translated into
+            high-resolution structural information. Rather than treating flexibility
+            as noise, this protocol incorporates molecular motion into the refinement
+            process itself.
+
+            Successful interpretation depends not only on reconstruction quality, but
+            also on careful biological validation, comparison against rigid
+            refinement baselines, and rigorous assessment of map reliability through
+            gold-standard FSC procedures.
+        """
     _label = '3D flex reconstruction'
     _devStatus = BETA
     _protCompatibility = [V4_1_0, V4_1_1, V4_1_2, V4_2_0, V4_2_1, V4_3_1, V4_4_0, V4_4_1, V4_5_1,

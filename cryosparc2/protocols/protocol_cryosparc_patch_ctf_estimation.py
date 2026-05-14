@@ -49,6 +49,155 @@ class ProtCryoSparcPatchCTFEstimate(ProtCryosparcBase):
     Patch-based CTF estimation automatically estimates defocus variation for tilted, bent,
     deformed samples and is accurate for all particle sizes and types including flexible and membrane proteins.
     """
+    """
+        Patch CTF Estimation (ProtCryoSparcPatchCTFEstimate) — User Manual
+
+        Overview
+
+        The Patch CTF Estimation protocol performs patch-based Contrast Transfer
+        Function (CTF) estimation for cryo-EM micrographs using cryoSPARC.
+        The protocol is designed to estimate local defocus variations across
+        micrographs, allowing accurate characterization of tilted, bent, or
+        spatially deformed samples. This approach is particularly effective
+        for heterogeneous datasets, membrane proteins, flexible complexes,
+        and samples where global CTF estimation may not be sufficiently robust.
+
+        In practical cryo-EM workflows, CTF estimation is one of the most
+        important preprocessing steps because it directly influences particle
+        quality, alignment accuracy, and the achievable reconstruction
+        resolution. Reliable estimation of defocus and phase shift parameters
+        is essential before particle extraction, classification, or refinement.
+
+        Inputs and General Workflow
+
+        The protocol requires a set of input micrographs that will be analyzed
+        independently. During execution, cryoSPARC divides each micrograph
+        into multiple local regions or patches and estimates the local CTF
+        properties from the Fourier information contained in each region.
+        This strategy improves robustness in datasets affected by specimen
+        deformation, stage tilt, charging effects, or uneven ice thickness.
+
+        The workflow begins by importing the input micrographs and defining
+        the estimation parameters. Once the process starts, the protocol
+        launches a cryoSPARC Patch CTF Estimation job and monitors execution
+        until completion. After processing, the cryoSPARC outputs are converted
+        into STAR-compatible metadata and transformed into Scipion CTF objects
+        associated with the original micrographs.
+
+        Resolution Range and Defocus Search
+
+        The protocol allows the user to define the minimum and maximum
+        resolution limits used during CTF estimation. These parameters determine
+        the frequency range considered during fitting of the CTF model.
+
+        The minimum resolution parameter controls the low-frequency boundary
+        of the fitting process. Increasing this value may help reduce the
+        influence of large-scale background variations or contamination.
+        The maximum resolution parameter defines the highest spatial frequency
+        included in the estimation and strongly influences the precision of
+        the fitted CTF parameters.
+
+        The protocol also provides a configurable defocus search range.
+        Minimum and maximum defocus values define the interval explored
+        during the grid search procedure. Broad search ranges are useful
+        when the approximate defocus is unknown, while narrower ranges
+        improve computational efficiency when acquisition conditions are
+        already well characterized.
+
+        Phase Shift Estimation
+
+        The protocol supports phase-shift estimation for datasets collected
+        using phase plates or imaging conditions where additional phase
+        modulation is present. Users may define minimum and maximum phase-shift
+        values to constrain the search interval.
+
+        An optional refinement-only mode allows optimization exclusively
+        over phase shift while preserving previously estimated parameters.
+        This option may be useful when refining datasets acquired with
+        stable defocus conditions but variable phase-plate behavior.
+
+        Amplitude Contrast and Estimation Accuracy
+
+        Amplitude contrast is another important parameter influencing the
+        accuracy of the CTF model. Typical cryo-EM datasets commonly use
+        values around 0.07 or 0.1 depending on the imaging conditions and
+        specimen composition. Correct amplitude contrast estimation improves
+        agreement between theoretical and experimental power spectra.
+
+        Because the protocol operates locally using multiple patches,
+        it is more tolerant to micrograph imperfections than traditional
+        global estimation methods. This makes the protocol especially useful
+        for challenging datasets where local variations significantly affect
+        image quality.
+
+        Execution and GPU Management
+
+        During execution, the protocol automatically initializes the cryoSPARC
+        project environment, converts input metadata, and launches the
+        Patch CTF Estimation job using the selected computational resources.
+        GPU allocation is handled dynamically depending on whether the workflow
+        is executed locally or through a queue system.
+
+        The protocol continuously monitors the cryoSPARC job status and waits
+        until processing finishes successfully. If execution fails, an error
+        message is generated instructing the user to inspect the cryoSPARC
+        environment for additional diagnostic information.
+
+        Outputs and Metadata Conversion
+
+        After completion, the protocol copies the cryoSPARC outputs into the
+        Scipion working directory and converts the generated .cs metadata files
+        into STAR format. The resulting metadata are then used to populate
+        Scipion CTF objects.
+
+        Each output micrograph receives its associated CTF parameters,
+        including defocus U, defocus V, astigmatism angle, phase shift,
+        and estimated maximum resolution. The protocol preserves the original
+        relationship between input micrographs and estimated CTF models,
+        ensuring compatibility with downstream cryo-EM processing steps.
+
+        Biological Interpretation
+
+        From a biological perspective, accurate CTF estimation is fundamental
+        for obtaining high-resolution reconstructions. Errors in defocus or
+        phase-shift estimation can propagate through the workflow and reduce
+        the quality of particle alignment and 3D refinement.
+
+        Patch-based estimation is particularly beneficial for modern cryo-EM
+        datasets containing tilted acquisitions, flexible membrane proteins,
+        uneven ice distributions, or local beam-induced distortions. By
+        modeling spatial variability across the micrograph, the protocol
+        improves robustness and contributes to more reliable downstream
+        structural interpretation.
+
+        Practical Recommendations
+
+        In routine workflows, the default parameter values are often sufficient
+        for standard cryo-EM datasets. However, for challenging acquisitions,
+        carefully adjusting the resolution limits and defocus search ranges
+        can significantly improve estimation stability.
+
+        Wide defocus ranges are recommended when acquisition conditions vary
+        substantially between micrographs. Conversely, narrower ranges improve
+        speed and stability for homogeneous datasets acquired under controlled
+        imaging conditions.
+
+        When processing phase-plate datasets, enabling phase-shift estimation
+        is essential for obtaining physically meaningful CTF models. Users
+        should also verify the resulting estimated resolutions and defocus
+        distributions visually to detect potential outliers or problematic
+        micrographs.
+
+        Final Perspective
+
+        Patch-based CTF estimation is not simply a technical preprocessing
+        step but a critical component of reliable cryo-EM image analysis.
+        Proper estimation of local defocus and phase-shift variations directly
+        impacts particle quality assessment, alignment precision, and final
+        map resolution. Careful parameter selection and validation of the
+        resulting CTF models are therefore essential for robust structural
+        interpretation and high-quality cryo-EM reconstructions.
+        """
     _label = 'ctf_estimation'
     _className = "patch_ctf_estimation_multi"
     _devStatus = NEW

@@ -48,6 +48,161 @@ class ProtCryoSparcHelicalRefine3D(ProtCryoSparc3DHomogeneousRefine):
     alignment algorithm, and optional Non-Uniform regularization as used in
     other cryoSPARC refinement jobs.
     """
+    """
+        Performs homogeneous 3D refinement of helical assemblies using cryoSPARC’s
+        helical refinement framework. The protocol is designed for the reconstruction
+        and optimization of filamentous or helical structures while optionally applying
+        symmetry constraints and Non-Uniform refinement strategies. The implementation
+        follows concepts similar to the IHRSR methodology while integrating cryoSPARC’s
+        accelerated alignment and maximum-likelihood refinement algorithms.
+
+        AI Generated:
+
+        Helical Refinement 3D (ProtCryoSparcHelicalRefine3D) — User Manual
+            Overview
+
+            The Helical Refinement protocol reconstructs and refines helical particles
+            from cryo-EM datasets using cryoSPARC’s dedicated helical refinement engine.
+            Its primary objective is to optimize the alignment and reconstruction of
+            filamentous assemblies while preserving biologically meaningful helical
+            symmetry. The protocol is especially useful for structures such as amyloid
+            fibrils, cytoskeletal filaments, membrane-associated helices, and other
+            repetitive macromolecular assemblies.
+
+            In practical cryo-EM workflows, this protocol is commonly used after particle
+            extraction and initial model generation. It refines the angular alignment,
+            translational positioning, and helical symmetry parameters in order to improve
+            map resolution and structural interpretability. The refinement process can
+            optionally incorporate Non-Uniform regularization to improve local map quality
+            in flexible or heterogeneous regions.
+
+            Inputs and General Workflow
+
+            The protocol requires a set of input particles representing filament segments.
+            An initial reference volume can optionally be provided to guide the refinement
+            process. If no reference volume is available, the protocol supports generation
+            of a cylindrical initial model, which is particularly useful during early-stage
+            refinement of filamentous datasets.
+
+            An optional soft mask may also be supplied. The mask defines which regions of
+            the reconstruction contribute most strongly during refinement and can improve
+            convergence by reducing solvent noise and excluding unstable peripheral regions.
+            For biological assemblies with flexible domains or variable density regions,
+            careful masking frequently improves the robustness of refinement.
+
+            Helical Parameters and Symmetry
+
+            One of the central components of this protocol is the definition and refinement
+            of helical geometry. The user may define the initial helical twist and rise,
+            corresponding respectively to the angular rotation and translational displacement
+            between adjacent subunits along the filament axis. Positive and negative twist
+            values represent right-handed and left-handed helices.
+
+            The protocol also supports limiting particle shifts along the helical axis.
+            This option is useful for relatively rigid filaments because it constrains the
+            alignment search space and improves consistency between symmetry-related regions.
+            However, for flexible helices, excessive constraints may reduce refinement quality.
+
+            Helical symmetry can additionally be enforced during reconstruction through the
+            helical symmetry order parameter. This controls how many symmetry-related copies
+            are incorporated during backprojection and reconstruction. Lower symmetry orders
+            reduce averaging effects, while larger values increase symmetry enforcement and
+            may improve signal-to-noise ratio for highly regular filaments.
+
+            Point Group Symmetry
+
+            Besides helical symmetry, the protocol supports cyclic and dihedral point-group
+            symmetry. These symmetry definitions are integrated into the refinement process
+            and are particularly important for assemblies with additional rotational symmetry
+            components beyond the helical arrangement itself.
+
+            Correct symmetry assignment is biologically important because inappropriate
+            symmetry enforcement may introduce structural artifacts or artificially distort
+            asymmetric regions. In most practical workflows, symmetry parameters are selected
+            based on prior structural knowledge or previous reconstruction experiments.
+
+            Initial Model Generation
+
+            The protocol includes tools for generating an initial cylindrical density model.
+            This option is especially useful when no reliable starting reconstruction exists.
+            The cylindrical model can be customized through parameters such as filament outer
+            diameter, inner diameter, and padding distance. These values determine the basic
+            geometric properties of the initial density distribution.
+
+            Initial lowpass filtering is also available and is commonly used to suppress
+            high-frequency noise during the early refinement stages. In practice, moderate
+            lowpass filtering improves convergence stability and reduces alignment bias
+            toward noisy features.
+
+            Refinement Strategy
+
+            During refinement, the protocol iteratively optimizes particle orientations,
+            translational shifts, and symmetry-related parameters against the evolving 3D
+            reconstruction. The refinement process can optionally use Non-Uniform refinement,
+            which applies adaptive regularization to improve local density quality and
+            reduce overfitting in heterogeneous regions.
+
+            The protocol also supports control over alignment resolution limits and GS-FSC
+            split resolution thresholds. These parameters influence how resolution-dependent
+            information contributes during refinement and can significantly affect the
+            balance between convergence speed and reconstruction quality.
+
+            Dynamic and static masking strategies are available during refinement. Dynamic
+            masks adapt automatically to the evolving density map, while static masks apply
+            fixed masking regions. Dynamic masking is generally preferred for flexible or
+            partially disordered assemblies because it better follows structural variability
+            during iterative refinement.
+
+            Validation and Parameter Control
+
+            The implementation performs several validation checks before execution. The
+            protocol verifies GPU compatibility, validates the presence of required input
+            data, and ensures that cylindrical model parameters are correctly defined when
+            no initial reference map is provided.
+
+            During execution, refinement parameters are collected and converted into the
+            format expected by cryoSPARC jobs. The protocol then launches the corresponding
+            cryoSPARC refinement task, manages GPU allocation, monitors job execution, and
+            waits for successful completion before continuing.
+
+            Outputs and Interpretation
+
+            After completion, the protocol generates refined helical reconstructions together
+            with updated alignment parameters for all particles. These outputs represent the
+            optimized spatial arrangement of filament segments within the reconstructed
+            helical assembly.
+
+            The resulting maps can be used for downstream structural interpretation,
+            atomic model building, flexibility analysis, or comparative structural studies.
+            Biologically, the final reconstruction quality strongly depends on the accuracy
+            of the initial symmetry estimates, masking strategy, and refinement constraints.
+
+            Practical Recommendations
+
+            In routine cryo-EM workflows, refinement is often started using moderate
+            lowpass filtering and conservative symmetry assumptions. If convergence is
+            unstable, introducing a carefully designed soft mask or enabling Non-Uniform
+            refinement frequently improves results.
+
+            For highly regular filaments, enforcing helical symmetry and limiting axial
+            shifts can substantially improve resolution. Conversely, flexible or polymorphic
+            assemblies may require weaker symmetry enforcement and broader alignment freedom
+            to preserve biologically relevant variability.
+
+            When no reliable reference map exists, the cylindrical initial model provides
+            a practical starting point, although refinement quality should always be
+            evaluated visually and through independent resolution metrics.
+
+            Final Perspective
+
+            Helical refinement is a biologically significant stage in cryo-EM analysis
+            because the imposed symmetry and alignment strategy directly influence the
+            interpretability of filamentous assemblies. Reliable results depend on accurate
+            estimation of helical parameters, appropriate masking, and careful refinement
+            configuration. When applied correctly, the protocol enables high-resolution
+            structural characterization of complex helical systems while preserving the
+            essential biological organization of the assembly.
+        """
     _label = '3D helical refinement'
     _fscColumns = 4
     _protCompatibility = [V3_3_1, V3_3_2, V4_0_0, V4_0_1, V4_0_2, V4_0_3,
