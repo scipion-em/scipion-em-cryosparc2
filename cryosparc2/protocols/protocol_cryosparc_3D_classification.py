@@ -466,6 +466,7 @@ class ProtCryoSparc3DClassification(ProtCryosparcBase):
                             'distribution_plots',
                             'compute_use_ssd']
         self.lane = str(self.getAttributeValue('compute_lane'))
+        self.preprocessLane = str(self.getAttributeValue('preprocess_lane'))
 
     def do3DClasification(self):
         """
