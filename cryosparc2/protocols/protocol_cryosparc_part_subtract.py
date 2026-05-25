@@ -37,7 +37,7 @@ from pyworkflow.protocol.params import (PointerParam, FloatParam,
 
 from .protocol_base import ProtCryosparcBase
 from ..convert import (convertCs2Star, cryosparcToLocation, rowToCtfModel, rowToAlignment)
-from ..utils import (addComputeSectionParams, calculateNewSamplingRate,
+from ..utils import (addComputeSectionParams, addPreprocessLaneParam, calculateNewSamplingRate,
                      cryosparcValidate, gpusValidate, enqueueJob,
                      waitForCryosparc, clearIntermediateResults, copyFiles)
 from ..constants import *
@@ -139,6 +139,7 @@ class ProtCryoSparcSubtract(ProtCryosparcBase, ProtOperateParticles):
         # --------------[Compute settings]---------------------------
         form.addSection(label="Compute settings")
         addComputeSectionParams(form, allowMultipleGPUs=False)
+        addPreprocessLaneParam(form)
 
     # --------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
@@ -250,6 +251,7 @@ class ProtCryoSparcSubtract(ProtCryosparcBase, ProtOperateParticles):
                             'mask_fill_holes',
                             'compute_use_ssd']
         self.lane = str(self.getAttributeValue('compute_lane'))
+        self.preprocessLane = str(self.getAttributeValue('preprocess_lane'))
 
     def doPartStract(self):
         """
