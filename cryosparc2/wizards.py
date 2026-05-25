@@ -94,6 +94,7 @@ class ProtCryosparcLanesWizard(_BaseProtCryosparcLaneWizard):
 
 class ProtCryosparcPreprocessLanesWizard(_BaseProtCryosparcLaneWizard):
     _targets = [(ProtCryo2D, ['preprocess_lane']),
+                (ProtCryoSparcSubtract, ['preprocess_lane']),
                 (ProtCryoSparcLocalRefine, ['preprocess_lane']),
                 (ProtCryoSparcGlobalCtfRefinement, ['preprocess_lane']),
                 (ProtCryoSparcLocalCtfRefinement, ['preprocess_lane']),
