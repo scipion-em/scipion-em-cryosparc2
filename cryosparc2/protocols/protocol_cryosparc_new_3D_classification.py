@@ -633,6 +633,7 @@ class ProtCryoSparcNew3DClassification(ProtCryosparcBase):
                             'compute_use_ssd']
 
         self.lane = str(self.getAttributeValue('compute_lane'))
+        self.preprocessLane = str(self.getAttributeValue('preprocess_lane'))
 
 
     def _summary(self):
