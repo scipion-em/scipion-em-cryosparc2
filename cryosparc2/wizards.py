@@ -57,7 +57,23 @@ class ProtCryo2DNumberOfClassesWizard(Wizard):
         form.setVar('numberOfClasses', self._getNumberOfClasses(form.protocol))
 
 
-class ProtCryosparcLanesWizard(Wizard):
+class _BaseProtCryosparcLaneWizard(Wizard):
+    _laneParam = None
+
+    def show(self, form, *args):
+        protocol = form.protocol
+        csValidate = cryosparcValidate()
+        if not csValidate:
+            d = LanesDialogView(form.root, protocol)
+            dlg = d.show()
+            if dlg.resultYes():
+                selectedLane = str(dlg.values[0])
+                form.setVar(self._laneParam, selectedLane)
+        else:
+            showInfo('Info', csValidate[0], form.root)
+
+
+class ProtCryosparcLanesWizard(_BaseProtCryosparcLaneWizard):
     _targets = [(ProtCryo2D, ['compute_lane']),
                 (ProtCryoSparcInitialModel, ['compute_lane']),
                 (ProtCryoSparcSubtract, ['compute_lane']),
@@ -72,17 +88,22 @@ class ProtCryosparcLanesWizard(Wizard):
                 (ProtCryoSparcSymmetryExpansion, ['compute_lane']),
                 (ProtCryoSparcHomogeneousReconstruct, ['compute_lane']),
                 (ProtCryoSparcNew3DClassification, ['compute_lane'])]
+    _laneParam = 'compute_lane'
 
-    def show(self, form, *args):
-        protocol = form.protocol
-        csValidate = cryosparcValidate()
-        if not csValidate:
-            d = LanesDialogView(form.root, protocol)
-            dlg = d.show()
-            if dlg.resultYes():
-                form.setVar('compute_lane', str(dlg.values[0]))
-        else:
-            showInfo('Info', csValidate[0], form.root)
+
+
+class ProtCryosparcPreprocessLanesWizard(_BaseProtCryosparcLaneWizard):
+    _targets = [(ProtCryo2D, ['preprocess_lane']),
+                (ProtCryoSparcSubtract, ['preprocess_lane']),
+                (ProtCryoSparcLocalRefine, ['preprocess_lane']),
+                (ProtCryoSparcGlobalCtfRefinement, ['preprocess_lane']),
+                (ProtCryoSparcLocalCtfRefinement, ['preprocess_lane']),
+                (ProtCryoSparc3DClassification, ['preprocess_lane']),
+                (ProtCryoSparcHelicalRefine3D, ['preprocess_lane']),
+                (ProtCryoSparc3DHomogeneousRefine, ['preprocess_lane']),
+                (ProtCryoSparcNewNonUniformRefine3D, ['preprocess_lane']),
+                (ProtCryoSparcNew3DClassification, ['preprocess_lane'])]
+    _laneParam = 'preprocess_lane'
 
 
 class LanesTreeProvider(TreeProvider):
