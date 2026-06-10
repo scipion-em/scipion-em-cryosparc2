@@ -26,6 +26,7 @@
 # **************************************************************************
 
 import os
+import time
 
 import emtable
 
@@ -45,7 +46,7 @@ from ..utils import (addComputeSectionParams, calculateNewSamplingRate,
                      cryosparcValidate, gpusValidate, enqueueJob,
                      waitForCryosparc, clearIntermediateResults,
                      addSymmetryParam, getSymmetry,
-                     fixVolume, copyFiles, getOutputPreffix)
+                     fixVolume, copyFiles, getOutputPreffix, parse_version, getCryosparcVersion)
 from ..constants import *
 
 
@@ -54,9 +55,6 @@ class ProtCryoSparcLocalRefine(ProtCryosparcBase, ProtOperateParticles):
         Subtract projections of a masked volume from particles.
         """
     _label = 'local refinement'
-    _protCompatibility = [V3_3_1, V3_3_2, V4_0_0,  V4_0_1, V4_0_2, V4_0_3,
-                          V4_1_0, V4_1_1, V4_1_2, V4_2_0, V4_2_1, V4_3_1, V4_4_0, V4_4_1, V4_5_1,
-                          V4_5_3, V4_6_0, V4_6_1, V4_6_2, V4_7_0, V4_7_1]
     _className = "new_local_refine"
     _fscColumns = 6
 
@@ -248,7 +246,8 @@ class ProtCryoSparcLocalRefine(ProtCryosparcBase, ProtOperateParticles):
         csOutputPattern = "%s%s_%s" % (getOutputPreffix(self.projectName.get()),
                                        self.runLocalRefinement.get(),
                                        itera)
-        csParticlesName = csOutputPattern + "_particles.cs"
+        cryosparcVersion = parse_version(getCryosparcVersion())
+        csParticlesName = csOutputPattern + "_particles.cs" if cryosparcVersion < parse_version(V5_0_0) else "particles_%s.cs" % str(itera.zfill(4))
         fnVolName = csOutputPattern + "_volume_map.mrc"
         half1Name = csOutputPattern + "_volume_map_half_A.mrc"
         half2Name = csOutputPattern + "_volume_map_half_B.mrc"
@@ -409,7 +408,7 @@ class ProtCryoSparcLocalRefine(ProtCryosparcBase, ProtOperateParticles):
                   float(self.getAttributeValue(paramName)) > 0):
                 params[str(paramName)] = str(self.getAttributeValue(paramName))
             elif paramName == 'intermediate_plots':
-                params[str(paramName)] = 'True'
+                params[str(paramName)] = 'False'
             elif (paramName == 'sigma_prior_r' or
                   paramName == 'sigma_prior_s') and self.getAttributeValue('use_alignment_prior'):
                 params[str(paramName)] = str(self.getAttributeValue(paramName))

@@ -24,6 +24,7 @@
 # *  e-mail address 'scipion@cnb.csic.es'
 # *
 # **************************************************************************
+import json
 import os
 
 import emtable
@@ -389,6 +390,8 @@ class ProtCryoSparc3DClassification(ProtCryosparcBase):
             data = f.readlines()
 
         x = ast.literal_eval(data[0])
+        if isinstance(x, str):
+            x = json.loads(x)
 
         # Find the ID of last iteration and the map resolution
         for y in x:

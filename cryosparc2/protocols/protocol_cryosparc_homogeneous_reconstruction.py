@@ -25,6 +25,7 @@
 # *
 # **************************************************************************
 import ast
+import json
 import os
 
 import emtable
@@ -45,7 +46,7 @@ from ..utils import (addComputeSectionParams, calculateNewSamplingRate,
                      cryosparcValidate, gpusValidate, enqueueJob,
                      waitForCryosparc, clearIntermediateResults, fixVolume,
                      copyFiles, addSymmetryParam, getSymmetry,
-                     getCryosparcVersion, get_job_streamlog, getOutputPreffix, parse_version)
+                     getCryosparcVersion, get_job_streamlog, getOutputPreffix, parse_version, getVersionedEnumValue)
 from ..constants import *
 
 
@@ -56,10 +57,6 @@ class ProtCryoSparcHomogeneousReconstruct(ProtCryosparcBase):
     _className = "homo_reconstruct"
     _devStatus = NEW
     _fscColumns = 6
-    _protCompatibility = [V3_3_0, V3_3_1, V3_3_2, V4_0_0, V4_0_1, V4_0_2,
-                          V4_0_3, V4_1_0, V4_1_1, V4_1_2, V4_2_0, V4_2_1,
-                          V4_3_1, V4_4_0, V4_4_1, V4_5_1, V4_5_3, V4_6_0,
-                          V4_6_1, V4_6_2, V4_7_0, V4_7_1]
     ewsParamsName = []
 
     def _initialize(self):
@@ -332,6 +329,8 @@ class ProtCryoSparcHomogeneousReconstruct(ProtCryosparcBase):
             data = f.readlines()
 
         x = ast.literal_eval(data[0])
+        if isinstance(x, str):
+            x = json.loads(x)
 
         # Find the ID of last iteration and the map resolution
         for y in x:
@@ -441,9 +440,9 @@ class ProtCryoSparcHomogeneousReconstruct(ProtCryosparcBase):
             elif paramName == 'refine_hsym_order' and self.refine_hsym_order.get() is not None:
                 params[str(paramName)] = str(self.getAttributeValue(paramName))
             elif paramName == 'refine_ews_zsign':
-                params[str(paramName)] = str(EWS_CURVATURE_SIGN[self.refine_ews_zsign.get()])
+                params[str(paramName)] = str(getVersionedEnumValue(self.refine_ews_zsign.get(), EWS_CURVATURE_SIGN, EWS_CURVATURE_SIGN_V5))
             elif paramName == 'refine_ews_simple':
-                params[str(paramName)] = str(EWS_CORRECTION_METHOD[self.refine_ews_simple.get()])
+                params[str(paramName)] = (getVersionedEnumValue(self.refine_ews_simple.get(), EWS_CORRECTION_METHOD, EWS_CORRECTION_METHOD_V5))
             elif paramName == 'refine_override_filter_res' and self.refine_override_filter_res.get() is not None:
                 params[str(paramName)] = str(self.getAttributeValue(paramName))
 

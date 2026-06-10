@@ -90,6 +90,20 @@ def _isCryosparcV5OrNewer():
     return parse_version(version) >= parse_version('5.0.0')
 
 
+def getVersionedEnumValue(index, legacyValues, v5Values=None, switchVersion=V5_0_0):
+    """
+    Return the correct CryoSPARC enum value depending on the installed version.
+    """
+    values = legacyValues
+
+    if v5Values is not None:
+        cryosparcVersion = parse_version(getCryosparcVersion())
+        if cryosparcVersion >= parse_version(switchVersion):
+            values = v5Values
+
+    return values[index]
+
+
 def _runCommandRaw(cmd, printCmd=True):
     if printCmd:
         logger.info(pwutils.greenStr("Running: %s" % cmd))
@@ -136,14 +150,10 @@ def _pythonLiteral(value, default=None):
     return ast.literal_eval(text)
 
 
-def _parseConnectionTarget(target):
-    sourceJobUid, sourceOutputName = str(target).split(".", 1)
-    return sourceJobUid, sourceOutputName
-
-
 def _parseResultTarget(target):
     sourceJobUid, sourceOutputName, sourceResultName = str(target).split(".", 2)
     return sourceJobUid, sourceOutputName, sourceResultName
+
 
 def _runCryosparcmSubcommand(*parts, printCmd=False):
     cmd = " ".join(
@@ -161,6 +171,33 @@ def _writeTextFile(path, text):
 def _normalizeJobStatus(status):
     return str(status or "").strip().strip("'\"").lower()
 
+
+def _normalizeSourceOutputName(sourceOutputName):
+    name = str(sourceOutputName)
+
+    legacyToV5OutputMap = {
+        "imported_volume_1.map": "imported_volume_1",
+        "imported_volume.map": "imported_volume",
+
+        "imported_volume_1.map_half_A": "imported_volume_1",
+        "imported_volume_1.map_half_B": "imported_volume_1",
+        "imported_volume.map_half_A": "imported_volume",
+        "imported_volume.map_half_B": "imported_volume",
+
+        "imported_mask_1.map": "imported_mask_1",
+        "imported_mask.map": "imported_mask",
+    }
+
+    return legacyToV5OutputMap.get(name, name)
+
+
+def _parseConnectionTarget(target):
+    sourceJobUid, sourceOutputName = str(target).split(".", 1)
+
+    if _isCryosparcV5OrNewer():
+        sourceOutputName = _normalizeSourceOutputName(sourceOutputName)
+
+    return sourceJobUid, sourceOutputName
 
 def _tryV5StructuredEventLog(projectUid, jobUid):
     """
@@ -843,7 +880,7 @@ def enqueueJob(jobType, projectName, workSpaceName, params, input_group_connect,
 
         if result_connect is not None:
             for key, value in result_connect.items():
-                inputName, resultName = str(key).split(".", 1)
+                inputName, inputSlot, resultName = _parseResultInputKey(key)
                 sourceJobUid, sourceOutputName, sourceResultName = _parseResultTarget(value)
 
                 _runCliValue(
@@ -853,7 +890,7 @@ def enqueueJob(jobType, projectName, workSpaceName, params, input_group_connect,
                         repr(projectUid),
                         repr(str(jobId)),
                         repr(str(inputName)),
-                        0,
+                        inputSlot,
                         repr(str(resultName)),
                         repr(str(sourceOutputName)),
                         repr(str(sourceResultName)),
@@ -1653,9 +1690,29 @@ def matchItemRow(item, row):
     except Exception:
         return False  # In case of unexpected format, assume no match
 
-
 def parse_version(value: str) -> Version:
     value = str(value).strip()
     if value[:1] in {"V", "v"}:
         value = value[1:]
     return Version(value)
+
+def _parseResultInputKey(key):
+    """
+    Parse result_connect keys like:
+      volume.0.map_half_A
+
+    Legacy code encoded the input slot inside the result name. In v5,
+    connect_result expects the slot as a separate argument.
+    """
+    parts = str(key).split(".")
+
+    inputName = parts[0]
+    inputSlot = 0
+
+    if len(parts) >= 3 and parts[1].isdigit():
+        inputSlot = int(parts[1])
+        resultName = ".".join(parts[2:])
+    else:
+        resultName = ".".join(parts[1:])
+
+    return inputName, inputSlot, resultName

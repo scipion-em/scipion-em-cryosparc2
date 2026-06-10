@@ -521,4 +521,4 @@ class ProtCryoSparcInitialModel(ProtCryosparcBase, ProtInitialVolume,
                          "An error occurred in the initial volume process. "
                          "Please, go to cryoSPARC software for more "
                          "details.", self)
-        clearIntermediateResults(self.projectName.get(), self.runAbinit.get(), wait=7)
+        clearIntermediateResults(self.projectName.get(), self.runAbinit.get())

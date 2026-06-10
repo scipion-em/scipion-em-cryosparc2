@@ -25,6 +25,8 @@
 # *
 # **************************************************************************
 import os
+import time
+
 import emtable
 
 
@@ -42,7 +44,7 @@ from ..utils import (addSymmetryParam, addComputeSectionParams,
                      cryosparcValidate, gpusValidate, getSymmetry,
                      waitForCryosparc, clearIntermediateResults, enqueueJob,
                      getCryosparcVersion, fixVolume, copyFiles,
-                     getOutputPreffix, parse_version)
+                     getOutputPreffix, parse_version, getVersionedEnumValue, matchItemRow)
 from ..constants import *
 
 
@@ -58,10 +60,6 @@ class ProtCryoSparc3DHomogeneousRefine(ProtCryosparcBase):
     _fscColumns = 6
     _className = "homo_refine_new"
     ewsParamsName = []
-    _protCompatibility = [V3_3_1, V3_3_2, V4_0_0, V4_0_1, V4_0_2, V4_0_3, V4_1_0,
-                          V4_1_1, V4_1_2, V4_2_0, V4_2_1, V4_3_1, V4_4_0, V4_4_1, V4_5_1,
-                          V4_5_3, V4_6_0, V4_6_1, V4_6_2, V4_7_0, V4_7_1]
-
     # --------------------------- DEFINE param functions ----------------------
     def _defineFileNames(self):
         """ Centralize how files are called within the protocol. """
@@ -489,6 +487,7 @@ class ProtCryoSparc3DHomogeneousRefine(ProtCryosparcBase):
         outImgSet = self._createSetOfParticles()
         outImgSet.copyInfo(imgSet)
         self._getUnitCellMatricesAndPlanes()
+        time.sleep(10)
         self._fillDataFromIter(outImgSet)
 
         # if self.symmetryGroup.get() == SYM_DIHEDRAL_Y:
@@ -582,17 +581,36 @@ class ProtCryoSparc3DHomogeneousRefine(ProtCryosparcBase):
 
     def _fillDataFromIter(self, imgSet):
         outImgsFn = 'particles@' + self._getFileName('out_particles')
+
         imgSet.setAlignmentProj()
-        imgSet.copyItems(self._getInputParticles(),
-                         updateItemCallback=self._createItemMatrix,
-                         itemDataIterator=emtable.Table.iterRows(
-                             fileName=outImgsFn))
+
+        rowIterator = iter(emtable.Table.iterRows(fileName=outImgsFn))
+        currentRow = next(rowIterator, None)
+
+        if currentRow is None:
+            return
+
+        for particle in self._getInputParticles().iterItems(orderBy='id',
+                                                            direction='ASC'):
+            newParticle = particle.clone()
+
+            if self._createItemMatrix(newParticle, currentRow):
+                imgSet.append(newParticle)
+
+                currentRow = next(rowIterator, None)
+                if currentRow is None:
+                    break
 
     def _createItemMatrix(self, particle, row):
+        if not matchItemRow(particle, row):
+            return False
+
         createItemMatrix(particle, row, align=pwobj.ALIGN_PROJ)
         moveParticleInsideUnitCell(particle, self.matrixSet, self.unitCellPlanes)
         setCryosparcAttributes(particle, row,
                                RELIONCOLUMNS.rlnRandomSubset.value)
+
+        return True
 
     def _defineParamsName(self):
         """ Define a list with all protocol parameters names"""
@@ -696,11 +714,20 @@ class ProtCryoSparc3DHomogeneousRefine(ProtCryosparcBase):
                 params[str(paramName)] = str(self.getAttributeValue(paramName))
             elif paramName == 'refine_ews_zsign':
                 params[str(paramName)] = str(
-                    EWS_CURVATURE_SIGN[self.refine_ews_zsign.get()])
+                    getVersionedEnumValue(
+                        self.refine_ews_zsign.get(),
+                        EWS_CURVATURE_SIGN,
+                        EWS_CURVATURE_SIGN_V5
+                    )
+                )
             elif paramName == 'refine_ews_simple':
-                params[str(paramName)] = str(
-                    EWS_CORRECTION_METHOD[self.refine_ews_simple.get()])
-
+                params[str(paramName)] = (
+                    getVersionedEnumValue(
+                        self.refine_ews_simple.get(),
+                        EWS_CORRECTION_METHOD,
+                        EWS_CORRECTION_METHOD_V5
+                    )
+                )
         # Determinate the GPUs to use (in dependence of
         # the cryosparc version)
         try:

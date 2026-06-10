@@ -24,8 +24,11 @@
 # *  e-mail address 'scipion@cnb.csic.es'
 # *
 # **************************************************************************
+import json
 import os
 import ast
+import subprocess
+
 import requests
 import logging
 import re
@@ -38,7 +41,7 @@ import pyworkflow.object as pwobj
 import pyworkflow.utils as pwutils
 from pwem.objects import FSC
 
-from ..constants import V3_3_1, excludedFSCValues, fscValues, V4_0_0, V4_1_0, RELIONCOLUMNS
+from ..constants import V3_3_1, excludedFSCValues, fscValues, V4_0_0, V4_1_0, RELIONCOLUMNS, V5_0_0
 from ..convert import convertBinaryVol, writeSetOfParticles, ImageHandler
 from ..utils import (getProjectPath, createEmptyProject,
                      createEmptyWorkSpace, getProjectName,
@@ -91,7 +94,8 @@ class ProtCryosparcBase(pw.EMProtocol):
             self.workSpaceName = pwobj.String(workspacesList[-1]['uid'])
 
         self._store(self)
-        self.currenJob = pwobj.String()
+        if not hasattr(self, 'currenJob') or self.currenJob is not None:
+            self.currenJob = pwobj.String()
         self._store(self)
 
     def _initializeUtilsVariables(self):
@@ -339,25 +343,32 @@ class ProtCryosparcBase(pw.EMProtocol):
         """
         try:
             with open(filePath, "r", encoding="utf-8", errors="replace") as fh:
-                firstLine = fh.readline().strip().lower()
+                # Leer las dos primeras líneas porque CryoSPARC a veces duplica cabeceras
+                header_lines = [fh.readline().strip().lower() for _ in range(2)]
         except Exception:
             return False
 
-        if not firstLine:
+        header_lines = [h for h in header_lines if h]
+
+        if not header_lines:
             return False
 
-        columns = [c.strip() for c in firstLine.split("\t")]
+        for line in header_lines:
+            columns = [c.strip() for c in line.split("\t")]
 
-        if "wavenumber" not in columns:
-            return False
+            if not any(col.replace("_", "") == "wavenumber" for col in columns):
+                continue
 
-        return any(
-            c.startswith("fsc_") or
-            "mask" in c or
-            "resolution" in c or
-            "noisesub" in c
-            for c in columns
-        )
+            if any(
+                    col.startswith("fsc_") or
+                    "mask" in col or
+                    "resolution" in col or
+                    "noisesub" in col
+                    for col in columns
+            ):
+                return True
+
+        return False
 
     def _findFscTextFilesInJobDir(self, jobUid=None):
         """
@@ -400,7 +411,7 @@ class ProtCryosparcBase(pw.EMProtocol):
 
     def _downloadLegacyFscFileById(self, fileId):
         """
-        Legacy fallback: download the FSC text payload using fileid.
+        Download the FSC text payload using fileid.
         Returns a local path or None.
         """
         if not fileId:
@@ -413,6 +424,9 @@ class ProtCryosparcBase(pw.EMProtocol):
             return None
 
         system_info = eval(system_info[1])
+        if isinstance(system_info, str):
+            system_info = json.loads(system_info)
+
         cryosparcVersion = getCryosparcVersion()
 
         try:
@@ -421,7 +435,10 @@ class ProtCryosparcBase(pw.EMProtocol):
                 port_webapp = system_info.get('port_webapp')
                 url = "http://%s:%s/file/%s" % (master_hostname, port_webapp, fileId)
                 response = requests.get(url, allow_redirects=True)
-            else:
+                response.raise_for_status()
+                content = response.content
+
+            elif parse_version(cryosparcVersion) < parse_version(V5_0_0):
                 master_hostname = system_info.get('master_hostname')
                 port_webapp = system_info.get('port_command_vis')
                 url = "http://%s:%s/get_job_file" % (master_hostname, port_webapp)
@@ -429,19 +446,67 @@ class ProtCryosparcBase(pw.EMProtocol):
                 licence_id = _getLicenceFromFile()
                 headers = {'License-ID': licence_id}
                 response = requests.post(url, json=jsonParam, headers=headers, allow_redirects=True)
+                response.raise_for_status()
+                content = response.content
 
-            response.raise_for_status()
+            else:
+                content = self._downloadV5FileContentById(fileId)
+
+            if not content:
+                return None
 
             tmpDir = tempfile.mkdtemp(prefix="scipion_fsc_")
             fscFilePath = os.path.join(tmpDir, "fsc.txt")
+
             with open(fscFilePath, "wb") as fh:
-                fh.write(response.content)
+                fh.write(content)
 
             if self._looksLikeFscTxt(fscFilePath):
                 return fscFilePath
 
             return None
-        except Exception:
+
+        except Exception as ex:
+            logger.warning(
+                "Could not download CryoSPARC FSC fileid %s.",
+                fileId,
+                exc_info=ex
+            )
+            return None
+
+    def _downloadV5FileContentById(self, fileId):
+        """
+        Download a CryoSPARC v5 GridFSBucket file through cryosparcm cli.
+        """
+        from ..utils import getCryosparcProgram
+
+        cryosparcm = getCryosparcProgram("")
+        expression = (
+                "__import__('base64').b64encode("
+                "gfs.open_download_stream(__import__('bson').ObjectId(%s)).read()"
+                ").decode()"
+                % repr(str(fileId))
+        )
+
+        cmd = "%s cli %s" % (cryosparcm, repr(expression))
+        exitCode, output = subprocess.getstatusoutput(cmd)
+
+        if exitCode != 0:
+            logger.warning(
+                "Could not download CryoSPARC v5 fileid %s: %s",
+                fileId,
+                output
+            )
+            return None
+
+        try:
+            return __import__("base64").b64decode(output.strip())
+        except Exception as ex:
+            logger.warning(
+                "Could not decode CryoSPARC v5 fileid %s.",
+                fileId,
+                exc_info=ex
+            )
             return None
 
     def _resolveFscTextFile(self, fileIdHint=None, jobUid=None):
@@ -470,7 +535,8 @@ class ProtCryosparcBase(pw.EMProtocol):
         if hasattr(self, 'currenJob') and self.currenJob.get() is not None:
             jobUid = str(self.currenJob.get())
 
-        fscTxtPath = self._resolveFscTextFile(fileIdHint=idd, jobUid=jobUid)
+        fscFileId = getattr(self, "_fscTxtFileId", None) or idd
+        fscTxtPath = self._resolveFscTextFile(fileIdHint=fscFileId, jobUid=jobUid)
 
         if not fscTxtPath or not os.path.exists(fscTxtPath):
             raise Exception(
@@ -725,13 +791,14 @@ class ProtCryosparcBase(pw.EMProtocol):
 
         parsedEvents = None
 
-        # First, try the old structured representation.
         try:
             parsed = ast.literal_eval(rawText.strip())
             if isinstance(parsed, dict):
                 parsedEvents = [parsed]
             elif isinstance(parsed, list):
                 parsedEvents = parsed
+            if isinstance(parsed, str):
+                parsedEvents = json.loads(parsed)
         except Exception:
             parsedEvents = None
 
@@ -749,6 +816,8 @@ class ProtCryosparcBase(pw.EMProtocol):
                     match = re.search(r"FSC i?Iteration\s+(\d+)", text)
                     if match:
                         itera = match.group(1)
+                        if itera.isdigit():
+                            itera = itera.zfill(3)
 
                     for imgfile in event.get("imgfiles", []) or []:
                         if isinstance(imgfile, dict) and imgfile.get("filetype") == "txt":
@@ -773,12 +842,13 @@ class ProtCryosparcBase(pw.EMProtocol):
 
             return idd, itera
 
-        # Fallback for plain-text v5 event output.
         for line in rawText.splitlines():
             if "FSC Iteration" in line or "FSC iIteration" in line:
                 match = re.search(r"FSC i?Iteration\s+(\d+)", line)
                 if match:
                     itera = match.group(1)
+                    if itera.isdigit():
+                        itera = itera.zfill(3)
 
             if "Using Filter Radius" in line:
                 match = re.search(r"\(([^)]+)\)", line)
@@ -792,7 +862,6 @@ class ProtCryosparcBase(pw.EMProtocol):
                     self.estBFactor = pwobj.String(match.group(1).strip())
                     self._store(self)
 
-            # Best-effort file id extraction if the raw output still contains it.
             if idd is None:
                 match = re.search(r"fileid['\"]?\s*[:=]\s*['\"]([^'\"]+)['\"]", line)
                 if match:

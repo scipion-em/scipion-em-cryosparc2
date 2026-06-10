@@ -43,7 +43,7 @@ from ..convert import (convertCs2Star, createItemMatrix,
                        setCryosparcAttributes)
 from ..utils import (addComputeSectionParams, cryosparcValidate, gpusValidate,
                      enqueueJob, waitForCryosparc, copyFiles,
-                     getCryosparcVersion, parse_version)
+                     getCryosparcVersion, parse_version, getVersionedEnumValue)
 
 from ..constants import *
 
@@ -56,9 +56,6 @@ class ProtCryoSparcGlobalCtfRefinement(ProtCryosparcBase, pwprot.ProtParticles):
     """
     _label = 'global ctf refinement'
     _className = "ctf_refine_global"
-    _protCompatibility = [V3_3_1, V3_3_2, V4_0_0, V4_0_1, V4_0_2, V4_0_3, V4_1_0,
-                          V4_1_1, V4_1_2, V4_2_0, V4_2_1, V4_3_1, V4_4_0, V4_4_1, V4_5_1,
-                          V4_5_3, V4_6_0, V4_6_1, V4_6_2, V4_7_0, V4_7_1]
     newParamsName = []
 
     def _initialize(self):
@@ -311,7 +308,13 @@ class ProtCryoSparcGlobalCtfRefinement(ProtCryosparcBase, pwprot.ProtParticles):
             if paramName != 'crg_ews_zsign':
                 params[str(paramName)] = str(self.getAttributeValue(paramName))
             else:
-                params[str(paramName)] = str(EWS_CURVATURE_SIGN[self.crg_ews_zsign.get()])
+                params[str(paramName)] = str(
+                    getVersionedEnumValue(
+                        self.crg_ews_zsign.get(),
+                        EWS_CURVATURE_SIGN,
+                        EWS_CURVATURE_SIGN_V5
+                    )
+                )
 
         # Determinate the GPUs to use (in dependence of
         # the cryosparc version)
