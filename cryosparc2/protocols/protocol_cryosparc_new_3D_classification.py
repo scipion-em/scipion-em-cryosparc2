@@ -310,6 +310,7 @@ class ProtCryoSparcNew3DClassification(ProtCryosparcBase):
         # --------------[Compute settings]---------------------------
         form.addSection(label="Compute settings")
         addComputeSectionParams(form, allowMultipleGPUs=False)
+        addPreprocessLaneParam(form)
 
     # --------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):

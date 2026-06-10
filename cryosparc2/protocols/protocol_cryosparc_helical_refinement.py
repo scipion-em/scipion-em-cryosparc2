@@ -35,7 +35,7 @@ from pyworkflow.protocol.params import (FloatParam, Positive, IntParam,
 from .protocol_cryosparc_homogeneous_refine import ProtCryoSparc3DHomogeneousRefine
 from ..utils import (getSymmetry, enqueueJob, waitForCryosparc,
                      clearIntermediateResults, addComputeSectionParams, addPreprocessLaneParam,
-                     getVersionedEnumValue)
+                     getVersionedEnumValue, cryosparcValidate, gpusValidate)
 from ..constants import *
 
 
@@ -224,6 +224,8 @@ class ProtCryoSparcHelicalRefine3D(ProtCryoSparc3DHomogeneousRefine):
         # --------------[Compute settings]---------------------------
         form.addSection(label="Compute settings")
         addComputeSectionParams(form, allowMultipleGPUs=False)
+        addPreprocessLaneParam(form)
+
 
     def _insertAllSteps(self):
         ProtCryoSparc3DHomogeneousRefine._insertAllSteps(self)
