@@ -39,8 +39,9 @@ from pyworkflow.protocol.params import (FloatParam, LEVEL_ADVANCED,
                                         BooleanParam, EnumParam)
 
 from .protocol_base import ProtCryosparcBase
-from ..convert import (convertBinaryVol, convertCs2Star, cryosparcToLocation)
-from ..utils import (addComputeSectionParams, doImportVolumes,
+from ..convert import (convertBinaryVol, convertCs2Star,
+                       rowToAlignment, ALIGN_PROJ, cryosparcToLocation)
+from ..utils import (addComputeSectionParams, addPreprocessLaneParam, doImportVolumes,
                      get_job_streamlog, calculateNewSamplingRate,
                      cryosparcValidate, gpusValidate, enqueueJob,
                      waitForCryosparc, clearIntermediateResults, fixVolume,

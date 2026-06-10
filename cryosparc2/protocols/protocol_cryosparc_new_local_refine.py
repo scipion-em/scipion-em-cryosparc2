@@ -42,7 +42,7 @@ from pwem.objects import Volume
 from .protocol_base import ProtCryosparcBase
 from ..convert import (convertCs2Star, createItemMatrix,
                        setCryosparcAttributes)
-from ..utils import (addComputeSectionParams, calculateNewSamplingRate,
+from ..utils import (addComputeSectionParams, addPreprocessLaneParam, calculateNewSamplingRate,
                      cryosparcValidate, gpusValidate, enqueueJob,
                      waitForCryosparc, clearIntermediateResults,
                      addSymmetryParam, getSymmetry,
@@ -218,6 +218,7 @@ class ProtCryoSparcLocalRefine(ProtCryosparcBase, ProtOperateParticles):
         # --------------[Compute settings]---------------------------
         form.addSection(label="Compute settings")
         addComputeSectionParams(form, allowMultipleGPUs=False)
+        addPreprocessLaneParam(form)
 
     # --------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):

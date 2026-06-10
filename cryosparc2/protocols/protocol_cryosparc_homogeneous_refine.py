@@ -39,7 +39,7 @@ from pyworkflow.protocol.params import *
 from .protocol_base import ProtCryosparcBase
 from ..convert import (convertCs2Star, createItemMatrix,
                        setCryosparcAttributes)
-from ..utils import (addSymmetryParam, addComputeSectionParams,
+from ..utils import (addSymmetryParam, addComputeSectionParams, addPreprocessLaneParam,
                      calculateNewSamplingRate,
                      cryosparcValidate, gpusValidate, getSymmetry,
                      waitForCryosparc, clearIntermediateResults, enqueueJob,
@@ -422,6 +422,7 @@ class ProtCryoSparc3DHomogeneousRefine(ProtCryosparcBase):
         # --------------[Compute settings]---------------------------
         form.addSection(label="Compute settings")
         addComputeSectionParams(form, allowMultipleGPUs=True)
+        addPreprocessLaneParam(form)
 
     # --------------------------- INSERT steps functions -----------------------
 
@@ -649,6 +650,7 @@ class ProtCryoSparc3DHomogeneousRefine(ProtCryosparcBase):
                             'compute_use_ssd'] + self.ewsParamsName
 
         self.lane = str(self.getAttributeValue('compute_lane'))
+        self.preprocessLane = str(self.getAttributeValue('preprocess_lane'))
 
     def doRunRefine(self):
         """

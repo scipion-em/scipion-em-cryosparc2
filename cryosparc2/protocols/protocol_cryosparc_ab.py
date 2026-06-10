@@ -41,7 +41,7 @@ from .protocol_base import ProtCryosparcBase
 from ..convert import (convertCs2Star, cryosparcToLocation,
                        rowToAlignment)
 
-from ..utils import (addSymmetryParam, addComputeSectionParams,
+from ..utils import (addSymmetryParam, addComputeSectionParams, addPreprocessLaneParam,
                      cryosparcValidate, gpusValidate, getSymmetry, enqueueJob,
                      calculateNewSamplingRate, waitForCryosparc,
                      clearIntermediateResults, fixVolume, copyFiles,
@@ -292,6 +292,7 @@ class ProtCryoSparcInitialModel(ProtCryosparcBase, ProtInitialVolume,
         # --------------[Compute settings]---------------------------
         form.addSection(label="Compute settings")
         addComputeSectionParams(form, allowMultipleGPUs=False)
+        addPreprocessLaneParam(form)
 
     # --------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):

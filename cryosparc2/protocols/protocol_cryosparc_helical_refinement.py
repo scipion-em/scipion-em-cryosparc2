@@ -34,8 +34,8 @@ from pyworkflow.protocol.params import (FloatParam, Positive, IntParam,
 
 from .protocol_cryosparc_homogeneous_refine import ProtCryoSparc3DHomogeneousRefine
 from ..utils import (getSymmetry, enqueueJob, waitForCryosparc,
-                     clearIntermediateResults, addComputeSectionParams,
-                     cryosparcValidate, gpusValidate, getVersionedEnumValue)
+                     clearIntermediateResults, addComputeSectionParams, addPreprocessLaneParam,
+                     getVersionedEnumValue)
 from ..constants import *
 
 

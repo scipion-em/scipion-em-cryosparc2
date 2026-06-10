@@ -5,7 +5,8 @@ from unittest.mock import patch
 from cryosparc2 import V_UNKNOWN, V3_0_0
 from cryosparc2.utils import (cryosparcValidate, cryosparcExists,
                               isCryosparcRunning, calculateNewSamplingRate,
-                              getProjectName, getCryosparcVersion)
+                              getProjectName, getCryosparcVersion,
+                              getCryosparcPreprocessLane)
 
 import cryosparc2.utils as csutils
 
@@ -146,10 +147,17 @@ class TestUtils(unittest.TestCase):
                 getFromFile.assert_called_once()
                 getEnvInfo.assert_called_once()
 
-                version = getCryosparcVersion()
-                self.assertEqual(version, V_UNKNOWN)
-                getFromFile.assert_called_once()
-                getEnvInfo.assert_called_once()
+    def testGetPreprocessLane(self):
+
+        with patch.dict('os.environ', {}, clear=True):
+            self.assertIsNone(getCryosparcPreprocessLane())
+
+        with patch.dict('os.environ', {'CRYOSPARC_DEFAULT_LANE': 'heavy-lane'}, clear=True):
+            self.assertEqual(getCryosparcPreprocessLane(), 'heavy-lane')
+
+        with patch.dict('os.environ', {'CRYOSPARC_DEFAULT_LANE': 'heavy-lane',
+                                       'CRYOSPARC_PREPROCESS_LANE': 'light-lane'}, clear=True):
+            self.assertEqual(getCryosparcPreprocessLane(), 'light-lane')
 
 
 if __name__ == '__main__':

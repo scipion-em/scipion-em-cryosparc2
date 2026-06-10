@@ -41,7 +41,7 @@ from pyworkflow.protocol.params import (PointerParam, FloatParam, IntParam,
 from .protocol_base import ProtCryosparcBase
 from ..convert import (convertCs2Star, createItemMatrix,
                        setCryosparcAttributes)
-from ..utils import (addComputeSectionParams, cryosparcValidate, gpusValidate,
+from ..utils import (addComputeSectionParams, addPreprocessLaneParam, cryosparcValidate, gpusValidate,
                      enqueueJob, waitForCryosparc, copyFiles,
                      getCryosparcVersion, parse_version, getVersionedEnumValue)
 
@@ -189,6 +189,7 @@ class ProtCryoSparcGlobalCtfRefinement(ProtCryosparcBase, pwprot.ProtParticles):
         # --------------[Compute settings]---------------------------
         form.addSection(label="Compute settings")
         addComputeSectionParams(form, allowMultipleGPUs=False)
+        addPreprocessLaneParam(form)
 
     # --------------------------- INSERT steps functions -----------------------
 
