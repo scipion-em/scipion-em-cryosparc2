@@ -1601,17 +1601,31 @@ def addComputeSectionParams(form, allowMultipleGPUs=True, needGPU=True):
                       help='Number of GPUs to compute:')
 
 
-
 def addPreprocessLaneParam(form):
     from pyworkflow.protocol.params import StringParam
 
+    protocol = form._protocol
+
     defaultPreprocessLane = getCryosparcPreprocessLane()
-    if defaultPreprocessLane is None:
-        defaultPreprocessLane = str(form._protocol.getAttributeValue('compute_lane'))
+
+    if not defaultPreprocessLane:
+        defaultPreprocessLane = protocol.getAttributeValue('compute_lane')
+
+    if not defaultPreprocessLane:
+        defaultPreprocessLane = getCryosparcDefaultLane()
+
+    if not defaultPreprocessLane:
+        defaultPreprocessLane = 'default'
+
+    defaultPreprocessLane = str(defaultPreprocessLane)
+
     form.addParam('preprocess_lane', StringParam,
                   default=defaultPreprocessLane,
-                  label='Preprocessing lane name:', readOnly=True,
-                  help='Scheduler lane used for preprocessing imports (particles, volumes, masks).')
+                  label='Preprocessing lane name:',
+                  readOnly=True,
+                  help='Scheduler lane used for preprocessing imports '
+                       '(particles, volumes, masks).')
+
 
 def addSymmetryParam(form, help=""):
     """
