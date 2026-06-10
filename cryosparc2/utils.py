@@ -373,14 +373,17 @@ def gpusValidate(gpuList, checkSingleGPU=False):
 
 def getCryosparcEnvInformation(envVar=VERSION):
     """
-    Get the cryosparc environment information
+    Get the cryoSPARC environment information.
     """
     import ast
-    import json
-    system_info = getSystemInfo()
-    dictionary = ast.literal_eval(system_info[1])
-    envVariable = str(json.loads(dictionary)[envVar])
-    return envVariable
+
+    systemInfo = getSystemInfo()
+    dictionary = systemInfo[1]
+
+    if isinstance(dictionary, str):
+        dictionary = ast.literal_eval(dictionary)
+
+    return str(dictionary[envVar])
 
 
 def getCryosparcVersion():
@@ -1408,27 +1411,24 @@ def clearIntermediateResults(projectName, jobName=None, workspaceName=None, alwa
 
     # Legacy <= 4.7 path
     if jobUid is not None:
-        clearIntermediateCmd = (
-            getCryosparcProgram() +
-            ' %sclear_intermediate_results(project_uid=%s, job_uid=%s, always_keep_final=%s)%s '
-            % ("'", repr(projectUid), repr(jobUid), repr(bool(alwaysKeepFinal)), "'")
+        clearIntermediateExpr = (
+                "clear_intermediate_results(project_uid=%s, job_uid=%s, always_keep_final=%s)"
+                % (repr(projectUid), repr(jobUid), repr(bool(alwaysKeepFinal)))
         )
-        return runCmd(clearIntermediateCmd, printCmd=False)
+        return _runCliExpression(clearIntermediateExpr, printCmd=False)
 
     if workspaceUid is not None:
-        clearIntermediateCmd = (
-            getCryosparcProgram() +
-            ' %sclear_intermediate_results(project_uid=%s, workspace_uid=%s, always_keep_final=%s)%s '
-            % ("'", repr(projectUid), repr(workspaceUid), repr(bool(alwaysKeepFinal)), "'")
+        clearIntermediateExpr = (
+                "clear_intermediate_results(project_uid=%s, workspace_uid=%s, always_keep_final=%s)"
+                % (repr(projectUid), repr(workspaceUid), repr(bool(alwaysKeepFinal)))
         )
-        return runCmd(clearIntermediateCmd, printCmd=False)
+        return _runCliExpression(clearIntermediateExpr, printCmd=False)
 
-    clearIntermediateCmd = (
-        getCryosparcProgram() +
-        ' %sclear_intermediate_results(project_uid=%s, always_keep_final=%s)%s '
-        % ("'", repr(projectUid), repr(bool(alwaysKeepFinal)), "'")
+    clearIntermediateExpr = (
+            "clear_intermediate_results(project_uid=%s, always_keep_final=%s)"
+            % (repr(projectUid), repr(bool(alwaysKeepFinal)))
     )
-    return runCmd(clearIntermediateCmd, printCmd=False)
+    return _runCliExpression(clearIntermediateExpr, printCmd=False)
 
 
 def getSystemInfo():
