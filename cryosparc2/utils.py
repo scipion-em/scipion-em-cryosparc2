@@ -1144,23 +1144,126 @@ def runCmd(cmd, printCmd=True):
     return exitCode, cmdOutput.split('\n')[-1]
 
 
-def waitForCryosparc(projectName, jobName, errorMsg, sleepTime=15):
+def waitForCryosparc(projectName, jobName, errorMsg, protocol=None, sleepTime=15):
     """
-    Wait until the job reaches a stop status.
+    Wait until the cryoSPARC job reaches a stop status and stream job logs
+    into the Scipion logger when a protocol instance is available.
     """
+    projectName = str(projectName)
     jobName = str(jobName)
 
+    if isinstance(protocol, (int, float)):
+        sleepTime = protocol
+        protocol = None
+
+    status = None
+
     while True:
-        status = getJobStatus(str(projectName), jobName)
+        try:
+            status = getJobStatus(projectName, jobName)
 
-        if status in ACTIVE_STATUSES:
-            time.sleep(15)
-            continue
+            if status in STOP_STATUSES:
+                break
 
-        if status == STATUS_COMPLETED:
-            return True
+            _logCryosparcJobEvents(projectName, jobName, protocol=protocol)
 
+            if status in ACTIVE_STATUSES:
+                waitJob(projectName, jobName)
+            else:
+                time.sleep(sleepTime)
+
+        except Exception as ex:
+            logger.error(
+                "Can't query cryoSPARC about the job %s. Maybe it needs a restart? "
+                "We'll wait 5 minutes" % jobName,
+                exc_info=ex
+            )
+            time.sleep(300)
+
+    _logCryosparcJobEvents(projectName, jobName, protocol=protocol)
+
+    if status != STATUS_COMPLETED:
         raise Exception("%s Current status: %s" % (errorMsg, status))
+
+    return status
+
+
+def _getCryosparcJobLogEvents(projectName, jobName):
+    """
+    Return cryoSPARC job log events as a list.
+    """
+    if _isCryosparcV5OrNewer():
+        events = _tryV5StructuredEventLog(projectName, jobName)
+    else:
+        events = getJobStreamlog(projectName, jobName)[1]
+
+    if events is None:
+        return []
+
+    try:
+        events = _pythonLiteral(events, default=[])
+    except Exception:
+        return []
+
+    if isinstance(events, dict):
+        events = events.get("events", events.get("logs", []))
+
+    if not isinstance(events, list):
+        return []
+
+    return events
+
+
+def _getCryosparcLogText(logEvent):
+    """
+    Extract a printable text message from a cryoSPARC log event.
+    """
+    if isinstance(logEvent, str):
+        return logEvent.strip()
+
+    if not isinstance(logEvent, dict):
+        return None
+
+    for key in ("text", "message", "msg", "description"):
+        value = logEvent.get(key)
+        if value:
+            return str(value).strip()
+
+    return None
+
+
+def _logCryosparcJobEvents(projectName, jobName, protocol=None):
+    """
+    Log new cryoSPARC job events into Scipion logger.
+    """
+    events = _getCryosparcJobLogEvents(projectName, jobName)
+    if not events:
+        return
+
+    if protocol is None:
+        lastEvent = events[-1]
+        text = _getCryosparcLogText(lastEvent)
+        if text:
+            logger.info(text)
+        return
+
+    jobLogLastLine = protocol.getLogLine()
+    lenLog = len(events)
+
+    if lenLog > jobLogLastLine:
+        protocol.setLogLine(lenLog)
+        for line in range(jobLogLastLine, lenLog):
+            text = _getCryosparcLogText(events[line])
+            if text:
+                logger.info(text)
+    else:
+        jobLogLastLine = lenLog - 1
+        while jobLogLastLine >= 0:
+            text = _getCryosparcLogText(events[jobLogLastLine])
+            if text:
+                logger.info(text)
+                break
+            jobLogLastLine -= 1
 
 
 def getJobStatus(projectName, jobId):
