@@ -54,6 +54,86 @@ class ProtCryoSparc3DClassification(ProtCryosparcBase):
     differences between structures which may not be obvious at low resolutions,
     and also to re-classify particles to aid in sorting.
     """
+
+    """
+        ProtCryoSparc3DClassification is a CryoSPARC-based protocol designed
+        to perform heterogeneous three-dimensional refinement and particle
+        classification within cryo-electron microscopy workflows. The
+        protocol simultaneously refines multiple initial structures while
+        assigning particles to the most compatible structural class,
+        allowing the identification and separation of conformational or
+        compositional heterogeneity present in the dataset.
+
+        The protocol operates using a collection of initial reference
+        volumes, typically generated from previous ab-initio
+        reconstruction steps. During iterative refinement, input particles
+        are compared against all reference structures and probabilistically
+        classified according to their structural similarity. At the same
+        time, each class volume is independently refined, progressively
+        improving the quality and consistency of the reconstructed maps.
+
+        From a biological perspective, this protocol is particularly useful
+        for studying molecular flexibility, conformational landscapes,
+        compositional variability, and structural dynamics. It enables the
+        separation of particles representing distinct biological states,
+        which may not be distinguishable at low resolution or during
+        conventional homogeneous refinement procedures. The protocol is
+        therefore commonly used to isolate discrete structural populations
+        prior to high-resolution reconstruction and interpretation.
+
+        The implementation supports multiple initial volumes and applies
+        symmetry constraints consistently across all classes. During
+        refinement, particles may either maintain probabilistic assignment
+        across several classes or be forced into hard classification modes
+        where each particle belongs to a single class at every iteration.
+        This behavior directly influences classification sharpness,
+        convergence stability, and sensitivity to subtle structural
+        differences.
+
+        Several advanced refinement parameters are incorporated into the
+        workflow. These include refinement box size, optimization strategy,
+        learning rate scheduling, half-map decay control, convergence
+        thresholds, noise modeling, and resolution initialization settings.
+        The protocol also supports adaptive filtering strategies that use
+        Fourier Shell Correlation information across classes to avoid
+        over-filtering smaller particle populations.
+
+        Internally, the workflow begins with the importation and preparation
+        of input particles and reference volumes into the CryoSPARC project
+        environment. Each reference volume is converted and registered
+        independently before the heterogeneous refinement job is submitted
+        to CryoSPARC. GPU allocation and computational resource management
+        are automatically configured according to the execution environment.
+
+        During execution, the protocol continuously refines class volumes
+        while updating particle assignments through iterative online-EM
+        optimization procedures. Intermediate metadata and refinement
+        information are tracked through CryoSPARC stream logs, allowing the
+        protocol to identify the final refinement iteration and retrieve
+        the corresponding reconstructed outputs.
+
+        After completion, the protocol converts CryoSPARC outputs into
+        Scipion-compatible metadata and reconstructs the associated
+        SetOfClasses3D and SetOfVolumes objects. Each resulting class
+        contains the aligned particles assigned to that structural state,
+        together with its representative refined volume and projection
+        alignment information. The output volumes are additionally scaled
+        and adapted to maintain consistency with the original particle
+        sampling rate and dimensions.
+
+        The protocol also manages metadata transformation, STAR file
+        generation, class association, representative volume assignment,
+        and output reconstruction logic. Although the numerical refinement
+        and classification calculations are performed directly by
+        CryoSPARC, the class acts as a high-level orchestration layer
+        responsible for workflow integration inside the Scipion framework.
+
+        ProtCryoSparc3DClassification is commonly used in cryo-EM workflows
+        involving conformational variability analysis, structural state
+        separation, particle sorting, heterogeneous refinement, and
+        preparation of homogeneous particle subsets for subsequent
+        high-resolution refinement and biological interpretation.
+        """
     _label = '3D Heterogeneous Refinement'
     _className = "hetero_refine"
 

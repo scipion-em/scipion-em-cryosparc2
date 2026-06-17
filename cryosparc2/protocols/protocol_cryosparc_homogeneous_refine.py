@@ -26,7 +26,7 @@
 # **************************************************************************
 import os
 import emtable
-
+from pkg_resources import parse_version
 
 import pwem.objects as pwobj
 import pyworkflow.utils as pwutils
@@ -42,7 +42,7 @@ from ..utils import (addSymmetryParam, addComputeSectionParams, addPreprocessLan
                      cryosparcValidate, gpusValidate, getSymmetry,
                      waitForCryosparc, clearIntermediateResults, enqueueJob,
                      getCryosparcVersion, fixVolume, copyFiles,
-                     getOutputPreffix, parse_version)
+                     getOutputPreffix)
 from ..constants import *
 
 
@@ -54,6 +54,172 @@ class ProtCryoSparc3DHomogeneousRefine(ProtCryosparcBase):
         trefoil, tetrafoil) correction and per-particle defocus refinement on
         the fly.
     """
+
+    """
+        ProtCryoSparc3DHomogeneousRefine — User Manual
+
+        Overview
+
+        The ProtCryoSparc3DHomogeneousRefine protocol performs high-resolution
+        homogeneous refinement of a 3D cryo-EM reconstruction using cryoSPARC
+        within the Scipion framework. The protocol is designed for datasets that
+        represent a single dominant structural state and aims to iteratively refine
+        an initial reference volume into an improved 3D reconstruction validated by
+        gold-standard Fourier Shell Correlation (GS-FSC).
+
+        In practical cryo-EM workflows, this protocol is commonly used after
+        obtaining an initial 3D reconstruction and aligned particle set. The
+        refinement process improves particle orientations, reconstructs higher
+        quality density maps, and applies advanced optical corrections to maximize
+        structural resolution.
+
+        Inputs and General Workflow
+
+        The protocol requires three principal inputs: a set of particles with
+        associated CTF information, an initial reference volume, and optionally a
+        soft mask. The reference volume provides the starting structural model,
+        while the optional mask focuses refinement on biologically relevant regions
+        and suppresses solvent noise or flexible peripheral densities.
+
+        The workflow begins by initializing cryoSPARC project information and
+        defining all temporary and output filenames required during execution.
+        Input particles and reference volumes are converted into cryoSPARC-
+        compatible formats before the refinement job is launched.
+
+        Once the cryoSPARC job finishes, the protocol retrieves the final refined
+        volume, half-maps, and updated particle metadata. The results are converted
+        back into Scipion-compatible formats, allowing downstream visualization,
+        validation, and analysis.
+
+        Symmetry Handling and Structural Refinement
+
+        The protocol supports multiple symmetry groups including cyclic,
+        dihedral, tetrahedral, octahedral, and icosahedral symmetries. Applying
+        symmetry improves signal averaging and enhances reconstruction quality when
+        biologically appropriate.
+
+        An optional symmetry relaxation mode allows particles to contribute more
+        flexibly across symmetry-related orientations. This feature becomes useful
+        for complexes exhibiting partial symmetry breaking or local conformational
+        variability within otherwise symmetric assemblies.
+
+        The protocol also includes optional automatic symmetry alignment to orient
+        the reference volume consistently relative to the selected symmetry axes.
+
+        Resolution and Refinement Controls
+
+        Several advanced parameters allow fine control over the refinement process.
+        Users can define the initial low-pass resolution, the GS-FSC split
+        resolution, the number of additional refinement iterations, and optional
+        high-pass filtering.
+
+        Additional controls regulate batch size optimization, signal-to-noise
+        balancing, and GPU memory usage. These parameters are especially important
+        when processing very large datasets or running refinements on systems with
+        limited computational resources.
+
+        The protocol also provides several noise modeling strategies, including
+        symmetric, white, and coloured noise models. These options influence how
+        cryoSPARC estimates and regularizes image noise during refinement.
+
+        Dynamic Masking
+
+        Dynamic masking is an important component of the refinement procedure.
+        During refinement, the mask can adapt automatically according to map
+        density thresholds and resolution evolution. This improves stability in
+        flexible complexes and reduces the influence of solvent regions.
+
+        Parameters controlling mask expansion, thresholding, and activation
+        resolution allow advanced users to optimize refinement behavior for
+        challenging biological systems such as membrane proteins, multi-domain
+        assemblies, or partially flexible complexes.
+
+        Defocus and CTF Refinement
+
+        A major feature of the protocol is the integration of per-particle defocus
+        refinement and global CTF refinement.
+
+        Per-particle defocus refinement optimizes defocus values independently for
+        each particle during iterative refinement. This improves the accuracy of
+        particle alignment and enhances high-resolution signal recovery.
+
+        Global CTF refinement optimizes higher-order optical aberrations including
+        beam tilt, trefoil, spherical aberration, and tetrafoil. These corrections
+        are particularly important in modern high-resolution cryo-EM datasets where
+        subtle optical distortions can significantly affect map quality.
+
+        Both refinement strategies are iterative and become active once the main
+        refinement process has reached stable convergence.
+
+        Ewald Sphere Correction
+
+        For cryoSPARC versions supporting advanced optical corrections, the
+        protocol optionally includes Ewald Sphere correction.
+
+        Users can enable curvature correction during reconstruction and alignment,
+        select positive or negative curvature signs, and choose between simple or
+        iterative correction strategies.
+
+        These corrections become increasingly important for near-atomic resolution
+        reconstructions where Ewald Sphere curvature effects are no longer
+        negligible.
+
+        GPU Execution and cryoSPARC Integration
+
+        The protocol dynamically constructs the parameter dictionary required by
+        cryoSPARC and automatically adapts execution according to the available GPU
+        configuration.
+
+        When executed outside queue systems, the protocol directly assigns GPUs for
+        local refinement. In queue-based environments, GPU allocation is delegated
+        to the external scheduling system.
+
+        The refinement job is launched through cryoSPARC job management utilities,
+        and the protocol continuously monitors execution status until completion.
+
+        Outputs and Result Interpretation
+
+        After execution, the protocol generates a refined 3D reconstruction,
+        corresponding half-maps, and an updated particle set containing refined
+        alignment parameters.
+
+        The refined maps are corrected, assigned proper sampling rates, and linked
+        with FSC information for resolution validation. Particle metadata is also
+        updated using the refined projection matrices generated during cryoSPARC
+        refinement.
+
+        For symmetric reconstructions, additional transformations ensure that
+        particles remain inside the correct symmetry unit cell representation.
+
+        Validation and Consistency Checks
+
+        Before execution begins, the protocol validates cryoSPARC installation
+        compatibility, GPU availability, and the existence of valid CTF
+        information in the input particles.
+
+        Additional validation checks prevent biologically inconsistent parameter
+        combinations, such as enabling symmetry relaxation while using C1
+        symmetry.
+
+        These validation steps help ensure stable execution and biologically
+        meaningful refinements.
+
+        Final Perspective
+
+        ProtCryoSparc3DHomogeneousRefine represents a comprehensive high-resolution
+        refinement workflow for homogeneous cryo-EM datasets. By combining
+        iterative refinement, adaptive masking, symmetry handling, optical
+        aberration correction, and GPU-accelerated processing, the protocol
+        provides a robust framework for obtaining near-atomic resolution
+        reconstructions.
+
+        From a biological perspective, careful selection of the initial reference,
+        appropriate masking strategies, and proper use of symmetry and optical
+        corrections are essential for obtaining reliable and interpretable
+        structural results.
+        """
+
+
     _label = '3D homogeneous refinement'
     _fscColumns = 6
     _className = "homo_refine_new"

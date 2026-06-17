@@ -28,7 +28,7 @@
 import os
 
 import emtable
-
+from pkg_resources import parse_version
 
 import pyworkflow.utils as pwutils
 from pwem.objects import VolumeMask
@@ -45,7 +45,7 @@ from ..utils import (addComputeSectionParams, addPreprocessLaneParam, doImportVo
                      get_job_streamlog, calculateNewSamplingRate,
                      cryosparcValidate, gpusValidate, enqueueJob,
                      waitForCryosparc, clearIntermediateResults, fixVolume,
-                     copyFiles, getCryosparcVersion, getOutputPreffix, matchItemRow, parse_version)
+                     copyFiles, getCryosparcVersion, getOutputPreffix, matchItemRow)
 from ..constants import *
 
 
@@ -57,6 +57,238 @@ class ProtCryoSparcNew3DClassification(ProtCryosparcBase):
     classification routine that can complement the existing Heterogeneous
     Refinement job in finding new discrete classes of data.
     """
+
+    """
+        Performs 3D classification of cryo-EM particle datasets using the
+        cryoSPARC “3D Classification (without alignment)” workflow. The protocol
+        is designed to analyze discrete structural heterogeneity by separating
+        particles into multiple structural classes without refining particle
+        orientations during the classification process.
+
+        AI Generated:
+
+        3D Classification (ProtCryoSparcNew3DClassification) — User Manual
+            Overview
+
+            The 3D Classification protocol provides a framework for identifying
+            discrete conformational or compositional variability in single-particle
+            cryo-EM datasets. Unlike heterogeneous refinement approaches that
+            simultaneously optimize alignments and structures, this protocol
+            performs classification without alignment updates, making it especially
+            useful when reliable particle orientations are already available.
+
+            From a biological perspective, this workflow is particularly valuable
+            for separating distinct molecular states, identifying structural
+            subpopulations, detecting partially occupied complexes, or isolating
+            damaged or low-quality particle subsets. In many cryo-EM projects,
+            classification becomes a critical step before high-resolution
+            refinement because it allows biologically homogeneous populations to
+            be analyzed independently.
+
+            Inputs and General Workflow
+
+            The protocol requires a set of aligned particles with associated CTF
+            information. These particles serve as the basis for the classification
+            process. Since the workflow does not perform orientation refinement,
+            accurate input alignments are essential for meaningful classification
+            results.
+
+            Optionally, users may provide one or more initial reference volumes.
+            These initial structures define the starting point of the classification
+            procedure and are especially useful when prior structural knowledge
+            already exists. If no initial maps are provided, the protocol can
+            generate internal starting references using simple random subsets or
+            PCA-based initialization strategies.
+
+            The workflow internally prepares the cryoSPARC project environment,
+            imports required particle and volume data, launches the classification
+            job, monitors execution, and finally converts the cryoSPARC outputs
+            into Scipion-compatible objects such as particle classes, volumes,
+            and masks.
+
+            Initialization Strategies
+
+            One of the most important conceptual aspects of this protocol is the
+            initialization mode because it strongly influences convergence and the
+            biological interpretability of the resulting classes.
+
+            The “simple” initialization mode reconstructs initial volumes from
+            randomly selected particle subsets. This strategy is computationally
+            efficient and suitable for exploratory analyses when little prior
+            information is available.
+
+            The PCA initialization mode generates multiple low-resolution
+            reconstructions and applies principal component analysis to identify
+            dominant variability patterns in the dataset. This approach is more
+            computationally demanding but can improve sensitivity to subtle
+            conformational variability.
+
+            The input-based initialization mode directly uses user-provided
+            reference volumes as starting classes. This option is particularly
+            useful when comparing known conformational states or previously
+            characterized assemblies. However, biologically meaningful results
+            require that the supplied input volumes represent genuinely distinct
+            structures rather than identical reconstructions.
+
+            Classification Parameters and Biological Interpretation
+
+            The protocol allows the user to define the number of output classes.
+            Selecting too few classes may merge biologically distinct states,
+            whereas selecting too many classes can artificially fragment the data
+            and reduce particle counts per class. In practice, the optimal number
+            depends on dataset heterogeneity and the biological question being
+            addressed.
+
+            The target resolution parameter controls the reconstruction resolution
+            used during classification. Lower resolutions focus the optimization on
+            large-scale structural variability, while higher resolutions may help
+            detect smaller conformational differences but require higher-quality
+            data and increased computational cost.
+
+            Online expectation-maximization (O-EM) settings determine how the
+            algorithm traverses the dataset and updates class assignments. Batch
+            sizes and iteration counts directly influence convergence stability,
+            runtime, and classification sensitivity.
+
+            The protocol also supports hard classification, where each particle is
+            assigned exclusively to a single class, as well as probabilistic
+            classification, where particles can partially contribute to multiple
+            classes during optimization. Probabilistic assignment is generally more
+            stable during early optimization, while hard classification may produce
+            more sharply separated final classes.
+
+            Masking and Focused Classification
+
+            The protocol supports both solvent masks and optional focus masks.
+            Masking is biologically important because it determines which structural
+            regions contribute most strongly to the classification signal.
+
+            The solvent mask restricts the analysis to the molecular region and
+            reduces the influence of surrounding solvent noise. If no mask is
+            provided, the protocol can automatically generate one from the initial
+            structures using threshold and expansion parameters.
+
+            The focus mask allows classification to concentrate on a specific region
+            of the structure, such as a flexible domain, ligand-binding site, or
+            conformationally variable subunit. Focused classification is especially
+            valuable in cases where global structural similarity would otherwise
+            obscure localized biological variability.
+
+            From a biological standpoint, carefully designed masks often determine
+            whether subtle conformational differences become detectable.
+
+            PCA and Variability Analysis
+
+            When PCA initialization is enabled, the protocol generates multiple
+            intermediate reconstructions and extracts dominant modes of structural
+            variability through principal component analysis. This approach is
+            particularly useful for datasets exhibiting continuous or weakly
+            separated heterogeneity.
+
+            The number of PCA reconstructions and PCA components directly affects
+            the sensitivity of the initialization process. Larger values may better
+            capture complex variability but increase runtime and computational
+            demands.
+
+            Similarity Annealing and Convergence
+
+            The protocol includes class similarity annealing parameters that control
+            how distinct the classes are allowed to become during optimization.
+            Early in the classification process, encouraging some similarity between
+            classes can prevent premature divergence and stabilize convergence.
+
+            Over subsequent iterations, the similarity constraint is gradually
+            reduced so that classes evolve toward independent structural solutions.
+            Automatic tuning options can estimate appropriate initial similarity
+            values based on effective sample size considerations.
+
+            This strategy is particularly important for challenging biological
+            datasets where conformational states are weakly separated or unevenly
+            populated.
+
+            Computational and CryoSPARC Integration
+
+            Internally, the protocol dynamically adapts parameter handling depending
+            on the cryoSPARC version being used. Certain parameters are renamed or
+            conditionally enabled for compatibility with newer cryoSPARC releases.
+
+            The execution pipeline automatically determines GPU availability,
+            prepares input connections for particles, volumes, and masks, launches
+            the cryoSPARC classification job, and waits for completion before
+            collecting results.
+
+            During execution, intermediate logs are parsed to identify the latest
+            completed iteration and recover the corresponding reconstructed volumes.
+            The protocol also supports optional compression of generated volumes
+            and SSD-based caching to improve performance on large datasets.
+
+            Output Generation and Interpretation
+
+            After execution, the protocol produces several biologically relevant
+            outputs. The main result is a SetOfClasses3D object containing particle
+            assignments for each structural class.
+
+            For every class, a representative 3D volume is generated and converted
+            into Scipion-compatible format. These reconstructed maps can be used
+            for downstream refinement, structural interpretation, variability
+            analysis, or model building.
+
+            The protocol additionally generates solvent masks associated with the
+            classification process. These masks can later be reused in refinement
+            or focused analysis workflows.
+
+            Particle metadata are converted from cryoSPARC CS files into STAR
+            format, ensuring compatibility with Relion-style metadata handling and
+            other Scipion protocols.
+
+            Validation and Quality Control
+
+            Before execution, the protocol validates several critical conditions.
+            Input particles must contain both CTF information and projection
+            alignments. The dataset must also contain a sufficient number of
+            particles to support stable classification.
+
+            Additional validation checks ensure consistency between the number of
+            input volumes and the requested number of classes, as well as proper
+            compatibility between initialization modes and supplied references.
+
+            These validation steps are important because incorrect initialization
+            or insufficient particle statistics can lead to unstable or biologically
+            misleading classification results.
+
+            Practical Recommendations
+
+            In routine cryo-EM workflows, a good starting point is to use a modest
+            number of classes together with simple initialization and default
+            parameters. If biologically meaningful variability is expected,
+            introducing focused masks often significantly improves class separation.
+
+            PCA initialization can be advantageous for highly heterogeneous datasets
+            or systems with subtle conformational landscapes, although it requires
+            additional computational resources.
+
+            When known structural states already exist, input-based initialization
+            provides a powerful strategy for separating related conformations.
+            However, users should avoid supplying nearly identical starting maps,
+            since this may reduce classification stability.
+
+            For difficult datasets, increasing the number of O-EM epochs and using
+            soft probabilistic classification often improves convergence behavior.
+
+            Final Perspective
+
+            3D classification is one of the most biologically significant stages in
+            single-particle cryo-EM analysis because it directly determines how
+            structural heterogeneity is interpreted. The quality of the input
+            alignments, the choice of initialization strategy, the design of masks,
+            and the selection of classification parameters all strongly influence
+            the final biological conclusions.
+
+            Properly applied, this protocol enables the identification of distinct
+            molecular states, flexible conformations, compositional variability,
+            and transient assemblies that would otherwise remain hidden in a global
+            reconstruction.
+        """
     _label = '3D Classification'
     _className = "class_3D"
     _protCompatibility = [V3_3_1, V3_3_2, V4_0_0, V4_0_1, V4_0_2, V4_0_3,

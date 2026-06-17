@@ -37,12 +37,6 @@ You will need to use `3.0.0 <https://scipion-em.github.io/docs/release-3.0.0/doc
 
 **Latest plugin version**
 ==========================
-
-**v4.2.4**
------------
-* **fixed**      Fix pkg_resources deprecation for newer Python versions
-
-
 **v4.2.3**
 -----------
 
@@ -123,7 +117,7 @@ independent installation of CryoSPARC software suite by the user is required
 before running the programs.
 
 To install CryoSPARC v2 software review the detailed system requirements and install
-instructions available `here <https://guide.cryosparc.com/setup-configuration-and-management/how-to-download-install-and-configure/downloading-and-installing-cryosparc>`_.
+instructions available `here <https://cryosparc.com/docs/reference/install/>`_.
 These cover workstation and cluster installs, file configuration and how to update
 cryoSPARC v2 when new versions become available.
 
