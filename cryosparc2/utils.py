@@ -55,10 +55,11 @@ STATUS_QUEUED = "queued"
 STATUS_LAUNCHED = "launched"
 STATUS_STARTED = "started"
 STATUS_BUILDING = "building"
+STATUS_WAITING = "waiting"
 
 STOP_STATUSES = [STATUS_ABORTED, STATUS_COMPLETED, STATUS_FAILED, STATUS_KILLED]
 ACTIVE_STATUSES = [STATUS_QUEUED, STATUS_RUNNING, STATUS_STARTED,
-                   STATUS_LAUNCHED, STATUS_BUILDING]
+                   STATUS_LAUNCHED, STATUS_BUILDING, STATUS_WAITING]
 
 # Module variables
 _csVersion = None  # Lazy variable: never use it directly. Use getCryosparcVersion instead
@@ -1333,10 +1334,20 @@ def getJobStreamlog(projectName, job):
     return logList
 
 
-def waitJob(projectName, job):
+def waitJob(projectName, job, sleepTime=15):
     """
-    Wait while the job not finished
+    Wait while the job is not finished.
     """
+    projectName = str(projectName)
+    job = str(job)
+
+    if _isCryosparcV5OrNewer():
+        while True:
+            status = getJobStatus(projectName, job)
+            if status in STOP_STATUSES:
+                return status
+            time.sleep(sleepTime)
+
     wait_job_cmd = (getCryosparcProgram() +
                     ' %swait_job_complete("%s", "%s")%s'
                     % ("'", projectName, job, "'"))
