@@ -24,6 +24,7 @@
 # *  e-mail address 'scipion@cnb.csic.es'
 # *
 # **************************************************************************
+import json
 import os
 
 import emtable
@@ -390,6 +391,8 @@ class ProtCryoSparc3DClassification(ProtCryosparcBase):
             data = f.readlines()
 
         x = ast.literal_eval(data[0])
+        if isinstance(x, str):
+            x = json.loads(x)
 
         # Find the ID of last iteration and the map resolution
         for y in x:
@@ -491,7 +494,7 @@ class ProtCryoSparc3DClassification(ProtCryosparcBase):
                 params[str(paramName)] = str(NOISE_MODEL_CHOICES[self.multirefine_noise_model.get()])
 
             elif paramName == 'intermediate_plots' or paramName == 'distribution_plots':
-                params[str(paramName)] = str("False")
+                params[str(paramName)] = str("True")
 
         # Determinate the GPUs to use (in dependence of
         # the cryosparc version)

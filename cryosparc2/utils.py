@@ -30,6 +30,9 @@ import logging
 import os
 import shutil
 import time
+import shlex
+import subprocess
+from packaging.version import parse as parse_version
 from packaging.version import Version
 
 
@@ -52,10 +55,11 @@ STATUS_QUEUED = "queued"
 STATUS_LAUNCHED = "launched"
 STATUS_STARTED = "started"
 STATUS_BUILDING = "building"
+STATUS_WAITING = "waiting"
 
 STOP_STATUSES = [STATUS_ABORTED, STATUS_COMPLETED, STATUS_FAILED, STATUS_KILLED]
 ACTIVE_STATUSES = [STATUS_QUEUED, STATUS_RUNNING, STATUS_STARTED,
-                   STATUS_LAUNCHED, STATUS_BUILDING]
+                   STATUS_LAUNCHED, STATUS_BUILDING, STATUS_WAITING]
 
 # Module variables
 _csVersion = None  # Lazy variable: never use it directly. Use getCryosparcVersion instead
@@ -63,6 +67,176 @@ _csVersion = None  # Lazy variable: never use it directly. Use getCryosparcVersi
 # logging variable
 logger = logging.getLogger(__name__)
 
+
+def _normalizeCryosparcVersion(version):
+    version = str(version or V_UNKNOWN).strip()
+    version = version.split('+')[0].split('-')[0].replace('_', '.')
+    version = version.lstrip('vV')
+    if not version:
+        version = '0.0.0'
+    return f'v{version}'
+
+
+def _getCryosparcVersionForRouting():
+    try:
+        return _normalizeCryosparcVersion(_getCryosparcVersionFromFile())
+    except Exception:
+        if _csVersion is not None:
+            return _normalizeCryosparcVersion(_csVersion)
+        return _normalizeCryosparcVersion(V_UNKNOWN)
+
+
+def _isCryosparcV5OrNewer():
+    version = _getCryosparcVersionForRouting().lstrip('vV')
+    return parse_version(version) >= parse_version('5.0.0')
+
+
+def getVersionedEnumValue(index, legacyValues, v5Values=None, switchVersion=V5_0_0):
+    """
+    Return the correct CryoSPARC enum value depending on the installed version.
+    """
+    values = legacyValues
+
+    if v5Values is not None:
+        cryosparcVersion = parse_version(getCryosparcVersion())
+        if cryosparcVersion >= parse_version(switchVersion):
+            values = v5Values
+
+    return values[index]
+
+
+def _runCommandRaw(cmd, printCmd=True):
+    if printCmd:
+        logger.info(pwutils.greenStr("Running: %s" % cmd))
+    else:
+        logger.debug(pwutils.greenStr("Running: %s" % cmd))
+
+    exitCode, cmdOutput = subprocess.getstatusoutput(cmd)
+
+    if exitCode != 0:
+        raise Exception("%s failed --> Exit code %s, message %s" % (cmd, exitCode, cmdOutput))
+
+    return exitCode, cmdOutput
+
+
+def _runCliExpression(expression, printCmd=True):
+    cmd = "%s %s" % (getCryosparcProgram(), shlex.quote(expression))
+    return _runCommandRaw(cmd, printCmd=printCmd)
+
+
+def _runCliValue(expression, printCmd=True):
+    _, output = _runCliExpression(expression, printCmd=printCmd)
+    output = output.strip()
+
+    if output == "":
+        return None
+
+    try:
+        return ast.literal_eval(output)
+    except Exception:
+        return output
+
+
+def _pythonLiteral(value, default=None):
+    if value is None:
+        return {} if default is None else default
+
+    if isinstance(value, (dict, list, tuple, bool, int, float)):
+        return value
+
+    text = str(value).strip()
+    if text == "":
+        return {} if default is None else default
+
+    return ast.literal_eval(text)
+
+
+def _parseResultTarget(target):
+    sourceJobUid, sourceOutputName, sourceResultName = str(target).split(".", 2)
+    return sourceJobUid, sourceOutputName, sourceResultName
+
+
+def _runCryosparcmSubcommand(*parts, printCmd=False):
+    cmd = " ".join(
+        [getCryosparcProgram("")] +
+        [shlex.quote(str(p)) for p in parts if p is not None]
+    )
+    return _runCommandRaw(cmd, printCmd=printCmd)
+
+
+def _writeTextFile(path, text):
+    with open(path, "w", encoding="utf-8", errors="replace") as fh:
+        fh.write("" if text is None else str(text))
+
+
+def _normalizeJobStatus(status):
+    return str(status or "").strip().strip("'\"").lower()
+
+
+def _normalizeSourceOutputName(sourceOutputName):
+    name = str(sourceOutputName)
+
+    legacyToV5OutputMap = {
+        "imported_volume_1.map": "imported_volume_1",
+        "imported_volume.map": "imported_volume",
+
+        "imported_volume_1.map_half_A": "imported_volume_1",
+        "imported_volume_1.map_half_B": "imported_volume_1",
+        "imported_volume.map_half_A": "imported_volume",
+        "imported_volume.map_half_B": "imported_volume",
+
+        "imported_mask_1.map": "imported_mask_1",
+        "imported_mask.map": "imported_mask",
+    }
+
+    return legacyToV5OutputMap.get(name, name)
+
+
+def _parseConnectionTarget(target):
+    sourceJobUid, sourceOutputName = str(target).split(".", 1)
+
+    if _isCryosparcV5OrNewer():
+        sourceOutputName = _normalizeSourceOutputName(sourceOutputName)
+
+    return sourceJobUid, sourceOutputName
+
+def _tryV5StructuredEventLog(projectUid, jobUid):
+    """
+    Try a few likely v5 API method names first.
+    If one works, return a Python object that can be repr()-written and
+    parsed later by protocol_base.py using ast.literal_eval.
+    """
+    expressions = [
+        "[(e.model_dump() if hasattr(e, 'model_dump') else "
+        "(e.dict() if hasattr(e, 'dict') else e)) "
+        "for e in api.jobs.get_event_log(%s, %s)]"
+        % (repr(str(projectUid)), repr(str(jobUid))),
+
+        "[(e.model_dump() if hasattr(e, 'model_dump') else "
+        "(e.dict() if hasattr(e, 'dict') else e)) "
+        "for e in api.jobs.get_event_logs(%s, %s)]"
+        % (repr(str(projectUid)), repr(str(jobUid))),
+
+        "[(e.model_dump() if hasattr(e, 'model_dump') else "
+        "(e.dict() if hasattr(e, 'dict') else e)) "
+        "for e in api.jobs.get_streamlog(%s, %s)]"
+        % (repr(str(projectUid)), repr(str(jobUid))),
+
+        "[(e.model_dump() if hasattr(e, 'model_dump') else "
+        "(e.dict() if hasattr(e, 'dict') else e)) "
+        "for e in api.jobs.get_job_streamlog(%s, %s)]"
+        % (repr(str(projectUid)), repr(str(jobUid))),
+    ]
+
+    for expr in expressions:
+        try:
+            data = _runCliValue(expr, printCmd=False)
+            if data is not None:
+                return data
+        except Exception:
+            pass
+
+    return None
 
 class NestedDict:
     def __init__(self, depth=1):
@@ -94,20 +268,19 @@ def getCryosparcDir(*paths):
 
 def getCryosparcProgram(mode="cli"):
     """
-    Get the cryosparc program to launch any command
+    Get the cryosparc program to launch any command.
+    mode="cli" returns ".../cryosparcm cli"
+    mode="" returns ".../cryosparcm"
     """
     csDir = getCryosparcDir()
 
-    # TODO Find a better way to do that
     if csDir is not None:
+        command = 'cryosparcm' if not mode else 'cryosparcm %s' % mode
+
         if os.path.exists(os.path.join(csDir, CRYOSPARC_MASTER, "bin")):
-            # Case of CS v3.X.X is instaled
-            return os.path.join(csDir, CRYOSPARC_MASTER, "bin",
-                                'cryosparcm %s' % mode)
+            return os.path.join(csDir, CRYOSPARC_MASTER, "bin", command)
         else:
-            # Case of CS v2.X.X is instaled
-            return os.path.join(csDir, 'cryosparc2_master', "bin",
-                                'cryosparcm %s' % mode)
+            return os.path.join(csDir, 'cryosparc2_master', "bin", command)
 
     return None
 
@@ -126,15 +299,22 @@ def isCryosparcRunning():
     Determine if cryosparc services are running
     :returns True if running, false otherwise
     """
-    import subprocess
-    status = -1
-    if getCryosparcProgram() is not None:
-        test_conection_cmd = (getCryosparcProgram() +
-                              ' %stest_connection()%s ' % ("'", "'"))
-        test_conection = subprocess.getstatusoutput(test_conection_cmd)
-        status = test_conection[0]
+    if getCryosparcProgram() is None:
+        return False
 
-    return status == 0
+    try:
+        if _isCryosparcV5OrNewer():
+            status = _runCliValue("api.health()", printCmd=False)
+            return str(status).strip("'\"") == "OK"
+
+        testConnectionCmd = (
+            getCryosparcProgram() +
+            ' %stest_connection()%s ' % ("'", "'")
+        )
+        exitCode, _ = subprocess.getstatusoutput(testConnectionCmd)
+        return exitCode == 0
+    except Exception:
+        return False
 
 
 def cryosparcValidate():
@@ -194,28 +374,49 @@ def gpusValidate(gpuList, checkSingleGPU=False):
 
 def getCryosparcEnvInformation(envVar=VERSION):
     """
-    Get the cryosparc environment information
+    Get the cryoSPARC environment information.
     """
     import ast
-    system_info = getSystemInfo()
-    dictionary = ast.literal_eval(system_info[1])
-    envVariable = str(dictionary[envVar])
-    return envVariable
+
+    systemInfo = getSystemInfo()
+    dictionary = systemInfo[1]
+
+    if isinstance(dictionary, str):
+        dictionary = ast.literal_eval(dictionary)
+
+    return str(dictionary[envVar])
 
 
 def getCryosparcVersion():
-    """ Gets cryosparc version 1st, from a variable if populated,
-     2nd from the version txt file, if fails, asks CS using getCryosparcEnvInformation"""
+    """
+    Gets cryosparc version:
+    1) from version file
+    2) from v5 api.config.get_version()
+    3) from legacy system info
+    """
     global _csVersion
+
     if _csVersion is None:
         try:
-            _csVersion = _getCryosparcVersionFromFile().split('+')[0].split('-')[0]
+            _csVersion = _normalizeCryosparcVersion(_getCryosparcVersionFromFile())
         except Exception:
             try:
-                _csVersion = getCryosparcEnvInformation(VERSION).split('+')[0].split('-')[0]
+                if _isCryosparcV5OrNewer():
+                    _csVersion = _normalizeCryosparcVersion(
+                        _runCliValue("api.config.get_version()", printCmd=False)
+                    )
+                else:
+                    _csVersion = _normalizeCryosparcVersion(
+                        getCryosparcEnvInformation(VERSION)
+                    )
             except Exception as e:
-                logger.error("Couldn't get Cryosparc's version. Please review your config (%s)" % Plugin.getUrl(), exc_info=e)
-                _csVersion = V_UNKNOWN
+                logger.error(
+                    "Couldn't get Cryosparc's version. Please review your config (%s)"
+                    % Plugin.getUrl(),
+                    exc_info=e
+                )
+                _csVersion = _normalizeCryosparcVersion(V_UNKNOWN)
+
     return _csVersion.rstrip('\n')
 
 
@@ -251,26 +452,56 @@ def getCryosparcUser(userId=True):
 
 def getCryosparcProjectsList():
     """
-    Get list of all projects available
-    :return: all projects available in the database
+    Get list of all projects available.
+    Returns a legacy-compatible list of dicts.
     """
-    projects_list_cmd = (getCryosparcProgram() + ' %slist_projects()%s ' % ("'", "'"))
-    cmd = runCmd(projects_list_cmd, printCmd=False)[1]
+    if _isCryosparcV5OrNewer():
+        rawProjects = _runCliValue(
+            "[(p.uid, p.title, api.projects.get_directory(p.uid)) for p in api.projects.find()]",
+            printCmd=False
+        ) or []
+
+        return [
+            {
+                "uid": uid,
+                "title": title,
+                "project_dir": projectDir,
+            }
+            for uid, title, projectDir in rawProjects
+        ]
+
+    projectsListCmd = (getCryosparcProgram() + ' %slist_projects()%s ' % ("'", "'"))
+    cmd = runCmd(projectsListCmd, printCmd=False)[1]
     projectList = ast.literal_eval(cmd)
     return projectList
 
 
 def getCryosparcWorkSpaces(projectId):
-    """ List all workspaces inside a given project (or all projects if not
-    specified)
-
-    :param projectId: target project UID, e.g. "P1", defaults to None
-    :type projectId: str, optional
-    :return: list of workpaces in a project or all projects if not specified
-    :rtype: list
     """
-    workspace_list_cmd = (getCryosparcProgram() + ' %slist_workspaces("%s")%s ' % ("'", str(projectId), "'"))
-    cmd = runCmd(workspace_list_cmd, printCmd=False)[1]
+    List all workspaces inside a given project.
+    Returns a legacy-compatible list of dicts.
+    """
+    if _isCryosparcV5OrNewer():
+        rawWorkspaces = _runCliValue(
+            "[(w.uid, getattr(w, 'title', ''), getattr(w, 'description', None)) "
+            "for w in api.workspaces.find(project_uid=%s)]" % repr(str(projectId)),
+            printCmd=False
+        ) or []
+
+        return [
+            {
+                "uid": uid,
+                "title": title,
+                "description": description,
+            }
+            for uid, title, description in rawWorkspaces
+        ]
+
+    workspaceListCmd = (
+        getCryosparcProgram() +
+        ' %slist_workspaces("%s")%s ' % ("'", str(projectId), "'")
+    )
+    cmd = runCmd(workspaceListCmd, printCmd=False)[1]
     workspacesList = ast.literal_eval(cmd)
     return workspacesList
 
@@ -357,41 +588,71 @@ def getJobLog(projectDirName, projectName, job):
 
 def createEmptyProject(projectDir, projectTitle):
     """
-    create_empty_project(owner_user_id, project_container_dir, title=None,
-                            desc=None)
+    Legacy-compatible project creation.
+    Keep return contract so protocol_base.py does not need to change.
     """
+    if _isCryosparcV5OrNewer():
+        projectUid = _runCliValue(
+            "api.projects.create(title=%s, description=None, parent_dir=%s).uid"
+            % (repr(str(projectTitle)), repr(str(projectDir))),
+            printCmd=False
+        )
+        return 0, "Created project %s" % projectUid
 
-    create_empty_project_cmd = (getCryosparcProgram() +
-                                ' %screate_empty_project("%s", "%s", "%s")%s '
-                                % ("'", str(getCryosparcUser()),
-                                   str(projectDir), str(projectTitle), "'"))
+    createEmptyProjectCmd = (
+        getCryosparcProgram() +
+        ' %screate_empty_project("%s", "%s", "%s")%s '
+        % ("'", str(getCryosparcUser()), str(projectDir), str(projectTitle), "'")
+    )
 
-    return runCmd(create_empty_project_cmd, printCmd=False)
+    return runCmd(createEmptyProjectCmd, printCmd=False)
 
 
 def getProjectInformation(project_uid, info='project_dir'):
     """
-    Get information about a single project
-    :param project_uid: the id of the project
-    :return: the information related to the project that's stored in the database
+    Get information about a single project.
     """
-    import ast
-    from cryosparc.tools import CryoSPARC
-    getProject_cmd = (getCryosparcProgram() +
-                                ' %sget_project("%s")%s '
-                                % ("'", str(project_uid), "'"))
+    if _isCryosparcV5OrNewer():
+        if info == 'project_dir':
+            return str(
+                _runCliValue(
+                    "api.projects.get_directory(%s)" % repr(str(project_uid)),
+                    printCmd=False
+                )
+            )
 
-    project_info = runCmd(getProject_cmd, printCmd=False)
-    dictionary = ast.literal_eval(project_info[1])
+        return str(
+            _runCliValue(
+                "getattr(api.projects.find_one(%s), %s)"
+                % (repr(str(project_uid)), repr(str(info))),
+                printCmd=False
+            )
+        )
+
+    getProjectCmd = (
+        getCryosparcProgram() +
+        ' %sget_project("%s")%s '
+        % ("'", str(project_uid), "'")
+    )
+
+    projectInfo = runCmd(getProjectCmd, printCmd=False)
+    dictionary = ast.literal_eval(projectInfo[1])
     return str(dictionary[info])
 
 
 def getUserToken(email):
-    get_user_cmd = (getCryosparcProgram() +
-                                ' %sGetUser("%s")%s '
-                                % ("'", str(email),"'"))
+    if _isCryosparcV5OrNewer():
+        rawUser = _runCliValue(
+            "api.users.find_one(%s)" % repr(str(email)),
+            printCmd=False
+        )
+        return 0, str(rawUser)
 
-    return runCmd(get_user_cmd, printCmd=False)
+    getUserCmd = (
+        getCryosparcProgram() +
+        ' %sGetUser("%s")%s ' % ("'", str(email), "'")
+    )
+    return runCmd(getUserCmd, printCmd=False)
 
 
 def updateProjectDirectory(project_uid, new_project_dir):
@@ -416,33 +677,57 @@ def getOutputPreffix(projectName):
 
 def createProjectContainerDir(project_container_dir):
     """
-    Given a "root" directory, create a project (PXXX) dir if it doesn't already
-     exist
-    :param project_container_dir: the "root" directory in which to create the
-                                  project (PXXX) directory
-    :returns: str - the final path of the new project dir with shell variables
-              still in the returned path (the path should be expanded every
-              time it is used)
+    Given a root directory, ensure it exists and is usable for project creation.
+    Keep legacy return contract: (exitCode, path)
     """
-    create_project_dir_cmd = (getCryosparcProgram() +
-                              ' %scheck_or_create_project_container_dir("%s")%s '
-                              % ("'", project_container_dir, "'"))
-    return runCmd(create_project_dir_cmd, printCmd=False)
+    os.makedirs(project_container_dir, exist_ok=True)
+
+    if _isCryosparcV5OrNewer():
+        _runCliValue(
+            "api.projects.check_directory(path=%s)" % repr(str(project_container_dir)),
+            printCmd=False
+        )
+        return 0, project_container_dir
+
+    createProjectDirCmd = (
+        getCryosparcProgram() +
+        ' %scheck_or_create_project_container_dir("%s")%s '
+        % ("'", project_container_dir, "'")
+    )
+    return runCmd(createProjectDirCmd, printCmd=False)
 
 
 def createEmptyWorkSpace(projectName, workspaceTitle, workspaceComment):
     """
-    create_empty_workspace(project_uid, created_by_user_id,
-                           created_by_job_uid=None,
-                           title=None, desc=None)
-    returns the new uid of the workspace that was created
+    Legacy-compatible workspace creation.
+    Keep return contract so protocol_base.py does not need to change.
     """
-    create_work_space_cmd = (getCryosparcProgram() +
-                             ' %screate_empty_workspace("%s", "%s", "%s", "%s", "%s")%s '
-                             % ("'", projectName, str(getCryosparcUser(userId=False)),
-                                "None", str(workspaceTitle),
-                                str(workspaceComment), "'"))
-    return runCmd(create_work_space_cmd, printCmd=False)
+    if _isCryosparcV5OrNewer():
+        workspaceUid = _runCliValue(
+            "api.workspaces.create(%s, title=%s, description=%s).uid"
+            % (
+                repr(str(projectName)),
+                repr(str(workspaceTitle)),
+                repr(str(workspaceComment)),
+            ),
+            printCmd=False
+        )
+        return 0, "Created workspace %s" % workspaceUid
+
+    createWorkSpaceCmd = (
+        getCryosparcProgram() +
+        ' %screate_empty_workspace("%s", "%s", "%s", "%s", "%s")%s '
+        % (
+            "'",
+            projectName,
+            str(getCryosparcUser(userId=False)),
+            "None",
+            str(workspaceTitle),
+            str(workspaceComment),
+            "'"
+        )
+    )
+    return runCmd(createWorkSpaceCmd, printCmd=False)
 
 
 def _getProtocolPreprocessLane(protocol):
@@ -570,29 +855,109 @@ def doJob(jobType, projectName, workSpaceName, params, input_group_connect):
 def enqueueJob(jobType, projectName, workSpaceName, params, input_group_connect,
                lane, gpusToUse=False, group_connect=None, result_connect=None):
     """
-    make_job(job_type, project_uid, workspace_uid, user_id,
-             created_by_job_uid=None, params={}, input_group_connects={})
+    Queue a CryoSPARC job.
     """
     from pyworkflow.object import String
 
     cryosparcVersion = getCryosparcVersion()
     standaloneInstallation = isCryosparcStandalone()
 
-    # Create a compatible job to versions < v2.14.X                DEPRECATED
-    # make_job_cmd = (getCryosparcProgram() +
-    #                 ' %smake_job("%s","%s","%s", "%s", "None", %s, %s)%s' %
-    #                 ("'", jobType, projectName, workSpaceName, getCryosparcUser(),
-    #                  params, input_group_connect, "'"))
+    if _isCryosparcV5OrNewer():
+        paramsDict = _pythonLiteral(params, default={})
+        inputGroupConnect = _pythonLiteral(input_group_connect, default={})
+        gpus = [] if not gpusToUse else list(gpusToUse)
 
-    # Create a compatible job to versions >= v2.14.X               DEPRECATED
-    # if parse_version(cryosparcVersion) >= parse_version(V2_14_0):
-    #     make_job_cmd = (getCryosparcProgram() +
-    #                     ' %smake_job("%s","%s","%s", "%s", "None", "None", %s, %s)%s' %
-    #                     ("'", jobType, projectName, workSpaceName,
-    #                      getCryosparcUser(),
-    #                      params, input_group_connect, "'"))
+        projectUid = str(projectName)
+        workspaceUid = str(workSpaceName)
 
-    # Create a compatible job to versions >= v3.0.X < v4_3_1
+        jobUid = _runCliValue(
+            "api.jobs.create(%s, %s, %s, type=%s).uid"
+            % (
+                repr(projectUid),
+                repr(workspaceUid),
+                repr(paramsDict),
+                repr(str(jobType)),
+            ),
+            printCmd=False
+        )
+
+        jobId = String(jobUid)
+
+        if inputGroupConnect:
+            for inputName, sourceTarget in inputGroupConnect.items():
+                sourceJobUid, sourceOutputName = _parseConnectionTarget(sourceTarget)
+                _runCliValue(
+                    "api.jobs.connect(%s, %s, %s, source_output_name=%s, source_job_uid=%s)"
+                    % (
+                        repr(projectUid),
+                        repr(str(jobId)),
+                        repr(str(inputName)),
+                        repr(str(sourceOutputName)),
+                        repr(str(sourceJobUid)),
+                    ),
+                    printCmd=False
+                )
+
+        if group_connect is not None:
+            for inputName, valuesList in group_connect.items():
+                for sourceTarget in valuesList:
+                    sourceJobUid, sourceOutputName = _parseConnectionTarget(sourceTarget)
+                    _runCliValue(
+                        "api.jobs.connect(%s, %s, %s, source_output_name=%s, source_job_uid=%s)"
+                        % (
+                            repr(projectUid),
+                            repr(str(jobId)),
+                            repr(str(inputName)),
+                            repr(str(sourceOutputName)),
+                            repr(str(sourceJobUid)),
+                        ),
+                        printCmd=False
+                    )
+
+        if result_connect is not None:
+            for key, value in result_connect.items():
+                inputName, inputSlot, resultName = _parseResultInputKey(key)
+                sourceJobUid, sourceOutputName, sourceResultName = _parseResultTarget(value)
+
+                _runCliValue(
+                    "api.jobs.connect_result(%s, %s, %s, %s, %s, "
+                    "source_output_name=%s, source_result_name=%s, source_job_uid=%s)"
+                    % (
+                        repr(projectUid),
+                        repr(str(jobId)),
+                        repr(str(inputName)),
+                        inputSlot,
+                        repr(str(resultName)),
+                        repr(str(sourceOutputName)),
+                        repr(str(sourceResultName)),
+                        repr(str(sourceJobUid)),
+                    ),
+                    printCmd=False
+                )
+
+        hostname = None
+        if standaloneInstallation:
+            try:
+                hostname = getCryosparcEnvInformation('master_hostname')
+            except Exception:
+                hostname = None
+
+        _runCliValue(
+            "api.jobs.enqueue(%s, %s, lane=%s, gpus=%s, no_check_inputs_ready=%s)"
+            % (
+                repr(projectUid),
+                repr(str(jobId)),
+                repr(str(lane)),
+                repr(gpus),
+                repr(False),
+            ),
+            printCmd=False
+        )
+
+        logger.info(pwutils.greenStr("Got %s for JobId" % jobId))
+        return jobId
+
+    # Legacy path kept as-is below
     if parse_version(V3_0_0) <= parse_version(cryosparcVersion) < parse_version(V4_3_1):
         make_job_cmd = (getCryosparcProgram() +
                         ' %smake_job("%s","%s","%s", "%s", "None", "None", %s, %s, "False", 0)%s' %
@@ -600,7 +965,6 @@ def enqueueJob(jobType, projectName, workSpaceName, params, input_group_connect,
                          getCryosparcUser(),
                          params, input_group_connect, "'"))
 
-    # Create a compatible job to versions >= v4_3_1
     elif parse_version(cryosparcVersion) >= parse_version(V4_3_1):
         make_job_cmd = (getCryosparcProgram() +
                         ' %smake_job("%s","%s","%s", "%s", "None", "None", "None", %s, %s, "False", 0)%s' %
@@ -629,27 +993,6 @@ def enqueueJob(jobType, projectName, workSpaceName, params, input_group_connect,
             runCmd(job_connect_group, printCmd=True)
 
     logger.info(pwutils.greenStr("Got %s for JobId" % jobId))
-
-    # Queue the job  DEPRECATED
-    # if parse_version(cryosparcVersion) < parse_version(V2_13_0):
-    #     enqueue_job_cmd = (getCryosparcProgram() +
-    #                        ' %senqueue_job("%s","%s","%s")%s' %
-    #                        ("'", projectName, jobId,
-    #                         lane, "'"))
-    #
-    # elif parse_version(cryosparcVersion) <= parse_version(V2_15_0):
-    #     if standaloneInstallation:
-    #         hostname = getCryosparcEnvInformation('master_hostname')
-    #         if gpusToUse:
-    #             gpusToUse = str(gpusToUse)
-    #         enqueue_job_cmd = (getCryosparcProgram() +
-    #                            ' %senqueue_job("%s","%s","%s", "%s", %s)%s' %
-    #                            ("'", projectName, jobId,
-    #                             lane, hostname, gpusToUse, "'"))
-    #     else:
-    #         enqueue_job_cmd = (getCryosparcProgram() +
-    #                            ' %senqueue_job("%s","%s","%s")%s' %
-    #                            ("'", projectName, jobId, lane, "'"))
 
     if parse_version(cryosparcVersion) <= parse_version(V3_3_2):
         if standaloneInstallation:
@@ -802,62 +1145,147 @@ def runCmd(cmd, printCmd=True):
     return exitCode, cmdOutput.split('\n')[-1]
 
 
-def waitForCryosparc(projectName, jobId, failureMessage, protocol=None):
-    """ Waits for cryosparc to finish or fail a job
-    :parameter projectName: Cryosparc project name
-    :parameter jobId: cryosparc job id
-    :parameter failureMessage: Message for the exception thrown in case job fails
-    :returns job Status
-    :raises Exception when parsing cryosparc's output looks wrong"""
+def waitForCryosparc(projectName, jobName, errorMsg, protocol=None, sleepTime=15):
+    """
+    Wait until the cryoSPARC job reaches a stop status and stream job logs
+    into the Scipion logger when a protocol instance is available.
+    """
+    projectName = str(projectName)
+    jobName = str(jobName)
 
-    # While is needed here, cause waitJob has a timeout of 5 secs.
+    if isinstance(protocol, (int, float)):
+        sleepTime = protocol
+        protocol = None
+
+    status = None
+
     while True:
         try:
-            status = getJobStatus(projectName, jobId)
-            if status not in STOP_STATUSES:
-                waitJob(projectName, jobId)
-                if protocol is not None:
-                    jobStreamLog = getJobStreamlog(projectName, jobId)
-                    jobStreamLogList = eval(jobStreamLog[1])
-                    jobLogLastLine = protocol.getLogLine()
-                    lenLog = len(jobStreamLogList)
-                    if lenLog > jobLogLastLine:
-                        protocol.setLogLine(lenLog)
-                        for line in range(jobLogLastLine, lenLog):
-                            logDict = jobStreamLogList[line]
-                            if logDict['type'] == 'text' and 'text' in logDict and logDict['text']:
-                                logger.info(logDict['text'])
-                    else:
-                        jobLogLastLine = len(jobStreamLogList) - 1
-                        while jobLogLastLine:
-                            logDict = jobStreamLogList[jobLogLastLine]
-                            if logDict['type'] == 'text' and 'text' in logDict and logDict['text']:
-                                logger.info(logDict['text'])
-                                break
-                            jobLogLastLine -= 1
-            else:
+            status = getJobStatus(projectName, jobName)
+
+            if status in STOP_STATUSES:
                 break
-        except Exception as e:
-            logger.error("Can't query cryoSPARC about the job %s. Maybe it needs a restart ? We'll wait 5 minutes" % jobId, exc_info=e)
-            import time
-            time.sleep(300)  # wait 5 minutes
+
+            _logCryosparcJobEvents(projectName, jobName, protocol=protocol)
+
+            if status in ACTIVE_STATUSES:
+                waitJob(projectName, jobName)
+            else:
+                time.sleep(sleepTime)
+
+        except Exception as ex:
+            logger.error(
+                "Can't query cryoSPARC about the job %s. Maybe it needs a restart? "
+                "We'll wait 5 minutes" % jobName,
+                exc_info=ex
+            )
+            time.sleep(300)
+
+    _logCryosparcJobEvents(projectName, jobName, protocol=protocol)
 
     if status != STATUS_COMPLETED:
-        raise Exception(failureMessage)
+        raise Exception("%s Current status: %s" % (errorMsg, status))
 
     return status
 
 
-def getJobStatus(projectName, job):
+def _getCryosparcJobLogEvents(projectName, jobName):
     """
-    Return the job status
+    Return cryoSPARC job log events as a list.
     """
-    get_job_status_cmd = (getCryosparcProgram() +
-                          ' %sget_job_status("%s", "%s")%s'
-                          % ("'", projectName, job, "'"))
+    if _isCryosparcV5OrNewer():
+        events = _tryV5StructuredEventLog(projectName, jobName)
+    else:
+        events = getJobStreamlog(projectName, jobName)[1]
 
-    status = runCmd(get_job_status_cmd, printCmd=False)
-    return status[-1]
+    if events is None:
+        return []
+
+    try:
+        events = _pythonLiteral(events, default=[])
+    except Exception:
+        return []
+
+    if isinstance(events, dict):
+        events = events.get("events", events.get("logs", []))
+
+    if not isinstance(events, list):
+        return []
+
+    return events
+
+
+def _getCryosparcLogText(logEvent):
+    """
+    Extract a printable text message from a cryoSPARC log event.
+    """
+    if isinstance(logEvent, str):
+        return logEvent.strip()
+
+    if not isinstance(logEvent, dict):
+        return None
+
+    for key in ("text", "message", "msg", "description"):
+        value = logEvent.get(key)
+        if value:
+            return str(value).strip()
+
+    return None
+
+
+def _logCryosparcJobEvents(projectName, jobName, protocol=None):
+    """
+    Log new cryoSPARC job events into Scipion logger.
+    """
+    events = _getCryosparcJobLogEvents(projectName, jobName)
+    if not events:
+        return
+
+    if protocol is None:
+        lastEvent = events[-1]
+        text = _getCryosparcLogText(lastEvent)
+        if text:
+            logger.info(text)
+        return
+
+    jobLogLastLine = protocol.getLogLine()
+    lenLog = len(events)
+
+    if lenLog > jobLogLastLine:
+        protocol.setLogLine(lenLog)
+        for line in range(jobLogLastLine, lenLog):
+            text = _getCryosparcLogText(events[line])
+            if text:
+                logger.info(text)
+    else:
+        jobLogLastLine = lenLog - 1
+        while jobLogLastLine >= 0:
+            text = _getCryosparcLogText(events[jobLogLastLine])
+            if text:
+                logger.info(text)
+                break
+            jobLogLastLine -= 1
+
+
+def getJobStatus(projectName, jobId):
+    """
+    Get job status in a version-compatible way.
+    """
+    if _isCryosparcV5OrNewer():
+        status = _runCliValue(
+            "api.jobs.get_status(%s, %s)"
+            % (repr(str(projectName)), repr(str(jobId))),
+            printCmd=False
+        )
+        return _normalizeJobStatus(status)
+
+    getStatusCmd = (
+        getCryosparcProgram() +
+        ' %sget_job_status("%s","%s")%s '
+        % ("'", str(projectName), str(jobId), "'")
+    )
+    _, output = runCmd(getStatusCmd, printCmd=False)
+    return _normalizeJobStatus(output)
 
 
 def getJob(projectName, job):
@@ -872,16 +1300,26 @@ def getJob(projectName, job):
     return job
 
 
-def getJobLog(projectName, job):
+def get_job_log(projectName, jobId, outputFile):
     """
-       Get the full contents of the given job's standard output log
-       """
-    get_job_log_cmd = (getCryosparcProgram() +
-                          ' %sget_job_log("%s", "%s")%s'
-                          % ("'", projectName, job, "'"))
+    Store stdout/stderr job log into outputFile.
+    """
+    if _isCryosparcV5OrNewer():
+        _, rawLog = _runCryosparcmSubcommand(
+            "job", "log", str(projectName), str(jobId),
+            printCmd=False
+        )
+        _writeTextFile(outputFile, rawLog)
+        return 0, outputFile
 
-    logStr = runCmd(get_job_log_cmd, printCmd=False)
-    return logStr
+    legacyCmd = (
+        getCryosparcProgram() +
+        ' %sget_job_log("%s","%s")%s '
+        % ("'", str(projectName), str(jobId), "'")
+    )
+    _, rawOutput = _runCommandRaw(legacyCmd, printCmd=False)
+    _writeTextFile(outputFile, rawOutput)
+    return 0, outputFile
 
 
 def getJobStreamlog(projectName, job):
@@ -896,99 +1334,272 @@ def getJobStreamlog(projectName, job):
     return logList
 
 
-def waitJob(projectName, job):
+def waitJob(projectName, job, sleepTime=15):
     """
-    Wait while the job not finished
+    Wait while the job is not finished.
     """
+    projectName = str(projectName)
+    job = str(job)
+
+    if _isCryosparcV5OrNewer():
+        while True:
+            status = getJobStatus(projectName, job)
+            if status in STOP_STATUSES:
+                return status
+            time.sleep(sleepTime)
+
     wait_job_cmd = (getCryosparcProgram() +
                     ' %swait_job_complete("%s", "%s")%s'
                     % ("'", projectName, job, "'"))
     runCmd(wait_job_cmd, printCmd=False)
 
 
-def get_job_streamlog(projectName, job, fileName):
-    get_job_streamlog_cmd = (getCryosparcProgram() +
-                             ' %sget_job_streamlog("%s", "%s")%s%s'
-                             % ("'", projectName, job, "'", ">" + fileName))
-
-    runCmd(get_job_streamlog_cmd, printCmd=False)
-
-
-def killJob(projectName, job):
+def get_job_streamlog(projectName, jobId, outputFile):
     """
-     Kill a Job (if running)
-    :param projectName: the uid of the project that contains the job to kill
-    :param job: the uid of the job to kill
+    Store the job event log into outputFile.
+
+    Legacy path writes the old Python-literal representation.
+    v5 path first tries to recover a structured API payload so downstream
+    ast.literal_eval() continues to work. If that fails, it falls back to the
+    documented `cryosparcm job events` command and writes plain text.
     """
-    kill_job_cmd = (getCryosparcProgram() +
-                    ' %skill_job("%s", "%s")%s'
-                    % ("'", projectName, job, "'"))
-    runCmd(kill_job_cmd, printCmd=True)
+    if _isCryosparcV5OrNewer():
+        structured = _tryV5StructuredEventLog(projectName, jobId)
+
+        if structured is not None:
+            _writeTextFile(outputFile, repr(structured))
+            return 0, outputFile
+
+        _, rawEvents = _runCryosparcmSubcommand(
+            "job", "events", str(projectName), str(jobId),
+            printCmd=False
+        )
+        _writeTextFile(outputFile, rawEvents)
+        return 0, outputFile
+
+    legacyCmd = (
+        getCryosparcProgram() +
+        ' %sget_job_streamlog("%s","%s")%s '
+        % ("'", str(projectName), str(jobId), "'")
+    )
+    _, rawOutput = _runCommandRaw(legacyCmd, printCmd=False)
+    _writeTextFile(outputFile, rawOutput)
+    return 0, outputFile
 
 
-def clearJob(projectName, job):
+def killJob(projectName, jobId):
     """
-         Clear a Job (if queued) to get it back to building state (do not clear
-         params or inputs)
-        :param projectName: the uid of the project that contains the job to clear
-        :param job: the uid of the job to clear
-        ** IMPORTANT: This method can be launch only if the job is queued
-        """
-    clear_job_cmd = (getCryosparcProgram() +
-                     ' %sclear_job("%s", "%s")%s'
-                     % ("'", projectName, job, "'"))
-    runCmd(clear_job_cmd, printCmd=False)
+    Kill a job.
+    """
+    if _isCryosparcV5OrNewer():
+        return _runCryosparcmSubcommand(
+            "job", "kill", str(projectName), str(jobId),
+            printCmd=False
+        )
+
+    killJobCmd = (
+        getCryosparcProgram() +
+        ' %skill_job("%s","%s")%s '
+        % ("'", str(projectName), str(jobId), "'")
+    )
+    return runCmd(killJobCmd, printCmd=False)
 
 
-def clearIntermediateResults(projectName, job, wait=3):
+def clearJob(projectName, jobId):
     """
-     Clear the intermediate result from a specific Job
-    :param projectName: the uid of the project that contains the job to clear
-    :param job: the uid of the job to clear
+    Clear a job.
     """
-    logger.info(pwutils.yellowStr("Removing intermediate results..."))
-    clear_int_results_cmd = (getCryosparcProgram() +
-                             ' %sclear_intermediate_results("%s", "%s")%s'
-                             % ("'", projectName, job, "'"))
-    runCmd(clear_int_results_cmd, printCmd=False)
-    # wait a delay in order to delete intermediate results correctly
-    time.sleep(wait)
+    if _isCryosparcV5OrNewer():
+        return _runCryosparcmSubcommand(
+            "job", "clear", str(projectName), str(jobId),
+            printCmd=False
+        )
+
+    clearJobCmd = (
+        getCryosparcProgram() +
+        ' %sclear_job("%s","%s")%s '
+        % ("'", str(projectName), str(jobId), "'")
+    )
+    return runCmd(clearJobCmd, printCmd=False)
+
+
+def clearIntermediateResults(projectName, jobName=None, workspaceName=None, alwaysKeepFinal=True):
+    """
+    Clear intermediate results in a version-compatible way.
+
+    Supported use cases kept intentionally broad so existing call sites do not
+    need to change:
+      - clearIntermediateResults(projectUid, jobUid)
+      - clearIntermediateResults(projectUid, workspaceName="W1")
+      - clearIntermediateResults(projectUid)
+
+    In v5 the exact public CLI/API entrypoint for this action is not clearly
+    documented in the references we have, so we try several likely API forms
+    and degrade gracefully if none are available.
+    """
+    projectUid = str(projectName) if projectName is not None else None
+    jobUid = str(jobName) if jobName is not None else None
+    workspaceUid = str(workspaceName) if workspaceName is not None else None
+
+    if not projectUid:
+        logger.warning("clearIntermediateResults called without project UID.")
+        return 0, ""
+
+    if _isCryosparcV5OrNewer():
+        attempts = []
+
+        # Most likely modern API shapes
+        if jobUid is not None:
+            attempts.extend([
+                "api.jobs.clear_intermediate_results(%s, %s, always_keep_final=%s)"
+                % (repr(projectUid), repr(jobUid), repr(bool(alwaysKeepFinal))),
+                "api.jobs.clear_intermediate_results(project_uid=%s, job_uid=%s, always_keep_final=%s)"
+                % (repr(projectUid), repr(jobUid), repr(bool(alwaysKeepFinal))),
+                "api.projects.clear_intermediate_results(%s, job_uid=%s, always_keep_final=%s)"
+                % (repr(projectUid), repr(jobUid), repr(bool(alwaysKeepFinal))),
+                "api.projects.clear_intermediate_results(project_uid=%s, job_uid=%s, always_keep_final=%s)"
+                % (repr(projectUid), repr(jobUid), repr(bool(alwaysKeepFinal))),
+            ])
+
+        if workspaceUid is not None:
+            attempts.extend([
+                "api.projects.clear_intermediate_results(%s, workspace_uid=%s, always_keep_final=%s)"
+                % (repr(projectUid), repr(workspaceUid), repr(bool(alwaysKeepFinal))),
+                "api.projects.clear_intermediate_results(project_uid=%s, workspace_uid=%s, always_keep_final=%s)"
+                % (repr(projectUid), repr(workspaceUid), repr(bool(alwaysKeepFinal))),
+            ])
+
+        # Project-level clear
+        attempts.extend([
+            "api.projects.clear_intermediate_results(%s, always_keep_final=%s)"
+            % (repr(projectUid), repr(bool(alwaysKeepFinal))),
+            "api.projects.clear_intermediate_results(project_uid=%s, always_keep_final=%s)"
+            % (repr(projectUid), repr(bool(alwaysKeepFinal))),
+        ])
+
+        # Legacy-like low-level entrypoints that may still be exposed in some v5 installs
+        if jobUid is not None:
+            attempts.extend([
+                "clear_intermediate_results(project_uid=%s, job_uid=%s, always_keep_final=%s)"
+                % (repr(projectUid), repr(jobUid), repr(bool(alwaysKeepFinal))),
+                "api.clear_intermediate_results(project_uid=%s, job_uid=%s, always_keep_final=%s)"
+                % (repr(projectUid), repr(jobUid), repr(bool(alwaysKeepFinal))),
+            ])
+
+        if workspaceUid is not None:
+            attempts.extend([
+                "clear_intermediate_results(project_uid=%s, workspace_uid=%s, always_keep_final=%s)"
+                % (repr(projectUid), repr(workspaceUid), repr(bool(alwaysKeepFinal))),
+                "api.clear_intermediate_results(project_uid=%s, workspace_uid=%s, always_keep_final=%s)"
+                % (repr(projectUid), repr(workspaceUid), repr(bool(alwaysKeepFinal))),
+            ])
+
+        attempts.extend([
+            "clear_intermediate_results(project_uid=%s, always_keep_final=%s)"
+            % (repr(projectUid), repr(bool(alwaysKeepFinal))),
+            "api.clear_intermediate_results(project_uid=%s, always_keep_final=%s)"
+            % (repr(projectUid), repr(bool(alwaysKeepFinal))),
+        ])
+
+        lastError = None
+
+        for expr in attempts:
+            try:
+                result = _runCliValue(expr, printCmd=False)
+                logger.info(
+                    pwutils.yellowStr(
+                        "Intermediate results cleared with v5 expression: %s" % expr
+                    )
+                )
+                return 0, "" if result is None else str(result)
+            except Exception as ex:
+                lastError = ex
+
+        logger.warning(
+            "Could not clear intermediate results for project=%s, job=%s, workspace=%s. "
+            "Tried several v5 API forms and none succeeded. Continuing without failing the protocol. "
+            "Last error: %s",
+            projectUid, jobUid, workspaceUid, lastError
+        )
+        return 0, ""
+
+    # Legacy <= 4.7 path
+    if jobUid is not None:
+        clearIntermediateExpr = (
+                "clear_intermediate_results(project_uid=%s, job_uid=%s, always_keep_final=%s)"
+                % (repr(projectUid), repr(jobUid), repr(bool(alwaysKeepFinal)))
+        )
+        return _runCliExpression(clearIntermediateExpr, printCmd=False)
+
+    if workspaceUid is not None:
+        clearIntermediateExpr = (
+                "clear_intermediate_results(project_uid=%s, workspace_uid=%s, always_keep_final=%s)"
+                % (repr(projectUid), repr(workspaceUid), repr(bool(alwaysKeepFinal)))
+        )
+        return _runCliExpression(clearIntermediateExpr, printCmd=False)
+
+    clearIntermediateExpr = (
+            "clear_intermediate_results(project_uid=%s, always_keep_final=%s)"
+            % (repr(projectUid), repr(bool(alwaysKeepFinal)))
+    )
+    return _runCliExpression(clearIntermediateExpr, printCmd=False)
 
 
 def getSystemInfo():
     """
-    Returns system-related information related to the cryosparc app
-    :returns: dict -- dictionary listing information about cryosparc environment
-    {
-        'master_hostname' : master_hostname,
-        'port_webapp' : os.environ['CRYOSPARC_HTTP_PORT'],
-        'port_mongo' : os.environ['CRYOSPARC_MONGO_PORT'],
-        'port_command_core' : os.environ['CRYOSPARC_COMMAND_CORE_PORT'],
-        'port_command_vis' : os.environ['CRYOSPARC_COMMAND_VIS_PORT'],
-        'port_command_proxy' : os.environ['CRYOSPARC_COMMAND_PROXY_PORT'],
-        'port_command_rtp' : os.environ['CRYOSPARC_COMMAND_RTP_PORT'],
-        'port_rtp_webapp' : os.environ['CRYOSPARC_HTTP_RTP_PORT'],
-        'version' : get_running_version(),
-    }
+    Get CryoSPARC system information.
+    Returns the same contract as legacy code: (exitCode, repr(dictionary))
     """
-    system_info_cmd = (getCryosparcProgram() + " 'get_system_info()'")
-    return runCmd(system_info_cmd, printCmd=False)
+    if _isCryosparcV5OrNewer():
+        expr = (
+            "(lambda s: "
+            "s.model_dump() if hasattr(s, 'model_dump') else "
+            "(s.dict() if hasattr(s, 'dict') else s.__dict__))"
+            "(api.config.get_system_info())"
+        )
+        data = _runCliValue(expr, printCmd=False)
+        return 0, repr(data)
+
+    systemInfoCmd = (
+        getCryosparcProgram() +
+        ' %sget_system_info()%s ' % ("'", "'")
+    )
+    return runCmd(systemInfoCmd, printCmd=False)
 
 
-def userExist(email):
+def userExist(user):
     """
-    Return if an user exist into cryoSPARC
+    Returns True if user exists.
     """
-    getUser_cmd = (getCryosparcProgram() + ' %sUserExists("%s")%s' % ("'", email, "'"))
-    return runCmd(getUser_cmd, printCmd=False)[1] == 'True'
+    if _isCryosparcV5OrNewer():
+        cmd = "%s user exists --email %s" % (
+            getCryosparcProgram(""),
+            shlex.quote(str(user))
+        )
+        exitCode, _ = subprocess.getstatusoutput(cmd)
+        return exitCode == 0
+
+    userExistsCmd = (
+        getCryosparcProgram() +
+        ' %sUserExists("%s")%s ' % ("'", str(user), "'")
+    )
+    exitCode, _ = subprocess.getstatusoutput(userExistsCmd)
+    return exitCode == 0
 
 
-def getUserId(email):
-    """Get the user Id taking into account the user email"""
-    import ast
-    getUser_cmd = (getCryosparcProgram() + ' %sGetUser("%s")%s' % ("'", email, "'"))
-    user = runCmd(getUser_cmd, printCmd=False)
-    return ast.literal_eval(user[1])['_id']
+def getUserId(user):
+    """
+    Legacy compatibility helper.
+    In v5, most user-facing APIs accept email directly, so keep email as-is.
+    """
+    if _isCryosparcV5OrNewer():
+        return str(user)
+
+    getUserIdCmd = (
+        getCryosparcProgram() +
+        ' %sget_id_by_email("%s")%s ' % ("'", str(user), "'")
+    )
+    return runCmd(getUserIdCmd, printCmd=False)[1]
 
 
 def _getCredentials():
@@ -1104,17 +1715,31 @@ def addComputeSectionParams(form, allowMultipleGPUs=True, needGPU=True):
                       help='Number of GPUs to compute:')
 
 
-
 def addPreprocessLaneParam(form):
     from pyworkflow.protocol.params import StringParam
 
+    protocol = form._protocol
+
     defaultPreprocessLane = getCryosparcPreprocessLane()
-    if defaultPreprocessLane is None:
-        defaultPreprocessLane = str(form._protocol.getAttributeValue('compute_lane'))
+
+    if not defaultPreprocessLane:
+        defaultPreprocessLane = protocol.getAttributeValue('compute_lane')
+
+    if not defaultPreprocessLane:
+        defaultPreprocessLane = getCryosparcDefaultLane()
+
+    if not defaultPreprocessLane:
+        defaultPreprocessLane = 'default'
+
+    defaultPreprocessLane = str(defaultPreprocessLane)
+
     form.addParam('preprocess_lane', StringParam,
                   default=defaultPreprocessLane,
-                  label='Preprocessing lane name:', readOnly=True,
-                  help='Scheduler lane used for preprocessing imports (particles, volumes, masks).')
+                  label='Preprocessing lane name:',
+                  readOnly=True,
+                  help='Scheduler lane used for preprocessing imports '
+                       '(particles, volumes, masks).')
+
 
 def addSymmetryParam(form, help=""):
     """
@@ -1237,9 +1862,29 @@ def matchItemRow(item, row):
     except Exception:
         return False  # In case of unexpected format, assume no match
 
-
 def parse_version(value: str) -> Version:
     value = str(value).strip()
     if value[:1] in {"V", "v"}:
         value = value[1:]
     return Version(value)
+
+def _parseResultInputKey(key):
+    """
+    Parse result_connect keys like:
+      volume.0.map_half_A
+
+    Legacy code encoded the input slot inside the result name. In v5,
+    connect_result expects the slot as a separate argument.
+    """
+    parts = str(key).split(".")
+
+    inputName = parts[0]
+    inputSlot = 0
+
+    if len(parts) >= 3 and parts[1].isdigit():
+        inputSlot = int(parts[1])
+        resultName = ".".join(parts[2:])
+    else:
+        resultName = ".".join(parts[1:])
+
+    return inputName, inputSlot, resultName

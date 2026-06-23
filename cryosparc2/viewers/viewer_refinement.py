@@ -127,9 +127,7 @@ class CryosPARCViewer3DRefinement(EmProtocolViewer):
                                choices=list(self.choices),
                                default=0, display=EnumParam.DISPLAY_COMBO,
                                label='Display resolution plots (FSC)',
-                               help='*unmasked*: display FSC of unmasked maps.\n'
-                                    '*masked*: display FSC of masked maps.\n'
-                                    '*masked tight*: display FSC of masked tight maps.')
+                               help=self._getFscChoiceHelp())
                 group.addParam('resolutionThresholdFSC', FloatParam, default=0.143,
                                expertLevel=LEVEL_ADVANCED,
                                label='Threshold ',
@@ -263,13 +261,71 @@ class CryosPARCViewer3DRefinement(EmProtocolViewer):
 
         return view
 
+    def _normalizeFscViewerChoice(self, label):
+        text = str(label or "").strip()
+        key = text.lower()
+
+        if "auto-tightened" in key and "correct" in key:
+            return "Auto-tightened corrected"
+
+        if "auto-tightened" in key and "resolution" in key:
+            return "Auto-tightened resolution mask"
+
+        if "resolution mask" in key:
+            return "Resolution mask"
+
+        if "input mask" in key and "correct" in key:
+            return "Input mask corrected"
+
+        if "input mask" in key:
+            return "Input mask"
+
+        if "correct" in key:
+            return "Corrected"
+
+        if "tight" in key:
+            return "Tight"
+
+        if "loose" in key:
+            return "Loose"
+
+        if "spherical" in key:
+            return "Spherical"
+
+        if "no mask" in key or "nomask" in key:
+            return "No mask"
+
+        return text
+
+    def _getFscChoiceHelp(self):
+        version = parse_version(getCryosparcVersion())
+
+        if version >= parse_version(V5_0_0):
+            return (
+                "*No mask*: FSC without masking.\n"
+                "*Spherical*: FSC with a soft spherical mask.\n"
+                "*Resolution mask*: FSC using the v5 resolution mask.\n"
+                "*Auto-tightened resolution mask*: FSC after v5 auto-tightening.\n"
+                "*Auto-tightened corrected*: noise-substitution corrected FSC after auto-tightening.\n"
+                "*Input mask*: FSC computed with the user-provided input mask when applicable.\n"
+                "*Input mask corrected*: corrected FSC using the input mask when applicable."
+            )
+
+        return (
+            "*No mask*: display FSC of unmasked maps.\n"
+            "*Spherical*: display FSC of spherical masked maps.\n"
+            "*Loose*: display FSC of loose masked maps.\n"
+            "*Tight*: display FSC of tight masked maps.\n"
+            "*Corrected*: display FSC corrected by noise substitution."
+        )
+
     def getChoices(self):
         choices = []
+        seen = set()
+
         output = self.protocol.outputFSC
         if isinstance(output, SetOfFSCs):
             self.setOfFSCs = self.protocol.outputFSC
-            for fsc in self.setOfFSCs.iterItems():
-                choices.append(fsc.getObjLabel())
         else:
             fscFile = "fsc.txt"
             fscFilePath = os.path.join(self.protocol._getExtraPath(), fscFile)
@@ -278,10 +334,14 @@ class CryosPARCViewer3DRefinement(EmProtocolViewer):
             self.setOfFSCs = self.protocol.getSetOfFCSsFromFile(fscFilePath, factor)
             self.protocol.deleteOutput(output)
             self.protocol._defineOutputs(outputFSC=self.setOfFSCs)
-            for fsc in self.setOfFSCs.iterItems():
-                choices.append(fsc.getObjLabel())
-        choices.append('All')
 
+        for fsc in self.setOfFSCs.iterItems():
+            label = self._normalizeFscViewerChoice(fsc.getObjLabel())
+            if label not in seen:
+                seen.add(label)
+                choices.append(label)
+
+        choices.append('All')
         return choices
 
     def getComponetChoices(self):
@@ -295,15 +355,18 @@ class CryosPARCViewer3DRefinement(EmProtocolViewer):
     # plotFSC
     # =========================================================================
     def _showFSC(self, paramName=None):
-
         fscViewer = FscViewer(project=self.getProject(),
                               protocol=self.protocol)
-        if self.resolutionPlotsFSC.get() == len(self.choices)-1:  # Case of all plot
+
+        selectedIndex = self.resolutionPlotsFSC.get()
+        if selectedIndex == len(self.choices) - 1:
             fscViewer.visualize(self.setOfFSCs)
-        else:
-            pos = 0
-            for fsc in self.setOfFSCs.iterItems():
-                if pos == self.resolutionPlotsFSC.get():
-                    fscViewer.visualize(fsc)
-                    break
-                pos += 1
+            return
+
+        selectedLabel = self.choices[selectedIndex]
+
+        for fsc in self.setOfFSCs.iterItems():
+            currentLabel = self._normalizeFscViewerChoice(fsc.getObjLabel())
+            if currentLabel == selectedLabel:
+                fscViewer.visualize(fsc)
+                break

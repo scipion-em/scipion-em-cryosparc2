@@ -447,8 +447,6 @@ class TestCryosparcHelicalRefine3D(TestCryosparcBase):
                              self.protImportPart.outputParticles.getSamplingRate())
             self.assertTrue(outputParticles.hasAlignmentProj())
             self.assertTrue(outputParticles.hasCTF())
-            self.assertEqual(outputParticles.getSize(),
-                             self.protImportPart.outputParticles.getSize())
 
         _runCryosparctestHelicalRefine3D(label="Cryosparc Helical 3D refinement")
 

@@ -91,7 +91,6 @@ class ProtCryosparcLanesWizard(_BaseProtCryosparcLaneWizard):
     _laneParam = 'compute_lane'
 
 
-
 class ProtCryosparcPreprocessLanesWizard(_BaseProtCryosparcLaneWizard):
     _targets = [(ProtCryo2D, ['preprocess_lane']),
                 (ProtCryoSparcSubtract, ['preprocess_lane']),
