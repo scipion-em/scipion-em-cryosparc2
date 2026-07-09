@@ -24,6 +24,7 @@
 # *  e-mail address 'scipion@cnb.csic.es'
 # *
 # **************************************************************************
+import json
 import os
 
 import emtable
@@ -38,7 +39,7 @@ from pyworkflow.protocol.params import (FloatParam, LEVEL_ADVANCED,
 from .protocol_base import ProtCryosparcBase
 from ..convert import (convertBinaryVol, convertCs2Star,
                        rowToAlignment, ALIGN_PROJ, cryosparcToLocation)
-from ..utils import (addSymmetryParam, addComputeSectionParams, doImportVolumes,
+from ..utils import (addSymmetryParam, addComputeSectionParams, addPreprocessLaneParam, doImportVolumes,
                      get_job_streamlog, calculateNewSamplingRate,
                      cryosparcValidate, gpusValidate, getSymmetry, enqueueJob,
                      waitForCryosparc, clearIntermediateResults, fixVolume,
@@ -225,6 +226,7 @@ class ProtCryoSparc3DClassification(ProtCryosparcBase):
         # --------------[Compute settings]---------------------------
         form.addSection(label="Compute settings")
         addComputeSectionParams(form, allowMultipleGPUs=False)
+        addPreprocessLaneParam(form)
 
     # --------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
@@ -389,6 +391,8 @@ class ProtCryoSparc3DClassification(ProtCryosparcBase):
             data = f.readlines()
 
         x = ast.literal_eval(data[0])
+        if isinstance(x, str):
+            x = json.loads(x)
 
         # Find the ID of last iteration and the map resolution
         for y in x:
@@ -465,6 +469,7 @@ class ProtCryoSparc3DClassification(ProtCryosparcBase):
                             'distribution_plots',
                             'compute_use_ssd']
         self.lane = str(self.getAttributeValue('compute_lane'))
+        self.preprocessLane = str(self.getAttributeValue('preprocess_lane'))
 
     def do3DClasification(self):
         """
@@ -489,7 +494,7 @@ class ProtCryoSparc3DClassification(ProtCryosparcBase):
                 params[str(paramName)] = str(NOISE_MODEL_CHOICES[self.multirefine_noise_model.get()])
 
             elif paramName == 'intermediate_plots' or paramName == 'distribution_plots':
-                params[str(paramName)] = str("False")
+                params[str(paramName)] = str("True")
 
         # Determinate the GPUs to use (in dependence of
         # the cryosparc version)

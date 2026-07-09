@@ -24,7 +24,7 @@
 # *  e-mail address 'scipion@cnb.csic.es'
 # *
 # **************************************************************************
-
+import json
 import os
 
 import emtable
@@ -41,7 +41,7 @@ from pyworkflow.protocol.params import (FloatParam, LEVEL_ADVANCED,
 from .protocol_base import ProtCryosparcBase
 from ..convert import (convertBinaryVol, convertCs2Star,
                        rowToAlignment, ALIGN_PROJ, cryosparcToLocation)
-from ..utils import (addComputeSectionParams, doImportVolumes,
+from ..utils import (addComputeSectionParams, addPreprocessLaneParam, doImportVolumes,
                      get_job_streamlog, calculateNewSamplingRate,
                      cryosparcValidate, gpusValidate, enqueueJob,
                      waitForCryosparc, clearIntermediateResults, fixVolume,
@@ -59,9 +59,6 @@ class ProtCryoSparcNew3DClassification(ProtCryosparcBase):
     """
     _label = '3D Classification'
     _className = "class_3D"
-    _protCompatibility = [V3_3_1, V3_3_2, V4_0_0, V4_0_1, V4_0_2, V4_0_3,
-                          V4_1_0, V4_1_1, V4_1_2, V4_2_0, V4_2_1, V4_3_1, V4_4_0, V4_4_1, V4_5_1,
-                          V4_5_3, V4_6_0, V4_6_1, V4_6_2, V4_7_0, V4_7_1]
 
     def _initialize(self):
         self._defineFileNames()
@@ -313,6 +310,7 @@ class ProtCryoSparcNew3DClassification(ProtCryosparcBase):
         # --------------[Compute settings]---------------------------
         form.addSection(label="Compute settings")
         addComputeSectionParams(form, allowMultipleGPUs=False)
+        addPreprocessLaneParam(form)
 
     # --------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
@@ -493,6 +491,8 @@ class ProtCryoSparcNew3DClassification(ProtCryosparcBase):
             data = f.readlines()
 
         x = ast.literal_eval(data[0])
+        if isinstance(x, str):
+            x = json.loads(x)
         it = None
         itera = None
 
@@ -632,6 +632,7 @@ class ProtCryoSparcNew3DClassification(ProtCryosparcBase):
                             'compute_use_ssd']
 
         self.lane = str(self.getAttributeValue('compute_lane'))
+        self.preprocessLane = str(self.getAttributeValue('preprocess_lane'))
 
 
     def _summary(self):

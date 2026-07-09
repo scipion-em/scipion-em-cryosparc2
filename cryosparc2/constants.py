@@ -43,6 +43,7 @@ CRYOSPARC_USE_SSD = 'CRYOSPARC_USE_SSD'
 CRYOSPARC_MASTER = 'cryosparc_master'
 CRYOSPARC_STANDALONE_INSTALLATION = 'CRYOSPARC_STANDALONE_INSTALLATION'
 CRYOSPARC_DEFAULT_LANE = 'CRYOSPARC_DEFAULT_LANE'
+CRYOSPARC_PREPROCESS_LANE = 'CRYOSPARC_PREPROCESS_LANE'
 CRYOSPARC_VERSION_FILE = 'version'
 CRYOSPARC_CONFIG_FILE = 'config.sh'
 CRYOSPARC_LICENSE_ID_VARIABLE = 'CRYOSPARC_LICENSE_ID'
@@ -84,14 +85,22 @@ V4_6_0 = 'V4.6.0'
 V4_6_1 = 'V4.6.1'
 V4_6_2 = 'V4.6.2'
 V4_7_0 = 'V4.7.0'
-V4_7_1 = 'V4_7_1'
+V4_7_1 = 'V4.7.1'
 V5_0_0 = 'V5.0.0'
+V5_0_1 = 'V5.0.1'
+V5_0_2 = 'V5.0.2'
+V5_0_3 = 'V5.0.3'
+V5_0_4 = 'V5.0.4'
+V5_0_5 = 'V5.0.5'
+V5_0_6 = 'V5.0.6'
+
 
 SUPORTED_VERSIONS = [V3_0_0, V3_0_1, V3_1_0, V3_2_0, V3_3_0, V3_3_1,
                      V3_3_2, V4_0_0, V4_0_1, V4_0_2, V4_0_3, V4_1_0,
                      V4_1_1, V4_1_2, V4_2_0, V4_2_1, V4_3_1, V4_4_0,
                      V4_4_1, V4_5_1, V4_5_3, V4_6_0, V4_6_1, V4_6_2,
-                     V4_7_0, V4_7_1, V5_0_0]
+                     V4_7_0, V4_7_1, V5_0_0, V5_0_1, V5_0_2, V5_0_3,
+                     V5_0_4, V5_0_5, V5_0_6]
 
 # Symmetry dict
 CS_SYM_NAME = dict()
@@ -110,6 +119,11 @@ REFINE_MASK_CHOICES = ['dynamic',
                        'static',
                        'null']
 
+HELIXREFINE_MASK_CHOICES = ['0',
+                            '1']
+HELIXREFINE_MASK_CHOICES_V5 = ['dynamic',
+                               'static']
+
 SYMMETRY_RELAXATION_CHOICES = ['none',
                                'maximization',
                                'marginalization']
@@ -127,8 +141,10 @@ COMPUTE_FACILITY_CHOICES = ['GPU',
 CLASS_3D_INIT_MODE = ['simple', 'PCA', 'input']
 
 EWS_CURVATURE_SIGN = ['positive', 'negative']
+EWS_CURVATURE_SIGN_V5 = ['1', '-1']
 
 EWS_CORRECTION_METHOD = ['simple', 'iterative']
+EWS_CORRECTION_METHOD_V5 = ['1', '0']
 
 VAR_USE_SCALES = ['none',
                   'input',

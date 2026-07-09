@@ -34,8 +34,8 @@ from pyworkflow.protocol.params import (FloatParam, Positive, IntParam,
 
 from .protocol_cryosparc_homogeneous_refine import ProtCryoSparc3DHomogeneousRefine
 from ..utils import (getSymmetry, enqueueJob, waitForCryosparc,
-                     clearIntermediateResults, addComputeSectionParams,
-                     cryosparcValidate, gpusValidate)
+                     clearIntermediateResults, addComputeSectionParams, addPreprocessLaneParam,
+                     getVersionedEnumValue, cryosparcValidate, gpusValidate)
 from ..constants import *
 
 
@@ -50,9 +50,6 @@ class ProtCryoSparcHelicalRefine3D(ProtCryoSparc3DHomogeneousRefine):
     """
     _label = '3D helical refinement'
     _fscColumns = 4
-    _protCompatibility = [V3_3_1, V3_3_2, V4_0_0, V4_0_1, V4_0_2, V4_0_3,
-                          V4_1_0, V4_1_1, V4_1_2, V4_2_0, V4_2_1, V4_3_1, V4_4_0, V4_4_1, V4_5_1,
-                          V4_5_3, V4_6_0, V4_6_1, V4_6_2, V4_7_0, V4_7_1]
     _className = "helix_refine"
 
     def _defineParams(self, form):
@@ -211,7 +208,7 @@ class ProtCryoSparcHelicalRefine3D(ProtCryoSparc3DHomogeneousRefine):
                            'independent')
 
         form.addParam('refine_mask', EnumParam,
-                      choices=["dynamic", "static"],
+                      choices=["static", "dynamic"],
                       default=0,
                       label="Mask",
                       help='Type of masking to use. Either "dynamic", or '
@@ -227,6 +224,8 @@ class ProtCryoSparcHelicalRefine3D(ProtCryoSparc3DHomogeneousRefine):
         # --------------[Compute settings]---------------------------
         form.addSection(label="Compute settings")
         addComputeSectionParams(form, allowMultipleGPUs=False)
+        addPreprocessLaneParam(form)
+
 
     def _insertAllSteps(self):
         ProtCryoSparc3DHomogeneousRefine._insertAllSteps(self)
@@ -291,6 +290,7 @@ class ProtCryoSparcHelicalRefine3D(ProtCryoSparc3DHomogeneousRefine):
                     paramName != "refine_init_twist" and
                     paramName != "refine_init_shift" and
                     paramName != 'filament_outer_diameter' and
+                    paramName != 'refine_mask' and
                     paramName != 'refine_res_align_max'):
                 params[str(paramName)] = str(self.getAttributeValue(paramName))
             elif paramName == 'refine_pg_symmetry':
@@ -299,6 +299,15 @@ class ProtCryoSparcHelicalRefine3D(ProtCryoSparc3DHomogeneousRefine):
                 params[str(paramName)] = symetryValue
             elif self.getAttributeValue(paramName) is not None and float(self.getAttributeValue(paramName)) > 0:
                 params[str(paramName)] = str(self.getAttributeValue(paramName))
+            elif paramName == 'refine_mask':
+                params[str(paramName)] = str(
+                    getVersionedEnumValue(
+                        self.refine_mask.get(),
+                        HELIXREFINE_MASK_CHOICES,
+                        HELIXREFINE_MASK_CHOICES_V5
+                    )
+                )
+
 
         # Determinate the GPUs to use (in dependence of
         # the cryosparc version)
