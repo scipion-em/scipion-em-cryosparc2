@@ -1,3 +1,8 @@
+August 3, 2026 - **v5.0.1**
+                Improve cryoSPARC v5 connection checks for multi-user installations
+                Add support for custom cryosparcm commands through CRYOSPARCM_CMD
+                Fix import of CryoSPARC v5 particle .cs files when particle stacks are stored as .mrc files
+
 June 10, 2026 - **v5.0.0**
                 Compatibility with 5.X.X cryoSPARC versions
 
