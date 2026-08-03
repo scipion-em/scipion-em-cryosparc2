@@ -1576,11 +1576,21 @@ def getCryosparcJobUrl(projectId, workspaceId=None, jobId=None):
     if statusErrors:
         return None
 
-    systemInfo = ast.literal_eval(systemInfo[1])
+    systemInfo = systemInfo[1]
+    if not isinstance(systemInfo, dict):
+        systemInfo = _pythonLiteral(systemInfo, default={})
+    if isinstance(systemInfo, str):
+        systemInfo = _pythonLiteral(systemInfo, default={})
+    if not isinstance(systemInfo, dict):
+        return None
+
     masterHostname = systemInfo.get('master_hostname')
     portWebapp = systemInfo.get('port_webapp')
     portApp = systemInfo.get('port_app')
-    version = systemInfo.get('version')
+    version = systemInfo.get('version') or getCryosparcVersion()
+
+    if not masterHostname:
+        return None
 
     projectId = str(projectId)
     workspaceId = str(workspaceId) if workspaceId is not None else None
@@ -1588,6 +1598,9 @@ def getCryosparcJobUrl(projectId, workspaceId=None, jobId=None):
 
     if parse_version(version) >= parse_version(V4_1_0):
         port = portApp or portWebapp
+        if not port:
+            return None
+
         if workspaceId:
             browseTarget = "%s-%s-J*" % (projectId, workspaceId)
         else:
@@ -1599,6 +1612,9 @@ def getCryosparcJobUrl(projectId, workspaceId=None, jobId=None):
             url += "#job(%s-%s)" % (projectId, jobId)
 
         return url
+
+    if not portWebapp:
+        return None
 
     return "http://%s:%s/projects/%s/%s/%s" % (masterHostname, portWebapp, projectId, workspaceId, jobId)
 
