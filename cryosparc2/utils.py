@@ -1567,6 +1567,41 @@ def getSystemInfo():
     return runCmd(systemInfoCmd, printCmd=False)
 
 
+def getCryosparcJobUrl(projectId, workspaceId=None, jobId=None):
+    """
+    Return the cryoSPARC browser URL for a project/workspace/job.
+    """
+    systemInfo = getSystemInfo()
+    statusErrors = systemInfo[0]
+    if statusErrors:
+        return None
+
+    systemInfo = ast.literal_eval(systemInfo[1])
+    masterHostname = systemInfo.get('master_hostname')
+    portWebapp = systemInfo.get('port_webapp')
+    portApp = systemInfo.get('port_app')
+    version = systemInfo.get('version')
+
+    projectId = str(projectId)
+    workspaceId = str(workspaceId) if workspaceId is not None else None
+    jobId = str(jobId) if jobId is not None else None
+
+    if parse_version(version) >= parse_version(V4_1_0):
+        port = portApp or portWebapp
+        if workspaceId:
+            browseTarget = "%s-%s-J*" % (projectId, workspaceId)
+        else:
+            browseTarget = "%s-J*" % projectId
+
+        url = "http://%s:%s/browse/%s" % (masterHostname, port, browseTarget)
+
+        if jobId:
+            url += "#job(%s-%s)" % (projectId, jobId)
+
+        return url
+
+    return "http://%s:%s/projects/%s/%s/%s" % (masterHostname, portWebapp, projectId, workspaceId, jobId)
+
 def userExist(user):
     """
     Returns True if user exists.

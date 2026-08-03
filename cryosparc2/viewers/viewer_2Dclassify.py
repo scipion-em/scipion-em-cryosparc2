@@ -107,31 +107,10 @@ class CryosPARCViewer2D(ProtocolViewer):
 
     def _showCryoSPARCClasses(self, paramName=None):
         views = []
-        system_info = getSystemInfo()
-        status_errors = system_info[0]
-        if not status_errors:
-            system_info = eval(system_info[1])
-            master_hostname = system_info.get('master_hostname')
-            port_webapp = system_info.get('port_webapp')
-            port_app = system_info.get('port_app')
-            version = system_info.get('version')
-            projectId = self.protocol.projectName.get()
-            workspaceId = self.protocol.workSpaceName.get()
-            jobId = self.protocol.currenJob.get()
-
-            if parse_version(version) >= parse_version(V4_1_0):
-                url = "http://%s:%s/browse/%s-%s-J*#job(%s-%s)" % (
-                    master_hostname, port_app,
-                    projectId, workspaceId, projectId, jobId)
-            else:
-                url = "http://%s:%s/projects/%s/%s/%s" % (master_hostname,
-                                                          port_webapp,
-                                                          projectId,
-                                                          workspaceId, jobId)
-            browser = webbrowser.get()
-
-            browser.open(url)
-
+        url = getCryosparcJobUrl(self.protocol.projectName.get(), self.protocol.workSpaceName.get(),
+                                 self.protocol.currenJob.get())
+        if url:
+            webbrowser.open(url)
         return views
 
     def _load(self):
