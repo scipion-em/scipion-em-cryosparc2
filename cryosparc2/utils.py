@@ -81,8 +81,14 @@ def _getCryosparcVersionForRouting():
     try:
         return _normalizeCryosparcVersion(_getCryosparcVersionFromFile())
     except Exception:
-        if _csVersion is not None:
-            return _normalizeCryosparcVersion(_csVersion)
+        pass
+
+    if _csVersion is not None:
+        return _normalizeCryosparcVersion(_csVersion)
+
+    try:
+        return _normalizeCryosparcVersion(_runCliValue("api.config.get_version()", printCmd=False))
+    except Exception:
         return _normalizeCryosparcVersion(V_UNKNOWN)
 
 
@@ -268,10 +274,18 @@ def getCryosparcDir(*paths):
 
 def getCryosparcProgram(mode="cli"):
     """
-    Get the cryosparc program to launch any command.
+    Get the cryosparc command to launch any cryoSPARC operation.
     mode="cli" returns ".../cryosparcm cli"
     mode="" returns ".../cryosparcm"
+
+    CRYOSPARCM_CMD can be used to override the detected cryosparcm command.
+    This is useful for multi-user installations where cryoSPARC must be
+    executed through a wrapper or as the linux user that owns the installation.
     """
+    cryosparcmCmd = os.environ.get(CRYOSPARCM_CMD)
+    if cryosparcmCmd:
+        return "%s %s" % (cryosparcmCmd, mode) if mode else cryosparcmCmd
+
     csDir = getCryosparcDir()
 
     if csDir is not None:
@@ -287,34 +301,53 @@ def getCryosparcProgram(mode="cli"):
 
 def cryosparcExists():
     """
-    Determine if scipion can find cryosparc
-    :returns True if found, False otherwise
+    Determine if Scipion can find a cryoSPARC command.
     """
+    cryosparcmCmd = os.environ.get(CRYOSPARCM_CMD)
+    if cryosparcmCmd:
+        return True
+
     csDir = getCryosparcDir()
     return csDir is not None and os.path.exists(csDir)
 
 
 def isCryosparcRunning():
     """
-    Determine if cryosparc services are running
-    :returns True if running, false otherwise
+    Determine if cryoSPARC services are running.
     """
-    if getCryosparcProgram() is None:
+    cryosparcProgram = getCryosparcProgram()
+    if cryosparcProgram is None:
         return False
 
     try:
         if _isCryosparcV5OrNewer():
             status = _runCliValue("api.health()", printCmd=False)
-            return str(status).strip("'\"") == "OK"
+            if str(status).strip("'\"") == "OK":
+                return True
 
-        testConnectionCmd = (
-            getCryosparcProgram() +
-            ' %stest_connection()%s ' % ("'", "'")
-        )
-        exitCode, _ = subprocess.getstatusoutput(testConnectionCmd)
-        return exitCode == 0
-    except Exception:
-        return False
+            logger.warning("cryoSPARC health check returned unexpected value: %s" % status)
+
+        else:
+            testConnectionCmd = getCryosparcProgram() + ' %stest_connection()%s ' % ("'", "'")
+            exitCode, _ = subprocess.getstatusoutput(testConnectionCmd)
+            if exitCode == 0:
+                return True
+
+    except Exception as ex:
+        logger.warning("Could not query cryoSPARC through %s. Error: %s" % (cryosparcProgram, ex))
+
+    try:
+        statusCmd = "%s status" % getCryosparcProgram("")
+        exitCode, statusOutput = subprocess.getstatusoutput(statusCmd)
+        if exitCode == 0:
+            logger.info("cryoSPARC status fallback succeeded.")
+            return True
+
+        logger.warning("cryoSPARC status fallback failed. Output: %s" % statusOutput)
+    except Exception as ex:
+        logger.warning("Could not run cryoSPARC status fallback. Error: %s" % ex)
+
+    return False
 
 
 def cryosparcValidate():
