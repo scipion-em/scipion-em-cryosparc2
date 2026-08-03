@@ -115,7 +115,7 @@ class CryosPARCViewerPartSubtract(ProtocolViewer):
         url = getCryosparcJobUrl(self.protocol.projectName.get(), self.protocol.workSpaceName.get(),
                                  self.protocol.currenJob.get())
         if url:
-            webbrowser.open(url)
+            webbrowser.open_new_tab(url)
         return views
 
     def _load(self):

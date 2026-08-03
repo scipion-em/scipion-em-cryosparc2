@@ -437,6 +437,25 @@ def _getLicenceFromFile():
         return None
 
 
+def _getCryosparcConfigValue(variableName):
+    configFile = getCryosparcDir(CRYOSPARC_MASTER, CRYOSPARC_CONFIG_FILE)
+    if not configFile or not os.path.exists(configFile):
+        return None
+
+    with open(configFile, 'r') as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith('#') or '=' not in line:
+                continue
+
+            key, value = line.split('=', 1)
+            key = key.replace('export ', '').strip()
+
+            if key == variableName:
+                return value.strip().strip('"').strip("'")
+
+    return None
+
 def getCryosparcUser(userId=True):
     """
     Get the user
@@ -1579,6 +1598,7 @@ def getCryosparcJobUrl(projectId, workspaceId=None, jobId=None):
     systemInfo = getSystemInfo()
     statusErrors = systemInfo[0]
     if statusErrors:
+        logger.warning("Could not get cryoSPARC system info to build the GUI URL.")
         return None
 
     systemInfo = systemInfo[1]
@@ -1586,22 +1606,25 @@ def getCryosparcJobUrl(projectId, workspaceId=None, jobId=None):
         if isinstance(systemInfo, dict):
             break
         if not isinstance(systemInfo, str):
-            return None
+            systemInfo = {}
+            break
         try:
             systemInfo = ast.literal_eval(systemInfo)
         except Exception:
-            return None
+            systemInfo = {}
+            break
 
     if not isinstance(systemInfo, dict):
-        return None
+        systemInfo = {}
 
     masterHostname = systemInfo.get('master_hostname')
     portWebapp = systemInfo.get('port_webapp')
     portApp = systemInfo.get('port_app')
     version = systemInfo.get('version') or getCryosparcVersion()
 
-    if not masterHostname:
-        return None
+    masterHostname = masterHostname or _getCryosparcConfigValue('CRYOSPARC_MASTER_HOSTNAME') or 'localhost'
+    portWebapp = portWebapp or _getCryosparcConfigValue('CRYOSPARC_BASE_PORT')
+    portApp = portApp or portWebapp
 
     projectId = str(projectId)
     workspaceId = str(workspaceId) if workspaceId not in [None, '', 'None'] else None
@@ -1610,6 +1633,7 @@ def getCryosparcJobUrl(projectId, workspaceId=None, jobId=None):
     if parse_version(version) >= parse_version(V4_1_0):
         port = portApp or portWebapp
         if not port:
+            logger.warning("Could not build cryoSPARC GUI URL. Missing web/app port.")
             return None
 
         browseTarget = "%s-%s-J*" % (projectId, workspaceId) if workspaceId else "%s-J*" % projectId
@@ -1618,12 +1642,16 @@ def getCryosparcJobUrl(projectId, workspaceId=None, jobId=None):
         if jobId:
             url += "#job(%s-%s)" % (projectId, jobId)
 
+        logger.info("Opening cryoSPARC GUI URL: %s" % url)
         return url
 
     if not portWebapp:
+        logger.warning("Could not build cryoSPARC GUI URL. Missing webapp port.")
         return None
 
-    return "http://%s:%s/projects/%s/%s/%s" % (masterHostname, portWebapp, projectId, workspaceId, jobId)
+    url = "http://%s:%s/projects/%s/%s/%s" % (masterHostname, portWebapp, projectId, workspaceId, jobId)
+    logger.info("Opening cryoSPARC GUI URL: %s" % url)
+    return url
 
 def userExist(user):
     """
