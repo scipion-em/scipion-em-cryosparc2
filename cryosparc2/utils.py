@@ -1552,9 +1552,14 @@ def getSystemInfo():
     """
     if _isCryosparcV5OrNewer():
         expr = (
-            "(lambda s: "
-            "s.model_dump() if hasattr(s, 'model_dump') else "
-            "(s.dict() if hasattr(s, 'dict') else s.__dict__))"
+            "(lambda s: (lambda d: {"
+            "'master_hostname': d.get('master_hostname'), "
+            "'port_webapp': d.get('port_webapp'), "
+            "'port_app': d.get('port_app'), "
+            "'version': d.get('version')"
+            "})(s.model_dump() if hasattr(s, 'model_dump') else "
+            "(s.dict() if hasattr(s, 'dict') else "
+            "(s if isinstance(s, dict) else getattr(s, '__dict__', {})))))"
             "(api.config.get_system_info())"
         )
         data = _runCliValue(expr, printCmd=False)
@@ -1577,10 +1582,16 @@ def getCryosparcJobUrl(projectId, workspaceId=None, jobId=None):
         return None
 
     systemInfo = systemInfo[1]
-    if not isinstance(systemInfo, dict):
-        systemInfo = _pythonLiteral(systemInfo, default={})
-    if isinstance(systemInfo, str):
-        systemInfo = _pythonLiteral(systemInfo, default={})
+    for _ in range(3):
+        if isinstance(systemInfo, dict):
+            break
+        if not isinstance(systemInfo, str):
+            return None
+        try:
+            systemInfo = ast.literal_eval(systemInfo)
+        except Exception:
+            return None
+
     if not isinstance(systemInfo, dict):
         return None
 
@@ -1593,19 +1604,15 @@ def getCryosparcJobUrl(projectId, workspaceId=None, jobId=None):
         return None
 
     projectId = str(projectId)
-    workspaceId = str(workspaceId) if workspaceId is not None else None
-    jobId = str(jobId) if jobId is not None else None
+    workspaceId = str(workspaceId) if workspaceId not in [None, '', 'None'] else None
+    jobId = str(jobId) if jobId not in [None, '', 'None'] else None
 
     if parse_version(version) >= parse_version(V4_1_0):
         port = portApp or portWebapp
         if not port:
             return None
 
-        if workspaceId:
-            browseTarget = "%s-%s-J*" % (projectId, workspaceId)
-        else:
-            browseTarget = "%s-J*" % projectId
-
+        browseTarget = "%s-%s-J*" % (projectId, workspaceId) if workspaceId else "%s-J*" % projectId
         url = "http://%s:%s/browse/%s" % (masterHostname, port, browseTarget)
 
         if jobId:
