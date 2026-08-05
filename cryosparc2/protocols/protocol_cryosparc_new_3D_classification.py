@@ -51,11 +51,213 @@ from ..constants import *
 
 class ProtCryoSparcNew3DClassification(ProtCryosparcBase):
     """
-    3D Classification (BETA) is a new job in cryoSPARC v3.3+ to analyze discrete
-    heterogeneity in single particle cryo-EM datasets. This job currently
-    implements a version of 3D classification without alignment — a
-    classification routine that can complement the existing Heterogeneous
-    Refinement job in finding new discrete classes of data.
+    Performs discrete 3D classification of single-particle cryo-EM datasets
+    using cryoSPARC classification strategies without alignment. The protocol
+    separates heterogeneous particle populations into multiple structural
+    classes in order to identify conformational variability, compositional
+    differences, or distinct biochemical states within the same dataset.
+
+    AI Generated:
+
+    3D Classification (ProtCryoSparcNew3DClassification) — User Manual
+        Overview
+
+        The 3D Classification protocol is designed to analyze structural
+        heterogeneity in cryo-EM particle datasets by separating particles
+        into multiple discrete three-dimensional classes. Its primary purpose
+        is to reveal biologically meaningful variability that may otherwise
+        remain hidden within a single consensus refinement. This includes
+        conformational flexibility, ligand occupancy differences, partial
+        assembly states, compositional variability, or the coexistence of
+        multiple structural populations.
+
+        Unlike refinement-oriented procedures that continuously optimize
+        particle orientations during classification, this protocol focuses on
+        classification without alignment. In practical biological workflows,
+        this approach is especially useful when reliable particle orientations
+        already exist from previous refinements and the main objective is to
+        distinguish structural states rather than improve alignment accuracy.
+
+        The protocol is particularly valuable in studies involving flexible
+        macromolecular complexes, membrane proteins with multiple functional
+        states, ribosomes, viral assemblies, or heterogeneous biochemical
+        preparations where multiple structures coexist in the same sample.
+
+        Inputs and Biological Context
+
+        The protocol requires an input particle set with previously determined
+        alignment parameters and associated CTF information. Since the method
+        assumes that particle orientations are already meaningful, the quality
+        of the previous alignment strongly influences the quality of the final
+        classes. Poor alignments or heavily contaminated particle stacks may
+        reduce the interpretability of the classification results.
+
+        Users may optionally provide initial reference volumes. These initial
+        maps can guide the classification toward biologically meaningful
+        structural states when prior knowledge already exists. For example,
+        users studying known open and closed conformations of a protein may
+        initialize the protocol with previously reconstructed maps
+        representing those states.
+
+        When no initial maps are supplied, the protocol can internally
+        generate starting references using stochastic or PCA-based
+        initialization approaches. This is particularly useful for exploratory
+        analyses where the number or nature of structural states is not yet
+        known.
+
+        Solvent and Focus Masks
+
+        Masking plays an essential biological role because it determines which
+        regions of the reconstruction contribute most strongly to the
+        classification signal. A solvent mask can be provided to isolate the
+        molecular region from surrounding solvent noise. This generally
+        improves classification robustness and stability, especially for noisy
+        datasets or small particles.
+
+        An optional focus mask enables localized classification. This is one
+        of the most biologically powerful features of the protocol because it
+        allows the analysis to concentrate on specific regions of structural
+        variability while ignoring the remainder of the complex. Typical
+        applications include detecting ligand binding, domain movements,
+        flexible subunits, or local conformational rearrangements.
+
+        From a biological perspective, a good focus mask should tightly cover
+        the region expected to vary while excluding unrelated stable regions.
+        Overly large masks dilute the classification signal, whereas overly
+        restrictive masks may remove meaningful structural information.
+
+        Number of Classes and Interpretation
+
+        One of the most important user decisions is selecting the number of
+        output classes. Choosing too few classes may merge biologically
+        distinct states, while choosing too many may artificially fragment
+        continuous variability into difficult-to-interpret subclasses.
+
+        In exploratory workflows, users often begin with a moderate number of
+        classes and later refine the analysis based on the observed results.
+        Biological interpretation should focus not only on the appearance of
+        reconstructed maps but also on particle occupancy, reproducibility,
+        and consistency with known biochemical behavior.
+
+        It is important to recognize that classification may separate both
+        biologically meaningful variability and experimental artifacts.
+        Therefore, classes should always be interpreted carefully in the
+        context of particle quality, map resolution, and prior biological
+        knowledge.
+
+        Initialization Strategies
+
+        The protocol supports several initialization strategies adapted to
+        different experimental situations. Simple initialization creates
+        starting references from randomly selected particle subsets and is
+        suitable for general exploratory work when no prior structural
+        knowledge is available.
+
+        PCA-based initialization is useful when the dataset is expected to
+        contain subtle variability distributed across multiple structural
+        states. This strategy attempts to identify dominant modes of
+        variability and can help discover unexpected conformational landscapes.
+
+        Input-based initialization uses externally supplied maps as starting
+        references. This approach is especially useful when comparing known
+        structural states or continuing a previously established analysis
+        pipeline.
+
+        In all cases, users should avoid supplying nearly identical initial
+        references because this may bias the classification or reduce class
+        separation efficiency.
+
+        Resolution and Filtering Considerations
+
+        The target resolution parameter determines the structural detail used
+        during classification. Lower resolutions emphasize large-scale domain
+        organization and global conformational differences, whereas higher
+        resolutions increase sensitivity to subtle local changes.
+
+        In biological practice, classification is often more robust when
+        performed at intermediate resolutions before high-resolution
+        refinement. Attempting to classify very high-resolution details too
+        early may amplify noise and reduce class stability.
+
+        Optional high-pass filtering can suppress large-scale variability and
+        emphasize finer structural differences. This can be useful in cases
+        where dominant global motions obscure smaller but biologically
+        important local rearrangements.
+
+        Online Expectation Maximization
+
+        The protocol uses iterative optimization procedures that progressively
+        improve class assignments throughout multiple optimization cycles.
+        Batch size, epoch number, and iteration settings influence the balance
+        between computational efficiency and classification stability.
+
+        Larger batch sizes generally provide more stable class estimation but
+        require greater computational resources. Smaller batches may accelerate
+        exploratory analyses but can increase variability between iterations.
+
+        Hard classification forces each particle into a single class at every
+        iteration, whereas soft classification allows partial assignment across
+        multiple classes. Soft assignment is often biologically advantageous
+        for datasets containing continuous or ambiguous structural variability.
+
+        Class Similarity and Annealing
+
+        The protocol includes controls that regulate how similar or distinct
+        classes are allowed to remain during optimization. Early in the
+        process, allowing classes to remain partially similar can help prevent
+        premature convergence and improve stability.
+
+        As optimization progresses, the similarity constraint is gradually
+        relaxed so that classes can diverge into more distinct structural
+        populations. This annealing strategy is particularly useful for
+        challenging datasets with subtle conformational differences.
+
+        Outputs and Biological Interpretation
+
+        The protocol produces a set of classified particle populations and a
+        representative reconstructed volume for each class. These outputs form
+        the basis for downstream biological interpretation and subsequent
+        refinement workflows.
+
+        Each reconstructed volume corresponds to a distinct structural subset
+        of the original dataset. Users commonly inspect these maps to identify
+        conformational states, ligand occupancy differences, assembly
+        intermediates, or damaged particles.
+
+        The protocol may also generate solvent masks and auxiliary outputs
+        useful for additional focused refinement or validation procedures.
+        Resulting classes can be independently refined at higher resolution,
+        exported for visualization, or subjected to further heterogeneity
+        analysis.
+
+        Practical Recommendations
+
+        In routine cryo-EM workflows, it is often advisable to begin with a
+        moderate number of classes and conservative resolution settings.
+        Initial exploratory classification can reveal whether the dataset
+        contains strong heterogeneity before investing computational effort in
+        more detailed analyses.
+
+        Focused classification should be considered whenever the biological
+        question concerns localized variability rather than global structural
+        differences. Proper masking frequently provides the single largest
+        improvement in classification quality.
+
+        Users should also carefully monitor particle distribution among
+        classes. Extremely small classes may represent rare but meaningful
+        states, although they can also correspond to noise, contaminants, or
+        reconstruction artifacts.
+
+        Final Perspective
+
+        For many cryo-EM studies, 3D classification represents one of the most
+        biologically informative stages of image processing. It transforms a
+        heterogeneous particle collection into interpretable structural
+        populations that can reveal molecular mechanisms, functional dynamics,
+        and biochemical diversity. Successful classification depends not only
+        on computational settings but also on thoughtful biological reasoning,
+        careful masking strategies, and realistic interpretation of structural
+        variability.
     """
     _label = '3D Classification'
     _className = "class_3D"

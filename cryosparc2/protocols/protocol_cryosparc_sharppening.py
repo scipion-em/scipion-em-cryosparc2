@@ -41,7 +41,156 @@ from ..utils import (addComputeSectionParams, cryosparcValidate, gpusValidate,
 
 class ProtCryoSparcSharppening(ProtCryosparcBase, ProtAnalysis3D):
     """
-    Wrapper protocol for the Cryosparc's to calculate the sharpened map.
+    Performs post-processing sharpening of cryo-EM density maps using cryoSPARC-based
+    refinement and filtering strategies. The protocol enhances high-resolution structural
+    features that may be attenuated during reconstruction, helping users obtain maps with
+    improved interpretability for visualization, atomic modeling, and structural analysis.
+
+    AI Generated:
+
+    CryoSPARC Sharpening (ProtCryoSparcSharppening) — User Manual
+        Overview
+
+        The CryoSPARC Sharpening protocol applies map sharpening procedures to reconstructed
+        cryo-EM density maps in order to improve the visibility of structural details. In
+        cryo-electron microscopy, reconstructed maps often contain dampened high-frequency
+        information caused by experimental noise, particle heterogeneity, alignment
+        uncertainty, or reconstruction regularization. Sharpening compensates for this loss
+        and increases the contrast of fine structural features such as alpha helices,
+        beta sheets, side chains, ligand densities, and nucleic acid backbones.
+
+        For biological interpretation, sharpening is frequently one of the final stages
+        before model building or publication-quality visualization. Proper sharpening can
+        dramatically improve the readability of a map, while excessive sharpening may
+        amplify noise and introduce misleading features. The protocol is therefore intended
+        both as a visualization enhancement tool and as a preparation step for downstream
+        structural analysis.
+
+        Inputs and Biological Context
+
+        The protocol requires a reconstructed three-dimensional volume as input. In most
+        workflows, this volume originates from a consensus refinement, local refinement,
+        or focused refinement procedure. The input map should already represent the best
+        available reconstruction before sharpening is attempted.
+
+        Biological users should ideally provide maps with reliable Fourier Shell Correlation
+        information because sharpening depends strongly on the estimated signal quality at
+        different spatial frequencies. When half maps are available, the protocol can use
+        this information to estimate resolution-dependent attenuation more accurately and
+        produce more reliable sharpening results.
+
+        The quality of the sharpening outcome is closely tied to the biological homogeneity
+        of the reconstruction. Flexible assemblies, partially occupied ligands, or mixed
+        conformational states may respond differently to sharpening across regions of the
+        map. Users should therefore evaluate sharpened results carefully and compare them
+        against the original reconstruction.
+
+        B-Factor Sharpening
+
+        The central parameter in the protocol is the sharpening B-factor. Negative values
+        enhance high-resolution frequencies and increase map contrast, while values that are
+        too aggressive may amplify reconstruction noise or create fragmented densities.
+
+        In practical cryo-EM workflows, moderate sharpening is often sufficient to reveal
+        secondary structure elements and side-chain features. Stronger sharpening may become
+        useful for very high-resolution maps where fine details are already present but
+        partially attenuated. However, over-sharpening can distort weak densities, especially
+        in flexible regions or membrane proteins with heterogeneous local resolution.
+
+        Biological interpretation should always consider whether newly visible features are
+        supported by the underlying signal rather than introduced by excessive enhancement.
+
+        FSC-Based Filtering
+
+        The protocol can use either full-map FSC information or half-map FSC estimates during
+        sharpening. Half-map FSC is generally considered more conservative because it reflects
+        independent reconstructions and provides a safer estimate of true signal. Full FSC
+        may produce stronger enhancement but can sometimes overestimate resolution.
+
+        For most biological analyses, conservative FSC usage is preferable when structural
+        interpretation is uncertain or when maps contain heterogeneous regions. In highly
+        refined datasets with stable reconstructions, full FSC approaches may provide more
+        visually detailed results.
+
+        Low-Pass Filtering and Frequency Falloff
+
+        The sharpening workflow includes low-pass filtering controls that regulate how rapidly
+        high-frequency information is attenuated beyond the estimated resolution limit.
+        These parameters influence the visual smoothness of the final map and help suppress
+        excessive noise amplification.
+
+        Higher falloff values generate steeper transitions between preserved and attenuated
+        frequencies, producing crisper visual features but potentially introducing ringing
+        artifacts or noisy edges. Softer filtering generally yields more conservative and
+        stable maps, especially for medium-resolution reconstructions.
+
+        Biological users should balance visual sharpness against interpretability and avoid
+        settings that generate fragmented or discontinuous densities unsupported by the
+        experimental data.
+
+        Mask Generation and Map Isolation
+
+        The protocol can generate dedicated masks for sharpening and FSC calculations. Proper
+        masking is biologically important because it isolates the macromolecular density from
+        surrounding solvent noise. Accurate masking improves FSC estimation and reduces the
+        risk of over-enhancing background regions.
+
+        Threshold and mask expansion parameters determine how closely the mask follows the
+        molecular envelope. Tight masks emphasize compact density regions, whereas broader
+        masks better preserve peripheral domains or flexible extensions.
+
+        For globular proteins, moderate mask expansion often provides stable results. Large
+        assemblies with flexible domains, membrane-associated regions, or elongated complexes
+        may require more permissive masks to avoid truncating biologically relevant density.
+
+        Final Output Masking
+
+        Optional spherical or expanded masking can be applied to the final sharpened map.
+        These operations mainly improve visualization quality and reduce unnecessary solvent
+        regions in the exported volume. Spherical masking is particularly useful for removing
+        corner artifacts that may become prominent after sharpening.
+
+        Expanded masking may provide cleaner outputs for visualization software and reduce
+        storage requirements while preserving the biologically meaningful region of the map.
+
+        Outputs and Interpretation
+
+        The protocol produces a sharpened cryo-EM volume suitable for visualization,
+        interpretation, and downstream atomic modeling. The output remains in the same
+        coordinate system and sampling framework as the original reconstruction, allowing
+        direct comparison with the input map and associated atomic models.
+
+        Biologically, the sharpened map should be interpreted as an enhanced representation
+        of the original reconstruction rather than a new reconstruction itself. Structural
+        features that become visible after sharpening should always be validated against
+        map continuity, local resolution estimates, and independent biological evidence.
+
+        Practical Recommendations
+
+        In routine cryo-EM practice, it is advisable to begin with moderate negative
+        B-factors and visually inspect the resulting map before applying stronger sharpening.
+        Excessively aggressive sharpening often produces disconnected densities and misleading
+        structural features, particularly in flexible or low-resolution regions.
+
+        Users working with heterogeneous assemblies should compare sharpened and unsharpened
+        maps side by side to distinguish genuine biological features from amplified noise.
+        Conservative masking and FSC usage generally provide the most reliable interpretation
+        for challenging datasets.
+
+        For high-resolution structures intended for atomic modeling, iterative adjustment of
+        sharpening and masking parameters may substantially improve side-chain visibility and
+        backbone continuity. Final interpretation should always integrate biological knowledge,
+        local resolution information, and validation metrics.
+
+        Final Perspective
+
+        Map sharpening is one of the most influential post-processing steps in cryo-EM
+        structural analysis because it directly affects how biological features are perceived
+        and interpreted. Appropriate sharpening can transform a difficult reconstruction into
+        a highly interpretable structural map, whereas excessive enhancement can obscure the
+        true quality of the data. Careful parameter selection, conservative interpretation,
+        and validation against experimental evidence are essential for obtaining reliable
+        biological conclusions.
     """
     _label = 'sharppening'
     _className = "sharpen"

@@ -46,7 +46,201 @@ class ImportVolumeOutputs(enum.Enum):
 class ProtCryoSparc3DVariabilityDisplay(ProtCryosparcBase, ProtRefine3D):
     """
     Protocol to create various versions of a 3D variability result that can be
-    used for display
+    used for display.
+
+    AI Generated:
+
+    3D Variability Display (ProtCryoSparc3DVariabilityDisplay) — User Manual
+        Overview
+
+        The 3D Variability Display protocol generates interpretable visual
+        representations from previously computed 3D variability analysis
+        results. Its primary purpose is to help biological users explore and
+        visualize continuous structural heterogeneity present within cryo-EM
+        datasets. Instead of focusing on a single static reconstruction, the
+        protocol produces multiple related volumes that describe how molecular
+        structures change along variability dimensions identified during
+        analysis.
+
+        In practical cryo-EM workflows, this protocol is especially useful for
+        studying conformational flexibility, domain motions, ligand-induced
+        rearrangements, and compositional heterogeneity. It allows researchers
+        to transform abstract variability components into visually meaningful
+        structural transitions that can be interpreted biologically and
+        communicated more effectively.
+
+        Inputs and General Workflow
+
+        The protocol requires the output of a previous 3D variability analysis.
+        This input contains both the reconstructed reference volume and the
+        variability information describing structural changes across the
+        particle population. The protocol then generates representative outputs
+        that summarize these motions using several visualization strategies.
+
+        Depending on the selected mode, the workflow can produce linear motion
+        trajectories, discrete structural clusters, or intermediate
+        reconstructions that sample conformational landscapes more densely.
+        These outputs can subsequently be inspected in molecular visualization
+        software, compared structurally, or used for downstream biological
+        interpretation.
+
+        Biological Interpretation of Variability
+
+        Structural variability in cryo-EM datasets often reflects meaningful
+        biological processes such as substrate binding, enzymatic cycling,
+        maturation, assembly dynamics, or flexible domain rearrangements. This
+        protocol helps convert statistical variability information into a set
+        of interpretable structural states.
+
+        Users should keep in mind that variability components do not always
+        correspond to perfectly discrete conformations. In many cases, they
+        represent continuous transitions between related molecular states.
+        Consequently, the generated outputs should be interpreted as a visual
+        approximation of structural motion rather than a strict classification
+        into independent biological species.
+
+        Output Modes
+
+        The protocol provides several visualization strategies adapted to
+        different biological questions.
+
+        The simple mode generates a sequence of volumes arranged along each
+        variability dimension. This creates a movie-like representation of
+        structural motion and is often the best starting point for exploratory
+        analysis. It is particularly useful for identifying large-scale domain
+        movements, hinge motions, or gradual conformational transitions.
+
+        The cluster mode separates particles into groups based on their
+        positions within variability space and reconstructs representative
+        volumes for each cluster. This mode is valuable when the biological
+        system contains partially discrete conformations or compositional
+        states. The resulting classes can help distinguish alternative
+        assemblies, ligand occupancies, or structural substates.
+
+        The intermediates mode reconstructs multiple volumes distributed along
+        the variability trajectory. Compared to the simple mode, this approach
+        can better represent non-linear structural transitions and more subtle
+        conformational landscapes. It is especially useful for systems with
+        continuous flexibility or gradual structural rearrangements.
+
+        Number of Frames or Clusters
+
+        The number of generated frames or clusters controls how finely the
+        conformational landscape is sampled. Lower values produce simpler and
+        easier-to-interpret outputs, while larger values may reveal more subtle
+        transitions but increase computational complexity and interpretation
+        difficulty.
+
+        In biological practice, moderate values are often sufficient to capture
+        dominant motions. Excessively large numbers of frames may introduce
+        redundancy or emphasize noise rather than meaningful structural
+        variation. Users are encouraged to balance interpretability with
+        structural detail.
+
+        Component Selection
+
+        The protocol allows users to restrict visualization to selected
+        variability components. This becomes important when only a subset of
+        components contains biologically relevant motion. Focusing on the most
+        interpretable dimensions often simplifies downstream analysis and
+        improves clarity during visualization.
+
+        Different variability components may capture distinct biological
+        phenomena. For example, one component may describe domain breathing
+        motions while another reflects compositional changes or local
+        flexibility. Careful inspection of each component is therefore
+        recommended before selecting those most suitable for interpretation.
+
+        Filtering and Resolution Considerations
+
+        Optional low-pass and high-pass filtering controls help optimize the
+        visual appearance of reconstructed volumes. Low-pass filtering is often
+        beneficial when emphasizing large conformational changes or reducing
+        noise in flexible regions. High-pass filtering may help reveal finer
+        structural details but should be applied cautiously to avoid
+        over-interpreting noisy features.
+
+        Resolution filtering does not increase structural information content.
+        Instead, it modifies the balance between signal clarity and detail
+        visibility. Biological conclusions should therefore always be supported
+        by consistent structural evidence across the dataset.
+
+        Downsampling and Cropping
+
+        The protocol supports downsampling and cropping of output volumes. These
+        options are useful for reducing storage requirements, accelerating
+        visualization, or focusing attention on specific structural regions.
+
+        Downsampling is particularly advantageous during exploratory analysis
+        of very large complexes or when rapid inspection of multiple states is
+        required. Cropping can help isolate flexible domains or remove large
+        solvent regions that may distract from biologically important motions.
+
+        Cluster Visualization and Particle Subsets
+
+        In cluster mode, the protocol can generate visual plots describing the
+        distribution of particles within variability space. These plots help
+        users understand whether conformational states are continuous, partially
+        overlapping, or clearly separated into distinct populations.
+
+        In intermediates mode, the protocol can optionally produce particle
+        subsets associated with individual frames. This functionality is useful
+        when users wish to inspect the particles contributing to particular
+        conformational states or perform additional downstream processing on
+        selected structural regions of the variability landscape.
+
+        Handedness and Reconstruction Options
+
+        The protocol includes the possibility of flipping the handedness of
+        output volumes. This option only affects the displayed maps and should
+        be used carefully, particularly in workflows where handedness has
+        already been validated experimentally.
+
+        Reconstruction steps may also be skipped in certain exploratory
+        scenarios. This enables rapid evaluation of clustering behavior or
+        variability partitioning before committing computational resources to
+        full reconstruction procedures.
+
+        Outputs and Their Interpretation
+
+        Depending on the selected mode, the protocol produces sets of volumes,
+        structural trajectories, clustered reconstructions, or particle
+        classifications. These outputs are intended to facilitate visual and
+        biological interpretation of conformational variability.
+
+        The resulting volumes preserve the sampling properties and spatial
+        reference frame of the original variability analysis, allowing direct
+        comparison between generated states. In cluster-oriented workflows,
+        representative classes can also be associated with corresponding
+        particle subsets for additional refinement or validation.
+
+        Practical Recommendations
+
+        For most biological investigations, it is advisable to begin with the
+        simple mode to identify dominant motions and assess whether variability
+        is continuous or discrete. Once the main structural transitions are
+        understood, cluster or intermediates modes can provide more detailed
+        structural interpretation.
+
+        When studying highly flexible complexes, intermediate reconstructions
+        often provide the most informative representation of conformational
+        landscapes. Conversely, systems containing distinct structural states
+        are frequently better analyzed using cluster mode.
+
+        Users should visually inspect generated trajectories carefully and
+        compare them with known biochemical or structural information. Apparent
+        motions may occasionally reflect noise, alignment uncertainty, or local
+        reconstruction artifacts rather than biologically meaningful dynamics.
+
+        Final Perspective
+
+        The visualization of structural variability has become a central aspect
+        of modern cryo-EM analysis because many biological systems function
+        through dynamic conformational changes rather than static structures.
+        This protocol provides a practical framework for transforming
+        variability analysis into interpretable structural representations that
+        can reveal molecular motions, functional transitions, and heterogeneous
+        states in biologically meaningful ways.
     """
     _label = '3D variability Display'
     _devStatus = BETA

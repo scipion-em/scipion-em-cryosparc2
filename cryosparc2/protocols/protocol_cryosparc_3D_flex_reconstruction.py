@@ -35,11 +35,159 @@ from ..constants import *
 
 class ProtCryoSparc3DFlexReconstruction(ProtCryosparcBase):
     """
-    Takes in a checkpoint from training as well as prepared high-resolution
-    particles and performs high-resolution refinement using L-BFGS under
-    the 3DFlex model. This is the stage at which improvements to density
-    in high-res regions are computed. Outputs two half-maps that can be used
-    for FSC validation, sharpening, and other downstream tasks.
+    Performs high-resolution flexible reconstruction of cryo-EM datasets using
+    a previously trained 3DFlex model. The protocol refines structural detail
+    while accounting for continuous conformational variability, producing
+    flexible and rigid reference reconstructions together with validated
+    half-maps suitable for downstream analysis.
+
+    AI Generated:
+
+    3D Flex Reconstruction (ProtCryoSparc3DFlexReconstruction) — User Manual
+        Overview
+
+        The 3D Flex Reconstruction protocol performs the final high-resolution
+        reconstruction stage within the cryoSPARC 3DFlex framework. Its purpose
+        is to recover detailed cryo-EM density maps while explicitly modeling
+        continuous structural flexibility present in the particle population.
+        Unlike conventional refinement approaches that assume a single rigid
+        structure, this protocol incorporates the learned conformational model
+        generated during 3DFlex training and uses it to improve reconstruction
+        quality in regions affected by motion or heterogeneity.
+
+        In biological applications, this approach is especially valuable for
+        macromolecular assemblies that exhibit continuous domain movements,
+        breathing motions, hinge rearrangements, or composational flexibility.
+        Flexible refinement can reveal structural features that are blurred or
+        weakened in standard consensus reconstructions, allowing more accurate
+        interpretation of dynamic molecular processes.
+
+        Inputs and Biological Context
+
+        The protocol requires a previously trained 3DFlex model generated from
+        compatible particle datasets. The training stage defines the latent
+        representation of conformational variability, and this reconstruction
+        stage uses that learned variability to produce high-resolution density
+        maps.
+
+        The quality of the reconstruction strongly depends on the biological
+        relevance and stability of the training model. If the latent space does
+        not capture meaningful structural motions, the resulting reconstruction
+        may fail to improve map interpretability. For this reason, users should
+        carefully inspect latent distributions and variability analyses before
+        launching reconstruction.
+
+        This protocol is particularly appropriate for systems such as ribosomes,
+        membrane transporters, molecular motors, spliceosomes, viral assemblies,
+        and multi-domain proteins where structural flexibility is expected to
+        influence reconstruction quality.
+
+        Flexible Versus Rigid Reconstruction
+
+        One important feature of the protocol is the ability to generate both
+        flexible and rigid reconstructions. The flexible reconstruction uses the
+        learned conformational model to account for continuous motion during map
+        estimation, while the rigid reconstruction serves as a conventional
+        baseline generated from the same dataset.
+
+        Comparing these two outputs can provide biologically meaningful insight.
+        Improvements observed in the flexible map often indicate regions where
+        conformational variability significantly affected the original density.
+        Flexible refinement may sharpen mobile domains, improve connectivity,
+        or recover secondary-structure detail that was previously obscured by
+        motion averaging.
+
+        In contrast, if the rigid and flexible reconstructions appear nearly
+        identical, this may indicate that the dataset contains limited
+        continuous heterogeneity or that the learned latent model does not
+        capture substantial motions.
+
+        Gold-Standard Validation
+
+        The protocol supports independent half-map reconstruction for
+        gold-standard Fourier Shell Correlation validation. This is essential
+        for reliable resolution estimation and for minimizing overfitting during
+        high-resolution refinement.
+
+        In many cryo-EM workflows, preserving the original half-set assignment
+        is recommended because it maintains consistency with upstream
+        refinements. However, re-splitting the dataset may occasionally be
+        useful when previous assignments are imbalanced or biologically
+        unsuitable.
+
+        The generated half-maps can later be used for FSC analysis, local
+        resolution estimation, map sharpening, density modification, and atomic
+        model validation.
+
+        Reconstruction Optimization
+
+        The reconstruction process relies on iterative numerical optimization to
+        estimate the most consistent density maps under the flexible model. The
+        number of optimization iterations controls the balance between runtime
+        and reconstruction convergence.
+
+        For most biological datasets, the default number of iterations provides
+        stable and reliable results. Increasing the iteration count may improve
+        refinement for particularly high-resolution datasets or very large
+        complexes, although this also increases computational cost. Excessive
+        optimization may sometimes amplify noise or overfit weak structural
+        features, especially when particle quality is limited.
+
+        Practical Interpretation of Results
+
+        The flexible reconstruction output should be interpreted as a structural
+        representation that integrates continuous conformational variability
+        into the refinement process. Regions showing improved clarity often
+        correspond to biologically meaningful motions that were previously
+        averaged out in standard reconstruction approaches.
+
+        Users should visually compare the flexible and rigid reconstructions,
+        inspect local resolution differences, and evaluate whether improved
+        density corresponds to plausible structural behavior. Flexible
+        refinement is particularly informative when improvements occur in known
+        dynamic regions such as ligand-binding domains, peripheral subunits,
+        flexible linkers, or membrane-associated components.
+
+        The protocol does not replace discrete classification methods but rather
+        complements them by modeling smooth and continuous variability across
+        the particle population.
+
+        Outputs and Downstream Applications
+
+        The protocol produces high-resolution flexible maps together with their
+        associated half-maps. Optionally, rigid reference reconstructions are
+        also generated for comparison. These outputs can be directly used for
+        visualization, sharpening, local refinement assessment, atomic model
+        building, flexible fitting, and structural interpretation.
+
+        The half-maps are particularly important for downstream cryo-EM
+        validation workflows because they allow independent FSC-based quality
+        assessment and facilitate robust map interpretation.
+
+        Practical Recommendations
+
+        For most biological projects, users should first ensure that the
+        upstream 3DFlex training stage produced a meaningful latent model with
+        interpretable variability. Launching high-resolution reconstruction on
+        poorly trained latent spaces is unlikely to improve map quality.
+
+        Flexible refinement is most beneficial when datasets contain clear
+        continuous motions rather than strongly discrete conformational states.
+        When heterogeneity is dominated by a few well-separated structures,
+        traditional 3D classification may still be the preferred approach.
+
+        Users are encouraged to compare flexible and rigid reconstructions side
+        by side and to interpret improvements cautiously within the biological
+        context of the studied system.
+
+        Final Perspective
+
+        For modern cryo-EM studies focused on structural dynamics, 3D Flex
+        Reconstruction provides a powerful strategy for recovering high-quality
+        density information from heterogeneous datasets. By integrating learned
+        conformational variability directly into high-resolution refinement, the
+        protocol enables a more realistic representation of molecular motion and
+        offers new opportunities for understanding dynamic biological systems.
     """
     _label = '3D flex reconstruction'
     _devStatus = BETA

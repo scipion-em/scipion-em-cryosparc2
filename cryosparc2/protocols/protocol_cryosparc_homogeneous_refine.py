@@ -49,12 +49,225 @@ from ..constants import *
 
 
 class ProtCryoSparc3DHomogeneousRefine(ProtCryosparcBase):
-    """ Protocol to refine a 3D map using cryosparc.
-        Rapidly refine a single homogeneous structure to high-resolution and
-        validate using the gold-standard FSC. Using new faster GPU code, and
-        support for higher-order aberration (beam tilt, spherical aberration,
-        trefoil, tetrafoil) correction and per-particle defocus refinement on
-        the fly.
+    """
+    Refines a homogeneous 3D cryo-EM structure to high resolution using
+    cryoSPARC refinement strategies combined with gold-standard FSC
+    validation, per-particle defocus optimization, and higher-order
+    aberration correction.
+
+    AI Generated:
+
+    3D Homogeneous Refinement (ProtCryoSparc3DHomogeneousRefine) — User Manual
+        Overview
+
+        The 3D Homogeneous Refinement protocol is designed to improve the
+        quality, resolution, and interpretability of a cryo-EM reconstruction
+        representing a single dominant structural state. Starting from an
+        initial reference map and a set of aligned particles, the protocol
+        iteratively refines particle orientations, shifts, and imaging
+        parameters in order to produce a higher-resolution consensus structure.
+
+        In biological cryo-EM workflows, this type of refinement is typically
+        applied after particle selection and initial model generation, once the
+        dataset is believed to represent a relatively homogeneous molecular
+        population. The protocol is especially valuable for obtaining
+        publication-quality reconstructions suitable for structural analysis,
+        atomic modeling, ligand interpretation, or conformational comparison.
+
+        The refinement process combines reconstruction optimization with
+        gold-standard FSC validation, helping reduce overfitting while
+        providing an estimate of the final map resolution. The protocol also
+        supports advanced optical corrections such as beam tilt, spherical
+        aberration, trefoil, tetrafoil, and per-particle defocus refinement,
+        enabling improved performance on modern high-resolution datasets.
+
+        Inputs and Initial Requirements
+
+        The protocol requires a set of particles with associated CTF
+        information together with an initial reference volume. The reference
+        map defines the starting structural model used during iterative
+        refinement. In most biological applications, the reference should
+        already resemble the expected structure reasonably well, although it
+        does not need to be fully high resolution.
+
+        The input particles and reference volume should share compatible box
+        size and sampling characteristics. Significant inconsistencies between
+        these inputs may compromise refinement stability or resolution
+        estimation. The protocol assumes that particles have already undergone
+        preprocessing steps such as motion correction, CTF estimation, and
+        particle extraction.
+
+        An optional mask may also be provided. The mask defines the structural
+        region emphasized during refinement and reconstruction. In many
+        cryo-EM studies, careful masking substantially improves refinement
+        robustness by reducing the influence of solvent noise or highly
+        flexible regions.
+
+        Symmetry Handling and Structural Interpretation
+
+        The protocol supports common point-group symmetries including cyclic,
+        dihedral, tetrahedral, octahedral, and icosahedral symmetry. Proper
+        symmetry assignment is biologically important because it directly
+        influences reconstruction quality and achievable resolution.
+
+        Applying the correct symmetry can dramatically improve signal by
+        averaging equivalent views. However, imposing incorrect symmetry may
+        introduce severe structural artifacts or obscure biologically relevant
+        asymmetry. For this reason, users should only apply symmetry that is
+        strongly supported by experimental evidence or prior structural
+        knowledge.
+
+        Symmetry alignment options allow the reconstruction to be aligned to
+        canonical symmetry axes. The protocol also supports symmetry
+        relaxation strategies, which can help analyze cases where symmetry is
+        partially broken or where particles occupy multiple symmetry-related
+        states. These options are particularly useful for assemblies with
+        dynamic subunits or flexible interfaces.
+
+        Refinement Strategy and Resolution Optimization
+
+        The refinement workflow progressively improves particle alignment and
+        map quality over multiple iterations. Initial low-pass filtering helps
+        stabilize early refinement stages by emphasizing large-scale features
+        before finer structural details are introduced.
+
+        Additional refinement passes can optionally be performed after
+        resolution convergence in order to extract further structural detail.
+        This can be beneficial for highly homogeneous datasets where subtle
+        improvements remain possible after the main refinement stage.
+
+        The protocol also includes controls related to noise modeling,
+        non-negativity constraints, windowing behavior, and optimization
+        stability. In most biological workflows, the default values are
+        sufficient and should only be adjusted by experienced users working
+        with difficult datasets or specialized imaging conditions.
+
+        Batch-size optimization settings influence computational efficiency
+        and GPU memory usage. Automatic optimization is generally appropriate
+        for routine processing, while manual adjustment may be useful when
+        operating under strict hardware limitations.
+
+        Masking and Dynamic Mask Refinement
+
+        Masking is one of the most biologically significant aspects of
+        high-resolution refinement because it determines which regions of the
+        reconstruction contribute most strongly during iterative optimization.
+
+        Static masking applies a predefined mask throughout the entire
+        refinement procedure and is most appropriate when the stable core of
+        the structure is already well characterized. Dynamic masking adapts
+        during refinement according to map features and is often beneficial
+        for improving resolution while reducing solvent contributions.
+
+        For flexible complexes, membrane proteins, or assemblies containing
+        partially disordered regions, dynamic masking can substantially improve
+        reconstruction quality. However, overly aggressive masking may suppress
+        meaningful structural variability or introduce artifacts near mask
+        boundaries.
+
+        Biological users should ensure that masks encompass all structurally
+        important regions while excluding excessive solvent background. In
+        practice, moderate and biologically informed masking strategies often
+        provide the most reliable results.
+
+        Per-Particle Defocus Refinement
+
+        The protocol supports per-particle defocus refinement during iterative
+        reconstruction. This feature improves the accuracy of CTF correction by
+        accounting for defocus variation among individual particles.
+
+        Defocus refinement is especially useful in high-resolution datasets,
+        tilted data collections, thick ice conditions, or experiments where
+        particles occupy different heights within the vitreous ice layer.
+        Correcting these variations can significantly improve map sharpness and
+        high-frequency detail.
+
+        Nevertheless, biological users should apply this feature carefully in
+        small or structurally heterogeneous datasets. In some situations,
+        aggressive defocus optimization may reduce reconstruction stability or
+        produce misleading improvements in nominal resolution estimates.
+
+        Global CTF Refinement and Higher-Order Aberrations
+
+        In addition to per-particle defocus optimization, the protocol can
+        refine global optical aberrations associated with the microscope and
+        imaging system. These include beam tilt, spherical aberration,
+        trefoil, and tetrafoil corrections.
+
+        Such corrections are particularly important for modern high-resolution
+        cryo-EM datasets collected with advanced direct electron detectors and
+        highly coherent microscopes. Correcting these optical distortions can
+        improve map interpretability, especially at near-atomic resolution.
+
+        However, the effectiveness of these corrections depends strongly on
+        dataset quality and particle number. In smaller or noisier datasets,
+        excessive parameter optimization may not yield biologically meaningful
+        improvements.
+
+        Ewald Sphere Correction
+
+        The protocol optionally supports Ewald sphere correction for datasets
+        where curvature effects become significant. This correction is most
+        relevant at very high resolution or for very large macromolecular
+        assemblies where the flat projection approximation becomes less valid.
+
+        For many routine cryo-EM projects, Ewald sphere correction may have
+        limited visible impact. However, in demanding structural studies aiming
+        for the highest possible accuracy, it can improve reconstruction
+        fidelity and sharpen fine structural features.
+
+        Both simplified and iterative correction strategies are available,
+        allowing users to balance computational cost against reconstruction
+        precision.
+
+        Outputs and Structural Interpretation
+
+        The protocol produces a refined 3D map together with updated particle
+        alignments and associated half-maps used for gold-standard FSC
+        validation. The final reconstruction can be used for downstream
+        visualization, local refinement, variability analysis, atomic model
+        building, or biological interpretation.
+
+        The refined particle set preserves updated orientation and imaging
+        parameters generated during refinement. These outputs are especially
+        valuable for continued processing workflows or further focused
+        classification strategies.
+
+        Resolution estimates and B-factor measurements provide additional
+        guidance for evaluating reconstruction quality. However, biological
+        interpretation should always include visual inspection of map features
+        rather than relying exclusively on numerical resolution values.
+
+        Practical Recommendations
+
+        In most routine cryo-EM projects, it is advisable to begin refinement
+        using conservative masking and standard symmetry settings. Once stable
+        convergence is achieved, additional optical corrections and advanced
+        refinement features can be enabled progressively.
+
+        For highly symmetric particles, correct symmetry assignment often
+        provides the largest improvement in achievable resolution. Conversely,
+        for flexible or partially heterogeneous systems, excessive symmetry
+        enforcement may obscure biologically meaningful variability.
+
+        Dynamic masking and per-particle defocus refinement are frequently
+        beneficial for high-quality datasets, particularly when aiming for
+        near-atomic resolution. However, users should monitor refinement
+        stability carefully and verify improvements through independent map
+        inspection.
+
+        Final Perspective
+
+        Homogeneous refinement represents one of the central stages of modern
+        single-particle cryo-EM analysis. Beyond numerical optimization, it is
+        fundamentally a process of improving the biological interpretability of
+        experimental data. Reliable results depend on thoughtful masking,
+        appropriate symmetry choices, realistic optical corrections, and
+        careful interpretation of the final reconstruction quality.
+
+        When applied carefully, this protocol enables the generation of
+        high-resolution cryo-EM maps suitable for detailed structural and
+        mechanistic biological analysis.
     """
     _label = '3D homogeneous refinement'
     _fscColumns = 6

@@ -51,7 +51,203 @@ from ..constants import *
 
 
 class ProtCryoSparcHomogeneousReconstruct(ProtCryosparcBase):
-    """ Create a 3D reconstruction from input particles that already have alignments in 3D.
+    """
+    Creates a 3D reconstruction from particles that already contain
+    valid 3D alignment information. The protocol generates a
+    homogeneous density map together with gold-standard half maps
+    suitable for resolution estimation and downstream structural
+    interpretation.
+
+    AI Generated:
+
+    Homogeneous Reconstruction (ProtCryoSparcHomogeneousReconstruct) — User Manual
+        Overview
+
+        The Homogeneous Reconstruction protocol generates a 3D cryo-EM
+        density map from particles that already possess assigned viewing
+        directions and alignment parameters. Its primary goal is to
+        reconstruct a consensus structure representing a single dominant
+        conformational state using cryoSPARC reconstruction methods.
+
+        In practical biological workflows, this protocol is commonly used
+        after particle alignment has already been completed through
+        refinement or classification procedures. Because particle poses
+        are already known, the protocol focuses on reconstructing the
+        highest-quality density map possible from the aligned particle
+        population. This makes it especially useful for producing final
+        consensus maps, validating alignment quality, or generating maps
+        for model building and interpretation.
+
+        Inputs and Reconstruction Strategy
+
+        The protocol requires a set of particles with valid 3D alignment
+        parameters and associated CTF information. These alignments define
+        how each particle contributes to the final reconstruction. Without
+        reliable alignment information, the resulting map may become
+        blurred, distorted, or biologically misleading.
+
+        An optional mask may also be provided for FSC calculations. From a
+        biological perspective, masking is important because it restricts
+        resolution estimation to structurally meaningful regions of the
+        reconstruction while excluding solvent noise. Proper masking
+        generally produces more reliable FSC curves and more realistic
+        resolution estimates.
+
+        The protocol reconstructs both the final consensus map and the
+        independent half maps used for gold-standard FSC validation.
+        These outputs are critical for assessing map quality and for
+        determining whether the reconstruction is suitable for atomic
+        interpretation.
+
+        Symmetry and Biological Interpretation
+
+        The protocol supports cyclic, dihedral, tetrahedral, octahedral,
+        and icosahedral symmetry as well as helical symmetry options.
+        Applying the correct symmetry can dramatically improve map quality
+        by increasing the effective signal-to-noise ratio. However,
+        biological caution is essential because imposing incorrect
+        symmetry may artificially distort structural features or hide
+        biologically important asymmetry.
+
+        For globular complexes with known symmetry, standard point-group
+        symmetry is often appropriate. In contrast, asymmetric assemblies,
+        flexible complexes, or particles containing partially occupied
+        regions may require reconstruction without imposed symmetry in
+        order to preserve biologically meaningful heterogeneity.
+
+        The protocol also supports helical reconstruction parameters,
+        including twist, rise, and helical symmetry order. These options
+        are particularly important for filamentous assemblies such as
+        cytoskeletal filaments, amyloid fibrils, or helical viral
+        structures. Accurate helical parameters are biologically critical
+        because even small errors may produce severe artifacts or incorrect
+        filament geometry.
+
+        Gold-Standard Reconstruction and Validation
+
+        The reconstruction process preserves or regenerates independent
+        gold-standard half sets used for FSC validation. This separation
+        is essential in cryo-EM because it minimizes overfitting and
+        provides a more realistic estimate of structural resolution.
+
+        In some workflows, particles may already contain an existing
+        gold-standard split inherited from previous refinements. In other
+        situations, users may choose to regenerate the split in order to
+        ensure independence or adapt the reconstruction to a new analysis
+        strategy.
+
+        The resulting FSC curves and half maps are especially important
+        when maps will be interpreted biologically, deposited in public
+        databases, or used for atomic modeling. Reliable validation is
+        essential for distinguishing genuine structural detail from noise
+        amplification.
+
+        Handedness and Structural Orientation
+
+        The protocol allows inversion of reconstruction handedness. This
+        option becomes relevant when the map appears mirrored relative to
+        known biological structures or when correcting handedness after
+        reconstruction. Biological interpretation strongly depends on
+        correct handedness because incorrect chirality can invalidate
+        structural conclusions and atomic models.
+
+        When helical symmetry is used together with handedness inversion,
+        the helical twist convention must remain consistent with the new
+        orientation. Careful verification against known structural motifs
+        or external biological information is strongly recommended.
+
+        Aberration Handling and Optical Corrections
+
+        Advanced options allow selective handling of higher-order optical
+        aberrations such as beam tilt, trefoil, tetrafoil, and anisotropic
+        magnification effects. These parameters are particularly relevant
+        for high-resolution datasets where subtle optical distortions may
+        limit achievable detail.
+
+        For most routine biological reconstructions, default settings are
+        generally sufficient. However, in near-atomic or atomic resolution
+        projects, proper correction of these effects may substantially
+        improve map sharpness and interpretability.
+
+        The protocol also supports Ewald sphere correction, which becomes
+        increasingly important for large particles, very high resolutions,
+        or thick specimens. From a biological standpoint, these corrections
+        can improve the accuracy of fine structural features that are
+        critical for mechanistic interpretation.
+
+        Filtering and Sharpening
+
+        The reconstruction workflow includes optional control over FSC-based
+        filtering and sharpening behavior. In standard workflows, automatic
+        FSC filtering provides a balanced approach that suppresses noise
+        while preserving meaningful signal.
+
+        Advanced users may override filtering behavior to apply manual
+        filtering resolutions or sharpening factors. This flexibility is
+        useful for specialized visualization goals or experimental map
+        interpretation, although aggressive sharpening can easily amplify
+        noise and create misleading features.
+
+        Biologically meaningful sharpening should improve visibility of
+        secondary structure and side-chain detail without introducing
+        artificial fragmentation or discontinuities in the density.
+
+        GPU and Computational Considerations
+
+        The protocol is optimized for GPU execution and supports control
+        over reconstruction batch sizes. These settings primarily affect
+        computational efficiency and memory usage rather than biological
+        interpretation. For very large datasets or limited GPU memory,
+        adjusting batch size parameters may improve execution stability.
+
+        Intermediate plotting and diagnostic options are also available
+        for users who wish to inspect reconstruction progress in more
+        detail. While these outputs are not always necessary for routine
+        processing, they can be useful during optimization or troubleshooting
+        of challenging datasets.
+
+        Outputs and Their Interpretation
+
+        The protocol produces a reconstructed 3D volume, two independent
+        half maps, FSC validation information, and an updated particle set
+        containing the reconstruction-associated metadata. These outputs
+        form the basis for downstream cryo-EM analysis including map
+        visualization, local resolution analysis, atomic modeling, and
+        biological interpretation.
+
+        The reconstructed map should always be interpreted together with
+        its FSC validation and visual inspection. Strong FSC values alone
+        do not guarantee biological correctness if masking, symmetry, or
+        alignment assumptions are inappropriate.
+
+        Practical Recommendations
+
+        For most biological applications, it is advisable to begin with
+        conservative settings and only introduce advanced corrections when
+        justified by data quality or resolution goals. Correct symmetry
+        assignment and reliable input alignments are usually the most
+        important factors controlling reconstruction quality.
+
+        When processing filamentous assemblies, special attention should
+        be given to helical twist and rise parameters because small errors
+        may strongly affect map continuity and interpretability. For highly
+        symmetric particles, applying the correct point-group symmetry can
+        significantly improve reconstruction quality.
+
+        Users should visually inspect half maps, FSC behavior, and map
+        features before proceeding to model building. Over-sharpened maps,
+        unstable FSC curves, or unrealistic density continuity often
+        indicate issues requiring further refinement or parameter adjustment.
+
+        Final Perspective
+
+        Homogeneous reconstruction represents one of the central stages of
+        cryo-EM structural analysis because it transforms aligned particle
+        images into an interpretable three-dimensional biological map.
+        Reliable alignments, appropriate symmetry handling, careful
+        validation, and biologically sensible interpretation are all
+        essential for producing structurally meaningful reconstructions
+        suitable for downstream scientific conclusions.
     """
     _label = 'homogeneous reconstruction'
     _className = "homo_reconstruct"

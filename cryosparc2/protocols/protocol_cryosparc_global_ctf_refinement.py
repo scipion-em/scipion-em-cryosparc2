@@ -50,9 +50,166 @@ from ..constants import *
 
 class ProtCryoSparcGlobalCtfRefinement(ProtCryosparcBase, pwprot.ProtParticles):
     """
-    Wrapper protocol for the Cryosparc's per-particle Global CTF refinement.
-    Performs per-exposure-group CTF parameter refinement of higher-order
-    aberrations, against a given 3D reference
+    Refines global Contrast Transfer Function parameters for cryo-EM particle
+    datasets using a high-quality 3D reference and exposure-based aberration
+    estimation. The protocol improves the optical consistency of particle data
+    by correcting higher-order microscope aberrations and refining beam-related
+    effects that can limit the final achievable resolution.
+
+    AI Generated:
+
+    Global CTF Refinement (ProtCryoSparcGlobalCtfRefinement) — User Manual
+        Overview
+
+        The Global CTF Refinement protocol is designed to improve the optical
+        accuracy of cryo-EM datasets by refining microscope aberration
+        parameters against a reconstructed three-dimensional reference map.
+        In practical cryo-EM workflows, this stage is commonly performed after
+        an initial refinement has already produced a reliable volume and stable
+        particle alignments. The protocol uses the information present across
+        groups of exposures to estimate and correct systematic imaging errors
+        that are not fully captured during standard CTF estimation.
+
+        From a biological perspective, this refinement step is particularly
+        important when pursuing high-resolution reconstructions. Small optical
+        distortions such as beam tilt, anisotropic magnification, trefoil, or
+        tetrafoil aberrations may only produce subtle visual artifacts in early
+        maps, yet they can strongly reduce the interpretability of atomic
+        features in the final reconstruction. Correcting these effects often
+        leads to sharper density, improved side-chain visibility, and more
+        reliable structural interpretation.
+
+        Inputs and General Workflow
+
+        The protocol requires three principal inputs: a set of aligned
+        particles, a reference volume, and an appropriate soft mask. The
+        particle set should already contain stable projection alignments,
+        because the refinement assumes that the orientations are sufficiently
+        accurate for optical parameter estimation. The reference volume serves
+        as the structural target against which aberrations are measured and
+        corrected.
+
+        The soft mask is biologically important because it defines which
+        regions of the reconstruction contribute most strongly to the
+        refinement process. In most cases, the mask should include the ordered
+        molecular density while excluding solvent noise and flexible peripheral
+        regions. Poor masking may reduce the stability of aberration
+        estimation, especially when the reconstruction contains heterogeneous
+        or highly mobile domains.
+
+        In workflows where half maps are available, the protocol can use this
+        information to preserve proper gold-standard refinement behavior. This
+        is particularly important for preventing overfitting in
+        high-resolution reconstructions.
+
+        Refinement of Optical Aberrations
+
+        The protocol supports refinement of several higher-order aberration
+        terms that commonly affect cryo-EM data quality. Beam tilt correction
+        compensates for systematic angular deviations in the electron beam,
+        often improving high-frequency information consistency across the
+        dataset. Trefoil and tetrafoil refinement target more complex optical
+        distortions that may arise from microscope alignment imperfections or
+        beam-shaping effects.
+
+        Spherical aberration refinement allows the protocol to compensate for
+        deviations in the microscope optical system that can influence phase
+        accuracy at high resolution. In newer workflows, anisotropic
+        magnification correction is also available, helping account for slight
+        directional differences in magnification that can distort structural
+        dimensions.
+
+        For many biological datasets, enabling all major aberration refinement
+        terms provides the best starting point. However, very noisy datasets,
+        low-resolution reconstructions, or small particle populations may not
+        support reliable estimation of every parameter. In such cases, more
+        conservative refinement strategies are often preferable.
+
+        Iterative Refinement Strategy
+
+        The protocol allows multiple refinement iterations. Iterative
+        refinement can be biologically useful because improvements in one
+        optical parameter may reveal or stabilize corrections in others. For
+        example, correcting anisotropic magnification can improve the accuracy
+        of subsequent trefoil or beam tilt estimation.
+
+        In many routine datasets, a single iteration is sufficient to obtain
+        measurable improvements. For demanding near-atomic-resolution studies,
+        multiple iterations may provide additional gains, especially when
+        combined with later rounds of particle polishing or high-resolution
+        refinement.
+
+        Ewald Sphere Correction
+
+        Advanced workflows may optionally account for Ewald Sphere curvature.
+        This correction becomes increasingly relevant for large particles,
+        thick specimens, or very high-resolution reconstructions where the
+        flat projection approximation begins to break down.
+
+        From a biological interpretation standpoint, Ewald Sphere correction
+        may improve the consistency of fine structural features and enhance map
+        interpretability in challenging datasets. However, it is computationally
+        more demanding and is usually most beneficial only when the underlying
+        data quality already supports near-atomic detail.
+
+        Resetting Previous Aberration Estimates
+
+        The protocol provides options to reset previously estimated aberration
+        terms before refinement. This functionality is useful when earlier
+        processing stages introduced unstable or biologically implausible
+        optical corrections. Resetting allows the refinement to begin again
+        from neutral optical conditions.
+
+        In practice, resetting parameters may help when combining datasets from
+        different acquisition sessions, changing processing strategies, or
+        troubleshooting refinement instability. However, unnecessary resets may
+        discard valid corrections that were already improving the data quality.
+
+        Outputs and Their Interpretation
+
+        The main output of the protocol is a refined particle set containing
+        updated optical and alignment-related metadata. These corrected
+        particles are intended for subsequent refinement stages, where the
+        benefits of improved aberration estimation become visible in the final
+        map quality.
+
+        Biologically, successful refinement often manifests as clearer
+        secondary structure boundaries, improved side-chain density, sharper
+        ligand features, and more stable local resolution estimates. The impact
+        may appear subtle in intermediate maps but can become highly important
+        during atomic model building and validation.
+
+        Practical Recommendations
+
+        In most biological workflows, it is advisable to perform global CTF
+        refinement only after obtaining a reliable consensus reconstruction.
+        Attempting aberration refinement too early may lead to unstable
+        estimates because the structural reference does not yet contain enough
+        high-resolution information.
+
+        A good practical strategy is to begin with beam tilt and spherical
+        aberration refinement enabled, then evaluate whether additional terms
+        such as trefoil, tetrafoil, or anisotropic magnification provide
+        measurable improvements. Careful inspection of FSC behavior and map
+        interpretability remains essential.
+
+        Datasets collected on well-aligned microscopes may show only modest
+        gains, whereas older datasets or difficult acquisition conditions may
+        benefit substantially from these corrections. Users pursuing
+        publication-level reconstructions should generally consider at least
+        one round of global CTF refinement as part of a modern high-resolution
+        cryo-EM workflow.
+
+        Final Perspective
+
+        Global optical refinement is a critical component of modern cryo-EM
+        image processing because it addresses subtle microscope imperfections
+        that directly affect structural accuracy. Although these corrections
+        may seem highly technical, they ultimately improve the biological
+        interpretability of reconstructed maps. Careful selection of the
+        reference volume, proper masking, and realistic refinement settings are
+        essential for obtaining reliable and meaningful improvements in final
+        reconstruction quality.
     """
     _label = 'global ctf refinement'
     _className = "ctf_refine_global"

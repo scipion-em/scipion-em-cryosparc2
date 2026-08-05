@@ -44,10 +44,182 @@ from ..constants import *
 
 
 class ProtCryo2D(ProtCryosparcBase, pwprot.ProtClassify2D):
-    """ Wrapper to CryoSparc 2D clustering program.
-        Classify particles into multiple 2D classes to facilitate stack cleaning
-        and removal of junk particles. Also useful as a sanity check to
-        investigate particle quality.
+    """
+    Wrapper to CryoSparc 2D clustering program.
+    Classify particles into multiple 2D classes to facilitate stack cleaning
+    and removal of junk particles. Also useful as a sanity check to
+    investigate particle quality.
+
+    AI Generated:
+
+    CryoSPARC 2D Classification (ProtCryo2D) — User Manual
+        Overview
+
+        The CryoSPARC 2D Classification protocol organizes particle images into
+        groups of structurally similar 2D projections. The main biological goal
+        of this procedure is to separate meaningful particle views from noise,
+        contaminants, damaged particles, aggregation artifacts, or incorrectly
+        picked regions. In most cryo-EM workflows, 2D classification is one of
+        the earliest and most important quality-control stages because it allows
+        the user to evaluate whether the dataset contains interpretable signal
+        before proceeding toward three-dimensional reconstruction.
+
+        For biological users, this protocol is especially valuable for assessing
+        sample quality, particle integrity, preferred orientation problems, and
+        biochemical heterogeneity. Well-defined class averages usually indicate
+        that the sample contains reproducible structural information, while poor
+        or noisy classes often reveal ice contamination, broken particles, or
+        inaccurate particle picking.
+
+        Inputs and General Workflow
+
+        The protocol requires a set of aligned or unaligned particle images as
+        input. These particles are iteratively grouped according to similarity
+        in appearance, generating representative class averages that summarize
+        common structural views present in the dataset. During the process,
+        particles are aligned in-plane and compared against evolving references
+        until stable classes emerge.
+
+        In routine cryo-EM processing, users commonly perform several rounds of
+        2D classification. Early rounds are often permissive and intended to
+        remove obvious junk particles, while later rounds may focus on refining
+        the quality of the remaining dataset. Repeating classification with
+        different numbers of classes can help reveal rare orientations or small
+        structural populations that might otherwise remain hidden.
+
+        Number of Classes and Biological Interpretation
+
+        The number of requested classes strongly influences the outcome and
+        interpretation of the analysis. Using relatively few classes tends to
+        produce broad averages that capture dominant structural features but may
+        merge distinct conformations or orientations together. Increasing the
+        number of classes provides finer separation and can reveal structural
+        variability, rare views, or minor populations.
+
+        From a biological perspective, there is no universally optimal number
+        of classes. Small and homogeneous datasets may require only a modest
+        number of classes, whereas large or structurally heterogeneous datasets
+        often benefit from many more. Excessively large numbers of classes,
+        however, may fragment the signal and produce unstable or noisy averages.
+
+        Resolution and Computational Considerations
+
+        The protocol allows users to define the effective resolution range used
+        during classification. Lower-resolution settings generally increase
+        robustness and speed, making them suitable for noisy datasets or early
+        exploratory processing. Higher-resolution settings can reveal finer
+        structural details but require greater computational resources and may
+        become unstable when particle quality is limited.
+
+        In biological practice, starting with moderate resolution settings is
+        usually recommended. Once clear particle populations have been isolated,
+        more demanding classifications can be performed if additional structural
+        detail is needed.
+
+        Circular Masking and Particle Centering
+
+        Circular masking is an important feature because it restricts the region
+        of the image contributing to classification. In most datasets, applying
+        a circular mask improves robustness by suppressing noisy image corners
+        and solvent background. The mask diameter should approximately match the
+        particle size while avoiding unnecessary surrounding noise.
+
+        For elongated or filamentous assemblies, careful adjustment of masking
+        becomes especially important. Overly restrictive masks may remove real
+        structural information, whereas masks that are too large can allow noise
+        to dominate classification.
+
+        Re-centering options help maintain particles and class averages aligned
+        around the image center. This is biologically important because drifting
+        class averages can produce blurred reconstructions or distorted views.
+        Proper centering is particularly beneficial for asymmetric complexes,
+        flexible assemblies, and datasets with broad orientation variability.
+
+        Classification Uncertainty and Structural Diversity
+
+        The protocol includes parameters controlling the degree of uncertainty
+        maintained during early classification iterations. Biologically, this
+        affects how aggressively particles are separated into classes.
+
+        Lower uncertainty tends to produce rapid convergence and can strongly
+        isolate junk particles, but may reduce structural diversity by forcing
+        particles prematurely into specific classes. Higher uncertainty allows
+        the algorithm to remain more flexible for longer periods, which can help
+        preserve subtle conformational differences or weak particle populations.
+
+        For heterogeneous biological systems such as multi-domain proteins,
+        flexible complexes, or membrane assemblies, maintaining moderate initial
+        uncertainty often improves the recovery of meaningful structural states.
+
+        Filament and Helical Data
+
+        The protocol includes support for filamentous and helical specimens.
+        These datasets present unique challenges because particles frequently
+        appear in continuous orientations and may exhibit directional ambiguity.
+        Vertical alignment of filament classes helps standardize the appearance
+        of class averages and facilitates interpretation of repeating helical
+        features.
+
+        Biological users working with cytoskeletal assemblies, amyloid fibrils,
+        or filament-forming proteins may benefit substantially from enabling
+        filament-oriented alignment options during classification.
+
+        Noise Modeling and Regularization
+
+        Noise handling and regularization are central to obtaining reliable 2D
+        class averages. The protocol incorporates statistical regularization
+        methods intended to reduce overfitting and improve stability during
+        iterative refinement. These approaches help ensure that class averages
+        represent reproducible structural signal rather than amplification of
+        random noise.
+
+        In practical biological applications, the default regularization
+        settings are often sufficient. More advanced users may adjust noise
+        behavior when working with unusually small particles, very low signal-
+        to-noise datasets, or highly heterogeneous samples.
+
+        Outputs and Their Interpretation
+
+        The protocol produces a set of 2D class averages together with particle
+        assignments for each class. These outputs allow users to visually assess
+        dataset quality and decide which particles should be retained for
+        downstream refinement.
+
+        Good classes typically display recognizable structural features, clear
+        secondary structure patterns at high quality, and reproducible particle
+        orientations. Poor classes often contain diffuse density, inconsistent
+        shapes, contamination, ice artifacts, or overlapping particles.
+
+        Biologically, the retained particles define the quality ceiling of the
+        remainder of the cryo-EM workflow. Careful inspection and selection of
+        classes at this stage significantly influence the success of later 3D
+        reconstruction and refinement.
+
+        Practical Recommendations
+
+        In most biological workflows, it is advisable to begin with a moderate
+        number of classes and default alignment settings. After inspecting the
+        resulting averages, users can iteratively refine the dataset by removing
+        poor classes and rerunning classification on the cleaned particles.
+
+        Datasets with severe heterogeneity or contamination often benefit from
+        multiple sequential rounds of classification. Conversely, very clean and
+        homogeneous samples may require only minimal cleaning before proceeding
+        to ab initio reconstruction or high-resolution refinement.
+
+        When class averages appear unstable or poorly centered, adjusting mask
+        sizes, enabling re-centering, or increasing the number of iterations can
+        substantially improve interpretability.
+
+        Final Perspective
+
+        For most cryo-EM practitioners, 2D classification is far more than a
+        computational sorting procedure. It is a biologically meaningful quality
+        assessment stage that determines whether the dataset contains coherent
+        structural information suitable for downstream analysis. Careful tuning
+        of class diversity, masking strategy, and alignment behavior allows the
+        protocol to adapt to a wide range of biological specimens, from rigid
+        globular proteins to highly flexible or filamentous assemblies.
     """
     _label = '2D classification'
     IS_2D = True
