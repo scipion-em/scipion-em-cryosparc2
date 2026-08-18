@@ -38,6 +38,15 @@ You will need to use `3.0.0 <https://scipion-em.github.io/docs/release-3.0.0/doc
 **Latest plugin version**
 ==========================
 
+
+**v5.0.1**
+-----------
+
+* **updated**    Improve cryoSPARC v5 connection checks for multi-user installations
+* **updated**    Add support for custom cryosparcm commands through CRYOSPARCM_CMD
+* **fixed**      Fix import of CryoSPARC v5 particle .cs files when particle stacks are stored as .mrc files
+
+
 **v5.0.0**
 -----------
 

@@ -1,13 +1,14 @@
 import os
 import logging
-import time
 
 import emtable
+import pyworkflow.utils as pwutils
 
 from cryosparc2 import RELIONCOLUMNS
 from cryosparc2.convert import (convertCs2Star, readSetOfParticles,
                                 cryosparcToLocation)
 from pwem import ALIGN_PROJ
+from pwem.constants import NO_INDEX
 from pwem.objects import Coordinate, SetOfCoordinates
 
 logger = logging.getLogger(__name__)
@@ -15,9 +16,11 @@ logger = logging.getLogger(__name__)
 class cryoSPARCImport:
     """ Class used to import particles from cryoSPARC projects into Scipion.
     """
+
     def __init__(self, protocol, csFile):
         self.protocol = protocol
         self._csFile = csFile
+        self._mrcsLinks = {}
         self._createFilenameTemplates()
 
     def _createFilenameTemplates(self):
@@ -118,8 +121,32 @@ class cryoSPARCImport:
     def _updateItem(self, item, row):
         index, file = item.getLocation()
         binaryPath = self.findImagesFrom(self._csFile, file)
+        binaryPath = self._getMrcsStackPath(index, binaryPath, file)
         item.setLocation(index, binaryPath)
         item.setSamplingRate(self._pixelSize)
+
+    def _getMrcsStackPath(self, index, binaryPath, searchFile):
+        if index == NO_INDEX:
+            return binaryPath
+
+        if binaryPath.lower().endswith('.mrcs'):
+            return binaryPath
+
+        if not binaryPath.lower().endswith('.mrc'):
+            return binaryPath
+
+        if binaryPath in self._mrcsLinks:
+            return self._mrcsLinks[binaryPath]
+
+        stackName = searchFile.replace('/', '_').replace('\\', '_')
+        stackName = pwutils.replaceBaseExt(stackName, 'mrcs')
+        stackPath = self.protocol._getExtraPath(stackName)
+
+        if not os.path.exists(stackPath):
+            pwutils.createAbsLink(os.path.abspath(binaryPath), stackPath)
+
+        self._mrcsLinks[binaryPath] = stackPath
+        return stackPath
 
     def _validateConvert(self):
         self._validateMetadata("rlnImageName", warnings=True)

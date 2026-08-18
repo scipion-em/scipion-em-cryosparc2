@@ -81,8 +81,14 @@ def _getCryosparcVersionForRouting():
     try:
         return _normalizeCryosparcVersion(_getCryosparcVersionFromFile())
     except Exception:
-        if _csVersion is not None:
-            return _normalizeCryosparcVersion(_csVersion)
+        pass
+
+    if _csVersion is not None:
+        return _normalizeCryosparcVersion(_csVersion)
+
+    try:
+        return _normalizeCryosparcVersion(_runCliValue("api.config.get_version()", printCmd=False))
+    except Exception:
         return _normalizeCryosparcVersion(V_UNKNOWN)
 
 
@@ -268,10 +274,18 @@ def getCryosparcDir(*paths):
 
 def getCryosparcProgram(mode="cli"):
     """
-    Get the cryosparc program to launch any command.
+    Get the cryosparc command to launch any cryoSPARC operation.
     mode="cli" returns ".../cryosparcm cli"
     mode="" returns ".../cryosparcm"
+
+    CRYOSPARCM_CMD can be used to override the detected cryosparcm command.
+    This is useful for multi-user installations where cryoSPARC must be
+    executed through a wrapper or as the linux user that owns the installation.
     """
+    cryosparcmCmd = os.environ.get(CRYOSPARCM_CMD)
+    if cryosparcmCmd:
+        return "%s %s" % (cryosparcmCmd, mode) if mode else cryosparcmCmd
+
     csDir = getCryosparcDir()
 
     if csDir is not None:
@@ -287,34 +301,53 @@ def getCryosparcProgram(mode="cli"):
 
 def cryosparcExists():
     """
-    Determine if scipion can find cryosparc
-    :returns True if found, False otherwise
+    Determine if Scipion can find a cryoSPARC command.
     """
+    cryosparcmCmd = os.environ.get(CRYOSPARCM_CMD)
+    if cryosparcmCmd:
+        return True
+
     csDir = getCryosparcDir()
     return csDir is not None and os.path.exists(csDir)
 
 
 def isCryosparcRunning():
     """
-    Determine if cryosparc services are running
-    :returns True if running, false otherwise
+    Determine if cryoSPARC services are running.
     """
-    if getCryosparcProgram() is None:
+    cryosparcProgram = getCryosparcProgram()
+    if cryosparcProgram is None:
         return False
 
     try:
         if _isCryosparcV5OrNewer():
             status = _runCliValue("api.health()", printCmd=False)
-            return str(status).strip("'\"") == "OK"
+            if str(status).strip("'\"") == "OK":
+                return True
 
-        testConnectionCmd = (
-            getCryosparcProgram() +
-            ' %stest_connection()%s ' % ("'", "'")
-        )
-        exitCode, _ = subprocess.getstatusoutput(testConnectionCmd)
-        return exitCode == 0
-    except Exception:
-        return False
+            logger.warning("cryoSPARC health check returned unexpected value: %s" % status)
+
+        else:
+            testConnectionCmd = getCryosparcProgram() + ' %stest_connection()%s ' % ("'", "'")
+            exitCode, _ = subprocess.getstatusoutput(testConnectionCmd)
+            if exitCode == 0:
+                return True
+
+    except Exception as ex:
+        logger.warning("Could not query cryoSPARC through %s. Error: %s" % (cryosparcProgram, ex))
+
+    try:
+        statusCmd = "%s status" % getCryosparcProgram("")
+        exitCode, statusOutput = subprocess.getstatusoutput(statusCmd)
+        if exitCode == 0:
+            logger.info("cryoSPARC status fallback succeeded.")
+            return True
+
+        logger.warning("cryoSPARC status fallback failed. Output: %s" % statusOutput)
+    except Exception as ex:
+        logger.warning("Could not run cryoSPARC status fallback. Error: %s" % ex)
+
+    return False
 
 
 def cryosparcValidate():
@@ -436,6 +469,25 @@ def _getLicenceFromFile():
                 return variable.split("=")[1].replace("\"", "")
         return None
 
+
+def _getCryosparcConfigValue(variableName):
+    configFile = getCryosparcDir(CRYOSPARC_MASTER, CRYOSPARC_CONFIG_FILE)
+    if not configFile or not os.path.exists(configFile):
+        return None
+
+    with open(configFile, 'r') as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith('#') or '=' not in line:
+                continue
+
+            key, value = line.split('=', 1)
+            key = key.replace('export ', '').strip()
+
+            if key == variableName:
+                return value.strip().strip('"').strip("'")
+
+    return None
 
 def getCryosparcUser(userId=True):
     """
@@ -1552,9 +1604,14 @@ def getSystemInfo():
     """
     if _isCryosparcV5OrNewer():
         expr = (
-            "(lambda s: "
-            "s.model_dump() if hasattr(s, 'model_dump') else "
-            "(s.dict() if hasattr(s, 'dict') else s.__dict__))"
+            "(lambda s: (lambda d: {"
+            "'master_hostname': d.get('master_hostname'), "
+            "'port_webapp': d.get('port_webapp'), "
+            "'port_app': d.get('port_app'), "
+            "'version': d.get('version')"
+            "})(s.model_dump() if hasattr(s, 'model_dump') else "
+            "(s.dict() if hasattr(s, 'dict') else "
+            "(s if isinstance(s, dict) else getattr(s, '__dict__', {})))))"
             "(api.config.get_system_info())"
         )
         data = _runCliValue(expr, printCmd=False)
@@ -1566,6 +1623,68 @@ def getSystemInfo():
     )
     return runCmd(systemInfoCmd, printCmd=False)
 
+
+def getCryosparcJobUrl(projectId, workspaceId=None, jobId=None):
+    """
+    Return the cryoSPARC browser URL for a project/workspace/job.
+    """
+    systemInfo = getSystemInfo()
+    statusErrors = systemInfo[0]
+    if statusErrors:
+        logger.warning("Could not get cryoSPARC system info to build the GUI URL.")
+        return None
+
+    systemInfo = systemInfo[1]
+    for _ in range(3):
+        if isinstance(systemInfo, dict):
+            break
+        if not isinstance(systemInfo, str):
+            systemInfo = {}
+            break
+        try:
+            systemInfo = ast.literal_eval(systemInfo)
+        except Exception:
+            systemInfo = {}
+            break
+
+    if not isinstance(systemInfo, dict):
+        systemInfo = {}
+
+    masterHostname = systemInfo.get('master_hostname')
+    portWebapp = systemInfo.get('port_webapp')
+    portApp = systemInfo.get('port_app')
+    version = systemInfo.get('version') or getCryosparcVersion()
+
+    masterHostname = masterHostname or _getCryosparcConfigValue('CRYOSPARC_MASTER_HOSTNAME') or 'localhost'
+    portWebapp = portWebapp or _getCryosparcConfigValue('CRYOSPARC_BASE_PORT')
+    portApp = portApp or portWebapp
+
+    projectId = str(projectId)
+    workspaceId = str(workspaceId) if workspaceId not in [None, '', 'None'] else None
+    jobId = str(jobId) if jobId not in [None, '', 'None'] else None
+
+    if parse_version(version) >= parse_version(V4_1_0):
+        port = portApp or portWebapp
+        if not port:
+            logger.warning("Could not build cryoSPARC GUI URL. Missing web/app port.")
+            return None
+
+        browseTarget = "%s-%s-J*" % (projectId, workspaceId) if workspaceId else "%s-J*" % projectId
+        url = "http://%s:%s/browse/%s" % (masterHostname, port, browseTarget)
+
+        if jobId:
+            url += "#job(%s-%s)" % (projectId, jobId)
+
+        logger.info("Opening cryoSPARC GUI URL: %s" % url)
+        return url
+
+    if not portWebapp:
+        logger.warning("Could not build cryoSPARC GUI URL. Missing webapp port.")
+        return None
+
+    url = "http://%s:%s/projects/%s/%s/%s" % (masterHostname, portWebapp, projectId, workspaceId, jobId)
+    logger.info("Opening cryoSPARC GUI URL: %s" % url)
+    return url
 
 def userExist(user):
     """

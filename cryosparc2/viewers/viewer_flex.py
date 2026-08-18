@@ -63,13 +63,20 @@ class CryosPARCViewerShowMesh(EmProtocolViewer):
                         help='Show the tetrahedral mesh used for 3DFlex')
 
     def _getVisualizeDict(self):
-        return {'showMesh': self._showVolumesChimera,
-                }
+        return {'displayCS': self._showCryoSPARC,
+                'showMesh': self._showVolumesChimera}
 
     # =========================================================================
     # showImagesAngularAssignment
     # =========================================================================
 
+    def _showCryoSPARC(self, paramName=None):
+        views = []
+        url = getCryosparcJobUrl(self.protocol.projectName.get(), self.protocol.workSpaceName.get(),
+                                 self.protocol.currenJob.get())
+        if url:
+            webbrowser.open_new_tab(url)
+        return views
 
     def _showVolumesChimera(self, paramName=None):
         """ Create a chimera script to visualize the mesh """

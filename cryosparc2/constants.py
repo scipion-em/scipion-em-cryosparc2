@@ -33,6 +33,7 @@ from pwem.constants import SYM_DIHEDRAL_Y
 
 # Root folder where cryosparc is installed, we will look here for the client
 CRYOSPARC_HOME = 'CRYOSPARC_HOME'
+CRYOSPARCM_CMD = 'CRYOSPARCM_CMD'
 CRYOSPARC_DIR = 'CRYOSPARC_DIR'  # Legacy, replaced by CRYOSPARC_HOME
 # Optional: Folder where cryosparc projects will be created
 CRYO_PROJECTS_DIR = 'CRYO_PROJECTS_DIR'
