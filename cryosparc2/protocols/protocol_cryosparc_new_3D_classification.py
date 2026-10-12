@@ -551,8 +551,10 @@ class ProtCryoSparcNew3DClassification(ProtCryosparcBase):
         if self.hasAttribute('refVolumes') and self.refVolumes is not None:
             self.vols = []
             for volume in self.refVolumes:
+                # A pointer to a Set item resolves to the Set's reused
+                # object; keep a copy so each reference stays distinct.
                 vol = volume.get()
-                self.vols.append(vol)
+                self.vols.append(vol.clone() if vol is not None else vol)
             return self.vols
         return None
 
