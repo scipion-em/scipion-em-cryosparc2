@@ -284,7 +284,7 @@ class ProtCryoSparc3DFlexTraining(ProtCryosparcBase, ProtFlexBase):
             if self.getAttributeValue(paramName) is not None:
                 params[str(paramName)] = str(self.getAttributeValue(paramName))
 
-        run3DTrainJob = enqueueJob(self._className,
+        run3DTrainJob = self._enqueueOrResumeJob('run3DFlexTrainJob', self._className,
                                    self.projectName.get(),
                                    self.workSpaceName.get(),
                                    str(params).replace('\'', '"'),

@@ -740,7 +740,7 @@ class ProtCryoSparc3DHomogeneousRefine(ProtCryosparcBase):
         except Exception:
             gpusToUse = False
 
-        runRefineJob = enqueueJob(self._className, self.projectName.get(),
+        runRefineJob = self._enqueueOrResumeJob('runRefine', self._className, self.projectName.get(),
                                   self.workSpaceName.get(),
                                   str(params).replace('\'', '"'),
                                   str(input_group_connect).replace('\'', '"'),

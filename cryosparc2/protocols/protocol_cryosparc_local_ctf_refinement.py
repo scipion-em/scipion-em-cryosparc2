@@ -244,11 +244,9 @@ class ProtCryoSparcLocalCtfRefinement(ProtCryosparcBase, ProtParticles):
         params = {}
 
         for paramName in self._paramsName:
-            if (paramName != 'crl_max_res_A' and paramName != 'crl_N'):
-                params[str(paramName)] = str(self.getAttributeValue(paramName))
-            elif self.crl_max_res_A.get() is not None:
-                params[str(paramName)] = str(self.getAttributeValue(paramName))
-            elif self.crl_N.get() is not None:
+            # The optional ones only when they have a value: otherwise cryoSPARC would get the text None
+            if (paramName != 'crl_max_res_A' and paramName != 'crl_N') or \
+                    self.getAttributeValue(paramName) is not None:
                 params[str(paramName)] = str(self.getAttributeValue(paramName))
 
         # Determinate the GPUs to use (in dependence of
@@ -261,7 +259,7 @@ class ProtCryoSparcLocalCtfRefinement(ProtCryosparcBase, ProtParticles):
         except Exception:
             gpusToUse = False
 
-        runLocalCtfRefinementJob = enqueueJob(self._className, self.projectName.get(),
+        runLocalCtfRefinementJob = self._enqueueOrResumeJob('runLocalCtfRefinement', self._className, self.projectName.get(),
                                                 self.workSpaceName.get(),
                                                 str(params).replace('\'', '"'),
                                                 str(input_group_connect).replace('\'', '"'),

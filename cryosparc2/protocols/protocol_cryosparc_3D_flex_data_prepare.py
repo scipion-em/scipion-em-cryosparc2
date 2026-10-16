@@ -149,7 +149,7 @@ class ProtCryoSparc3DFlexDataPrepare(ProtCryosparcBase):
         outImgSet.setSamplingRate(imgSet.getSamplingRate())
         imgSetDict = {}
         for img in imgSet.iterItems():
-            imgSetDict[str(img.getIndex()) + '@' + os.path.basename(img.getFileName())] = img.clone()
+            imgSetDict[particleKey(img)] = img.clone()
         self._fillDataFromIter(outImgSet, imgSetDict)
         self.info("Creating the consensus volume  output")
 
@@ -171,9 +171,7 @@ class ProtCryoSparc3DFlexDataPrepare(ProtCryosparcBase):
     def _fillDataFromIter(self, outImgSet, imgSetDict):
         filename = 'particles@' + self._getFileName('out_particles')
         for imgRow in emtable.Table.iterRows(filename):
-            fileName = imgRow.get(RELIONCOLUMNS.rlnImageName.value)
-            splitFileName = fileName.split('@')
-            key = str(int(splitFileName[0])) + '@' + '_'.join(splitFileName[1].split('_')[1:])
+            key = csParticleKey(imgRow.get(RELIONCOLUMNS.rlnImageName.value))
             if key in imgSetDict:
                 img = imgSetDict[key]
                 outImgSet.append(img)
@@ -189,12 +187,13 @@ class ProtCryoSparc3DFlexDataPrepare(ProtCryosparcBase):
             if not particles.hasCTF():
                 validateMsgs.append(
                     "The Particles has not associated a CTF model")
-                if not particles.hasAlignment3D():
-                    validateMsgs.append("The Particles has not aligned")
-                    if self.keep_num_particles.get() % 1000 != 0:
-                        validateMsgs.append("The final number of particles "
-                                            "used during 3D Flex training and "
-                                            "reconstruction must be divisible by 1000")
+            if not particles.hasAlignmentProj():
+                validateMsgs.append("The Particles have no projection alignment")
+            keepNumParticles = self.keep_num_particles.get()
+            if keepNumParticles is not None and keepNumParticles % 1000 != 0:
+                validateMsgs.append("The final number of particles "
+                                    "used during 3D Flex training and "
+                                    "reconstruction must be divisible by 1000")
 
         return validateMsgs
 
@@ -214,7 +213,7 @@ class ProtCryoSparc3DFlexDataPrepare(ProtCryosparcBase):
             if self.getAttributeValue(paramName) is not None:
                 params[str(paramName)] = str(self.getAttributeValue(paramName))
 
-        run3DFlexDataPrepJob = enqueueJob(self._className, self.projectName.get(),
+        run3DFlexDataPrepJob = self._enqueueOrResumeJob('run3DFlexDataPrepJob', self._className, self.projectName.get(),
                                   self.workSpaceName.get(),
                                   str(params).replace('\'', '"'),
                                   str(input_group_connect).replace('\'', '"'),

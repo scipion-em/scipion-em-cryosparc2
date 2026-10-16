@@ -24,8 +24,10 @@
 # *  e-mail address 'scipion@cnb.csic.es'
 # *
 # **************************************************************************
+import fcntl
 import json
 import os
+from contextlib import contextmanager
 import ast
 import subprocess
 
@@ -50,7 +52,9 @@ from ..utils import (getProjectPath, createEmptyProject,
                      get_job_streamlog, getSystemInfo, getJobStatus,
                      STOP_STATUSES, getCryosparcVersion, getProjectInformation,
                      getCryosparcProjectId, _getLicenceFromFile, doImportMicrographs, getCryosparcProjectsList,
-                     getCryosparcWorkSpaces, parse_version)
+                     getCryosparcWorkSpaces, parse_version, enqueueJob, ACTIVE_STATUSES,
+                     STATUS_COMPLETED)
+from pyworkflow.protocol.constants import MODE_RESTART
 
 
 class ProtCryosparcBase(pw.EMProtocol):
@@ -67,6 +71,38 @@ class ProtCryosparcBase(pw.EMProtocol):
         Initialize the cryoSPARC project and workspace
         """
         self._initializeUtilsVariables()
+        if self._hasCryosparcProject():
+            # A previous execution (Continue) already chose them: its stored jobs belong to them
+            pass
+        else:
+            # Runs launched at the same time must not create one cryoSPARC project each
+            with self._cryosparcProjectLock():
+                self._findOrCreateCryosparcProject()
+        self._store(self)
+        # Kept on Continue: it is the job Abort has to kill
+        if getattr(self, 'currenJob', None) is None:
+            self.currenJob = pwobj.String()
+        if getattr(self, 'cryosparcJobAttrs', None) is None:
+            self.cryosparcJobAttrs = pwobj.CsvList()  # Attributes holding the job of each step
+        if self.runMode.get() == MODE_RESTART:
+            self._forgetCryosparcJobs()
+        self._store(self)
+
+    def _hasCryosparcProject(self):
+        return all(getattr(self, attr, None) is not None and getattr(self, attr).get()
+                   for attr in ('projectName', 'workSpaceName', 'projectDir'))
+
+    @contextmanager
+    def _cryosparcProjectLock(self):
+        lockFile = os.path.join(self.projectContainerDir, '.scipion_cryosparc_project.lock')
+        with open(lockFile, 'a') as f:
+            fcntl.flock(f, fcntl.LOCK_EX)
+            try:
+                yield
+            finally:
+                fcntl.flock(f, fcntl.LOCK_UN)
+
+    def _findOrCreateCryosparcProject(self):
         projectsList = getCryosparcProjectsList()
         matchProjects = [project for project in projectsList if project.get('title') == self.projectDirName]
         folderPaths = getProjectPath(self.projectContainerDir)
@@ -93,10 +129,50 @@ class ProtCryosparcBase(pw.EMProtocol):
             workspacesList = getCryosparcWorkSpaces(str(self.projectName))
             self.workSpaceName = pwobj.String(workspacesList[-1]['uid'])
 
+    def _forgetCryosparcJobs(self):
+        """ On Restart, nothing of a previous execution is taken back: its jobs still running are killed. """
+        for attrName in self.cryosparcJobAttrs:
+            job = getattr(self, attrName, None)
+            jobUid = job.get() if job is not None else None
+            if jobUid:
+                try:
+                    if getJobStatus(self.projectName.get(), jobUid) in ACTIVE_STATUSES:
+                        killJob(self.projectName.get(), jobUid)
+                        clearJob(self.projectName.get(), jobUid)
+                except Exception as e:
+                    logger.error("Can't kill the job %s of a previous execution" % jobUid, exc_info=e)
+                job.set(None)
+        self.currenJob.set(None)
+
+    def _enqueueOrResumeJob(self, attrName, *enqueueArgs, **enqueueKwargs):
+        """ The cryoSPARC job of a step, stored in attrName (and as the job Abort kills) as soon as it exists.
+
+        A step run again (e.g. on Continue after a crash while it waited) takes back the job of its previous
+        execution while that job runs or once it completed: enqueuing another one would run it twice. A job that
+        failed or was killed is replaced. Arguments are those of utils.enqueueJob.
+        """
+        previous = getattr(self, attrName, None)
+        previousUid = previous.get() if isinstance(previous, pwobj.String) else None
+        if previousUid:
+            try:
+                status = getJobStatus(self.projectName.get(), previousUid)
+            except Exception as e:
+                logger.error("Can't get the status of the job %s" % previousUid, exc_info=e)
+                status = None
+            if status in ACTIVE_STATUSES or status == STATUS_COMPLETED:
+                logger.info(pwutils.yellowStr("Taking back the cryoSPARC job %s of a previous execution (%s)"
+                                              % (previousUid, status)))
+                self.currenJob.set(previousUid)
+                self._store(self)
+                return pwobj.String(previousUid)
+
+        job = enqueueJob(*enqueueArgs, **enqueueKwargs)
+        setattr(self, attrName, pwobj.String(job.get()))
+        if attrName not in self.cryosparcJobAttrs:
+            self.cryosparcJobAttrs.append(attrName)
+        self.currenJob.set(job.get())
         self._store(self)
-        if not hasattr(self, 'currenJob') or self.currenJob is not None:
-            self.currenJob = pwobj.String()
-        self._store(self)
+        return job
 
     def _initializeUtilsVariables(self):
         """
@@ -251,19 +327,22 @@ class ProtCryosparcBase(pw.EMProtocol):
         vol = self._getInputVolume()
         self._initializeVolumeSuffix()
         vol_fn = os.path.join(os.getcwd(), convertBinaryVol(vol, self._getTmpPath()))
-        importVolumeJob = doImportVolumes(self, vol_fn, vol, 'map', 'Importing volume...')
+        importVolumeJob = doImportVolumes(self, vol_fn, vol, 'map', 'Importing volume...',
+                                          jobAttr='importVolumeJob')
         self.volume = pwobj.String(str(importVolumeJob.get()) + self.outputVolumeSuffix)
 
         if vol.hasHalfMaps():
             halfMaps = vol.getHalfMaps().split(",")
             map_half_A_fn = os.path.abspath(halfMaps[0].split(':mrc')[0])
             importVolumeHalfAJob = doImportVolumes(self, map_half_A_fn, vol,
-                                                   'map_half_A', 'Importing half volume A...')
+                                                   'map_half_A', 'Importing half volume A...',
+                                                   jobAttr='importVolumeHalfAJob')
             self.importVolumeHalfA = pwobj.String(str(importVolumeHalfAJob.get()) + self.outputVolumeHalf_A)
 
             map_half_B_fn = os.path.abspath(halfMaps[1].split(':mrc')[0])
             importVolumeHalfBJob = doImportVolumes(self, map_half_B_fn, vol,
-                                                   'map_half_B', 'Importing half volume B...')
+                                                   'map_half_B', 'Importing half volume B...',
+                                                   jobAttr='importVolumeHalfBJob')
             self.importVolumeHalfB = pwobj.String(str(importVolumeHalfBJob.get()) + self.outputVolumeHalf_B)
 
         self.currenJob.set(importVolumeJob.get())
@@ -274,7 +353,7 @@ class ProtCryosparcBase(pw.EMProtocol):
                                                             self._getTmpPath()))
 
         importMaskJob = doImportVolumes(self, maskFn, self._getInputMask(),
-                                        'mask', 'Importing mask... ')
+                                        'mask', 'Importing mask... ', jobAttr='importMaskJob')
         self.currenJob.set(importMaskJob.get())
         self.mask = pwobj.String(str(importMaskJob.get()) + self.outputMaskSuffix)
 
@@ -284,7 +363,8 @@ class ProtCryosparcBase(pw.EMProtocol):
                                                             self._getTmpPath()))
 
         importFocusMaskJob = doImportVolumes(self, maskFn, self._getInputFocusMask(),
-                                             'mask', 'Importing focus mask... ')
+                                             'mask', 'Importing focus mask... ',
+                                             jobAttr='importFocusMaskJob')
         self.currenJob.set(importFocusMaskJob.get())
         self.focusMask = pwobj.String(str(importFocusMaskJob.get()) + self.outputMaskSuffix)
 
@@ -307,13 +387,14 @@ class ProtCryosparcBase(pw.EMProtocol):
         if hasattr(self, 'projectName') and hasattr(self, 'currenJob') and self.currenJob.get() is not None:
             job = str(self.currenJob.get())
             project = str(self.projectName.get())
-            status = getJobStatus(project, job)
-            if status not in STOP_STATUSES:
-                try:
+            try:
+                # cryoSPARC may be down: the run is aborted anyway
+                status = getJobStatus(project, job)
+                if status not in STOP_STATUSES:
                     killJob(project, job)
                     clearJob(project, job)
-                except Exception as e:
-                    logger.error("Can't kill job %s from project %s" % (job, project), exc_info=e)
+            except Exception as e:
+                logger.error("Can't kill job %s from project %s" % (job, project), exc_info=e)
 
     def _getJobDirectory(self, jobUid=None):
         """
@@ -423,7 +504,7 @@ class ProtCryosparcBase(pw.EMProtocol):
         if status_errors:
             return None
 
-        system_info = eval(system_info[1])
+        system_info = ast.literal_eval(system_info[1])
         if isinstance(system_info, str):
             system_info = json.loads(system_info)
 
@@ -455,7 +536,8 @@ class ProtCryosparcBase(pw.EMProtocol):
             if not content:
                 return None
 
-            tmpDir = tempfile.mkdtemp(prefix="scipion_fsc_")
+            # In the run folder: it is cleaned with the run, unlike /tmp
+            tmpDir = tempfile.mkdtemp(prefix="scipion_fsc_", dir=self._getTmpPath())
             fscFilePath = os.path.join(tmpDir, "fsc.txt")
 
             with open(fscFilePath, "wb") as fh:

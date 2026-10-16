@@ -206,7 +206,7 @@ class ProtCryoSparcPatchCTFEstimate(ProtCryosparcBase):
         for paramName in self._paramsName:
             params[str(paramName)] = str(self.getAttributeValue(paramName))
 
-        runPatchCTFJob = enqueueJob(self._className,
+        runPatchCTFJob = self._enqueueOrResumeJob('runPatchCTF', self._className,
                                       self.projectName.get(),
                                       self.workSpaceName.get(),
                                       str(params).replace('\'', '"'),

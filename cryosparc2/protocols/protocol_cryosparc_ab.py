@@ -507,7 +507,7 @@ class ProtCryoSparcInitialModel(ProtCryosparcBase, ProtInitialVolume,
         except Exception:
             gpusToUse = False
 
-        runAbinitJob = enqueueJob(self._className, self.projectName.get(),
+        runAbinitJob = self._enqueueOrResumeJob('runAbinit', self._className, self.projectName.get(),
                                     self.workSpaceName.get(),
                                     str(params).replace('\'', '"'),
                                     str(input_group_connect).replace('\'', '"'),

@@ -394,14 +394,10 @@ class ProtCryo2D(ProtCryosparcBase, pwprot.ProtClassify2D):
                     output_file.write(line)
 
     def _getNumberOfIterSuffix(self):
+        # The last iteration, as cryoSPARC numbers its files: _007, _021, _109...
         _numberOfIter = (self.numberOnlineEMIterator.get() +
                          self.numberFinalIterator.get() - 1)
-        _numberOfIterSuffix = "_00%s" % str(self.numberOnlineEMIterator.get())
-        if _numberOfIter > 9:
-            _numberOfIterSuffix = "_0%s" % str(_numberOfIter)
-        if _numberOfIter > 99:
-            _numberOfIterSuffix = "_%s" % str(_numberOfIter)
-        return _numberOfIterSuffix
+        return "_%s" % str(_numberOfIter).zfill(3)
 
     def _defineParamsName(self):
         """ Define a list with all protocol parameters names"""
@@ -471,7 +467,7 @@ class ProtCryo2D(ProtCryosparcBase, pwprot.ProtClassify2D):
             numberGPU = self.compute_num_gpus.get()
 
         params["compute_num_gpus"] = str(numberGPU)
-        runClass2DJob = enqueueJob(self._className, self.projectName.get(),
+        runClass2DJob = self._enqueueOrResumeJob('runClass2D', self._className, self.projectName.get(),
                                    self.workSpaceName.get(),
                                    str(params).replace('\'', '"'),
                                    str(input_group_connect).replace('\'', '"'),

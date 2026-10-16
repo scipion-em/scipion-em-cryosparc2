@@ -130,9 +130,10 @@ class ProtCryoSparc3DFlexReconstruction(ProtCryosparcBase):
         flexNoHalf1Name = csOutputPattern + "_noflex_map_half_A.mrc"
         flexNoHalf2Name = csOutputPattern + "_noflex_map_half_B.mrc"
 
-        # Copy the CS output volume and half to extra folder
-        copyFiles(csOutputFolder, self._getExtraPath(), files=[fnFlexVolName, flexHalf1Name, flexHalf2Name,
-                                                               fnNoFlexVolName, flexNoHalf1Name, flexNoHalf2Name])
+        # Copy the CS output volume and half to extra folder. The rigid reconstruction exists only if requested
+        doNoFlex = self.flex_do_noflex_recon.get()
+        copyFiles(csOutputFolder, self._getExtraPath(), files=[fnFlexVolName, flexHalf1Name, flexHalf2Name] +
+                  ([fnNoFlexVolName, flexNoHalf1Name, flexNoHalf2Name] if doNoFlex else []))
 
         fnVol = os.path.join(self._getExtraPath(), fnFlexVolName)
         half1 = os.path.join(self._getExtraPath(), flexHalf1Name)
@@ -145,19 +146,20 @@ class ProtCryoSparc3DFlexReconstruction(ProtCryosparcBase):
         flexVol.setSamplingRate(ccp4header.getSampling()[0])
         flexVol.setHalfMaps([half1, half2])
 
-        fnVol = os.path.join(self._getExtraPath(), fnNoFlexVolName)
-        half1 = os.path.join(self._getExtraPath(), flexNoHalf1Name)
-        half2 = os.path.join(self._getExtraPath(), flexNoHalf2Name)
-
-        noFlexVol = Volume()
-        fixVolume([fnVol, half1, half2])
-        noFlexVol.setFileName(fnVol)
-        ccp4header = Ccp4Header(fnVol, readHeader=True)
-        noFlexVol.setSamplingRate(ccp4header.getSampling()[0])
-        noFlexVol.setHalfMaps([half1, half2])
-
         self._defineOutputs(flexVolume=flexVol)
-        self._defineOutputs(noFlexVolume=noFlexVol)
+
+        if doNoFlex:
+            fnVol = os.path.join(self._getExtraPath(), fnNoFlexVolName)
+            half1 = os.path.join(self._getExtraPath(), flexNoHalf1Name)
+            half2 = os.path.join(self._getExtraPath(), flexNoHalf2Name)
+
+            noFlexVol = Volume()
+            fixVolume([fnVol, half1, half2])
+            noFlexVol.setFileName(fnVol)
+            ccp4header = Ccp4Header(fnVol, readHeader=True)
+            noFlexVol.setSamplingRate(ccp4header.getSampling()[0])
+            noFlexVol.setHalfMaps([half1, half2])
+            self._defineOutputs(noFlexVolume=noFlexVol)
 
     def _defineParamsName(self):
         """ Define a list with 3D Flex Reconstruction parameters names"""
@@ -184,7 +186,7 @@ class ProtCryoSparc3DFlexReconstruction(ProtCryosparcBase):
             if self.getAttributeValue(paramName) is not None:
                 params[str(paramName)] = str(self.getAttributeValue(paramName))
 
-        run3DReconstructionJob = enqueueJob(self._className,
+        run3DReconstructionJob = self._enqueueOrResumeJob('run3DFlexReconstructionJob', self._className,
                                    self.projectName.get(),
                                    self.workSpaceName.get(),
                                    str(params).replace('\'', '"'),

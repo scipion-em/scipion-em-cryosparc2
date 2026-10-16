@@ -61,6 +61,10 @@ STOP_STATUSES = [STATUS_ABORTED, STATUS_COMPLETED, STATUS_FAILED, STATUS_KILLED]
 ACTIVE_STATUSES = [STATUS_QUEUED, STATUS_RUNNING, STATUS_STARTED,
                    STATUS_LAUNCHED, STATUS_BUILDING, STATUS_WAITING]
 
+# How long a wait tolerates failing queries to cryoSPARC (one every 5 minutes), and statuses it does not know
+MAX_JOB_QUERY_FAILURES = 6
+MAX_UNKNOWN_STATUS_POLLS = 20
+
 # Module variables
 _csVersion = None  # Lazy variable: never use it directly. Use getCryosparcVersion instead
 
@@ -134,7 +138,13 @@ def _runCliValue(expression, printCmd=True):
     try:
         return ast.literal_eval(output)
     except Exception:
-        return output
+        pass
+    # The value is the last line: the ones before may be warnings or banners of the cryoSPARC tools
+    lastLine = output.splitlines()[-1].strip()
+    try:
+        return ast.literal_eval(lastLine)
+    except Exception:
+        return lastLine
 
 
 def _pythonLiteral(value, default=None):
@@ -170,7 +180,9 @@ def _writeTextFile(path, text):
 
 
 def _normalizeJobStatus(status):
-    return str(status or "").strip().strip("'\"").lower()
+    status = str(status or "").strip().strip("'\"").lower()
+    # Enum-like values, e.g. JobStatus.completed
+    return status.rsplit(".", 1)[-1]
 
 
 def _normalizeSourceOutputName(sourceOutputName):
@@ -751,6 +763,14 @@ def _getProtocolPreprocessLane(protocol):
     return None
 
 
+def _enqueueImportJob(protocol, jobAttr, *enqueueArgs):
+    """ Enqueue an import job of protocol, through its resumable helper when it has one: the job is then stored
+    before waiting for it (so Abort can kill it) and taken back by a Continue instead of imported again. """
+    if jobAttr and hasattr(protocol, '_enqueueOrResumeJob'):
+        return protocol._enqueueOrResumeJob(jobAttr, *enqueueArgs)
+    return enqueueJob(*enqueueArgs)
+
+
 def doImportParticlesStar(protocol):
     """
     do_import_particles_star(puid, wuid, uuid, abs_star_path,
@@ -767,8 +787,9 @@ def doImportParticlesStar(protocol):
               }
 
     preprocessLane = _getProtocolPreprocessLane(protocol)
-    import_particles = enqueueJob(className, protocol.projectName, protocol.workSpaceName,
-                                  str(params).replace('\'', '"'), '{}', preprocessLane)
+    import_particles = _enqueueImportJob(protocol, 'importParticlesJob', className, protocol.projectName,
+                                         protocol.workSpaceName, str(params).replace('\'', '"'), '{}',
+                                         preprocessLane)
 
     waitForCryosparc(protocol.projectName.get(), import_particles.get(),
                      "An error occurred importing particles. "
@@ -778,7 +799,7 @@ def doImportParticlesStar(protocol):
     return import_particles
 
 
-def doImportVolumes(protocol, refVolumePath, refVolume, volType, msg):
+def doImportVolumes(protocol, refVolumePath, refVolume, volType, msg, jobAttr=None):
     """
     :return:
     """
@@ -789,10 +810,10 @@ def doImportVolumes(protocol, refVolumePath, refVolume, volType, msg):
               "volume_psize": str(refVolume.getSamplingRate())}
 
     preprocessLane = _getProtocolPreprocessLane(protocol)
-    importedVolume = enqueueJob(className, protocol.projectName,
-                                protocol.workSpaceName,
-                                str(params).replace('\'', '"'), '{}',
-                                preprocessLane)
+    importedVolume = _enqueueImportJob(protocol, jobAttr, className, protocol.projectName,
+                                       protocol.workSpaceName,
+                                       str(params).replace('\'', '"'), '{}',
+                                       preprocessLane)
 
     waitForCryosparc(protocol.projectName.get(), importedVolume.get(),
                      "An error occurred importing the volume. "
@@ -816,7 +837,7 @@ def doImportMicrographs(protocol):
     for micPath in micList:
         micName = os.path.basename(micPath)
         micLink = os.path.join(micFolder, micName)
-        os.symlink(os.path.abspath(micPath), micLink)
+        pwutils.createLink(os.path.abspath(micPath), micLink)  # Also when a previous execution left it
     micExt = '*%s' % os.path.splitext(micList[0])[1]
 
     params = {"blob_paths": str(os.path.join(os.getcwd(), micFolder, micExt)),
@@ -828,11 +849,12 @@ def doImportMicrographs(protocol):
               }
 
     preprocessLane = _getProtocolPreprocessLane(protocol)
-    import_particles = enqueueJob(className, protocol.projectName, protocol.workSpaceName,
-                                  str(params).replace('\'', '"'), '{}', preprocessLane)
+    import_particles = _enqueueImportJob(protocol, 'importMicrographsJob', className, protocol.projectName,
+                                         protocol.workSpaceName, str(params).replace('\'', '"'), '{}',
+                                         preprocessLane)
 
     waitForCryosparc(protocol.projectName.get(), import_particles.get(),
-                     "An error occurred importing particles. "
+                     "An error occurred importing micrographs. "
                      "Please, go to cryoSPARC software for more "
                      "details.")
 
@@ -971,6 +993,9 @@ def enqueueJob(jobType, projectName, workSpaceName, params, input_group_connect,
                         ("'", jobType, projectName, workSpaceName,
                          getCryosparcUser(),
                          params, input_group_connect, "'"))
+    else:
+        raise Exception("Unsupported or unknown cryoSPARC version (%s): no %s job can be created. Please, check "
+                        "the cryoSPARC installation and the plugin configuration." % (cryosparcVersion, jobType))
 
     exitCode, cmdOutput = runCmd(make_job_cmd)
 
@@ -1158,30 +1183,46 @@ def waitForCryosparc(projectName, jobName, errorMsg, protocol=None, sleepTime=15
         protocol = None
 
     status = None
+    failures = 0  # Consecutive failing queries
+    unknownPolls = 0  # Consecutive polls with a status that is neither active nor final
 
     while True:
         try:
             status = getJobStatus(projectName, jobName)
-
-            if status in STOP_STATUSES:
-                break
-
-            _logCryosparcJobEvents(projectName, jobName, protocol=protocol)
-
-            if status in ACTIVE_STATUSES:
-                waitJob(projectName, jobName)
-            else:
-                time.sleep(sleepTime)
-
+            if status not in STOP_STATUSES:
+                _logCryosparcJobEvents(projectName, jobName, protocol=protocol)
+                if status in ACTIVE_STATUSES:
+                    waitJob(projectName, jobName)
         except Exception as ex:
+            failures += 1
+            if failures >= MAX_JOB_QUERY_FAILURES:
+                raise Exception("%s cryoSPARC could not be queried about the job %s %d times in a row: %s"
+                                % (errorMsg, jobName, failures, ex)) from ex
             logger.error(
                 "Can't query cryoSPARC about the job %s. Maybe it needs a restart? "
                 "We'll wait 5 minutes" % jobName,
                 exc_info=ex
             )
             time.sleep(300)
+            continue
+        failures = 0
 
-    _logCryosparcJobEvents(projectName, jobName, protocol=protocol)
+        if status in STOP_STATUSES:
+            break
+        if status in ACTIVE_STATUSES:
+            unknownPolls = 0
+        else:
+            unknownPolls += 1
+            if unknownPolls >= MAX_UNKNOWN_STATUS_POLLS:
+                raise Exception("%s cryoSPARC reports the unknown status '%s' for the job %s."
+                                % (errorMsg, status, jobName))
+            time.sleep(sleepTime)
+
+    try:
+        _logCryosparcJobEvents(projectName, jobName, protocol=protocol)
+    except Exception as ex:
+        # The job is over: not being able to show its last events must not fail it
+        logger.warning("Can't read the last events of the job %s: %s" % (jobName, ex))
 
     if status != STATUS_COMPLETED:
         raise Exception("%s Current status: %s" % (errorMsg, status))
@@ -1342,11 +1383,9 @@ def waitJob(projectName, job, sleepTime=15):
     job = str(job)
 
     if _isCryosparcV5OrNewer():
-        while True:
-            status = getJobStatus(projectName, job)
-            if status in STOP_STATUSES:
-                return status
-            time.sleep(sleepTime)
+        # One poll: the caller shows the job events between polls and decides when to stop
+        time.sleep(sleepTime)
+        return getJobStatus(projectName, job)
 
     wait_job_cmd = (getCryosparcProgram() +
                     ' %swait_job_complete("%s", "%s")%s'
@@ -1461,7 +1500,9 @@ def clearIntermediateResults(projectName, jobName=None, workspaceName=None, alwa
                 % (repr(projectUid), repr(jobUid), repr(bool(alwaysKeepFinal))),
             ])
 
-        if workspaceUid is not None:
+        # Only the narrowest scope asked for: falling back to a wider one would clear the results of other runs
+        # sharing the project
+        if workspaceUid is not None and jobUid is None:
             attempts.extend([
                 "api.projects.clear_intermediate_results(%s, workspace_uid=%s, always_keep_final=%s)"
                 % (repr(projectUid), repr(workspaceUid), repr(bool(alwaysKeepFinal))),
@@ -1470,12 +1511,13 @@ def clearIntermediateResults(projectName, jobName=None, workspaceName=None, alwa
             ])
 
         # Project-level clear
-        attempts.extend([
-            "api.projects.clear_intermediate_results(%s, always_keep_final=%s)"
-            % (repr(projectUid), repr(bool(alwaysKeepFinal))),
-            "api.projects.clear_intermediate_results(project_uid=%s, always_keep_final=%s)"
-            % (repr(projectUid), repr(bool(alwaysKeepFinal))),
-        ])
+        if jobUid is None and workspaceUid is None:
+            attempts.extend([
+                "api.projects.clear_intermediate_results(%s, always_keep_final=%s)"
+                % (repr(projectUid), repr(bool(alwaysKeepFinal))),
+                "api.projects.clear_intermediate_results(project_uid=%s, always_keep_final=%s)"
+                % (repr(projectUid), repr(bool(alwaysKeepFinal))),
+            ])
 
         # Legacy-like low-level entrypoints that may still be exposed in some v5 installs
         if jobUid is not None:
@@ -1486,7 +1528,7 @@ def clearIntermediateResults(projectName, jobName=None, workspaceName=None, alwa
                 % (repr(projectUid), repr(jobUid), repr(bool(alwaysKeepFinal))),
             ])
 
-        if workspaceUid is not None:
+        if workspaceUid is not None and jobUid is None:
             attempts.extend([
                 "clear_intermediate_results(project_uid=%s, workspace_uid=%s, always_keep_final=%s)"
                 % (repr(projectUid), repr(workspaceUid), repr(bool(alwaysKeepFinal))),
@@ -1494,12 +1536,13 @@ def clearIntermediateResults(projectName, jobName=None, workspaceName=None, alwa
                 % (repr(projectUid), repr(workspaceUid), repr(bool(alwaysKeepFinal))),
             ])
 
-        attempts.extend([
-            "clear_intermediate_results(project_uid=%s, always_keep_final=%s)"
-            % (repr(projectUid), repr(bool(alwaysKeepFinal))),
-            "api.clear_intermediate_results(project_uid=%s, always_keep_final=%s)"
-            % (repr(projectUid), repr(bool(alwaysKeepFinal))),
-        ])
+        if jobUid is None and workspaceUid is None:
+            attempts.extend([
+                "clear_intermediate_results(project_uid=%s, always_keep_final=%s)"
+                % (repr(projectUid), repr(bool(alwaysKeepFinal))),
+                "api.clear_intermediate_results(project_uid=%s, always_keep_final=%s)"
+                % (repr(projectUid), repr(bool(alwaysKeepFinal))),
+            ])
 
         lastError = None
 
@@ -1529,20 +1572,23 @@ def clearIntermediateResults(projectName, jobName=None, workspaceName=None, alwa
                 "clear_intermediate_results(project_uid=%s, job_uid=%s, always_keep_final=%s)"
                 % (repr(projectUid), repr(jobUid), repr(bool(alwaysKeepFinal)))
         )
-        return _runCliExpression(clearIntermediateExpr, printCmd=False)
-
-    if workspaceUid is not None:
+    elif workspaceUid is not None:
         clearIntermediateExpr = (
                 "clear_intermediate_results(project_uid=%s, workspace_uid=%s, always_keep_final=%s)"
                 % (repr(projectUid), repr(workspaceUid), repr(bool(alwaysKeepFinal)))
         )
+    else:
+        clearIntermediateExpr = (
+                "clear_intermediate_results(project_uid=%s, always_keep_final=%s)"
+                % (repr(projectUid), repr(bool(alwaysKeepFinal)))
+        )
+    try:
         return _runCliExpression(clearIntermediateExpr, printCmd=False)
-
-    clearIntermediateExpr = (
-            "clear_intermediate_results(project_uid=%s, always_keep_final=%s)"
-            % (repr(projectUid), repr(bool(alwaysKeepFinal)))
-    )
-    return _runCliExpression(clearIntermediateExpr, printCmd=False)
+    except Exception as ex:
+        # Housekeeping after the job finished: failing it would discard a good result
+        logger.warning("Could not clear intermediate results for project=%s, job=%s, workspace=%s: %s",
+                       projectUid, jobUid, workspaceUid, ex)
+        return 0, ""
 
 
 def getSystemInfo():
@@ -1692,7 +1738,7 @@ def getSchedulerLanes():
         try:
             lanes_info_cmd = (getCryosparcProgram() + " 'get_scheduler_lanes()'")
             _csLanes = runCmd(lanes_info_cmd, printCmd=False)[1]
-            lanes_dict_list = eval(_csLanes)
+            lanes_dict_list = ast.literal_eval(_csLanes)
             _csLanes = []
             for lanes in lanes_dict_list:
                 _csLanes.append(lanes.get('name'))
@@ -1878,17 +1924,33 @@ def copyFiles(src, dst, files=None):
     :param files: a list of files to be copied
     :return:
     """
-    try:
-        if files is None:
-            shutil.copytree(src, dst)
-        else:
-            if isinstance(files, str):
-                files = [files]
-            for file in files:
-                shutil.copy(os.path.join(src, file),
-                            os.path.join(dst, file))
-    except Exception as ex:
-        logger.error("Unable to execute the copy: Files or directory does not exist: ", exc_info=ex)
+    # A missing file fails here, with its name, instead of later with no clue
+    if files is None:
+        # It may hold the copy of a previous execution of the step: it is updated
+        shutil.copytree(src, dst, dirs_exist_ok=True)
+    else:
+        if isinstance(files, str):
+            files = [files]
+        for file in files:
+            shutil.copy(os.path.join(src, file),
+                        os.path.join(dst, file))
+
+
+def particleKey(item):
+    """ (index, stack name without extension) of a Scipion particle: compared with csParticleKey, it finds it
+    among what cryoSPARC lists, also when its stack was converted (e.g. .stk into .mrcs) to be imported. """
+    return int(item.getIndex()), os.path.splitext(os.path.basename(item.getFileName()))[0]
+
+
+def csParticleKey(imageName):
+    """ (index, stack name without extension) of a particle listed by cryoSPARC as index@path, where cryoSPARC
+    prefixes the imported stack names with a numeric uid and an underscore. """
+    index, path = imageName.split('@', 1)
+    name = os.path.splitext(os.path.basename(path))[0]
+    prefix, _, rest = name.partition('_')
+    if prefix.isdigit() and rest:
+        name = rest
+    return int(index), name
 
 
 def matchItemRow(item, row):

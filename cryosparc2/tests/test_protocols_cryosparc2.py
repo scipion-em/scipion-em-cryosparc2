@@ -29,6 +29,8 @@ from pwem.protocols import *
 from pyworkflow.protocol import PointerList
 from pyworkflow.tests import *
 from pwem import Domain
+import json
+import os
 xmippProtocols = Domain.importFromPlugin('xmipp3.protocols', doRaise=True)
 
 from ..protocols import *
@@ -942,4 +944,378 @@ class TestCryosparc3DClassification(TestCryosparcBase):
         _runCryosparctestTestCryosparc3DClassification(label="Cryosparc 3D Classification")
 
 
+class TestCryosparcJobsOfAStep(BaseTest):
+    """How a protocol keeps track of its cryoSPARC jobs across executions (Continue, Restart, Abort), with the
+    cryoSPARC tools simulated: no server is needed."""
 
+    @classmethod
+    def setUpClass(cls):
+        setupTestProject(cls)
+
+    def _newProt(self):
+        import pyworkflow.object as pwobj
+        prot = self.newProtocol(ProtCryo2D)
+        prot.projectName = pwobj.String('P1')
+        prot.workSpaceName = pwobj.String('W1')
+        prot.particles = pwobj.String('J1.imported_particles')
+        prot._defineParamsName()
+        self.proj.saveProtocol(prot)
+        return prot
+
+    def _initialize(self, prot):
+        """What every launch does before inserting the steps (also on Continue and Restart)."""
+        from unittest import mock
+        from ..protocols import protocol_base as base
+
+        def utilsVariables():
+            prot.projectDirName, prot.projectPath = 'scipion', '/cs/scipion'
+            prot.projectContainerDir = self.getOutputPath()
+
+        with mock.patch.object(prot, '_initializeUtilsVariables', side_effect=utilsVariables), \
+                mock.patch.object(base, 'getCryosparcProjectsList',
+                                  return_value=[{'title': 'scipion', 'project_dir': '/cs/P1', 'uid': 'P1'}]), \
+                mock.patch.object(base, 'getProjectPath', return_value=['/cs/P1']), \
+                mock.patch.object(base, 'getCryosparcVersion', return_value='4.4.0'), \
+                mock.patch.object(base, 'getCryosparcWorkSpaces', return_value=[{'uid': 'W1'}]):
+            prot._initializeCryosparcProject()
+
+    def _run2D(self, prot, status, newJob='J10'):
+        """Run the 2D classification step with cryoSPARC reporting status for the jobs it already knows."""
+        from unittest import mock
+        import pyworkflow.object as pwobj
+        from ..protocols import protocol_base as base
+        from ..protocols import protocol_cryosparc2d as module2D
+        enqueue = mock.Mock(return_value=pwobj.String(newJob))
+        with mock.patch.object(module2D, 'enqueueJob', enqueue), \
+                mock.patch.object(base, 'enqueueJob', enqueue), \
+                mock.patch.object(base, 'getJobStatus', return_value=status), \
+                mock.patch.object(module2D, 'waitForCryosparc') as wait, \
+                mock.patch.object(module2D, 'clearIntermediateResults'), \
+                mock.patch.object(module2D, 'isCryosparcStandalone', return_value=True):
+            prot.doRunClass2D()
+        return enqueue, wait
+
+    def testContinueKeepsTheJobItWasRunning(self):
+        prot = self._newProt()
+        self._initialize(prot)
+        prot.currenJob.set('J5')
+
+        self._initialize(prot)  # Continue
+
+        self.assertEqual(prot.currenJob.get(), 'J5', 'Abort could not kill the job anymore.')
+
+    def testContinueKeepsItsCryosparcProjectAndWorkspace(self):
+        from unittest import mock
+        from ..protocols import protocol_base as base
+        prot = self._newProt()
+        self._initialize(prot)
+        prot.projectDir.set('/cs/P1')
+
+        # Meanwhile, another cryoSPARC project with the same title and another workspace were created
+        with mock.patch.object(prot, '_initializeUtilsVariables'), \
+                mock.patch.object(base, 'getCryosparcProjectsList',
+                                  return_value=[{'title': 'scipion', 'project_dir': '/cs/P1', 'uid': 'P1'},
+                                                {'title': 'scipion', 'project_dir': '/cs/P7', 'uid': 'P7'}]), \
+                mock.patch.object(base, 'getProjectPath', return_value=['/cs/P7']), \
+                mock.patch.object(base, 'getCryosparcVersion', return_value='4.4.0'), \
+                mock.patch.object(base, 'getCryosparcWorkSpaces', return_value=[{'uid': 'W1'}, {'uid': 'W9'}]):
+            prot.projectDirName, prot.projectPath = 'scipion', '/cs/scipion'
+            prot.projectContainerDir = self.getOutputPath()
+            prot._initializeCryosparcProject()  # Continue
+
+        self.assertEqual((prot.projectName.get(), prot.workSpaceName.get(), prot.projectDir.get()),
+                         ('P1', 'W1', '/cs/P1'), 'The jobs stored by the run belong to P1.')
+
+    def testAbortingWhileCryosparcIsDownStillAborts(self):
+        from unittest import mock
+        from ..protocols import protocol_base as base
+        prot = self._newProt()
+        self._initialize(prot)
+        prot.currenJob.set('J5')
+
+        with mock.patch.object(base, 'getJobStatus', side_effect=Exception('Connection refused')):
+            prot.setAborted()
+
+        self.assertTrue(prot.isAborted())
+
+    def testAnImportJobCanBeKilledWhileItRuns(self):
+        from unittest import mock
+        import pyworkflow.object as pwobj
+        from .. import utils
+        from ..protocols import protocol_base as base
+        prot = self._newProt()
+        self._initialize(prot)
+        stored = []
+        with mock.patch.object(utils, 'enqueueJob', return_value=pwobj.String('J7')), \
+                mock.patch.object(base, 'enqueueJob', return_value=pwobj.String('J7')), \
+                mock.patch.object(utils, 'waitForCryosparc',
+                                  side_effect=lambda *args, **kwargs: stored.append(prot.currenJob.get())), \
+                mock.patch.object(prot, '_getFileName', return_value='input_particles.star'), \
+                mock.patch.object(prot, '_getInputParticles', return_value=mock.Mock(getSamplingRate=lambda: 1.0)):
+            utils.doImportParticlesStar(prot)
+
+        self.assertEqual(stored, ['J7'], 'While the import runs, Abort does not know which job to kill.')
+
+    def testContinueTakesBackTheJobOfThePreviousExecution(self):
+        prot = self._newProt()
+        self._initialize(prot)
+        self._run2D(prot, status=None, newJob='J9')  # The execution that crashed while waiting for J9
+
+        self._initialize(prot)  # Continue
+        enqueue, wait = self._run2D(prot, status='running')
+
+        enqueue.assert_not_called()
+        self.assertEqual(str(wait.call_args[0][1]), 'J9')
+
+    def testAFailedJobOfThePreviousExecutionIsReplaced(self):
+        prot = self._newProt()
+        self._initialize(prot)
+        self._run2D(prot, status=None, newJob='J9')
+
+        self._initialize(prot)
+        enqueue, wait = self._run2D(prot, status='failed', newJob='J11')
+
+        enqueue.assert_called_once()
+        self.assertEqual(str(wait.call_args[0][1]), 'J11')
+
+    def testRestartKillsTheRunningJobsAndDoesNotTakeThemBack(self):
+        from unittest import mock
+        from pyworkflow.protocol.constants import MODE_RESTART
+        from ..protocols import protocol_base as base
+        prot = self._newProt()
+        self._initialize(prot)
+        self._run2D(prot, status=None, newJob='J9')
+
+        prot.runMode.set(MODE_RESTART)
+        with mock.patch.object(base, 'getJobStatus', return_value='running'), \
+                mock.patch.object(base, 'killJob') as kill, mock.patch.object(base, 'clearJob'):
+            self._initialize(prot)
+        enqueue, wait = self._run2D(prot, status='completed', newJob='J12')
+
+        kill.assert_called_once_with('P1', 'J9')
+        self.assertEqual(str(wait.call_args[0][1]), 'J12')
+
+
+class TestCryosparcStepDetails(BaseTest):
+    """Details of single steps that broke a run, sent wrong values to cryoSPARC or lost data, with cryoSPARC
+    simulated: no server is needed."""
+
+    @classmethod
+    def setUpClass(cls):
+        setupTestProject(cls)
+
+    def _newProt(self, protClass, **kwargs):
+        prot = self.newProtocol(protClass, **kwargs)
+        self.proj.saveProtocol(prot)
+        prot.makePathsAndClean()
+        return prot
+
+    def test2DReadsTheLastIteration(self):
+        from ..protocols import ProtCryo2D
+        for online, final, suffix in [(5, 3, '_007'), (2, 1, '_002'), (20, 2, '_021'), (40, 60, '_099'),
+                                      (90, 20, '_109')]:
+            prot = self.newProtocol(ProtCryo2D, numberOnlineEMIterator=online, numberFinalIterator=final)
+            self.assertEqual(prot._getNumberOfIterSuffix(), suffix, 'online=%s, final=%s' % (online, final))
+
+    def testHeterogeneousRefinementContinuesFromItsJob(self):
+        from unittest import mock
+        import pyworkflow.object as pwobj
+        from ..protocols import protocol_base as base
+        prot = self._newProt(ProtCryoSparc3DClassification)
+        prot.importVolumes = pwobj.CsvList()
+        prot.importVolumes.append('J3')
+
+        # Continue: the conversion step ran in a previous execution
+        with mock.patch.object(base, 'getCryosparcVersion', return_value='4.4.0'), \
+                mock.patch.object(prot, 'do3DClasification'):
+            prot.processStep()
+
+        self.assertEqual(prot.volumes, ['J3.imported_volume_1.map'])
+
+    def testLocalCtfRefinementSendsOnlyTheParametersItHas(self):
+        from unittest import mock
+        import pyworkflow.object as pwobj
+        from ..protocols import protocol_cryosparc_local_ctf_refinement as module
+        prot = self._newProt(ProtCryoSparcLocalCtfRefinement, crl_max_res_A=3.5)
+        prot.crl_N.set(None)
+        prot._defineParamsName()
+        prot.particles, prot.volume, prot.mask = (pwobj.String('J1.particles'), pwobj.String('J2.volume'),
+                                                  pwobj.String('J3.mask'))
+        prot.projectName, prot.workSpaceName = pwobj.String('P1'), pwobj.String('W1')
+        prot.currenJob = pwobj.String()
+        enqueue = mock.Mock(return_value=pwobj.String('J4'))
+        with mock.patch.object(prot, '_enqueueOrResumeJob', enqueue), \
+                mock.patch.object(prot, '_getInputVolume', return_value=mock.Mock(hasHalfMaps=lambda: False)), \
+                mock.patch.object(module, 'waitForCryosparc'), mock.patch.object(prot, '_store'):
+            prot.doLocalCtfRefinement()
+
+        params = json.loads(enqueue.call_args[0][4])
+        self.assertNotIn('None', params.values(), 'cryoSPARC receives the text None: %s' % params)
+        self.assertEqual(params.get('crl_max_res_A'), '3.5')
+
+    def testVariabilityDisplayAcceptsAnEmptyIntermediateWidth(self):
+        from unittest import mock
+        import pyworkflow.object as pwobj
+        from ..protocols import protocol_cryosparc_3d_variability_display as module
+        prot = self._newProt(ProtCryoSparc3DVariabilityDisplay)
+        prot.var_intermediate_width.set(None)
+        prot._defineParamsName()
+        prot.projectName, prot.workSpaceName = pwobj.String('P1'), pwobj.String('W1')
+        prot.currenJob = pwobj.String()
+        enqueue = mock.Mock(return_value=pwobj.String('J4'))
+        with mock.patch.object(prot, '_enqueueOrResumeJob', enqueue), \
+                mock.patch.object(prot, 'input3DVariablityAnalisysProt',
+                                  mock.Mock(get=lambda: mock.Mock(run3DVariability='J3'))), \
+                mock.patch.object(module, 'waitForCryosparc'), mock.patch.object(prot, '_store'):
+            prot.doRun3DVariabilityDisplay()
+
+        self.assertEqual(json.loads(enqueue.call_args[0][4])['var_intermediate_width'], '0')
+
+    def testTwoVariabilityDisplaysDoNotShareTheirParticleClasses(self):
+        first = self.newProtocol(ProtCryoSparc3DVariabilityDisplay)
+        second = self.newProtocol(ProtCryoSparc3DVariabilityDisplay)
+        first._initialize()
+        second._initialize()
+
+        self.assertIsNot(first.partClassDict, second.partClassDict)
+
+    def testPatchCtfGivesEachMicrographItsOwnCtf(self):
+        from pwem.objects import SetOfMicrographs, Micrograph
+        micsFn = self.getOutputPath('mics.sqlite')
+        if os.path.exists(micsFn):
+            os.remove(micsFn)
+        mics = SetOfMicrographs(filename=micsFn)
+        mics.setSamplingRate(1.0)
+        for name in ('mic_1', 'mic_2'):
+            mic = Micrograph(location=self.getOutputPath(name + '.mrc'))
+            mic.setMicName(name)
+            mics.append(mic)
+        mics.write()
+        prot = self._newProt(ProtCryoSparcPatchCTFEstimate)
+        prot.inputMicrographs.set(mics)
+        starFn = prot._getExtraPath('ctf.star')
+        with open(starFn, 'w') as f:
+            f.write('data_micrograph\n\nloop_\n_rlnDefocusU #1\n_rlnDefocusV #2\n_rlnPhaseShift #3\n'
+                    '_rlnCtfMaxResolution #4\n_rlnDefocusAngle #5\n'
+                    '10000 10100 0 4 10\n20000 20100 0 4 20\n')
+        micList = {mic.getMicName(): mic.clone() for mic in mics}
+
+        ctfs = prot._fillSetOfCTF(starFn, micList)
+
+        self.assertEqual(sorted(ctf.getDefocusU() for ctf in ctfs), [10000, 20000])
+
+    def testFlexReconstructionWithoutRigidReconstructionHasItsFlexVolume(self):
+        from unittest import mock
+        import mrcfile
+        import numpy as np
+        import pyworkflow.object as pwobj
+        from ..protocols import protocol_cryosparc_3D_flex_reconstruction as module
+        prot = self._newProt(ProtCryoSparc3DFlexReconstruction, flex_do_noflex_recon=False)
+        jobDir = self.getOutputPath('P1', 'J8')
+        os.makedirs(jobDir, exist_ok=True)
+        for name in ('J8_flex_map.mrc', 'J8_flex_map_half_A.mrc', 'J8_flex_map_half_B.mrc'):
+            with mrcfile.new(os.path.join(jobDir, name), overwrite=True) as mrc:
+                mrc.set_data(np.zeros((8, 8, 8), dtype=np.float32))
+                mrc.voxel_size = 1.5
+        prot.projectDir, prot.projectName = pwobj.String(os.path.dirname(jobDir)), pwobj.String('P1')
+        prot.run3DFlexReconstructionJob = pwobj.String('J8')
+        with mock.patch.object(prot, '_initializeUtilsVariables'), \
+                mock.patch.object(module, 'getOutputPreffix', return_value=''):
+            prot.createOutputStep()
+
+        self.assertTrue(hasattr(prot, 'flexVolume'))
+        self.assertFalse(hasattr(prot, 'noFlexVolume'), 'A rigid reconstruction that was not requested.')
+
+    def testPositiveParametersAreValidated(self):
+        from pyworkflow.protocol.params import Positive
+        for protClass, params in [(ProtCryoSparc3DVariability, ['var_filter_res']),
+                                  (ProtCryoSparcNewNonUniformRefine3D, ['refine_nu_order', 'refine_nu_awf'])]:
+            prot = self.newProtocol(protClass)
+            for name in params:
+                self.assertIn(Positive, prot.getParam(name).validators, '%s.%s' % (protClass.__name__, name))
+
+    def _reconstructionFscId(self, logEvents):
+        from unittest import mock
+        import pyworkflow.object as pwobj
+        from ..protocols import protocol_cryosparc_homogeneous_reconstruction as module
+        prot = self._newProt(ProtCryoSparcHomogeneousReconstruct)
+        prot._defineFileNames()
+        prot.projectName = pwobj.String('P1')
+
+        def streamLog(project, job, outputFile):
+            with open(outputFile, 'w') as f:
+                f.write(repr(logEvents))
+
+        with mock.patch.object(module, 'get_job_streamlog', side_effect=streamLog):
+            return prot.findLastIteration('J5')
+
+    def testReconstructionFscLookupToleratesALogWithoutIt(self):
+        self.assertIsNone(self._reconstructionFscId([{'text': 'Done.'}]))
+
+    def testReconstructionFscLookupTakesTheTxtFile(self):
+        event = {'text': 'FSC, after mask auto-tightening',
+                 'imgfiles': [{'fileid': 'png1', 'filetype': 'png'}, {'fileid': 'txt1', 'filetype': 'txt'}]}
+
+        self.assertEqual(self._reconstructionFscId([event]), 'txt1')
+
+    def _validated(self, protClass, particles, **kwargs):
+        from unittest import mock
+        from ..protocols import protocol_cryosparc_homogeneous_reconstruction as reconstruction
+        from ..protocols import protocol_cryosparc_3D_flex_data_prepare as flexPrepare
+        prot = self.newProtocol(protClass, **kwargs)
+        with mock.patch.object(reconstruction, 'cryosparcValidate', return_value=[]), \
+                mock.patch.object(reconstruction, 'gpusValidate', return_value=[]), \
+                mock.patch.object(flexPrepare, 'cryosparcValidate', return_value=[]), \
+                mock.patch.object(prot, '_getInputParticles', return_value=particles):
+            return prot._validate()
+
+    def testReconstructionNeedsAlignedParticles(self):
+        from unittest import mock
+        unaligned = mock.Mock(hasCTF=lambda: True, hasAlignmentProj=lambda: False)
+        aligned = mock.Mock(hasCTF=lambda: True, hasAlignmentProj=lambda: True)
+
+        self.assertTrue(any('align' in msg for msg in self._validated(ProtCryoSparcHomogeneousReconstruct, unaligned)))
+        self.assertEqual(self._validated(ProtCryoSparcHomogeneousReconstruct, aligned), [])
+
+    def testFlexDataPreparationChecksItsInputWithoutFailing(self):
+        from unittest import mock
+        unaligned = mock.Mock(hasCTF=lambda: True, hasAlignmentProj=lambda: False)
+        aligned = mock.Mock(hasCTF=lambda: True, hasAlignmentProj=lambda: True)
+
+        self.assertTrue(any('align' in msg for msg in
+                            self._validated(ProtCryoSparc3DFlexDataPrepare, unaligned, keep_num_particles=None)))
+        self.assertEqual(self._validated(ProtCryoSparc3DFlexDataPrepare, aligned, keep_num_particles=None), [])
+        self.assertTrue(any('1000' in msg for msg in
+                            self._validated(ProtCryoSparc3DFlexDataPrepare, aligned, keep_num_particles=1500)))
+
+    def testFlexGeneratorWithATrainingThatNeverRanSaysSo(self):
+        from unittest import mock
+        from ..protocols import protocol_cryosparc_3D_flex_generator as module
+        training = self.newProtocol(ProtCryoSparc3DFlexTraining)
+        prot = self.newProtocol(ProtCryoSparc3DFlexGenerator)
+        prot.flexTraining.set(training)
+
+        with mock.patch.object(module, 'cryosparcValidate', return_value=[]):
+            messages = prot._validate()
+
+        self.assertTrue(messages, 'It would run on a training without a model.')
+
+    def testSharpeningSummaryShowsItsInput(self):
+        import pyworkflow.object as pwobj
+        prot = self.newProtocol(ProtCryoSparcSharppening)
+        prot.outputVolume = pwobj.String('volume.mrc')
+
+        self.assertTrue(any('Input' in line for line in prot._summary()))
+
+    def testDownloadedFscFilesStayInTheRunFolder(self):
+        from unittest import mock
+        from ..protocols import protocol_base as base
+        prot = self._newProt(ProtCryoSparc3DHomogeneousRefine)
+        response = mock.Mock(content=b'0.0 1.0\n')
+        with mock.patch.object(base, 'getSystemInfo', return_value=(0, repr({'master_hostname': 'h', 'port_webapp': 1}))), \
+                mock.patch.object(base, 'getCryosparcVersion', return_value='4.0.0'), \
+                mock.patch.object(base.requests, 'get', return_value=response), \
+                mock.patch.object(prot, '_looksLikeFscTxt', return_value=True):
+            fscFile = prot._downloadLegacyFscFileById('f1')
+
+        self.assertTrue(os.path.abspath(fscFile).startswith(os.path.abspath(prot._getTmpPath())), fscFile)

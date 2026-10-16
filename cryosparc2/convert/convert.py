@@ -61,11 +61,18 @@ def convertCs2Star(argsList):
 
     logger.info("convertCs2Star: %s" % cmd)
 
+    # A star left by a previous execution must never be read as the result of this one
+    if os.path.exists(output):
+        os.remove(output)
     process = subprocess.Popen(cmd, shell=True, cwd=os.getcwd(), stdout=subprocess.PIPE,
                                stderr=subprocess.PIPE)
     out, error = process.communicate()
     logger.info(out.decode())
-    logger.error(error.decode())
+    if process.returncode != 0 or not os.path.exists(output):
+        raise Exception("The conversion of %s into %s failed (exit code %s): %s"
+                        % (input, output, process.returncode, error.decode()))
+    if error:
+        logger.warning(error.decode())
 
 
 def defineArgs():
@@ -568,9 +575,10 @@ def cryosPARCwriteSetOfParticles(imgSet, starFile, outputDir, **kwargs):
     partMd = md.MetaData()
     setOfImagesToMd(imgSet, partMd, particleToRow, **kwargs)
 
-    if kwargs.get('fillMagnification', False):
+    mag = imgSet.getAcquisition().getMagnification()
+    # Without a magnification there is nothing to fill: the pixel size is given to cryoSPARC instead
+    if kwargs.get('fillMagnification', False) and mag is not None:
         pixelSize = imgSet.getSamplingRate()
-        mag = imgSet.getAcquisition().getMagnification()
         detectorPxSize = mag * pixelSize / 10000
 
         partMd.fillConstant(md.RLN_CTF_MAGNIFICATION, mag)
@@ -749,10 +757,13 @@ def readSetOfParticles(filename, partSet, **kwargs):
         imgSet: the SetOfParticles that will be populated.
         rowToParticle: this function will be used to convert the row to Object
     """
+    img = None
     for imgRow in emtable.Table.iterRows(filename):
         img = rowToParticle(imgRow, **kwargs)
         partSet.append(img)
 
+    if img is None:
+        raise Exception('No particles in %s: cryoSPARC returned none.' % filename)
     partSet.setHasCTF(img.hasCTF())
     partSet.setAlignment(kwargs['alignType'])
 

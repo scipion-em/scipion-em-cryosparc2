@@ -252,17 +252,18 @@ class ProtCryoSparc3DClassification(ProtCryosparcBase):
     def _importVolume(self):
         self.importVolumes = CsvList()
         self._initializeVolumeSuffix()
-        for vol in self.vols:
+        for i, vol in enumerate(self.vols):
             self.vol_fn = os.path.join(os.getcwd(),
                                        convertBinaryVol(
                                            vol,
                                            self._getTmpPath()))
             self.importVolume = doImportVolumes(self, self.vol_fn, vol, 'map',
-                                                'Importing volume...')
+                                                'Importing volume...', jobAttr='importVolumeJob%d' % i)
             self.importVolumes.append(self.importVolume.get())
             self.currenJob.set(self.importVolume.get())
 
     def processStep(self):
+        self._initializeVolumeSuffix()  # Not stored: Continue may start at this step
         self.volumes = [vol + self.outputVolumeSuffix for vol in self.importVolumes]
         self.info(pwutils.yellowStr("3D Heterogeneous Refinement started..."))
         self.do3DClasification()
@@ -508,7 +509,7 @@ class ProtCryoSparc3DClassification(ProtCryosparcBase):
         except Exception:
             gpusToUse = False
 
-        run3dClassificationJob = enqueueJob(self._className,
+        run3dClassificationJob = self._enqueueOrResumeJob('run3dClassification', self._className,
                                               self.projectName.get(),
                                               self.workSpaceName.get(),
                                               str(params).replace('\'', '"'),

@@ -50,7 +50,10 @@ class ProtCryoSparc3DVariabilityDisplay(ProtCryosparcBase, ProtRefine3D):
     """
     _label = '3D variability Display'
     _devStatus = BETA
-    partClassDict = NestedDict(depth=2)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        # Of this run only: a class attribute would be shared by every run in the same process
+        self.partClassDict = NestedDict(depth=2)
 
     def _initialize(self):
         self._defineFileNames()
@@ -380,8 +383,8 @@ class ProtCryoSparc3DVariabilityDisplay(ProtCryosparcBase, ProtRefine3D):
                              itemDataIterator=None)
 
     def _updateParticle(self, item, row):
-        classNumber = self.partClassDict.search([os.path.splitext(os.path.basename(item.getFileName()))[0],
-                                                 item.getIndex()])
+        index, name = particleKey(item)
+        classNumber = self.partClassDict.search([name, index])
         if not classNumber:
             setattr(item, '_appendItem', False)
         else:
@@ -456,9 +459,7 @@ class ProtCryoSparc3DVariabilityDisplay(ProtCryosparcBase, ProtRefine3D):
 
             # Taking the particles ids
             while rawLine:
-                line = rawLine.strip().split()[0].split('@')
-                partId = int(line[0])
-                imageName = '_'.join(line[1].split('_')[1:]).split('.')[0]
+                partId, imageName = csParticleKey(rawLine.strip().split()[0])
                 self.partClassDict.insert([imageName, partId], classNumber + 1)
                 rawLine = _file.readline()
 
@@ -516,7 +517,7 @@ class ProtCryoSparc3DVariabilityDisplay(ProtCryosparcBase, ProtRefine3D):
             elif paramName == 'var_highpass_res' and self.var_highpass_res.get() is not None:
                 params[str(paramName)] = str(self.var_highpass_res.get())
             elif paramName == 'var_intermediate_width':
-                if self.var_intermediate_width.get() is not None or self.var_intermediate_width.get() > 0:
+                if self.var_intermediate_width.get() is not None and self.var_intermediate_width.get() > 0:
                     params[str(paramName)] = str(self.var_intermediate_width.get())
                 else:
                     params[str(paramName)] = '0'
@@ -533,7 +534,7 @@ class ProtCryoSparc3DVariabilityDisplay(ProtCryosparcBase, ProtRefine3D):
         except Exception:
             gpusToUse = False
 
-        self.run3DVariabilityDisplay = enqueueJob(className,
+        self.run3DVariabilityDisplay = self._enqueueOrResumeJob('run3DVariabilityDisplay', className,
                                                   self.projectName.get(),
                                                   self.workSpaceName.get(),
                                                   str(params).replace('\'',

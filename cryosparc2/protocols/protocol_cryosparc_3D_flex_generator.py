@@ -24,6 +24,7 @@
 # *  e-mail address 'scipion@cnb.csic.es'
 # *
 # **************************************************************************
+import ast
 import os.path
 import zipfile
 
@@ -92,7 +93,7 @@ class ProtCryoSparc3DFlexGenerator(ProtCryosparcBase, ProtFlexBase):
             filePath = os.path.join(outputFolder, fileName)
             with zipfile.ZipFile(filePath, 'r') as fileZip:
                 extractFolder = os.path.join(outputFolder, os.path.splitext(fileName)[0])
-                os.mkdir(extractFolder)
+                os.makedirs(extractFolder, exist_ok=True)  # Also when a previous execution created it
                 fileZip.extractall(extractFolder)
             os.remove(filePath)
 
@@ -100,8 +101,17 @@ class ProtCryoSparc3DFlexGenerator(ProtCryosparcBase, ProtFlexBase):
         validateMsgs = cryosparcValidate()
         if not validateMsgs:
             flexTrainingProt = self.flexTraining.get()
-            flexTrainingJob = getJob(flexTrainingProt.projectName.get(), flexTrainingProt.run3DFlexTrainJob.get())
-            checkPoints = eval(flexTrainingJob[1])['output_result_groups']
+            trainingJob = getattr(flexTrainingProt, 'run3DFlexTrainJob', None)
+            if not getattr(flexTrainingProt, 'projectName', None) or not trainingJob or not trainingJob.get():
+                validateMsgs.append("The 3D Flex training has no cryoSPARC job yet: run it first")
+                return validateMsgs
+            try:
+                flexTrainingJob = getJob(flexTrainingProt.projectName.get(), trainingJob.get())
+                checkPoints = ast.literal_eval(flexTrainingJob[1])['output_result_groups']
+            except Exception as e:
+                # Not every cryoSPARC version answers this query: cryoSPARC itself checks the inputs then
+                logger.warning("Could not check the 3D Flex training model: %s" % e)
+                return validateMsgs
             for output in checkPoints:
                 if output['name'] == 'flex_model':
                     numItems = output['num_items']
@@ -134,7 +144,7 @@ class ProtCryoSparc3DFlexGenerator(ProtCryosparcBase, ProtFlexBase):
             if self.getAttributeValue(paramName) is not None:
                 params[str(paramName)] = str(self.getAttributeValue(paramName))
 
-        run3DGeneratorJob = enqueueJob(self._className,
+        run3DGeneratorJob = self._enqueueOrResumeJob('run3DGeneratorJob', self._className,
                                    self.projectName.get(),
                                    self.workSpaceName.get(),
                                    str(params).replace('\'', '"'),

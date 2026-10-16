@@ -95,7 +95,7 @@ class ProtCryoSparc3DVariability(ProtCryosparcBase, ProtRefine3D):
         #               label="Only use this many particles")
 
         form.addParam('var_filter_res', FloatParam, default=None,
-                      validator=[Positive],
+                      validators=[Positive],
                       label="Filter resolution (A)",
                       help='Resolution at which results are filtered')
 
@@ -309,7 +309,7 @@ class ProtCryoSparc3DVariability(ProtCryosparcBase, ProtRefine3D):
         except Exception:
             gpusToUse = False
 
-        self.run3DVariability = enqueueJob(className, self.projectName.get(),
+        self.run3DVariability = self._enqueueOrResumeJob('run3DVariability', className, self.projectName.get(),
                                            self.workSpaceName.get(),
                                            str(params).replace('\'', '"'),
                                            str(input_group_conect).replace('\'',

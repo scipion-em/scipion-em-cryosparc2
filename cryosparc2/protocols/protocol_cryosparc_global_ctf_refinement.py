@@ -327,14 +327,14 @@ class ProtCryoSparcGlobalCtfRefinement(ProtCryosparcBase, pwprot.ProtParticles):
         except Exception:
             gpusToUse = False
 
-        runGlobalCtfRefinementJob = enqueueJob(self._className, self.projectName.get(),
+        runGlobalCtfRefinementJob = self._enqueueOrResumeJob('runGlobalCtfRefinement', self._className, self.projectName.get(),
                                                  self.workSpaceName.get(),
                                                  str(params).replace('\'', '"'),
                                                  str(input_group_connect).replace('\'', '"'),
                                                  self.lane, gpusToUse,
                                                  result_connect=input_result_connect)
 
-        self.runGlobalCtfRefinement = String(runGlobalCtfRefinementJob)
+        self.runGlobalCtfRefinement = String(runGlobalCtfRefinementJob.get())
         self.currenJob.set(runGlobalCtfRefinementJob.get())
         self._store(self)
 

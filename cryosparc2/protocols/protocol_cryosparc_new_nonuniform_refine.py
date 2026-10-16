@@ -70,7 +70,7 @@ class ProtCryoSparcNewNonUniformRefine3D(ProtCryoSparc3DHomogeneousRefine):
 
         form.addParam('refine_nu_order', IntParam,
                       default=8,
-                      validator=[Positive],
+                      validators=[Positive],
                       label="Non-uniform filter order",
                       help='Order of the butterworth filter used for '
                            'cross-validation-optimal regularization. Default t'
@@ -78,7 +78,7 @@ class ProtCryoSparcNewNonUniformRefine3D(ProtCryoSparc3DHomogeneousRefine):
 
         form.addParam('refine_nu_awf', FloatParam,
                       default=3,
-                      validator=[Positive],
+                      validators=[Positive],
                       label="Non-uniform AWF",
                       help='Adaptive Window Factor for cross-validation-optimal '
                            'regularization. Trade off between fast transitions '
