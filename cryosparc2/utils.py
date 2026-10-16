@@ -285,30 +285,42 @@ def getCryosparcDir(*paths):
 
 
 def getCryosparcProgram(mode="cli"):
-    """
-    Get the cryosparc command to launch any cryoSPARC operation.
-    mode="cli" returns ".../cryosparcm cli"
-    mode="" returns ".../cryosparcm"
+    """Return cryosparcm (optionally followed by a subcommand).
 
-    CRYOSPARCM_CMD can be used to override the detected cryosparcm command.
-    This is useful for multi-user installations where cryoSPARC must be
-    executed through a wrapper or as the linux user that owns the installation.
+    CRYOSPARCM_CMD keeps taking precedence for remote/multi-user wrappers.
+    Otherwise CRYOSPARC_HOME must point to the installation parent, which
+    contains cryosparc_master/bin/cryosparcm.  A missing installation is an
+    explicit configuration error, never an invented legacy command path.
     """
     cryosparcmCmd = os.environ.get(CRYOSPARCM_CMD)
-    if cryosparcmCmd:
+    if cryosparcmCmd and cryosparcmCmd.strip():
         return "%s %s" % (cryosparcmCmd, mode) if mode else cryosparcmCmd
 
     csDir = getCryosparcDir()
+    if not csDir or not str(csDir).strip():
+        raise RuntimeError(
+            "CRYOSPARC_HOME is empty. Set it to the parent of "
+            "cryosparc_master, or configure CRYOSPARCM_CMD."
+        )
+    if not os.path.isabs(csDir):
+        raise ValueError(
+            "CRYOSPARC_HOME must be an absolute path to the parent of "
+            "cryosparc_master: %r" % csDir
+        )
 
-    if csDir is not None:
-        command = 'cryosparcm' if not mode else 'cryosparcm %s' % mode
+    executable = os.path.join(csDir, CRYOSPARC_MASTER, "bin", "cryosparcm")
+    if not os.path.isfile(executable):
+        raise FileNotFoundError(
+            "CryoSPARC executable not found at %s. Check CRYOSPARC_HOME "
+            "(it must contain cryosparc_master/bin/cryosparcm)." % executable
+        )
+    if not os.access(executable, os.X_OK):
+        raise RuntimeError(
+            "CryoSPARC executable %s is not executable. Check its permissions."
+            % executable
+        )
 
-        if os.path.exists(os.path.join(csDir, CRYOSPARC_MASTER, "bin")):
-            return os.path.join(csDir, CRYOSPARC_MASTER, "bin", command)
-        else:
-            return os.path.join(csDir, 'cryosparc2_master', "bin", command)
-
-    return None
+    return "%s %s" % (executable, mode) if mode else executable
 
 
 def cryosparcExists():
@@ -1222,7 +1234,7 @@ def runCmd(cmd, printCmd=True):
     return exitCode, cmdOutput.split('\n')[-1]
 
 
-def waitForCryosparc(projectName, jobName, errorMsg, protocol=None, sleepTime=15):
+def waitForCryosparc(projectName, jobName, errorMsg, protocol=None, sleepTime=5):
     """
     Wait until the cryoSPARC job reaches a stop status and stream job logs
     into the Scipion logger when a protocol instance is available.
@@ -1244,7 +1256,7 @@ def waitForCryosparc(projectName, jobName, errorMsg, protocol=None, sleepTime=15
             if status not in STOP_STATUSES:
                 _logCryosparcJobEvents(projectName, jobName, protocol=protocol)
                 if status in ACTIVE_STATUSES:
-                    waitJob(projectName, jobName)
+                    time.sleep(sleepTime)
         except Exception as ex:
             failures += 1
             if failures >= MAX_JOB_QUERY_FAILURES:
@@ -1287,7 +1299,35 @@ def _getCryosparcJobLogEvents(projectName, jobName):
     Return cryoSPARC job log events as a list.
     """
     if _isCryosparcV5OrNewer():
-        events = _tryV5StructuredEventLog(projectName, jobName)
+        # The structured v5 API may exist but return an empty payload or events
+        # without printable text.  Treat those results as unavailable, not final.
+        structured = _tryV5StructuredEventLog(projectName, jobName)
+        try:
+            parsed = _pythonLiteral(structured, default=[])
+        except (ValueError, SyntaxError, TypeError):
+            parsed = []
+    
+        if isinstance(parsed, dict):
+            parsed = parsed.get("events", parsed.get("logs", []))
+    
+        if isinstance(parsed, list) and any(
+            _getCryosparcLogText(event) for event in parsed
+        ):
+            return parsed
+    
+        # cryosparcm job events yields the actual multi-line v5 event stream.
+        # Return one event per line so the existing per-job cursor can de-duplicate.
+        try:
+            _, rawEvents = _runCryosparcmSubcommand(
+                "job", "events", str(projectName), str(jobName), printCmd=False
+            )
+        except Exception as ex:
+            logger.warning(
+                "Unable to retrieve cryoSPARC job events for %s/%s: %s",
+                projectName, jobName, ex
+            )
+            return []
+        return [line.strip() for line in str(rawEvents or "").splitlines() if line.strip()]
     else:
         events = getJobStreamlog(projectName, jobName)[1]
 
@@ -1341,23 +1381,27 @@ def _logCryosparcJobEvents(projectName, jobName, protocol=None):
             logger.info(text)
         return
 
-    jobLogLastLine = protocol.getLogLine()
-    lenLog = len(events)
-
-    if lenLog > jobLogLastLine:
-        protocol.setLogLine(lenLog)
-        for line in range(jobLogLastLine, lenLog):
-            text = _getCryosparcLogText(events[line])
-            if text:
-                logger.info(text)
-    else:
-        jobLogLastLine = lenLog - 1
-        while jobLogLastLine >= 0:
-            text = _getCryosparcLogText(events[jobLogLastLine])
-            if text:
-                logger.info(text)
-                break
-            jobLogLastLine -= 1
+    # Keep a separate event cursor for each cryoSPARC job of the protocol.
+    # Leave getLogLine/setLogLine available to existing callers.
+    jobKey = (str(projectName), str(jobName))
+    jobOffsets = getattr(protocol, "_cryosparcLogOffsets", None)
+    if not isinstance(jobOffsets, dict):
+        jobOffsets = {}
+        protocol._cryosparcLogOffsets = jobOffsets
+    
+    lastLine = jobOffsets.get(jobKey, 0)
+    if not isinstance(lastLine, int) or lastLine < 0 or lastLine > len(events):
+        lastLine = 0
+    
+    if len(events) <= lastLine:
+        return
+    
+    for event in events[lastLine:]:
+        text = _getCryosparcLogText(event)
+        if text:
+            logger.info(text)
+    jobOffsets[jobKey] = len(events)
+    protocol.setLogLine(len(events))
 
 
 def getJobStatus(projectName, jobId):
@@ -1427,7 +1471,7 @@ def getJobStreamlog(projectName, job):
     return logList
 
 
-def waitJob(projectName, job, sleepTime=15):
+def waitJob(projectName, job, sleepTime=5):
     """
     Wait while the job is not finished.
     """
