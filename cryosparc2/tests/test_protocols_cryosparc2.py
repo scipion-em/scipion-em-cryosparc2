@@ -1067,6 +1067,19 @@ class TestCryosparcJobsOfAStep(BaseTest):
         enqueue.assert_not_called()
         self.assertEqual(str(wait.call_args[0][1]), 'J9')
 
+    def testACompletedJobOfThePreviousExecutionIsReplaced(self):
+        # The step runs again because something changed (e.g. its input particles):
+        # the job completed before may hold the results of other inputs.
+        prot = self._newProt()
+        self._initialize(prot)
+        self._run2D(prot, status=None, newJob='J9')
+
+        self._initialize(prot)
+        enqueue, wait = self._run2D(prot, status='completed', newJob='J13')
+
+        enqueue.assert_called_once()
+        self.assertEqual(str(wait.call_args[0][1]), 'J13')
+
     def testAFailedJobOfThePreviousExecutionIsReplaced(self):
         prot = self._newProt()
         self._initialize(prot)

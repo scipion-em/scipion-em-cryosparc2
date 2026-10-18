@@ -52,8 +52,7 @@ from ..utils import (getProjectPath, createEmptyProject,
                      get_job_streamlog, getSystemInfo, getJobStatus,
                      STOP_STATUSES, getCryosparcVersion, getProjectInformation,
                      getCryosparcProjectId, _getLicenceFromFile, doImportMicrographs, getCryosparcProjectsList,
-                     getCryosparcWorkSpaces, parse_version, enqueueJob, ACTIVE_STATUSES,
-                     STATUS_COMPLETED)
+                     getCryosparcWorkSpaces, parse_version, enqueueJob, ACTIVE_STATUSES)
 from pyworkflow.protocol.constants import MODE_RESTART
 
 
@@ -148,8 +147,9 @@ class ProtCryosparcBase(pw.EMProtocol):
         """ The cryoSPARC job of a step, stored in attrName (and as the job Abort kills) as soon as it exists.
 
         A step run again (e.g. on Continue after a crash while it waited) takes back the job of its previous
-        execution while that job runs or once it completed: enqueuing another one would run it twice. A job that
-        failed or was killed is replaced. Arguments are those of utils.enqueueJob.
+        execution while that job still runs: enqueuing another one would run it twice. A job that ended
+        (completed, failed or killed) is replaced: a completed one may come from other inputs (the step runs
+        again because something changed). Arguments are those of utils.enqueueJob.
         """
         previous = getattr(self, attrName, None)
         previousUid = previous.get() if isinstance(previous, pwobj.String) else None
@@ -159,7 +159,7 @@ class ProtCryosparcBase(pw.EMProtocol):
             except Exception as e:
                 logger.error("Can't get the status of the job %s" % previousUid, exc_info=e)
                 status = None
-            if status in ACTIVE_STATUSES or status == STATUS_COMPLETED:
+            if status in ACTIVE_STATUSES:
                 logger.info(pwutils.yellowStr("Taking back the cryoSPARC job %s of a previous execution (%s)"
                                               % (previousUid, status)))
                 self.currenJob.set(previousUid)
