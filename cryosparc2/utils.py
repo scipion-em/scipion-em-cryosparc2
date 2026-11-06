@@ -759,6 +759,14 @@ def createProjectContainerDir(project_container_dir):
     os.makedirs(project_container_dir, exist_ok=True)
 
     if _isCryosparcV5OrNewer():
+        # The directory is created by the Scipion user, but cryoSPARC >= 5
+        # validates and later uses it from the server side
+        # (projects:check_directory, project creation and job outputs are
+        # written by the server process, which usually runs as another
+        # user, e.g. roberto). Without this, a non-server user gets:
+        #   403 "<path> must be readable and writable ([Errno 13] Permission
+        #        denied: '<path>/.accesstest_<ts>')"
+        os.chmod(project_container_dir, 0o777)
         _runCliValue(
             "api.projects.check_directory(path=%s)" % repr(str(project_container_dir)),
             printCmd=False
