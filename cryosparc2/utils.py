@@ -938,6 +938,65 @@ def doJob(jobType, projectName, workSpaceName, params, input_group_connect):
     return runCmd(do_job_cmd)
 
 
+def _gpuTargetOf(lane, standaloneInstallation):
+    """The cryoSPARC target (a machine of the lane) that given GPU numbers refer to, or None.
+
+    cryoSPARC 5.1 queues to chosen GPUs only on a target, never on a lane. A lane with a single machine names it;
+    with several, the one this machine (or the master) is; cluster lanes have no GPU numbers to choose."""
+    import socket
+
+    targets = _runCliValue(
+        "[(t.name, t.hostname, getattr(t.config, 'type', None)) for t in api.resources.find_targets(lane=%s)]"
+        % repr(str(lane)),
+        printCmd=False
+    ) or []
+    nodes = [target for target in targets if len(target) >= 3 and target[2] == "node"]
+    if len(nodes) == 1:
+        return nodes[0][0]
+    names = {socket.gethostname().lower(), socket.getfqdn().lower()}
+    if standaloneInstallation:
+        try:
+            names.add(str(getCryosparcEnvInformation('master_hostname')).lower())
+        except Exception:
+            pass
+    for name, hostname, _ in nodes:
+        if str(name).lower() in names or str(hostname).lower() in names:
+            return name
+    return None
+
+
+def _enqueueV5(projectUid, jobUid, lane, gpus, standaloneInstallation):
+    """Queue a job on cryoSPARC 5: on its lane, or, with chosen GPUs, on the lane's machine with those GPUs.
+
+    cryoSPARC 5.1 refuses GPUs without a target ("Unable to queue to gpus without a specified target") and a
+    target together with a lane; earlier 5.x releases took the GPUs with the lane. Each way is tried in turn, and
+    at worst the job goes to the lane without chosen GPUs (cryoSPARC picks free ones)."""
+    def enqueue(**where):
+        arguments = ", ".join("%s=%s" % (name, repr(value)) for name, value in where.items())
+        return _runCliValue("api.jobs.enqueue(%s, %s, %s, no_check_inputs_ready=False)"
+                            % (repr(projectUid), repr(str(jobUid)), arguments), printCmd=False)
+
+    if gpus:
+        attempts = []
+        try:
+            target = _gpuTargetOf(lane, standaloneInstallation)
+        except Exception as error:
+            target = None
+            attempts.append("finding the machine of lane %s: %s" % (lane, error))
+        if target:
+            try:
+                return enqueue(hostname=str(target), gpus=list(gpus))
+            except Exception as error:
+                attempts.append("on %s with GPUs %s: %s" % (target, list(gpus), error))
+        try:
+            return enqueue(lane=str(lane), gpus=list(gpus))
+        except Exception as error:
+            attempts.append("on lane %s with GPUs %s: %s" % (lane, list(gpus), error))
+        logger.warning("cryoSPARC did not take the chosen GPUs %s (%s); the job goes to lane %s and cryoSPARC "
+                       "chooses its GPUs." % (list(gpus), "; ".join(str(attempt)[:300] for attempt in attempts), lane))
+    return enqueue(lane=str(lane))
+
+
 def enqueueJob(jobType, projectName, workSpaceName, params, input_group_connect,
                lane, gpusToUse=False, group_connect=None, result_connect=None):
     """
@@ -1021,24 +1080,7 @@ def enqueueJob(jobType, projectName, workSpaceName, params, input_group_connect,
                     printCmd=False
                 )
 
-        hostname = None
-        if standaloneInstallation:
-            try:
-                hostname = getCryosparcEnvInformation('master_hostname')
-            except Exception:
-                hostname = None
-
-        _runCliValue(
-            "api.jobs.enqueue(%s, %s, lane=%s, gpus=%s, no_check_inputs_ready=%s)"
-            % (
-                repr(projectUid),
-                repr(str(jobId)),
-                repr(str(lane)),
-                repr(gpus),
-                repr(False),
-            ),
-            printCmd=False
-        )
+        _enqueueV5(projectUid, str(jobId), lane, gpus, standaloneInstallation)
 
         logger.info(pwutils.greenStr("Got %s for JobId" % jobId))
         return jobId
