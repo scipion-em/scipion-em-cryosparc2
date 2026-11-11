@@ -45,15 +45,21 @@ from pwem.constants import *
 
 from ..constants import *
 from .. import Plugin
+from .cs2Start import ALIGNMENTS_OPTION, ALIGNMENTS_2D, ALIGNMENTS_3D_CLASSES
 
 
-def convertCs2Star(argsList):
+def convertCs2Star(argsList, alignments=None):
+    """ Convert a cryoSPARC .cs into a star file. alignments (ALIGNMENTS_2D or
+    ALIGNMENTS_3D_CLASSES) reads the particles' classes and poses only from the
+    job's own alignments; see keepJobAlignments. """
     input = os.path.abspath(argsList[0])
     output = os.path.abspath(argsList[1])
     args = ' %s %s' % (input, output)
     if len(argsList) > 2:
         passthrough = os.path.abspath(argsList[2])
         args += ' %s' % passthrough
+    if alignments:
+        args += ' %s%s' % (ALIGNMENTS_OPTION, alignments)
     cryosparcScriptPath = os.path.join(os.path.dirname(__file__),
                                        CRYOSPARC_CS2STAR_SCRIPT)
     cmd = (Plugin.getCondaActivationCmd() + Plugin.getPyemEnvActivation() + ' && python3 ' +

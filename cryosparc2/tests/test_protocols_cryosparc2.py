@@ -202,6 +202,8 @@ class TestCryosparcClassify2D(TestCryosparcBase):
             # Check the output, the alignment, the sampling rate and the
             # dimensions
             self.assertIsNotNone(prot2D.outputClasses)
+            # every class cryoSPARC made reaches the output, not one with all the particles
+            self.assertGreater(prot2D.outputClasses.getSize(), 1)
             for class2D in prot2D.outputClasses:
                 self.assertTrue(class2D.hasAlignment2D())
                 self.assertTrue(class2D.getSamplingRate(),
@@ -229,6 +231,8 @@ class TestCryosparcClassify2D(TestCryosparcBase):
             # Check the output, the alignment, the sampling rate and the
             # dimensions
             self.assertIsNotNone(prot2D.outputClasses)
+            # every class cryoSPARC made reaches the output, not one with all the particles
+            self.assertGreater(prot2D.outputClasses.getSize(), 1)
             for class2D in prot2D.outputClasses:
                 self.assertTrue(class2D.hasAlignment2D())
                 self.assertEqual(class2D.getSamplingRate(),

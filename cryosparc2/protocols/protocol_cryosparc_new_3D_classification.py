@@ -39,7 +39,7 @@ from pyworkflow.protocol.params import (FloatParam, LEVEL_ADVANCED,
                                         BooleanParam, EnumParam)
 
 from .protocol_base import ProtCryosparcBase
-from ..convert import (convertBinaryVol, convertCs2Star,
+from ..convert import (ALIGNMENTS_3D_CLASSES, convertBinaryVol, convertCs2Star,
                        rowToAlignment, ALIGN_PROJ, cryosparcToLocation)
 from ..utils import (addComputeSectionParams, addPreprocessLaneParam, doImportVolumes,
                      get_job_streamlog, calculateNewSamplingRate,
@@ -358,7 +358,7 @@ class ProtCryoSparcNew3DClassification(ProtCryosparcBase):
         outputStarFn = self._getFileName('out_particles')
         argsList = [csFile, outputStarFn]
 
-        convertCs2Star(argsList)
+        convertCs2Star(argsList, alignments=ALIGNMENTS_3D_CLASSES)
 
         self._createModelFile(csOutputFolder, itera)
 
