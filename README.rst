@@ -39,6 +39,16 @@ You will need to use `3.0.0 <https://scipion-em.github.io/docs/release-3.0.0/doc
 ==========================
 
 
+**v5.0.2**
+-----------
+
+* **updated**    Compatibility with cryoSPARC v5.1: jobs with chosen GPUs are queued on the lane's machine
+* **fixed**      Classifications (2D, 3D, heterogeneous refinement, ab-initio) gave a single class when cryoSPARC carried earlier alignments in the particles
+* **fixed**      Continue takes back the cryoSPARC jobs that still run instead of duplicating them
+* **fixed**      Restore live cryoSPARC v5 job log streaming
+* **fixed**      Clone reference volumes resolved from Set item pointers in 3D classification
+
+
 **v5.0.1**
 -----------
 

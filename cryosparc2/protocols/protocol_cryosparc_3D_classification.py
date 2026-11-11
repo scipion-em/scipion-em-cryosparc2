@@ -37,7 +37,7 @@ from pyworkflow.protocol.params import (FloatParam, LEVEL_ADVANCED,
                                         BooleanParam, StringParam, EnumParam)
 
 from .protocol_base import ProtCryosparcBase
-from ..convert import (convertBinaryVol, convertCs2Star,
+from ..convert import (ALIGNMENTS_3D_CLASSES, convertBinaryVol, convertCs2Star,
                        rowToAlignment, ALIGN_PROJ, cryosparcToLocation)
 from ..utils import (addSymmetryParam, addComputeSectionParams, addPreprocessLaneParam, doImportVolumes,
                      get_job_streamlog, calculateNewSamplingRate,
@@ -242,25 +242,28 @@ class ProtCryoSparc3DClassification(ProtCryosparcBase):
         if self.hasAttribute('refVolumes'):
             self.vols = []
             for volume in self.refVolumes:
+                # A pointer to a Set item resolves to the Set's reused
+                # object; keep a copy so each reference stays distinct.
                 vol = volume.get()
-                self.vols.append(vol)
+                self.vols.append(vol.clone() if vol is not None else vol)
             return self.vols
         return None
 
     def _importVolume(self):
         self.importVolumes = CsvList()
         self._initializeVolumeSuffix()
-        for vol in self.vols:
+        for i, vol in enumerate(self.vols):
             self.vol_fn = os.path.join(os.getcwd(),
                                        convertBinaryVol(
                                            vol,
                                            self._getTmpPath()))
             self.importVolume = doImportVolumes(self, self.vol_fn, vol, 'map',
-                                                'Importing volume...')
+                                                'Importing volume...', jobAttr='importVolumeJob%d' % i)
             self.importVolumes.append(self.importVolume.get())
             self.currenJob.set(self.importVolume.get())
 
     def processStep(self):
+        self._initializeVolumeSuffix()  # Not stored: Continue may start at this step
         self.volumes = [vol + self.outputVolumeSuffix for vol in self.importVolumes]
         self.info(pwutils.yellowStr("3D Heterogeneous Refinement started..."))
         self.do3DClasification()
@@ -287,7 +290,7 @@ class ProtCryoSparc3DClassification(ProtCryosparcBase):
         outputStarFn = self._getFileName('out_particles')
         argsList = [csFile, outputStarFn]
 
-        convertCs2Star(argsList)
+        convertCs2Star(argsList, alignments=ALIGNMENTS_3D_CLASSES)
 
         self._createModelFile(csOutputFolder, itera)
 
@@ -506,7 +509,7 @@ class ProtCryoSparc3DClassification(ProtCryosparcBase):
         except Exception:
             gpusToUse = False
 
-        run3dClassificationJob = enqueueJob(self._className,
+        run3dClassificationJob = self._enqueueOrResumeJob('run3dClassification', self._className,
                                               self.projectName.get(),
                                               self.workSpaceName.get(),
                                               str(params).replace('\'', '"'),

@@ -267,7 +267,7 @@ class ProtCryoSparcBlobPicker(ProtCryosparcBase):
         except Exception:
             gpusToUse = False
 
-        runPatchCTFJob = enqueueJob(className,
+        runPatchCTFJob = self._enqueueOrResumeJob('runPatchCTF', className,
                                       self.projectName.get(),
                                       self.workSpaceName.get(),
                                       str(params).replace('\'', '"'),
@@ -308,7 +308,7 @@ class ProtCryoSparcBlobPicker(ProtCryosparcBase):
         except Exception:
             gpusToUse = False
 
-        runBlobPickerJob = enqueueJob(self._className,
+        runBlobPickerJob = self._enqueueOrResumeJob('runBlobPicker', self._className,
                                          self.projectName.get(),
                                          self.workSpaceName.get(),
                                          str(params).replace('\'', '"'),

@@ -38,7 +38,7 @@ from pwem import ALIGN_PROJ
 from pwem.protocols import ProtInitialVolume, ProtClassify3D
 
 from .protocol_base import ProtCryosparcBase
-from ..convert import (convertCs2Star, cryosparcToLocation,
+from ..convert import (ALIGNMENTS_3D_CLASSES, convertCs2Star, cryosparcToLocation,
                        rowToAlignment)
 
 from ..utils import (addSymmetryParam, addComputeSectionParams, addPreprocessLaneParam,
@@ -327,7 +327,7 @@ class ProtCryoSparcInitialModel(ProtCryosparcBase, ProtInitialVolume,
         csFile = os.path.join(outputFolder, csFileName)
         outputClassFn = self._getFileName('out_particles')
         argsList = [csFile, outputClassFn]
-        convertCs2Star(argsList)
+        convertCs2Star(argsList, alignments=ALIGNMENTS_3D_CLASSES)
 
         # Create model files for 3D classification
         self._createModelFile()
@@ -507,7 +507,7 @@ class ProtCryoSparcInitialModel(ProtCryosparcBase, ProtInitialVolume,
         except Exception:
             gpusToUse = False
 
-        runAbinitJob = enqueueJob(self._className, self.projectName.get(),
+        runAbinitJob = self._enqueueOrResumeJob('runAbinit', self._className, self.projectName.get(),
                                     self.workSpaceName.get(),
                                     str(params).replace('\'', '"'),
                                     str(input_group_connect).replace('\'', '"'),

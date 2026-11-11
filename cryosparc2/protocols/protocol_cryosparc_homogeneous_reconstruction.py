@@ -325,21 +325,27 @@ class ProtCryoSparcHomogeneousReconstruct(ProtCryosparcBase):
                           self._getFileName('stream_log'))
 
         # Get the metadata information from stream.log
-        with open(self._getFileName('stream_log')) as f:
-            data = f.readlines()
+        with open(self._getFileName('stream_log'), encoding="utf-8", errors="replace") as f:
+            rawText = f.read().strip()
 
-        x = ast.literal_eval(data[0])
-        if isinstance(x, str):
-            x = json.loads(x)
+        try:
+            events = ast.literal_eval(rawText)
+            if isinstance(events, str):
+                events = json.loads(events)
+        except Exception:
+            events = []
+        if isinstance(events, dict):
+            events = [events]
 
-        # Find the ID of last iteration and the map resolution
-        for y in x:
-            if 'text' in y:
-                z = str(y['text'])
-
-                if z.startswith('FSC, after mask auto-tightening'):
-                    idd = y['imgfiles'][2]['fileid']
-
+        # The FSC txt file of the final, auto-tightened mask. None when the log does not have it: the FSC file is
+        # then looked up in the job folder
+        idd = None
+        for event in events if isinstance(events, list) else []:
+            if isinstance(event, dict) and str(event.get('text', '')).startswith('FSC, after mask auto-tightening'):
+                for imgfile in event.get('imgfiles') or []:
+                    if isinstance(imgfile, dict) and imgfile.get('filetype') == 'txt':
+                        idd = imgfile.get('fileid')
+                        break
         return idd
 
     # --------------------------- INFO functions -------------------------------
@@ -355,9 +361,9 @@ class ProtCryoSparcHomogeneousReconstruct(ProtCryosparcBase):
                 if not particles.hasCTF():
                     validateMsgs.append("The Particles has not associated a "
                                         "CTF model")
-                    if not validateMsgs and not particles.hasAlignment3D():
-                        validateMsgs.append("The Particles has not a 3D "
-                                            "alignment")
+                if not particles.hasAlignmentProj():
+                    validateMsgs.append("The Particles have no projection "
+                                        "alignment")
 
         return validateMsgs
 
@@ -456,7 +462,7 @@ class ProtCryoSparcHomogeneousReconstruct(ProtCryosparcBase):
         except Exception:
             gpusToUse = False
 
-        runHomogeneousReconstructionJob = enqueueJob(self._className, self.projectName.get(),
+        runHomogeneousReconstructionJob = self._enqueueOrResumeJob('runHomogeneousReconstruction', self._className, self.projectName.get(),
                                                        self.workSpaceName.get(),
                                                        str(params).replace('\'', '"'),
                                                        str(input_group_connect).replace('\'', '"'),

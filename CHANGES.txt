@@ -1,3 +1,10 @@
+November 11, 2026 - **v5.0.2**
+                Compatibility with cryoSPARC v5.1: jobs with chosen GPUs are queued on the lane's machine
+                Fix classifications (2D, 3D, heterogeneous refinement, ab-initio) giving a single class when cryoSPARC carries earlier alignments in the particles
+                Continue takes back the cryoSPARC jobs that still run instead of duplicating them
+                Restore live cryoSPARC v5 job log streaming
+                Clone reference volumes resolved from Set item pointers in 3D classification
+
 August 3, 2026 - **v5.0.1**
                 Improve cryoSPARC v5 connection checks for multi-user installations
                 Add support for custom cryosparcm commands through CRYOSPARCM_CMD

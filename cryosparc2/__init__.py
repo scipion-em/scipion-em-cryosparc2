@@ -32,7 +32,7 @@ from pyworkflow import VarTypes, SPA
 
 from .constants import *
 
-__version__ = '5.0.1'
+__version__ = '5.0.2'
 _references = ['Punjani2017', 'Brubaker2017', 'daniel_asarnow_2019_3576630']
 _logo = 'cryosparc2_logo.png'
 

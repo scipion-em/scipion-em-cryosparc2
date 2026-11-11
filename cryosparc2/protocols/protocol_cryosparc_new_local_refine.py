@@ -427,7 +427,7 @@ class ProtCryoSparcLocalRefine(ProtCryosparcBase, ProtOperateParticles):
         except Exception:
             gpusToUse = False
 
-        runLocalRefinementJob = enqueueJob(self._className, self.projectName.get(),
+        runLocalRefinementJob = self._enqueueOrResumeJob('runLocalRefinement', self._className, self.projectName.get(),
                                              self.workSpaceName.get(),
                                              str(params).replace('\'', '"'),
                                              str(input_group_connect).replace('\'',

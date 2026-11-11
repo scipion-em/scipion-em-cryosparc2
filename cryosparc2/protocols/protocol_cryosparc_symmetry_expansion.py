@@ -209,7 +209,7 @@ class ProtCryoSparcSymmetryExpansion(ProtCryosparcBase):
         except Exception:
             gpusToUse = False
 
-        runSymExpJob = enqueueJob(self._className, self.projectName.get(),
+        runSymExpJob = self._enqueueOrResumeJob('runSymExp', self._className, self.projectName.get(),
                                     self.workSpaceName.get(),
                                     str(params).replace('\'', '"'),
                                     str(input_group_connect).replace('\'', '"'),

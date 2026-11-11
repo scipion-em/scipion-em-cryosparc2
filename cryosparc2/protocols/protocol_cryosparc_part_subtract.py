@@ -288,7 +288,7 @@ class ProtCryoSparcSubtract(ProtCryosparcBase, ProtOperateParticles):
         except Exception:
             gpusToUse = False
 
-        runPartStractJob = enqueueJob(self._className, self.projectName.get(),
+        runPartStractJob = self._enqueueOrResumeJob('runPartStract', self._className, self.projectName.get(),
                                         self.workSpaceName.get(),
                                         str(params).replace('\'', '"'),
                                         str(input_group_connect).replace('\'', '"'),

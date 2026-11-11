@@ -178,8 +178,8 @@ class ProtCryoSparcSharppening(ProtCryosparcBase, ProtAnalysis3D):
         if not hasattr(self, 'outputVolume'):
             summary.append("Output objects not ready yet.")
         else:
-            summary.append("Input Refinement Protocol: %s" %
-                           self.getObjectTag('inputRefinement'))
+            summary.append("Input volume: %s" %
+                           self.getObjectTag('refVolume'))
             summary.append("b-factor: %s" % self.sharp_bfactor.get())
             summary.append("------------------------------------------")
 
@@ -211,7 +211,7 @@ class ProtCryoSparcSharppening(ProtCryosparcBase, ProtAnalysis3D):
         except Exception:
             gpusToUse = False
 
-        runSharppeningJob = enqueueJob(self._className,
+        runSharppeningJob = self._enqueueOrResumeJob('runSharppening', self._className,
                                          self.projectName.get(),
                                          self.workSpaceName.get(),
                                          str(params).replace('\'', '"'),
@@ -225,7 +225,7 @@ class ProtCryoSparcSharppening(ProtCryosparcBase, ProtAnalysis3D):
 
         waitForCryosparc(self.projectName.get(),
                          self.runSharppening.get(),
-                         "An error occurred in the particles subtraction process. "
+                         "An error occurred in the sharpening process. "
                          "Please, go to cryoSPARC software for more "
                          "details.", self)
         clearIntermediateResults(self.projectName.get(), self.runSharppening.get())

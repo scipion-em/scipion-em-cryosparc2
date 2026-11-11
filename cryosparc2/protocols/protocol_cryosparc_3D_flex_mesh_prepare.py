@@ -274,7 +274,7 @@ class ProtCryoSparc3DFlexMeshPrepare(ProtCryosparcBase):
             if self.getAttributeValue(paramName) is not None:
                 params[str(paramName)] = str(self.getAttributeValue(paramName))
 
-        run3DFlexMeshPrepJob = enqueueJob(self._className,
+        run3DFlexMeshPrepJob = self._enqueueOrResumeJob('run3DFlexMeshPrep', self._className,
                                           self.projectName.get(),
                                           self.workSpaceName.get(),
                                           str(params).replace('\'', '"'),

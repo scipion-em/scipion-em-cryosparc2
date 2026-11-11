@@ -61,6 +61,10 @@ STOP_STATUSES = [STATUS_ABORTED, STATUS_COMPLETED, STATUS_FAILED, STATUS_KILLED]
 ACTIVE_STATUSES = [STATUS_QUEUED, STATUS_RUNNING, STATUS_STARTED,
                    STATUS_LAUNCHED, STATUS_BUILDING, STATUS_WAITING]
 
+# How long a wait tolerates failing queries to cryoSPARC (one every 5 minutes), and statuses it does not know
+MAX_JOB_QUERY_FAILURES = 6
+MAX_UNKNOWN_STATUS_POLLS = 20
+
 # Module variables
 _csVersion = None  # Lazy variable: never use it directly. Use getCryosparcVersion instead
 
@@ -140,7 +144,13 @@ def _runCliValue(expression, printCmd=True):
     try:
         return ast.literal_eval(output)
     except Exception:
-        return output
+        pass
+    # The value is the last line: the ones before may be warnings or banners of the cryoSPARC tools
+    lastLine = output.splitlines()[-1].strip()
+    try:
+        return ast.literal_eval(lastLine)
+    except Exception:
+        return lastLine
 
 
 def _pythonLiteral(value, default=None):
@@ -176,7 +186,9 @@ def _writeTextFile(path, text):
 
 
 def _normalizeJobStatus(status):
-    return str(status or "").strip().strip("'\"").lower()
+    status = str(status or "").strip().strip("'\"").lower()
+    # Enum-like values, e.g. JobStatus.completed
+    return status.rsplit(".", 1)[-1]
 
 
 def _normalizeSourceOutputName(sourceOutputName):
@@ -273,30 +285,42 @@ def getCryosparcDir(*paths):
 
 
 def getCryosparcProgram(mode="cli"):
-    """
-    Get the cryosparc command to launch any cryoSPARC operation.
-    mode="cli" returns ".../cryosparcm cli"
-    mode="" returns ".../cryosparcm"
+    """Return cryosparcm (optionally followed by a subcommand).
 
-    CRYOSPARCM_CMD can be used to override the detected cryosparcm command.
-    This is useful for multi-user installations where cryoSPARC must be
-    executed through a wrapper or as the linux user that owns the installation.
+    CRYOSPARCM_CMD keeps taking precedence for remote/multi-user wrappers.
+    Otherwise CRYOSPARC_HOME must point to the installation parent, which
+    contains cryosparc_master/bin/cryosparcm.  A missing installation is an
+    explicit configuration error, never an invented legacy command path.
     """
     cryosparcmCmd = os.environ.get(CRYOSPARCM_CMD)
-    if cryosparcmCmd:
+    if cryosparcmCmd and cryosparcmCmd.strip():
         return "%s %s" % (cryosparcmCmd, mode) if mode else cryosparcmCmd
 
     csDir = getCryosparcDir()
+    if not csDir or not str(csDir).strip():
+        raise RuntimeError(
+            "CRYOSPARC_HOME is empty. Set it to the parent of "
+            "cryosparc_master, or configure CRYOSPARCM_CMD."
+        )
+    if not os.path.isabs(csDir):
+        raise ValueError(
+            "CRYOSPARC_HOME must be an absolute path to the parent of "
+            "cryosparc_master: %r" % csDir
+        )
 
-    if csDir is not None:
-        command = 'cryosparcm' if not mode else 'cryosparcm %s' % mode
+    executable = os.path.join(csDir, CRYOSPARC_MASTER, "bin", "cryosparcm")
+    if not os.path.isfile(executable):
+        raise FileNotFoundError(
+            "CryoSPARC executable not found at %s. Check CRYOSPARC_HOME "
+            "(it must contain cryosparc_master/bin/cryosparcm)." % executable
+        )
+    if not os.access(executable, os.X_OK):
+        raise RuntimeError(
+            "CryoSPARC executable %s is not executable. Check its permissions."
+            % executable
+        )
 
-        if os.path.exists(os.path.join(csDir, CRYOSPARC_MASTER, "bin")):
-            return os.path.join(csDir, CRYOSPARC_MASTER, "bin", command)
-        else:
-            return os.path.join(csDir, 'cryosparc2_master', "bin", command)
-
-    return None
+    return "%s %s" % (executable, mode) if mode else executable
 
 
 def cryosparcExists():
@@ -735,6 +759,14 @@ def createProjectContainerDir(project_container_dir):
     os.makedirs(project_container_dir, exist_ok=True)
 
     if _isCryosparcV5OrNewer():
+        # The directory is created by the Scipion user, but cryoSPARC >= 5
+        # validates and later uses it from the server side
+        # (projects:check_directory, project creation and job outputs are
+        # written by the server process, which usually runs as another
+        # user, e.g. roberto). Without this, a non-server user gets:
+        #   403 "<path> must be readable and writable ([Errno 13] Permission
+        #        denied: '<path>/.accesstest_<ts>')"
+        os.chmod(project_container_dir, 0o777)
         _runCliValue(
             "api.projects.check_directory(path=%s)" % repr(str(project_container_dir)),
             printCmd=False
@@ -803,6 +835,14 @@ def _getProtocolPreprocessLane(protocol):
     return None
 
 
+def _enqueueImportJob(protocol, jobAttr, *enqueueArgs):
+    """ Enqueue an import job of protocol, through its resumable helper when it has one: the job is then stored
+    before waiting for it (so Abort can kill it) and taken back by a Continue instead of imported again. """
+    if jobAttr and hasattr(protocol, '_enqueueOrResumeJob'):
+        return protocol._enqueueOrResumeJob(jobAttr, *enqueueArgs)
+    return enqueueJob(*enqueueArgs)
+
+
 def doImportParticlesStar(protocol):
     """
     do_import_particles_star(puid, wuid, uuid, abs_star_path,
@@ -819,8 +859,9 @@ def doImportParticlesStar(protocol):
               }
 
     preprocessLane = _getProtocolPreprocessLane(protocol)
-    import_particles = enqueueJob(className, protocol.projectName, protocol.workSpaceName,
-                                  str(params).replace('\'', '"'), '{}', preprocessLane)
+    import_particles = _enqueueImportJob(protocol, 'importParticlesJob', className, protocol.projectName,
+                                         protocol.workSpaceName, str(params).replace('\'', '"'), '{}',
+                                         preprocessLane)
 
     waitForCryosparc(protocol.projectName.get(), import_particles.get(),
                      "An error occurred importing particles. "
@@ -830,7 +871,7 @@ def doImportParticlesStar(protocol):
     return import_particles
 
 
-def doImportVolumes(protocol, refVolumePath, refVolume, volType, msg):
+def doImportVolumes(protocol, refVolumePath, refVolume, volType, msg, jobAttr=None):
     """
     :return:
     """
@@ -841,10 +882,10 @@ def doImportVolumes(protocol, refVolumePath, refVolume, volType, msg):
               "volume_psize": str(refVolume.getSamplingRate())}
 
     preprocessLane = _getProtocolPreprocessLane(protocol)
-    importedVolume = enqueueJob(className, protocol.projectName,
-                                protocol.workSpaceName,
-                                str(params).replace('\'', '"'), '{}',
-                                preprocessLane)
+    importedVolume = _enqueueImportJob(protocol, jobAttr, className, protocol.projectName,
+                                       protocol.workSpaceName,
+                                       str(params).replace('\'', '"'), '{}',
+                                       preprocessLane)
 
     waitForCryosparc(protocol.projectName.get(), importedVolume.get(),
                      "An error occurred importing the volume. "
@@ -868,7 +909,7 @@ def doImportMicrographs(protocol):
     for micPath in micList:
         micName = os.path.basename(micPath)
         micLink = os.path.join(micFolder, micName)
-        os.symlink(os.path.abspath(micPath), micLink)
+        pwutils.createLink(os.path.abspath(micPath), micLink)  # Also when a previous execution left it
     micExt = '*%s' % os.path.splitext(micList[0])[1]
 
     params = {"blob_paths": str(os.path.join(os.getcwd(), micFolder, micExt)),
@@ -880,11 +921,12 @@ def doImportMicrographs(protocol):
               }
 
     preprocessLane = _getProtocolPreprocessLane(protocol)
-    import_particles = enqueueJob(className, protocol.projectName, protocol.workSpaceName,
-                                  str(params).replace('\'', '"'), '{}', preprocessLane)
+    import_particles = _enqueueImportJob(protocol, 'importMicrographsJob', className, protocol.projectName,
+                                         protocol.workSpaceName, str(params).replace('\'', '"'), '{}',
+                                         preprocessLane)
 
     waitForCryosparc(protocol.projectName.get(), import_particles.get(),
-                     "An error occurred importing particles. "
+                     "An error occurred importing micrographs. "
                      "Please, go to cryoSPARC software for more "
                      "details.")
 
@@ -902,6 +944,65 @@ def doJob(jobType, projectName, workSpaceName, params, input_group_connect):
                    params, input_group_connect, "'"))
 
     return runCmd(do_job_cmd)
+
+
+def _gpuTargetOf(lane, standaloneInstallation):
+    """The cryoSPARC target (a machine of the lane) that given GPU numbers refer to, or None.
+
+    cryoSPARC 5.1 queues to chosen GPUs only on a target, never on a lane. A lane with a single machine names it;
+    with several, the one this machine (or the master) is; cluster lanes have no GPU numbers to choose."""
+    import socket
+
+    targets = _runCliValue(
+        "[(t.name, t.hostname, getattr(t.config, 'type', None)) for t in api.resources.find_targets(lane=%s)]"
+        % repr(str(lane)),
+        printCmd=False
+    ) or []
+    nodes = [target for target in targets if len(target) >= 3 and target[2] == "node"]
+    if len(nodes) == 1:
+        return nodes[0][0]
+    names = {socket.gethostname().lower(), socket.getfqdn().lower()}
+    if standaloneInstallation:
+        try:
+            names.add(str(getCryosparcEnvInformation('master_hostname')).lower())
+        except Exception:
+            pass
+    for name, hostname, _ in nodes:
+        if str(name).lower() in names or str(hostname).lower() in names:
+            return name
+    return None
+
+
+def _enqueueV5(projectUid, jobUid, lane, gpus, standaloneInstallation):
+    """Queue a job on cryoSPARC 5: on its lane, or, with chosen GPUs, on the lane's machine with those GPUs.
+
+    cryoSPARC 5.1 refuses GPUs without a target ("Unable to queue to gpus without a specified target") and a
+    target together with a lane; earlier 5.x releases took the GPUs with the lane. Each way is tried in turn, and
+    at worst the job goes to the lane without chosen GPUs (cryoSPARC picks free ones)."""
+    def enqueue(**where):
+        arguments = ", ".join("%s=%s" % (name, repr(value)) for name, value in where.items())
+        return _runCliValue("api.jobs.enqueue(%s, %s, %s, no_check_inputs_ready=False)"
+                            % (repr(projectUid), repr(str(jobUid)), arguments), printCmd=False)
+
+    if gpus:
+        attempts = []
+        try:
+            target = _gpuTargetOf(lane, standaloneInstallation)
+        except Exception as error:
+            target = None
+            attempts.append("finding the machine of lane %s: %s" % (lane, error))
+        if target:
+            try:
+                return enqueue(hostname=str(target), gpus=list(gpus))
+            except Exception as error:
+                attempts.append("on %s with GPUs %s: %s" % (target, list(gpus), error))
+        try:
+            return enqueue(lane=str(lane), gpus=list(gpus))
+        except Exception as error:
+            attempts.append("on lane %s with GPUs %s: %s" % (lane, list(gpus), error))
+        logger.warning("cryoSPARC did not take the chosen GPUs %s (%s); the job goes to lane %s and cryoSPARC "
+                       "chooses its GPUs." % (list(gpus), "; ".join(str(attempt)[:300] for attempt in attempts), lane))
+    return enqueue(lane=str(lane))
 
 
 def enqueueJob(jobType, projectName, workSpaceName, params, input_group_connect,
@@ -987,24 +1088,7 @@ def enqueueJob(jobType, projectName, workSpaceName, params, input_group_connect,
                     printCmd=False
                 )
 
-        hostname = None
-        if standaloneInstallation:
-            try:
-                hostname = getCryosparcEnvInformation('master_hostname')
-            except Exception:
-                hostname = None
-
-        _runCliValue(
-            "api.jobs.enqueue(%s, %s, lane=%s, gpus=%s, no_check_inputs_ready=%s)"
-            % (
-                repr(projectUid),
-                repr(str(jobId)),
-                repr(str(lane)),
-                repr(gpus),
-                repr(False),
-            ),
-            printCmd=False
-        )
+        _enqueueV5(projectUid, str(jobId), lane, gpus, standaloneInstallation)
 
         logger.info(pwutils.greenStr("Got %s for JobId" % jobId))
         return jobId
@@ -1023,6 +1107,9 @@ def enqueueJob(jobType, projectName, workSpaceName, params, input_group_connect,
                         ("'", jobType, projectName, workSpaceName,
                          getCryosparcUser(),
                          params, input_group_connect, "'"))
+    else:
+        raise Exception("Unsupported or unknown cryoSPARC version (%s): no %s job can be created. Please, check "
+                        "the cryoSPARC installation and the plugin configuration." % (cryosparcVersion, jobType))
 
     exitCode, cmdOutput = runCmd(make_job_cmd)
 
@@ -1197,7 +1284,7 @@ def runCmd(cmd, printCmd=True):
     return exitCode, cmdOutput.split('\n')[-1]
 
 
-def waitForCryosparc(projectName, jobName, errorMsg, protocol=None, sleepTime=15):
+def waitForCryosparc(projectName, jobName, errorMsg, protocol=None, sleepTime=5):
     """
     Wait until the cryoSPARC job reaches a stop status and stream job logs
     into the Scipion logger when a protocol instance is available.
@@ -1210,30 +1297,46 @@ def waitForCryosparc(projectName, jobName, errorMsg, protocol=None, sleepTime=15
         protocol = None
 
     status = None
+    failures = 0  # Consecutive failing queries
+    unknownPolls = 0  # Consecutive polls with a status that is neither active nor final
 
     while True:
         try:
             status = getJobStatus(projectName, jobName)
-
-            if status in STOP_STATUSES:
-                break
-
-            _logCryosparcJobEvents(projectName, jobName, protocol=protocol)
-
-            if status in ACTIVE_STATUSES:
-                waitJob(projectName, jobName)
-            else:
-                time.sleep(sleepTime)
-
+            if status not in STOP_STATUSES:
+                _logCryosparcJobEvents(projectName, jobName, protocol=protocol)
+                if status in ACTIVE_STATUSES:
+                    time.sleep(sleepTime)
         except Exception as ex:
+            failures += 1
+            if failures >= MAX_JOB_QUERY_FAILURES:
+                raise Exception("%s cryoSPARC could not be queried about the job %s %d times in a row: %s"
+                                % (errorMsg, jobName, failures, ex)) from ex
             logger.error(
                 "Can't query cryoSPARC about the job %s. Maybe it needs a restart? "
                 "We'll wait 5 minutes" % jobName,
                 exc_info=ex
             )
             time.sleep(300)
+            continue
+        failures = 0
 
-    _logCryosparcJobEvents(projectName, jobName, protocol=protocol)
+        if status in STOP_STATUSES:
+            break
+        if status in ACTIVE_STATUSES:
+            unknownPolls = 0
+        else:
+            unknownPolls += 1
+            if unknownPolls >= MAX_UNKNOWN_STATUS_POLLS:
+                raise Exception("%s cryoSPARC reports the unknown status '%s' for the job %s."
+                                % (errorMsg, status, jobName))
+            time.sleep(sleepTime)
+
+    try:
+        _logCryosparcJobEvents(projectName, jobName, protocol=protocol)
+    except Exception as ex:
+        # The job is over: not being able to show its last events must not fail it
+        logger.warning("Can't read the last events of the job %s: %s" % (jobName, ex))
 
     if status != STATUS_COMPLETED:
         raise Exception("%s Current status: %s" % (errorMsg, status))
@@ -1246,7 +1349,35 @@ def _getCryosparcJobLogEvents(projectName, jobName):
     Return cryoSPARC job log events as a list.
     """
     if _isCryosparcV5OrNewer():
-        events = _tryV5StructuredEventLog(projectName, jobName)
+        # The structured v5 API may exist but return an empty payload or events
+        # without printable text.  Treat those results as unavailable, not final.
+        structured = _tryV5StructuredEventLog(projectName, jobName)
+        try:
+            parsed = _pythonLiteral(structured, default=[])
+        except (ValueError, SyntaxError, TypeError):
+            parsed = []
+    
+        if isinstance(parsed, dict):
+            parsed = parsed.get("events", parsed.get("logs", []))
+    
+        if isinstance(parsed, list) and any(
+            _getCryosparcLogText(event) for event in parsed
+        ):
+            return parsed
+    
+        # cryosparcm job events yields the actual multi-line v5 event stream.
+        # Return one event per line so the existing per-job cursor can de-duplicate.
+        try:
+            _, rawEvents = _runCryosparcmSubcommand(
+                "job", "events", str(projectName), str(jobName), printCmd=False
+            )
+        except Exception as ex:
+            logger.warning(
+                "Unable to retrieve cryoSPARC job events for %s/%s: %s",
+                projectName, jobName, ex
+            )
+            return []
+        return [line.strip() for line in str(rawEvents or "").splitlines() if line.strip()]
     else:
         events = getJobStreamlog(projectName, jobName)[1]
 
@@ -1300,23 +1431,27 @@ def _logCryosparcJobEvents(projectName, jobName, protocol=None):
             logger.info(text)
         return
 
-    jobLogLastLine = protocol.getLogLine()
-    lenLog = len(events)
-
-    if lenLog > jobLogLastLine:
-        protocol.setLogLine(lenLog)
-        for line in range(jobLogLastLine, lenLog):
-            text = _getCryosparcLogText(events[line])
-            if text:
-                logger.info(text)
-    else:
-        jobLogLastLine = lenLog - 1
-        while jobLogLastLine >= 0:
-            text = _getCryosparcLogText(events[jobLogLastLine])
-            if text:
-                logger.info(text)
-                break
-            jobLogLastLine -= 1
+    # Keep a separate event cursor for each cryoSPARC job of the protocol.
+    # Leave getLogLine/setLogLine available to existing callers.
+    jobKey = (str(projectName), str(jobName))
+    jobOffsets = getattr(protocol, "_cryosparcLogOffsets", None)
+    if not isinstance(jobOffsets, dict):
+        jobOffsets = {}
+        protocol._cryosparcLogOffsets = jobOffsets
+    
+    lastLine = jobOffsets.get(jobKey, 0)
+    if not isinstance(lastLine, int) or lastLine < 0 or lastLine > len(events):
+        lastLine = 0
+    
+    if len(events) <= lastLine:
+        return
+    
+    for event in events[lastLine:]:
+        text = _getCryosparcLogText(event)
+        if text:
+            logger.info(text)
+    jobOffsets[jobKey] = len(events)
+    protocol.setLogLine(len(events))
 
 
 def getJobStatus(projectName, jobId):
@@ -1386,7 +1521,7 @@ def getJobStreamlog(projectName, job):
     return logList
 
 
-def waitJob(projectName, job, sleepTime=15):
+def waitJob(projectName, job, sleepTime=5):
     """
     Wait while the job is not finished.
     """
@@ -1394,11 +1529,9 @@ def waitJob(projectName, job, sleepTime=15):
     job = str(job)
 
     if _isCryosparcV5OrNewer():
-        while True:
-            status = getJobStatus(projectName, job)
-            if status in STOP_STATUSES:
-                return status
-            time.sleep(sleepTime)
+        # One poll: the caller shows the job events between polls and decides when to stop
+        time.sleep(sleepTime)
+        return getJobStatus(projectName, job)
 
     wait_job_cmd = (getCryosparcProgram() +
                     ' %swait_job_complete("%s", "%s")%s'
@@ -1513,7 +1646,9 @@ def clearIntermediateResults(projectName, jobName=None, workspaceName=None, alwa
                 % (repr(projectUid), repr(jobUid), repr(bool(alwaysKeepFinal))),
             ])
 
-        if workspaceUid is not None:
+        # Only the narrowest scope asked for: falling back to a wider one would clear the results of other runs
+        # sharing the project
+        if workspaceUid is not None and jobUid is None:
             attempts.extend([
                 "api.projects.clear_intermediate_results(%s, workspace_uid=%s, always_keep_final=%s)"
                 % (repr(projectUid), repr(workspaceUid), repr(bool(alwaysKeepFinal))),
@@ -1522,12 +1657,13 @@ def clearIntermediateResults(projectName, jobName=None, workspaceName=None, alwa
             ])
 
         # Project-level clear
-        attempts.extend([
-            "api.projects.clear_intermediate_results(%s, always_keep_final=%s)"
-            % (repr(projectUid), repr(bool(alwaysKeepFinal))),
-            "api.projects.clear_intermediate_results(project_uid=%s, always_keep_final=%s)"
-            % (repr(projectUid), repr(bool(alwaysKeepFinal))),
-        ])
+        if jobUid is None and workspaceUid is None:
+            attempts.extend([
+                "api.projects.clear_intermediate_results(%s, always_keep_final=%s)"
+                % (repr(projectUid), repr(bool(alwaysKeepFinal))),
+                "api.projects.clear_intermediate_results(project_uid=%s, always_keep_final=%s)"
+                % (repr(projectUid), repr(bool(alwaysKeepFinal))),
+            ])
 
         # Legacy-like low-level entrypoints that may still be exposed in some v5 installs
         if jobUid is not None:
@@ -1538,7 +1674,7 @@ def clearIntermediateResults(projectName, jobName=None, workspaceName=None, alwa
                 % (repr(projectUid), repr(jobUid), repr(bool(alwaysKeepFinal))),
             ])
 
-        if workspaceUid is not None:
+        if workspaceUid is not None and jobUid is None:
             attempts.extend([
                 "clear_intermediate_results(project_uid=%s, workspace_uid=%s, always_keep_final=%s)"
                 % (repr(projectUid), repr(workspaceUid), repr(bool(alwaysKeepFinal))),
@@ -1546,12 +1682,13 @@ def clearIntermediateResults(projectName, jobName=None, workspaceName=None, alwa
                 % (repr(projectUid), repr(workspaceUid), repr(bool(alwaysKeepFinal))),
             ])
 
-        attempts.extend([
-            "clear_intermediate_results(project_uid=%s, always_keep_final=%s)"
-            % (repr(projectUid), repr(bool(alwaysKeepFinal))),
-            "api.clear_intermediate_results(project_uid=%s, always_keep_final=%s)"
-            % (repr(projectUid), repr(bool(alwaysKeepFinal))),
-        ])
+        if jobUid is None and workspaceUid is None:
+            attempts.extend([
+                "clear_intermediate_results(project_uid=%s, always_keep_final=%s)"
+                % (repr(projectUid), repr(bool(alwaysKeepFinal))),
+                "api.clear_intermediate_results(project_uid=%s, always_keep_final=%s)"
+                % (repr(projectUid), repr(bool(alwaysKeepFinal))),
+            ])
 
         lastError = None
 
@@ -1581,20 +1718,23 @@ def clearIntermediateResults(projectName, jobName=None, workspaceName=None, alwa
                 "clear_intermediate_results(project_uid=%s, job_uid=%s, always_keep_final=%s)"
                 % (repr(projectUid), repr(jobUid), repr(bool(alwaysKeepFinal)))
         )
-        return _runCliExpression(clearIntermediateExpr, printCmd=False)
-
-    if workspaceUid is not None:
+    elif workspaceUid is not None:
         clearIntermediateExpr = (
                 "clear_intermediate_results(project_uid=%s, workspace_uid=%s, always_keep_final=%s)"
                 % (repr(projectUid), repr(workspaceUid), repr(bool(alwaysKeepFinal)))
         )
+    else:
+        clearIntermediateExpr = (
+                "clear_intermediate_results(project_uid=%s, always_keep_final=%s)"
+                % (repr(projectUid), repr(bool(alwaysKeepFinal)))
+        )
+    try:
         return _runCliExpression(clearIntermediateExpr, printCmd=False)
-
-    clearIntermediateExpr = (
-            "clear_intermediate_results(project_uid=%s, always_keep_final=%s)"
-            % (repr(projectUid), repr(bool(alwaysKeepFinal)))
-    )
-    return _runCliExpression(clearIntermediateExpr, printCmd=False)
+    except Exception as ex:
+        # Housekeeping after the job finished: failing it would discard a good result
+        logger.warning("Could not clear intermediate results for project=%s, job=%s, workspace=%s: %s",
+                       projectUid, jobUid, workspaceUid, ex)
+        return 0, ""
 
 
 def getSystemInfo():
@@ -1760,7 +1900,7 @@ def getSchedulerLanes():
         try:
             lanes_info_cmd = (getCryosparcProgram() + " 'get_scheduler_lanes()'")
             _csLanes = runCmd(lanes_info_cmd, printCmd=False)[1]
-            lanes_dict_list = eval(_csLanes)
+            lanes_dict_list = ast.literal_eval(_csLanes)
             _csLanes = []
             for lanes in lanes_dict_list:
                 _csLanes.append(lanes.get('name'))
@@ -1946,17 +2086,33 @@ def copyFiles(src, dst, files=None):
     :param files: a list of files to be copied
     :return:
     """
-    try:
-        if files is None:
-            shutil.copytree(src, dst)
-        else:
-            if isinstance(files, str):
-                files = [files]
-            for file in files:
-                shutil.copy(os.path.join(src, file),
-                            os.path.join(dst, file))
-    except Exception as ex:
-        logger.error("Unable to execute the copy: Files or directory does not exist: ", exc_info=ex)
+    # A missing file fails here, with its name, instead of later with no clue
+    if files is None:
+        # It may hold the copy of a previous execution of the step: it is updated
+        shutil.copytree(src, dst, dirs_exist_ok=True)
+    else:
+        if isinstance(files, str):
+            files = [files]
+        for file in files:
+            shutil.copy(os.path.join(src, file),
+                        os.path.join(dst, file))
+
+
+def particleKey(item):
+    """ (index, stack name without extension) of a Scipion particle: compared with csParticleKey, it finds it
+    among what cryoSPARC lists, also when its stack was converted (e.g. .stk into .mrcs) to be imported. """
+    return int(item.getIndex()), os.path.splitext(os.path.basename(item.getFileName()))[0]
+
+
+def csParticleKey(imageName):
+    """ (index, stack name without extension) of a particle listed by cryoSPARC as index@path, where cryoSPARC
+    prefixes the imported stack names with a numeric uid and an underscore. """
+    index, path = imageName.split('@', 1)
+    name = os.path.splitext(os.path.basename(path))[0]
+    prefix, _, rest = name.partition('_')
+    if prefix.isdigit() and rest:
+        name = rest
+    return int(index), name
 
 
 def matchItemRow(item, row):

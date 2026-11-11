@@ -4,6 +4,41 @@ import json
 import os
 import time
 
+# Which alignments a job's particles are read from (see keepJobAlignments)
+ALIGNMENTS_2D = "2D"
+ALIGNMENTS_3D_CLASSES = "3Dclasses"
+ALIGNMENTS_OPTION = "--alignments="
+
+
+def keepJobAlignments(cs, which):
+    """ The particles of a .cs without the alignments of earlier jobs.
+
+    Some cryoSPARC versions copy into a job's particles the alignments of the
+    jobs before it (a 2D classification of refined particles also carries
+    their 3D refinement). The converter reads 3D alignments first, so it would
+    give every particle the refinement's single class and pose. which is
+    ALIGNMENTS_2D (keep the 2D classification) or ALIGNMENTS_3D_CLASSES (keep
+    the 3D classes); the .cs is returned as it is when the job's own
+    alignments are not in it.
+    """
+    names = cs.dtype.names
+    if which == ALIGNMENTS_2D:
+        if "alignments2D/class" not in names:
+            return cs
+        dropped = ("alignments3D", "alignments_class")
+    elif which == ALIGNMENTS_3D_CLASSES:
+        if not any(n.startswith(("alignments3D_multi/", "alignments_class_"))
+                   for n in names):
+            return cs
+        dropped = ("alignments3D/", "alignments2D/")
+    else:
+        return cs
+    kept = [n for n in names if not n.startswith(dropped)]
+    if len(kept) == len(names):
+        return cs
+    from numpy.lib import recfunctions
+    return recfunctions.repack_fields(cs[kept])
+
 
 def cs2Star(args):
     from glob import glob
@@ -31,6 +66,8 @@ def cs2Star(args):
         cs = np.load(args.input[0], max_header_size=MAX_HEADER_SIZE)
         if args.first10k:
             cs = cs[:10000]
+        if getattr(args, "alignments", None):
+            cs = keepJobAlignments(cs, args.alignments)
 
         if args.movies:
             if not os.path.isdir(args.output):
@@ -221,9 +258,13 @@ def defineArgs():
 
 if __name__ == "__main__":
     parser = defineArgs()
+    alignments = [a[len(ALIGNMENTS_OPTION):] for a in sys.argv
+                  if a.startswith(ALIGNMENTS_OPTION)]
+    sys.argv = [a for a in sys.argv if not a.startswith(ALIGNMENTS_OPTION)]
     argsList = [sys.argv[1]]
     if len(sys.argv) > 3:
         argsList.append(sys.argv[3])
     argsList.append(sys.argv[2])
     args = parser.parse_args(argsList)
+    args.alignments = alignments[-1] if alignments else None
     sys.exit(cs2Star(args))
