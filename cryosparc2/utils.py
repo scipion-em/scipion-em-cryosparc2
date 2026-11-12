@@ -28,7 +28,6 @@ import ast
 import getpass
 import logging
 import os
-import re
 import shutil
 import time
 

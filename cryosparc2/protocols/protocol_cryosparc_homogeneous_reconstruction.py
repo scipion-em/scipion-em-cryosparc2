@@ -274,11 +274,13 @@ class ProtCryoSparcHomogeneousReconstruct(ProtCryosparcBase):
                                     self.runHomogeneousReconstruction.get())
         csParticlesName = csOutputPattern + "_particles.cs"
         fnVolName = csOutputPattern + "_volume_map.mrc"
+        fnVolNameSharp = csOutputPattern + "_volume_map_sharp.mrc"
         half1Name = csOutputPattern + "_volume_map_half_A.mrc"
         half2Name = csOutputPattern + "_volume_map_half_B.mrc"
 
         # Copy the CS output to extra folder
         copyFiles(csOutputFolder, self._getExtraPath(), files=[csParticlesName,
+                                                               fnVolNameSharp,
                                                                fnVolName,
                                                                half1Name,
                                                                half2Name])
@@ -289,8 +291,10 @@ class ProtCryoSparcHomogeneousReconstruct(ProtCryosparcBase):
         convertCs2Star(argsList)
 
         fnVol = os.path.join(self._getExtraPath(), fnVolName)
+        fnVolSharp = os.path.join(self._getExtraPath(), fnVolNameSharp)
         half1 = os.path.join(self._getExtraPath(), half1Name)
         half2 = os.path.join(self._getExtraPath(), half2Name)
+
         imgSet = self._getInputParticles()
         vol = Volume()
         fixVolume([fnVol, half1, half2])
@@ -300,12 +304,21 @@ class ProtCryoSparcHomogeneousReconstruct(ProtCryosparcBase):
                                                      imgSet.getDim()))
         vol.setHalfMaps([half1, half2])
 
+        volSharp = Volume()
+        fixVolume([fnVolSharp])
+        volSharp.setFileName(fnVolSharp)
+        volSharp.setSamplingRate(calculateNewSamplingRate(vol.getDim(),
+                                 imgSet.getSamplingRate(),
+                                 imgSet.getDim()))
+
         outImgSet = self._createSetOfParticles()
         outImgSet.copyInfo(imgSet)
         self._fillDataFromIter(outImgSet)
 
         self._defineOutputs(outputVolume=vol)
+        self._defineOutputs(outputVolumeSharp=volSharp)
         self._defineSourceRelation(self.inputParticles, vol)
+        self._defineSourceRelation(self.inputParticles, volSharp)
         self._defineOutputs(outputParticles=outImgSet)
         self._defineTransformRelation(self.inputParticles, outImgSet)
         self.createFSC(idd, imgSet, vol)

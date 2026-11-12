@@ -87,7 +87,6 @@ class ProtCryoSparcNewNonUniformRefine3D(ProtCryoSparc3DHomogeneousRefine):
                            'be higher). Default of 3 is good, can try as low '
                            'as 1.5 ')
 
-
     def _defineParamsName(self):
         """ Define a list with all protocol parameters names"""
         ProtCryoSparc3DHomogeneousRefine._defineParamsName(self)
